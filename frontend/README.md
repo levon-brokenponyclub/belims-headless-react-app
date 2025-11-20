@@ -442,7 +442,106 @@ The project includes optimized build settings in `netlify.toml`:
   - Fixed with `SECRETS_SCAN_OMIT_KEYS` in netlify.toml
   - .env files removed from repository for security
 
-### **🔍 Debug Steps**
+---
+
+## 🛠 **Local Development Setup**
+
+### **Prerequisites**
+- **Node.js 20+** (check with `node --version`)
+- **npm** (comes with Node.js)
+- **Git** (for version control)
+- **VS Code** (recommended editor)
+
+### **Step 1: Clone & Install**
+```bash
+# Clone the repository
+git clone https://github.com/levon-brokenponyclub/belims-headless-react-app.git
+cd belims-headless-react-app/frontend
+
+# Install dependencies
+npm install
+```
+
+### **Step 2: Environment Variables (Local Development)**
+Create a `.env` file in the `frontend` directory:
+```bash
+# Create .env file
+touch .env
+
+# Edit with your preferred editor
+code .env  # VS Code
+# OR
+nano .env  # Terminal editor
+```
+
+Add your environment variables:
+```env
+# Gemini AI (Optional - uses mock data if missing)
+REACT_APP_GEMINI_API_KEY=your_google_gemini_api_key
+
+# WooCommerce (Optional - uses mock data if missing)
+REACT_APP_WOO_SITE_URL=http://your-local-wordpress.local
+REACT_APP_WOO_CONSUMER_KEY=ck_your_consumer_key
+REACT_APP_WOO_CONSUMER_SECRET=cs_your_consumer_secret
+
+# Development mode
+NODE_ENV=development
+```
+
+### **Step 3: Start Development Server**
+```bash
+# Start the development server
+npm run dev
+
+# Server will start at http://localhost:5173
+# (Vite's default port - may be different if 5173 is occupied)
+```
+
+### **Step 4: Open in Browser**
+```bash
+# Automatically opens browser, or manually navigate to:
+open http://localhost:5173
+```
+
+### **🔥 Development Features**
+- **Hot Module Reload**: Changes update instantly
+- **TypeScript Support**: Real-time type checking
+- **Tailwind CSS**: Utility-first styling with hot reload
+- **Mock Data Fallbacks**: AI and WooCommerce work without API keys
+- **Error Overlay**: Helpful error messages in browser
+
+---
+
+## 🌐 **Production Deployment (Netlify)**
+
+### **Step 1: Environment Variables**
+In Netlify Dashboard → Site Settings → Environment Variables, add:
+```
+REACT_APP_GEMINI_API_KEY=your_production_gemini_key
+REACT_APP_WOO_SITE_URL=https://your-live-wordpress.com
+REACT_APP_WOO_CONSUMER_KEY=ck_your_production_key
+REACT_APP_WOO_CONSUMER_SECRET=cs_your_production_secret
+NODE_ENV=production
+```
+
+### **Step 2: Deploy**
+```bash
+# Commit your changes
+git add -A
+git commit -m "✨ New feature: [describe changes]"
+git push origin main
+
+# Netlify auto-deploys from main branch
+```
+
+### **Step 3: Monitor Build**
+- Check Netlify dashboard for build status
+- View build logs for any errors
+- Test deployed site functionality
+
+---
+
+## 🔍 **Debug Steps**
 
 #### **Check Environment Variables**
 ```bash
@@ -478,6 +577,19 @@ console.log(import.meta.env.REACT_APP_WOO_SITE_URL);
 2. Ensure all REACT_APP_ variables are set
 3. Redeploy site after adding missing variables
 
+#### **Local Development Issues**
+```bash
+# Clear node modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+
+# Clear Vite cache
+npm run dev -- --force
+
+# Check Node version
+node --version  # Should be 20+
+```
+
 #### **WooCommerce Integration Issues**
 1. Verify WordPress site is accessible
 2. Check WooCommerce REST API permissions
@@ -492,3 +604,32 @@ console.log(import.meta.env.REACT_APP_WOO_SITE_URL);
 - [ ] **Buy Now buttons** have orange construction branding
 - [ ] **AI features respond** without console errors
 - [ ] **Mobile responsive** on phones/tablets
+
+---
+
+## 🎯 **Common Development Commands**
+
+```bash
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build locally
+npm run preview
+
+# Type check without building
+npx tsc --noEmit
+
+# Format code
+npx prettier --write src/
+
+# Install new dependency
+npm install package-name
+
+# Install new dev dependency
+npm install -D package-name
+```
+
+---

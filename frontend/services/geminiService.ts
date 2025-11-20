@@ -3,13 +3,45 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { PaintRecommendation, AIRecommendation, Product, PriceMatchResult } from "../types";
 import { FEATURED_PRODUCTS, DEALS_PRODUCTS } from "../constants";
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: import.meta.env.REACT_APP_GEMINI_API_KEY });
+// Initialize Gemini Client with fallback for missing API key
+const apiKey = import.meta.env.REACT_APP_GEMINI_API_KEY;
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 const ALL_PRODUCTS = [...FEATURED_PRODUCTS, ...DEALS_PRODUCTS];
 
 export const getPaintRecommendations = async (userPrompt: string): Promise<PaintRecommendation[]> => {
   try {
+    // Check if API key is available
+    if (!ai) {
+      console.warn('Gemini API key not found. Using mock paint recommendations.');
+      return [
+        {
+          colorName: "Ocean Breeze",
+          hexCode: "#4A90E2",
+          description: "A calming blue perfect for bedrooms and bathrooms",
+          mood: "Serene"
+        },
+        {
+          colorName: "Warm Earth",
+          hexCode: "#8B4513",
+          description: "Rich brown that brings warmth to living spaces",
+          mood: "Cozy"
+        },
+        {
+          colorName: "Fresh Mint",
+          hexCode: "#98FB98",
+          description: "Light green that energizes kitchens and offices",
+          mood: "Fresh"
+        },
+        {
+          colorName: "Sunset Glow",
+          hexCode: "#FF6347",
+          description: "Vibrant orange for accent walls and creative spaces",
+          mood: "Bold"
+        }
+      ];
+    }
+    
     const modelId = "gemini-2.5-flash"; 
     
     const response = await ai.models.generateContent({

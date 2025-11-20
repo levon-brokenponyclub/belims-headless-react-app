@@ -17,7 +17,10 @@ const SITE_URL = import.meta.env.REACT_APP_WOO_SITE_URL;
 const CONSUMER_KEY = import.meta.env.REACT_APP_WOO_CONSUMER_KEY;
 const CONSUMER_SECRET = import.meta.env.REACT_APP_WOO_CONSUMER_SECRET;
 
-const BASE_URL = `${SITE_URL}/wp-json/wc/v3`;
+// Check if WooCommerce credentials are available
+const isWooCommerceConfigured = SITE_URL && CONSUMER_KEY && CONSUMER_SECRET;
+
+const BASE_URL = isWooCommerceConfigured ? `${SITE_URL}/wp-json/wc/v3` : null;
 
 /**
  * Helper to generate the basic auth header or query params.
