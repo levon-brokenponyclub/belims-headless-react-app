@@ -5,6 +5,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  SECRETS_SCAN_OMIT_KEYS = "NODE_ENV,REACT_APP_GEMINI_API_KEY,REACT_APP_WOO_SITE_URL"
+  SECRETS_SCAN_OMIT_PATHS = "dist/**,services/**,.env*"
 
 [[redirects]]
   from = "/*"
