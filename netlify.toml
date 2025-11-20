@@ -6,6 +6,8 @@
 [build.environment]
   NODE_VERSION = "20"
   NODE_ENV = "development"
+  SECRETS_SCAN_OMIT_KEYS = "REACT_APP_GEMINI_API_KEY,REACT_APP_WOO_SITE_URL,NODE_ENV"
+  SECRETS_SCAN_OMIT_PATHS = ".env,netlify-env-vars.env"
 
 [[redirects]]
   from = "/*"
