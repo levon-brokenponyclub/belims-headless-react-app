@@ -1,0 +1,167 @@
+
+{
+  "notes": "Import this file into Advanced Custom Fields (ACF) Pro to automatically create the field groups required for the Belims Headless Store.",
+  "field_groups": [
+    {
+      "title": "Product Extended Data",
+      "key": "group_belims_product_data",
+      "fields": [
+        {
+          "key": "field_product_brand",
+          "label": "Brand",
+          "name": "brand",
+          "type": "text"
+        },
+        {
+          "key": "field_product_features",
+          "label": "Key Features",
+          "name": "features",
+          "type": "repeater",
+          "sub_fields": [
+            {
+              "key": "field_feature_text",
+              "label": "Feature",
+              "name": "feature_text",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "key": "field_product_specs",
+          "label": "Specifications",
+          "name": "specifications",
+          "type": "repeater",
+          "sub_fields": [
+            {
+              "key": "field_spec_label",
+              "label": "Label",
+              "name": "label",
+              "type": "text"
+            },
+            {
+              "key": "field_spec_value",
+              "label": "Value",
+              "name": "value",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "key": "field_is_bundle",
+          "label": "Is Bundle Deal?",
+          "name": "is_bundle",
+          "type": "true_false"
+        },
+        {
+          "key": "field_bundle_savings",
+          "label": "Bundle Savings Amount",
+          "name": "bundle_savings",
+          "type": "number",
+          "conditional_logic": [
+            {
+              "field": "field_is_bundle",
+              "operator": "==",
+              "value": "1"
+            }
+          ]
+        }
+      ],
+      "location": [
+        [
+          {
+            "param": "post_type",
+            "operator": "==",
+            "value": "product"
+          }
+        ]
+      ]
+    },
+    {
+      "title": "Store Details",
+      "key": "group_belims_store_details",
+      "fields": [
+        {
+          "key": "field_store_address",
+          "label": "Address",
+          "name": "address",
+          "type": "text"
+        },
+        {
+          "key": "field_store_geo",
+          "label": "Geolocation (Lat,Lng)",
+          "name": "geolocation",
+          "type": "google_map"
+        },
+        {
+          "key": "field_store_hours",
+          "label": "Opening Hours",
+          "name": "opening_hours",
+          "type": "textarea"
+        }
+      ],
+      "location": [
+        [
+          {
+            "param": "post_type",
+            "operator": "==",
+            "value": "store"
+          }
+        ]
+      ]
+    },
+    {
+      "title": "Project Idea Details",
+      "key": "group_belims_project_details",
+      "fields": [
+        {
+          "key": "field_project_difficulty",
+          "label": "Difficulty",
+          "name": "difficulty",
+          "type": "select",
+          "choices": {
+            "beginner": "Beginner",
+            "intermediate": "Intermediate",
+            "expert": "Expert"
+          }
+        },
+        {
+          "key": "field_project_steps",
+          "label": "Steps",
+          "name": "steps",
+          "type": "repeater",
+          "sub_fields": [
+             {
+               "key": "field_step_desc",
+               "label": "Description",
+               "name": "step_description",
+               "type": "textarea"
+             }
+          ]
+        }
+      ],
+      "location": [
+        [
+          {
+            "param": "post_type",
+            "operator": "==",
+            "value": "project_idea"
+          }
+        ]
+      ]
+    }
+  ],
+  "custom_post_types": [
+    {
+      "slug": "store",
+      "label": "Stores",
+      "public": true,
+      "menu_icon": "dashicons-store"
+    },
+    {
+      "slug": "project_idea",
+      "label": "Project Ideas",
+      "public": true,
+      "menu_icon": "dashicons-hammer"
+    }
+  ]
+}

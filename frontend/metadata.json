@@ -1,0 +1,7 @@
+{
+  "name": "Belims Hardware",
+  "description": "A headless, modern hardware store experience inspired by Lowe's and Walmart, featuring AI paint assistance and location-aware services.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
