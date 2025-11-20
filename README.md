@@ -92,7 +92,9 @@ You **MUST** add your API keys here for the live site to work:
 *If you miss this step, you can add them later in **Site Settings > Build & deploy > Environment variables**, but you will need to trigger a new deploy after adding them.*
 
 ### Step 5: Deploy
-Click **"Deploy site"**. Netlify will take a minute to build your site and provide you with a live URL (e.g., `https://belims-headless.netlify.app`).
+Click **"Deploy site"**. Netlify will take a minute to build your site and provide you with a live URL.
+
+**🌐 Live Demo:** https://belims-headless-react-app.netlify.app/
 
 ---
 
