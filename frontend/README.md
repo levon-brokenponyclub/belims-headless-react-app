@@ -245,9 +245,9 @@ This project is ready for deployment to Netlify with the following setup:
 ### Build Configuration
 
 The project includes optimized build settings in `netlify.toml`:
-- Build command: `npm run build`
+- Build command: `npm ci --include=dev && npx vite build`
 - Publish directory: `dist`
-- Node version: 18
+- Node version: 20
 - Automatic redirects for SPA routing
 
 ### Production Features
