@@ -201,3 +201,43 @@ Netlify automatically:
 3. Make your changes
 4. Test thoroughly locally with `npm run dev`
 5. Submit a pull request
+
+---
+
+## 🔮 Upcoming Features
+
+*Ideas and features we're planning to build:*
+
+### 🎯 **High Priority**
+- [ ] Enhanced product filtering with faceted search
+- [ ] Advanced shopping cart with quantity controls and quick add
+- [ ] Real-time inventory status per store location
+- [ ] Customer product reviews and rating system
+
+### 🚀 **AI & Innovation**
+- [ ] Voice search capabilities ("Hey Belims, find me a drill")
+- [ ] Visual product search (upload photo to find similar items)
+- [ ] Smart product bundling recommendations
+- [ ] AI-powered project cost calculator
+
+### 🎨 **UX Enhancements**
+- [ ] Smooth page transitions and micro-interactions
+- [ ] Dark mode toggle
+- [ ] Advanced product image gallery with 360° views
+- [ ] Mobile-first responsive improvements
+- [ ] PWA capabilities for offline browsing
+
+### ⚡ **Performance & Tech**
+- [ ] Image optimization and lazy loading
+- [ ] Code splitting for faster page loads
+- [ ] Enhanced SEO with structured data
+- [ ] GraphQL integration for better data fetching
+
+### 🛠 **Business Features**
+- [ ] Inventory management dashboard
+- [ ] Customer wishlist functionality
+- [ ] Advanced store locator with directions
+- [ ] Live chat support widget
+- [ ] Order tracking integration
+
+*Feel free to add ideas as they come to you! 💡*

@@ -1,7 +1,7 @@
 
 # Belims Hardware - Headless WooCommerce Store
 
-This project is a modern, scalable, headless e-commerce frontend built with React, TypeScript, and Tailwind CSS. It is designed to interface with a WordPress/WooCommerce backend via the REST API.
+This project is a modern, scalable, headless e-commerce frontend built with React 19, TypeScript, and Tailwind CSS. It features AI-powered product recommendations, revolutionary shipping calculator, and bundle & save system with construction orange branding.
 
 ## 🚀 Getting Started
 
@@ -12,10 +12,32 @@ This project is a modern, scalable, headless e-commerce frontend built with Reac
 npm install
 
 # Run the development server
-npm start
+npm run dev
 ```
 
-The application will start at `http://localhost:3000`.
+The application will start at `http://localhost:3000` (or next available port).
+
+---
+
+## ✨ Key Features
+
+### 🤖 AI-Powered Shopping Experience
+- **Gemini AI Integration**: Product descriptions, paint recommendations, and intelligent insights
+- **Smart Bundle System**: AI-suggested product bundles with progressive discounts (3%, 5%, 10%)
+- **Revolutionary Shipping Calculator**: Weather-aware delivery predictions with Bob Go integration
+
+### 💼 Advanced E-commerce Features
+- **Bundle & Save System**: Accordion-style bundle creation with visual product selection
+- **Buy Now Workflow**: One-click purchasing with Zap icon branding
+- **Construction Orange Theme**: Professional hardware store branding (#F97316)
+- **Delivery Options Modal**: Smart delivery predictions with weather integration
+- **Store Locator**: Real-time stock availability across multiple locations
+
+### 🛠 Professional UX Features
+- **Sticky Product Layout**: Left sticky images, right scrollable content
+- **Full Gallery Modal**: Immersive product image viewing
+- **Stock Management**: Real-time inventory display with progress bars
+- **Price Match System**: AI-powered competitor price analysis
 
 ---
 
@@ -89,9 +111,37 @@ This project uses Google's Gemini API for:
 2.  **Onboarding Wizard**: Personalizes product recommendations for DIY vs Business users.
 3.  **Price Match**: Scans web for competitor pricing using Gemini grounding.
 4.  **Product Descriptions**: Auto-generates SEO-friendly content with "Regenerate" capability.
+5.  **Advanced Product Recommendations**: AI-powered suggestion engine analyzing user behavior, purchase history, and project needs
+6.  **Intelligent Inventory Management**: Predictive stock analysis, automated reorder points, and demand forecasting
+7.  **Smart Customer Insights**: Behavioral analytics, purchase pattern recognition, and personalized shopping experiences
+8.  **AI Shipping Assistant**: Smart delivery predictions, optimal shipping method recommendations based on urgency and customer history
+9.  **Intelligent Delivery Optimization**: Predictive delivery issues, proactive customer notifications, and carbon footprint calculations
+10. **Smart Delivery Scheduler**: AI-suggested optimal delivery times based on location and availability patterns
 
 Ensure you have a valid Gemini API Key in your `.env` file:
 `REACT_APP_GEMINI_API_KEY=...`
+
+---
+
+## 🚚 Bob Go Shipping Integration
+
+This project integrates with Bob Go's shipping management system for advanced e-commerce logistics:
+
+### **Live Shipping Features**
+1.  **Real-Time Rates at Checkout**: Dynamic shipping costs from 8+ South African couriers with automatic cheapest option selection
+2.  **Live Delivery Tracking**: Real-time parcel tracking with proactive status updates and delivery notifications  
+3.  **Multi-Courier Optimization**: Intelligent courier selection based on cost, speed, and reliability metrics
+4.  **Zone-Based Shipping**: Location-aware delivery options with custom rate rules and free shipping thresholds
+5.  **Rule Engine Automation**: Automated shipping decisions based on order value, weight, destination, and customer preferences
+
+### **Enhanced Customer Experience**
+- **Smart Delivery Predictions**: Ultra-accurate delivery windows combining Bob Go data with AI analysis
+- **Proactive Issue Management**: Early warning system for potential delivery delays or problems
+- **Carbon Impact Calculator**: Environmental footprint display for conscious shipping choices
+- **Delivery Preference Learning**: AI remembers customer shipping preferences and suggests optimal options
+
+Integration requires Bob Go API credentials and WooCommerce plugin setup.
+For setup instructions, visit: https://www.bobgo.co.za/features/rates-at-checkout
 
 ---
 
@@ -107,22 +157,49 @@ Ensure you have a valid Gemini API Key in your `.env` file:
 
 ---
 
-## 📦 Deployment
+## 📦 Deployment to Netlify
 
-This project is a standard React Single Page Application (SPA) and can be deployed to any static hosting provider.
+This project is ready for deployment to Netlify with the following setup:
 
-### Option 1: Vercel (Recommended)
+### Quick Deploy Steps
 
-1.  Push your code to GitHub/GitLab/Bitbucket.
-2.  Login to Vercel and "Add New Project".
-3.  Import your repository.
-4.  **Important**: Add your Environment Variables (`REACT_APP_WOO_...`) in the Vercel Project Settings.
-5.  Click **Deploy**.
+1. **Push to GitHub**:
+   ```bash
+   git add .
+   git commit -m "Deploy: Bundle & Save system with construction orange branding"
+   git push origin main
+   ```
 
-### Option 2: Netlify
+2. **Connect to Netlify**:
+   - Login to [netlify.com](https://netlify.com)
+   - Click "New site from Git"
+   - Connect your GitHub repository
+   - Build settings are pre-configured in `netlify.toml`
 
-1.  Push code to git.
-2.  "New site from Git" in Netlify.
-3.  Build command: `npm run build`.
-4.  Publish directory: `build`.
-5.  Add Environment Variables in Site Settings > Build & Deploy > Environment.
+3. **Environment Variables**:
+   Add these in Netlify Dashboard > Site Settings > Environment Variables:
+   ```env
+   REACT_APP_WOO_SITE_URL=http://belims-headless.local
+   REACT_APP_WOO_CONSUMER_KEY=ck_your_consumer_key
+   REACT_APP_WOO_CONSUMER_SECRET=cs_your_consumer_secret
+   REACT_APP_GEMINI_API_KEY=your_google_gemini_key
+   ```
+
+### Build Configuration
+
+The project includes optimized build settings in `netlify.toml`:
+- Build command: `npm run build`
+- Publish directory: `dist`
+- Node version: 18
+- Automatic redirects for SPA routing
+
+### Production Features
+
+✅ **Bundle & Save System**: Complete accordion interface with blue theme  
+✅ **Buy Now Buttons**: Orange construction branding throughout  
+✅ **AI Integration**: Gemini-powered product insights and recommendations  
+✅ **Shipping Calculator**: Smart delivery predictions with weather data  
+✅ **Responsive Design**: Mobile-first approach with Tailwind CSS  
+✅ **Performance**: React 19 with Vite build optimization
+
+---

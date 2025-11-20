@@ -25,10 +25,11 @@ export const FEATURED_PRODUCTS: Product[] = [
     name: 'Ryobi 18V ONE+ Cordless Impact Driver',
     category: 'Power Tools',
     price: 1499,
-    image: 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=600&q=80',
     images: [
-        'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?auto=format&fit=crop&w=600&q=80',
-        'https://images.unsplash.com/photo-1566937169390-7be4c63b8a0e?auto=format&fit=crop&w=600&q=80'
+        'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?auto=format&fit=crop&w=600&q=80'
     ],
     brand: 'Ryobi',
     sku: 'RY-18V-ID',
@@ -47,6 +48,29 @@ export const FEATURED_PRODUCTS: Product[] = [
         { label: "Voltage", value: "18V" },
         { label: "Torque", value: "170 Nm" },
         { label: "Chuck", value: "1/4 in Hex" }
+    ],
+    bundleCandidates: [
+      {
+        id: 'bundle1',
+        name: 'Ryobi 18V Battery 2.0Ah',
+        price: 299,
+        image: 'https://images.unsplash.com/photo-1586864387967-d02ef85d93e8?auto=format&fit=crop&w=400&q=80',
+        category: 'Power Tools'
+      },
+      {
+        id: 'bundle2', 
+        name: 'Drill Bit Set (20pc)',
+        price: 149,
+        image: 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?auto=format&fit=crop&w=400&q=80',
+        category: 'Hand Tools'
+      },
+      {
+        id: 'bundle3',
+        name: 'Tool Belt & Holster',
+        price: 89,
+        image: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80', 
+        category: 'Safety Gear'
+      }
     ]
   },
   {
@@ -54,7 +78,7 @@ export const FEATURED_PRODUCTS: Product[] = [
     name: 'Bosch Professional Angle Grinder 900W',
     category: 'Power Tools',
     price: 1299,
-    image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1558618047-5c8b2c4a6108?auto=format&fit=crop&w=600&q=80',
     rating: 4.8,
     reviews: 420,
     stock: 45,
@@ -68,7 +92,7 @@ export const FEATURED_PRODUCTS: Product[] = [
     name: 'SureBuild General Purpose Cement 42.5N - 50kg',
     category: 'Building Materials',
     price: 105,
-    image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1585250003309-694ff34512d7?auto=format&fit=crop&w=600&q=80',
     rating: 4.9,
     reviews: 2300,
     stock: 5000,
@@ -84,7 +108,7 @@ export const FEATURED_PRODUCTS: Product[] = [
     name: 'Heavy Duty Steel Toe Safety Boots',
     category: 'Safety Gear',
     price: 850,
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80',
+    image: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&w=600&q=80',
     rating: 4.5,
     reviews: 150,
     stock: 88,
@@ -158,7 +182,7 @@ export const DEALS_PRODUCTS: Product[] = [
     name: 'Makita 18V Cordless Circular Saw',
     category: 'Power Tools',
     price: 2899,
-    image: 'https://images.unsplash.com/photo-1540653797572-a5a6d92e93a3?auto=format&fit=crop&w=400&q=80',
+    image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=400&q=80',
     rating: 4.8,
     reviews: 112,
     stock: 30,
@@ -172,7 +196,7 @@ export const DEALS_PRODUCTS: Product[] = [
     name: 'Bosch 650W Impact Drill Kit',
     category: 'Power Tools',
     price: 899,
-    image: 'https://images.unsplash.com/photo-1622044939378-7939e28751b6?auto=format&fit=crop&w=400&q=80',
+    image: 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?auto=format&fit=crop&w=400&q=80',
     rating: 4.6,
     reviews: 340,
     stock: 200,
@@ -201,7 +225,7 @@ export const DEALS_PRODUCTS: Product[] = [
     name: 'Stanley FatMax Tape Measure 8m',
     category: 'Hand Tools',
     price: 350,
-    image: 'https://images.unsplash.com/photo-1581147036324-c17ac41dfa6c?auto=format&fit=crop&w=400&q=80',
+    image: 'https://images.unsplash.com/photo-1581235720704-06d3acfcb363?auto=format&fit=crop&w=400&q=80',
     rating: 4.7,
     reviews: 500,
     stock: 400,
@@ -215,7 +239,7 @@ export const DEALS_PRODUCTS: Product[] = [
     name: 'Werner 6ft Fiberglass Stepladder',
     category: 'Safety Gear',
     price: 1800,
-    image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=400&q=80',
+    image: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?auto=format&fit=crop&w=400&q=80',
     rating: 4.8,
     reviews: 92,
     stock: 20,

@@ -7,12 +7,13 @@ import { History } from 'lucide-react';
 
 interface RecentlyViewedProps {
   addToCart: (product: Product) => void;
+  onBuyNow: (product: Product) => void;
   onProductClick: (product: Product) => void;
   onCompare?: (product: Product) => void;
   currentProductId?: string; // To exclude the currently viewed product from the list
 }
 
-export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({ addToCart, onProductClick, onCompare, currentProductId }) => {
+export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({ addToCart, onBuyNow, onProductClick, onCompare, currentProductId }) => {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
@@ -40,7 +41,8 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({ addToCart, onPro
             <div key={product.id} className="w-[220px]">
               <ProductCard 
                 product={product} 
-                addToCart={addToCart} 
+                addToCart={addToCart}
+                onBuyNow={onBuyNow} 
                 onClick={onProductClick}
                 onCompare={onCompare}
               />

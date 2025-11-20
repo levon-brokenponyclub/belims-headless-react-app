@@ -20,7 +20,7 @@ import {
   PROJECT_IDEAS, 
   CATEGORY_SLIDER_DATA
 } from './constants';
-import { ArrowRight, Truck, ShieldCheck, CreditCard, Sun, Cloud, CloudRain, ChevronRight, X } from 'lucide-react';
+import { ArrowRight, Truck, ShieldCheck, CreditCard, ChevronRight, X } from 'lucide-react';
 
 export default function App() {
   // State
@@ -56,6 +56,14 @@ export default function App() {
       return [...prev, { ...product, quantity: 1 }];
     });
     setIsCartOpen(true);
+  };
+
+  const handleBuyNow = (product: Product) => {
+    addToCart(product);
+    // Small timeout to allow cart to update before opening (visual smoothness)
+    setTimeout(() => {
+      setIsCartOpen(true);
+    }, 100);
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -135,6 +143,7 @@ export default function App() {
           <SingleProduct 
             product={activeProduct} 
             addToCart={addToCart} 
+            onBuyNow={handleBuyNow}
             onBack={() => setView('home')} 
             onCompare={addToCompare}
             onPriceMatch={setPriceMatchProduct}
@@ -191,33 +200,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Right Column: Weather & Inspiration */}
+              {/* Right Column: Inspiration */}
               <div className="lg:col-span-3 flex flex-col gap-6 h-full">
-                {/* Weather / Store Widget */}
-                <div className="bg-belims-blue rounded-lg overflow-hidden shadow-md flex-1 text-white flex flex-col">
-                    <div className="p-4 border-b border-blue-800 bg-blue-900/30">
-                      <h3 className="font-bold text-sm font-heading">Site Weather: {selectedStore?.name.replace('Belims ', '')}</h3>
-                    </div>
-                    <div className="p-4 flex justify-between text-center items-center flex-1">
-                      <div className="flex flex-col items-center">
-                        <span className="text-xs border-b-2 border-belims-accent pb-1 mb-2 font-bold">Today</span>
-                        <Cloud size={32} className="mb-2 text-white" />
-                        <span className="text-lg font-bold font-heading">24°C</span>
-                        <span className="text-xs text-blue-200">Perfect for pouring</span>
-                      </div>
-                      <div className="flex flex-col items-center opacity-70">
-                        <span className="text-xs mb-2">Fri</span>
-                        <CloudRain size={24} className="mb-2" />
-                        <span className="text-sm font-bold font-heading">18°C</span>
-                      </div>
-                      <div className="flex flex-col items-center opacity-70">
-                        <span className="text-xs mb-2">Sat</span>
-                        <Sun size={24} className="mb-2" />
-                        <span className="text-sm font-bold font-heading">26°C</span>
-                      </div>
-                    </div>
-                </div>
-
                 {/* Inspiration Widget */}
                 <div className="bg-gray-50 rounded-lg p-6 flex-1 flex flex-col justify-center shadow-sm border border-gray-200 group cursor-pointer hover:border-belims-blue transition-colors">
                     <h3 className="text-belims-blue font-bold mb-2 text-lg font-heading group-hover:text-belims-accent transition-colors">DIY Tips & Tricks</h3>
@@ -309,7 +293,8 @@ export default function App() {
                         <div key={product.id} className="min-w-[280px] max-w-[280px] h-full">
                           <ProductCard 
                             product={product} 
-                            addToCart={addToCart} 
+                            addToCart={addToCart}
+                            onBuyNow={handleBuyNow}
                             onClick={handleProductClick}
                             onCompare={addToCompare}
                             className="h-full" 
@@ -345,7 +330,8 @@ export default function App() {
                   <ProductCard 
                     key={product.id} 
                     product={product} 
-                    addToCart={addToCart} 
+                    addToCart={addToCart}
+                    onBuyNow={handleBuyNow}
                     onClick={handleProductClick}
                     onCompare={addToCompare}
                   />
@@ -355,12 +341,11 @@ export default function App() {
 
             {/* RECENTLY VIEWED PRODUCTS */}
             <RecentlyViewed 
-              addToCart={addToCart} 
+              addToCart={addToCart}
+              onBuyNow={handleBuyNow} 
               onProductClick={handleProductClick} 
               onCompare={addToCompare}
-            />
-
-            {/* Banner Strip */}
+            />            {/* Banner Strip */}
             <div className="bg-belims-gray rounded-xl p-8 mb-16 flex flex-col md:flex-row items-center justify-between gap-8 border border-gray-200">
               <div>
                 <h2 className="text-3xl font-bold text-belims-blue mb-2 font-heading">Get More Done with Pro</h2>

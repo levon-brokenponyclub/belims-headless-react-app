@@ -10,6 +10,7 @@ export interface Product {
   reviews: number;
   stock: number; // Current stock
   maxStock: number; // For the stock bar visual
+  weight?: number; // Weight in kg for shipping calculation
   isBundle?: boolean;
   bundleSavings?: number;
   description?: string;
@@ -19,6 +20,15 @@ export interface Product {
   features?: string[];
   specifications?: { label: string; value: string }[];
   tags?: string[]; // For AI matching
+  bundleCandidates?: BundleCandidate[];
+}
+
+export interface BundleCandidate {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  category?: string;
 }
 
 export interface Store {

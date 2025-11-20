@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Star, ShoppingCart, Scale } from 'lucide-react';
+import { Star, ShoppingCart, Scale, Zap } from 'lucide-react';
 import { Product } from '../types';
 import { StockBar } from './StockBar';
 import { CURRENCY_SYMBOL } from '../constants';
@@ -8,12 +8,13 @@ import { CURRENCY_SYMBOL } from '../constants';
 interface ProductCardProps {
   product: Product;
   addToCart: (product: Product) => void;
+  onBuyNow?: (product: Product) => void;
   onClick?: (product: Product) => void;
   onCompare?: (product: Product) => void;
   className?: string;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, onClick, onCompare, className = "" }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, onBuyNow, onClick, onCompare, className = "" }) => {
   return (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group overflow-hidden relative ${className}`}>
       
@@ -83,17 +84,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
         {/* Stock Bar */}
         <StockBar current={product.stock} max={product.maxStock} />
 
-        {/* Action */}
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            addToCart(product);
-          }}
-          className="mt-4 w-full bg-white border-2 border-belims-blue text-belims-blue hover:bg-belims-blue hover:text-white py-2 rounded font-bold text-sm flex items-center justify-center gap-2 transition-all font-heading"
-        >
-          <ShoppingCart size={16} />
-          Add to Cart
-        </button>
+        {/* Actions: Add to Cart & Buy Now */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              addToCart(product);
+            }}
+            className="bg-white border border-belims-blue text-belims-blue hover:bg-blue-50 py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading"
+          >
+            <ShoppingCart size={14} />
+            Add
+          </button>
+          {onBuyNow && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuyNow(product);
+              }}
+              className="bg-belims-accent text-white hover:brightness-110 py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading shadow-sm"
+            >
+              <Zap size={14} fill="currentColor" />
+              Buy Now
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

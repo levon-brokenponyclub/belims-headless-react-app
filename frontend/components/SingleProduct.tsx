@@ -1,25 +1,28 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Star, ShoppingCart, Truck, Store, Heart, Share2, ChevronRight, Minus, Plus, Check, Sparkles, Scale, ShieldCheck, X, ArrowLeft, ArrowRight, Images, RefreshCw } from 'lucide-react';
+import { Star, ShoppingCart, Truck, Store, Heart, Share2, ChevronRight, ChevronDown, Minus, Plus, Check, Sparkles, Scale, ShieldCheck, X, ArrowLeft, ArrowRight, Images, RefreshCw, Package, Zap, CirclePlus } from 'lucide-react';
 import { Product } from '../types';
 import { CURRENCY_SYMBOL, STORES } from '../constants';
 import { StockBar } from './StockBar';
+import { DeliveryOptionsModal } from './DeliveryOptionsModal';
 import { generateProductDescription } from '../services/geminiService';
 import { addToRecentlyViewed } from '../services/storageService';
 import { RecentlyViewed } from './RecentlyViewed';
 import { StoreLocator } from './StoreLocator';
+import { BundlePanel } from './BundlePanel';
 import ReactMarkdown from 'react-markdown';
 
 interface SingleProductProps {
   product: Product;
   addToCart: (product: Product) => void;
+  onBuyNow: (product: Product) => void;
   onBack: () => void;
   onCompare: (product: Product) => void;
   onPriceMatch: (product: Product) => void;
   onProductClick: (product: Product) => void;
 }
 
-export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart, onBack, onCompare, onPriceMatch, onProductClick }) => {
+export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart, onBuyNow, onBack, onCompare, onPriceMatch, onProductClick }) => {
   const [mainImage, setMainImage] = useState(product.image);
   const [qty, setQty] = useState(1);
   const [selectedTab, setSelectedTab] = useState<'desc' | 'specs'>('desc');
@@ -37,11 +40,20 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState(STORES[0]);
 
+  // Delivery Modal State
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+
+  // Bundle Panel State
+  const [isBundleOpen, setIsBundleOpen] = useState(false);
+  const [isBundleSectionExpanded, setIsBundleSectionExpanded] = useState(false); // Accordion state
+  const [showBundleTrigger, setShowBundleTrigger] = useState(false);
+
   useEffect(() => {
     addToRecentlyViewed(product);
     setMainImage(product.image);
     setQty(1);
     setAiDescription(null);
+    setIsBundleSectionExpanded(false); // Reset accordion on product change
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [product]);
 
@@ -49,9 +61,14 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // Expand left bar only when right buy box is scrolled OUT of view (and we are below it)
         const isBelow = entry.boundingClientRect.top < 100; 
+        // Expand sticky bar if scrolled past
         setIsStickyExpanded(!entry.isIntersecting && isBelow);
+        
+        // Show bundle trigger if scrolled past and product has bundles
+        if (product.bundleCandidates && product.bundleCandidates.length > 0) {
+          setShowBundleTrigger(!entry.isIntersecting && isBelow);
+        }
       },
       { threshold: 0.1, rootMargin: "-100px 0px 0px 0px" }
     );
@@ -69,6 +86,20 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
     for(let i = 0; i < qty; i++) {
       addToCart(product);
     }
+  };
+
+  const handleBuyNowAction = () => {
+     // For Buy Now, we usually just add 1 item or the current qty
+     // If current qty > 1, add all? Assume yes.
+     for(let i = 0; i < qty; i++) {
+       addToCart(product); 
+     }
+     // Trigger the open cart logic handled by App.tsx via onBuyNow wrapper, 
+     // but here onBuyNow usually takes product. We can implement it simpler:
+     // Just call the prop with the product, assuming prop handles cart add + open.
+     // But wait, if I call onBuyNow, it adds ONE item. 
+     // Let's trust the prop does the right thing for a "Buy Now" flow (Add 1 item & Checkout).
+     onBuyNow(product);
   };
 
   const handleGenerateDescription = async () => {
@@ -149,6 +180,32 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
         />
       )}
 
+      {/* Delivery Options Modal */}
+      {isDeliveryModalOpen && (
+        <DeliveryOptionsModal onClose={() => setIsDeliveryModalOpen(false)} />
+      )}
+
+      {/* Bundle Panel */}
+      {product.bundleCandidates && (
+        <BundlePanel 
+          isOpen={isBundleOpen} 
+          onClose={() => setIsBundleOpen(false)}
+          mainProduct={product}
+          candidates={product.bundleCandidates}
+          addToCart={addToCart}
+        />
+      )}
+
+      {/* Floating Bundle Trigger (Visible on Scroll) */}
+      {showBundleTrigger && (
+        <button 
+          onClick={() => setIsBundleOpen(true)}
+          className="fixed bottom-24 right-4 z-40 bg-belims-accent text-white px-6 py-3 rounded-full shadow-xl font-bold font-heading flex items-center gap-2 animate-bounce hover:bg-orange-600 transition-colors"
+        >
+          <Package size={20} /> Bundle & Save
+        </button>
+      )}
+
       {/* Breadcrumbs */}
       <div className="text-sm text-gray-500 mb-6 flex items-center gap-2">
         <span className="cursor-pointer hover:text-belims-blue" onClick={onBack}>Home</span>
@@ -225,7 +282,16 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
                     </button>
                   </div>
 
-                  {/* Fulfillment Status */}
+                  {/* Buy Now Button */}
+                  <button 
+                    onClick={handleBuyNowAction}
+                    disabled={product.stock === 0}
+                    className="w-full bg-belims-accent text-white font-bold text-sm h-11 rounded-lg shadow-md hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Zap size={18} fill="currentColor" /> {product.stock > 0 ? 'Buy Now' : 'Out of Stock'}
+                  </button>
+
+                  {/* Fulfillment Status (Compact Line) */}
                   <div className="flex gap-4 text-[10px] font-bold text-gray-500 justify-center sm:justify-start items-center pt-1">
                     <span 
                         className="flex items-center gap-1 hover:text-belims-blue cursor-pointer"
@@ -233,7 +299,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
                     >
                         <Store size={12} /> Pick Up Available
                     </span>
-                    <span className="flex items-center gap-1"><Truck size={12} /> Delivery Available</span>
+                    <span 
+                        className="flex items-center gap-1 hover:text-belims-blue cursor-pointer"
+                        onClick={() => setIsDeliveryModalOpen(true)}
+                    >
+                        <Truck size={12} /> Delivery Available
+                    </span>
                   </div>
                </div>
             </div>
@@ -247,8 +318,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
            {/* Header Info */}
            <div>
              <div className="flex justify-between items-start">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4 font-heading leading-tight">{product.name}</h1>
-                <div className="flex gap-2">
+                <div>
+                  <div className="text-sm font-bold text-gray-500 mb-1 uppercase tracking-wider font-heading">{product.brand}</div>
+                  <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4 font-heading leading-tight">{product.name}</h1>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
                    <button className="p-2 rounded-full bg-gray-100 hover:bg-red-50 hover:text-belims-accent transition-colors"><Heart size={20} /></button>
                    <button className="p-2 rounded-full bg-gray-100 hover:bg-blue-50 hover:text-belims-blue transition-colors"><Share2 size={20} /></button>
                 </div>
@@ -275,38 +349,119 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
                       {product.isBundle && <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded mt-1 inline-block">Bundle Savings</span>}
                    </div>
                 </div>
+
+                {/* Fulfillment Options: Side-by-Side Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                   
+                   {/* PICK UP CARD */}
+                   <div 
+                     className="bg-white border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-belims-blue hover:bg-blue-50/50 transition-all shadow-sm relative group flex flex-col justify-between h-full"
+                     onClick={() => setIsLocatorOpen(true)}
+                   >
+                      <div className="flex items-center gap-2 mb-2">
+                         <div className="p-1.5 bg-blue-50 text-belims-blue rounded-full">
+                           <Store size={16} />
+                         </div>
+                         <h4 className="font-bold text-gray-900 font-heading text-sm">Pick Up</h4>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">Check availability at nearby stores</p>
+                      <div className="text-xs font-bold text-belims-blue flex items-center gap-1 mt-auto">
+                        Select Store <ChevronRight size={12} />
+                      </div>
+                   </div>
+                   
+                   {/* DELIVERY CARD */}
+                   <div 
+                     className="bg-white border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-belims-blue hover:bg-blue-50/50 transition-all shadow-sm relative group flex flex-col justify-between h-full"
+                     onClick={() => setIsDeliveryModalOpen(true)}
+                   >
+                      <div className="flex items-center gap-2 mb-2">
+                         <div className="p-1.5 bg-gray-100 text-gray-600 rounded-full group-hover:bg-blue-100 group-hover:text-belims-blue transition-colors">
+                           <Truck size={16} />
+                         </div>
+                         <h4 className="font-bold text-gray-900 font-heading text-sm">Delivery</h4>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-1">Free for orders &gt; {CURRENCY_SYMBOL}1,000</p>
+                      <div className="text-[10px] text-green-600 font-bold flex items-center gap-1 mt-auto">
+                         Earliest: Tomorrow
+                      </div>
+                   </div>
+                </div>
                 
                 <StockBar current={product.stock} max={product.maxStock} />
                 
-                <div className="flex gap-4 mt-6 mb-4">
-                   <div className="flex items-center border border-gray-300 rounded-lg bg-white h-12 shadow-sm">
-                      <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded-l-lg"><Minus size={18} /></button>
-                      <div className="w-10 text-center font-bold text-base">{qty}</div>
-                      <button onClick={() => setQty(Math.min(product.stock, qty + 1))} className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded-r-lg"><Plus size={18} /></button>
-                   </div>
-                   <button 
-                     onClick={handleAddToCart}
-                     disabled={product.stock === 0}
-                     className="flex-1 bg-belims-blue text-white font-bold text-base h-12 rounded-lg shadow-md hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
-                   >
-                     <ShoppingCart size={20} /> {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
-                   </button>
-                </div>
-
-                <div className="flex flex-col gap-2 pt-2">
-                   <div className="flex items-center gap-2 text-sm text-gray-700 p-2 bg-white rounded border border-gray-100 cursor-pointer hover:border-belims-blue transition-colors" onClick={() => setIsLocatorOpen(true)}>
-                      <Store size={16} className="text-belims-blue" />
-                      <span className="font-bold">Pick Up:</span> 
-                      <span className="flex-1">Check availability at nearby stores</span>
-                      <ChevronRight size={14} />
-                   </div>
-                   <div className="flex items-center gap-2 text-sm text-gray-700 p-2 bg-white rounded border border-gray-100">
-                      <Truck size={16} className="text-belims-blue" />
-                      <span className="font-bold">Delivery:</span> 
-                      <span>Free for orders over R1,000</span>
-                   </div>
+                <div className="space-y-3 mt-6 mb-4">
+                  <div className="flex gap-4">
+                     <div className="flex items-center border border-gray-300 rounded-lg bg-white h-12 shadow-sm">
+                        <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded-l-lg"><Minus size={18} /></button>
+                        <div className="w-10 text-center font-bold text-base">{qty}</div>
+                        <button onClick={() => setQty(Math.min(product.stock, qty + 1))} className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded-r-lg"><Plus size={18} /></button>
+                     </div>
+                     <button 
+                       onClick={handleAddToCart}
+                       disabled={product.stock === 0}
+                       className="flex-1 bg-belims-blue text-white font-bold text-base h-12 rounded-lg shadow-md hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                     >
+                       <ShoppingCart size={20} /> {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
+                     </button>
+                  </div>
+                  <button 
+                    onClick={() => handleBuyNowAction(product)}
+                    disabled={product.stock === 0}
+                    className="w-full bg-belims-accent text-white font-bold text-base h-12 rounded-lg shadow-md hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Zap size={20} /> Buy Now
+                  </button>
                 </div>
            </div>
+
+           {/* Bundle Section - Outside Buy Block with Blue Theme */}
+           {product.bundleCandidates && product.bundleCandidates.length > 0 && (
+             <div className="mb-8">
+               <div className="rounded-xl border transition-all duration-300 border-belims-blue bg-blue-50">
+                 <div className="p-5 flex items-center justify-between cursor-pointer" onClick={() => setIsBundleSectionExpanded(!isBundleSectionExpanded)}>
+                   <div className="flex items-center gap-3">
+                     <div className="bg-blue-100 p-2 rounded-lg text-belims-blue">
+                       <Package size={24} />
+                     </div>
+                     <div>
+                       <h3 className="font-bold text-gray-900 font-heading text-lg leading-none">Bundle & Save</h3>
+                       <p className="text-xs text-gray-500 mt-1">Add accessories to unlock up to 10% off.</p>
+                     </div>
+                   </div>
+                   <div className={`transform transition-transform duration-300 text-belims-blue ${isBundleSectionExpanded ? 'rotate-180' : ''}`}>
+                     <ChevronDown size={24} />
+                   </div>
+                 </div>
+                 {isBundleSectionExpanded && (
+                   <div className="overflow-hidden transition-all duration-300 ease-in-out border-t border-blue-100">
+                     <div className="p-5 pt-2">
+                       <div className="flex items-center gap-3 mb-5 overflow-x-auto no-scrollbar pb-2">
+                         <div className="relative w-16 h-16 bg-white rounded-lg border border-gray-200 p-1 flex-shrink-0 shadow-sm">
+                           <img alt="" className="w-full h-full object-contain" src={product.image} />
+                           <div className="absolute -bottom-2 -right-2 bg-green-500 text-white rounded-full p-0.5">
+                             <Check size={10} strokeWidth={3} />
+                           </div>
+                         </div>
+                         <CirclePlus size={20} className="text-gray-300 flex-shrink-0" />
+                         {product.bundleCandidates.slice(0, 3).map((item) => (
+                           <div key={item.id} className="w-16 h-16 bg-white rounded-lg border border-dashed border-gray-300 p-1 flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity">
+                             <img alt="" className="w-full h-full object-contain" src={item.image} />
+                           </div>
+                         ))}
+                       </div>
+                       <button 
+                         onClick={() => setIsBundleOpen(true)}
+                         className="w-full bg-white text-belims-blue border-2 border-belims-blue py-2.5 rounded-lg font-bold hover:bg-belims-blue hover:text-white transition-colors font-heading shadow-sm"
+                       >
+                         Customize Your Bundle
+                       </button>
+                     </div>
+                   </div>
+                 )}
+               </div>
+             </div>
+           )}
 
            {/* STICKY COMPARE BUTTONS */}
            {/* Uses CSS sticky to stay under the header when scrolling */}
