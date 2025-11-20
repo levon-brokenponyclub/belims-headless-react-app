@@ -12,9 +12,10 @@ import { Product, Category } from '../types';
  * 2. This service uses the native Fetch API. You can also use 'woocommerce-rest-api' or 'axios'.
  */
 
-const SITE_URL = process.env.REACT_APP_WOO_SITE_URL;
-const CONSUMER_KEY = process.env.REACT_APP_WOO_CONSUMER_KEY;
-const CONSUMER_SECRET = process.env.REACT_APP_WOO_CONSUMER_SECRET;
+// Environment variables (Vite uses import.meta.env instead of process.env)
+const SITE_URL = import.meta.env.REACT_APP_WOO_SITE_URL;
+const CONSUMER_KEY = import.meta.env.REACT_APP_WOO_CONSUMER_KEY;
+const CONSUMER_SECRET = import.meta.env.REACT_APP_WOO_CONSUMER_SECRET;
 
 const BASE_URL = `${SITE_URL}/wp-json/wc/v3`;
 

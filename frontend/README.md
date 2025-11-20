@@ -409,3 +409,86 @@ The project includes optimized build settings in `netlify.toml`:
 ---
 
 **Built with ❤️ for Belims Hardware | Powering the construction industry with modern e-commerce**
+
+---
+
+## 🔧 **Troubleshooting Guide**
+
+### **🚨 Common Deployment Issues**
+
+#### **Bundle System Not Visible**
+- **Issue**: Bundle accordion missing on product pages
+- **Cause**: App uses client-side routing but URLs don't properly route to product pages
+- **Solution**: Click product cards from homepage instead of navigating directly to /product/X URLs
+- **Future Fix**: Implement React Router for proper URL routing
+
+#### **AI Functions Not Working**
+- **Issue**: Paint Assistant, Price Match, and AI features returning errors
+- **Cause**: Environment variables not accessible in production build
+- **Check**: Ensure these environment variables are set in Netlify Dashboard:
+  ```
+  REACT_APP_GEMINI_API_KEY=your_google_gemini_api_key
+  REACT_APP_WOO_SITE_URL=https://your-wordpress-site.com
+  REACT_APP_WOO_CONSUMER_KEY=ck_your_woocommerce_key
+  REACT_APP_WOO_CONSUMER_SECRET=cs_your_woocommerce_secret
+  ```
+- **Vite Requirement**: Code uses `import.meta.env` (not `process.env`) for environment variables
+
+#### **Build Failures**
+- **"vite: not found" Error**: 
+  - Fixed with `npm ci --include=dev && npx vite build`
+  - Requires Node 20+ for @google/genai and @vitejs/plugin-react
+- **Secrets Scanner Blocking**: 
+  - Fixed with `SECRETS_SCAN_OMIT_KEYS` in netlify.toml
+  - .env files removed from repository for security
+
+### **🔍 Debug Steps**
+
+#### **Check Environment Variables**
+```bash
+# In browser console on live site:
+console.log(import.meta.env.REACT_APP_GEMINI_API_KEY);
+console.log(import.meta.env.REACT_APP_WOO_SITE_URL);
+```
+
+#### **Test AI Functions**
+```bash
+# Click "Paint Assistant" on any product page
+# Should open modal with color recommendations
+# Check browser console for any error messages
+```
+
+#### **Verify Bundle System**
+```bash
+# Go to homepage → Click any product card
+# Scroll down below "Buy Now" section  
+# Should see blue "Bundle & Save" accordion
+# Test adding/removing products from bundle
+```
+
+### **⚡ Quick Fixes**
+
+#### **Missing Bundle System**
+1. Ensure you're clicking product cards from homepage
+2. Don't navigate directly to /product/X URLs
+3. Bundle appears below the "Buy Now" button section
+
+#### **AI Functions Failing**
+1. Check Netlify Dashboard → Site Settings → Environment Variables
+2. Ensure all REACT_APP_ variables are set
+3. Redeploy site after adding missing variables
+
+#### **WooCommerce Integration Issues**
+1. Verify WordPress site is accessible
+2. Check WooCommerce REST API permissions
+3. Ensure CORS plugin allows your domain
+
+### **📱 Testing Checklist**
+
+- [ ] **Homepage loads** with product grid
+- [ ] **Product cards clickable** from homepage
+- [ ] **Bundle system visible** on product pages (below Buy Now)
+- [ ] **Paint Assistant works** (opens modal with colors)
+- [ ] **Buy Now buttons** have orange construction branding
+- [ ] **AI features respond** without console errors
+- [ ] **Mobile responsive** on phones/tablets

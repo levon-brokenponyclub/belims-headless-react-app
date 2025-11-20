@@ -4,7 +4,7 @@ import { PaintRecommendation, AIRecommendation, Product, PriceMatchResult } from
 import { FEATURED_PRODUCTS, DEALS_PRODUCTS } from "../constants";
 
 // Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.REACT_APP_GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: import.meta.env.REACT_APP_GEMINI_API_KEY });
 
 const ALL_PRODUCTS = [...FEATURED_PRODUCTS, ...DEALS_PRODUCTS];
 
