@@ -1,0 +1,239 @@
+/**
+ * Belims Site Settings - Admin Styles
+ */
+
+.belims-admin-container {
+    display: flex;
+    gap: 0;
+    margin: 20px 0;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.belims-tab-nav {
+    min-width: 250px;
+    background: #f6f7f7;
+    border-right: 1px solid #c3c4c7;
+}
+
+.belims-tab-nav ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.belims-tab-nav li {
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.belims-tab-nav li:last-child {
+    border-bottom: none;
+}
+
+.belims-tab-nav a {
+    display: block;
+    padding: 15px 20px;
+    text-decoration: none;
+    color: #50575e;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.belims-tab-nav a:hover {
+    background: #ffffff;
+    color: #2271b1;
+    border-left-color: #2271b1;
+}
+
+.belims-tab-nav li.active a {
+    background: #ffffff;
+    color: #2271b1;
+    border-left-color: #2271b1;
+    font-weight: 600;
+}
+
+.belims-tab-content {
+    flex: 1;
+    padding: 0;
+}
+
+.belims-content-header {
+    padding: 20px 25px 15px;
+    border-bottom: 1px solid #e1e1e1;
+    background: #fafafa;
+}
+
+.belims-content-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.belims-form-container {
+    padding: 25px;
+}
+
+/* ACF Form Styling */
+.belims-form-container .acf-form {
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.belims-form-container .acf-fields {
+    border: none;
+    padding: 0;
+}
+
+.belims-form-container .acf-field {
+    margin-bottom: 25px;
+    padding: 0;
+    border: none;
+}
+
+.belims-form-container .acf-label {
+    margin-bottom: 8px;
+}
+
+.belims-form-container .acf-label label {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1d2327;
+}
+
+.belims-form-container .acf-input {
+    margin: 0;
+}
+
+.belims-form-container .acf-input input[type="text"],
+.belims-form-container .acf-input input[type="email"],
+.belims-form-container .acf-input input[type="url"],
+.belims-form-container .acf-input input[type="number"],
+.belims-form-container .acf-input input[type="tel"],
+.belims-form-container .acf-input textarea,
+.belims-form-container .acf-input select {
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    font-size: 14px;
+    padding: 8px 12px;
+    width: 100%;
+    max-width: 500px;
+}
+
+.belims-form-container .acf-input input[type="text"]:focus,
+.belims-form-container .acf-input input[type="email"]:focus,
+.belims-form-container .acf-input input[type="url"]:focus,
+.belims-form-container .acf-input input[type="number"]:focus,
+.belims-form-container .acf-input input[type="tel"]:focus,
+.belims-form-container .acf-input textarea:focus,
+.belims-form-container .acf-input select:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
+.belims-form-container .acf-input .description {
+    color: #646970;
+    font-size: 13px;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+/* Submit button styling */
+.belims-form-container .acf-form-submit {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e1e1e1;
+}
+
+.belims-form-container .acf-form-submit .button-primary {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 25px;
+    height: auto;
+    border-radius: 4px;
+}
+
+.belims-form-container .acf-form-submit .button-primary:hover {
+    background: #135e96;
+    border-color: #135e96;
+}
+
+/* Image field styling */
+.belims-form-container .acf-image-uploader {
+    border: 1px solid #e1e1e1;
+    border-radius: 4px;
+    max-width: 400px;
+}
+
+.belims-form-container .acf-image-uploader .view {
+    padding: 15px;
+}
+
+.belims-form-container .acf-image-uploader .image-wrap img {
+    border-radius: 4px;
+}
+
+/* Switch/Toggle styling */
+.belims-form-container .acf-switch {
+    margin-top: 5px;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+    .belims-admin-container {
+        flex-direction: column;
+    }
+    
+    .belims-tab-nav {
+        min-width: auto;
+        border-right: none;
+        border-bottom: 1px solid #c3c4c7;
+    }
+    
+    .belims-tab-nav ul {
+        display: flex;
+        overflow-x: auto;
+    }
+    
+    .belims-tab-nav li {
+        border-bottom: none;
+        border-right: 1px solid #c3c4c7;
+        white-space: nowrap;
+    }
+    
+    .belims-tab-nav li:last-child {
+        border-right: none;
+    }
+    
+    .belims-tab-nav a {
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        padding: 12px 20px;
+    }
+    
+    .belims-tab-nav a:hover,
+    .belims-tab-nav li.active a {
+        border-left: none;
+        border-bottom-color: #2271b1;
+    }
+}
+
+@media (max-width: 600px) {
+    .belims-content-header,
+    .belims-form-container {
+        padding: 15px;
+    }
+    
+    .belims-tab-nav a {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+}

@@ -1,0 +1,143 @@
+[
+  {
+    "key": "group_belims_products",
+    "title": "Belims Product Data",
+    "fields": [
+      {
+        "key": "field_brand",
+        "label": "Brand",
+        "name": "brand",
+        "type": "text",
+        "instructions": "Product brand or manufacturer",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": {
+          "width": "",
+          "class": "",
+          "id": ""
+        },
+        "default_value": "",
+        "placeholder": "",
+        "prepend": "",
+        "append": "",
+        "maxlength": ""
+      },
+      {
+        "key": "field_features",
+        "label": "Key Features",
+        "name": "features",
+        "type": "repeater",
+        "instructions": "Add key product features",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": {
+          "width": "",
+          "class": "",
+          "id": ""
+        },
+        "collapsed": "",
+        "min": 0,
+        "max": 0,
+        "layout": "table",
+        "button_label": "Add Feature",
+        "sub_fields": [
+          {
+            "key": "field_feature_text",
+            "label": "Feature",
+            "name": "feature_text",
+            "type": "text",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+              "width": "",
+              "class": "",
+              "id": ""
+            },
+            "default_value": "",
+            "placeholder": "Enter feature description",
+            "prepend": "",
+            "append": "",
+            "maxlength": ""
+          }
+        ]
+      },
+      {
+        "key": "field_specifications",
+        "label": "Specifications",
+        "name": "specifications",
+        "type": "repeater",
+        "instructions": "Product specifications and technical details",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": {
+          "width": "",
+          "class": "",
+          "id": ""
+        },
+        "collapsed": "",
+        "min": 0,
+        "max": 0,
+        "layout": "table",
+        "button_label": "Add Specification",
+        "sub_fields": [
+          {
+            "key": "field_spec_label",
+            "label": "Label",
+            "name": "label",
+            "type": "text",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+              "width": "50",
+              "class": "",
+              "id": ""
+            },
+            "default_value": "",
+            "placeholder": "e.g., Coverage",
+            "prepend": "",
+            "append": "",
+            "maxlength": ""
+          },
+          {
+            "key": "field_spec_value",
+            "label": "Value",
+            "name": "value",
+            "type": "text",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+              "width": "50",
+              "class": "",
+              "id": ""
+            },
+            "default_value": "",
+            "placeholder": "e.g., 12m² per litre",
+            "prepend": "",
+            "append": "",
+            "maxlength": ""
+          }
+        ]
+      }
+    ],
+    "location": [
+      [
+        {
+          "param": "post_type",
+          "operator": "==",
+          "value": "product"
+        }
+      ]
+    ],
+    "menu_order": 0,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": ""
+  }
+]

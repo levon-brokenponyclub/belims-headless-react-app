@@ -406,7 +406,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
                      </button>
                   </div>
                   <button 
-                    onClick={() => handleBuyNowAction(product)}
+                    onClick={handleBuyNowAction}
                     disabled={product.stock === 0}
                     className="w-full bg-belims-accent text-white font-bold text-base h-12 rounded-lg shadow-md hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
                   >
@@ -603,6 +603,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
       {/* Recently Viewed Section */}
       <RecentlyViewed 
         addToCart={addToCart} 
+        onBuyNow={onBuyNow}
         onProductClick={(p) => {
           onProductClick(p);
           window.scrollTo({ top: 0, behavior: 'smooth' });
