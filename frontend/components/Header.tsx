@@ -65,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Logo */}
           <div className="flex items-center gap-1 cursor-pointer flex-shrink-0 mr-2" onClick={() => window.location.reload()}>
              <img 
-               src="https://staging.belims.co.za/wp-content/uploads/2023/03/belims-logo.png" 
+               src="/images/belims-logo-white.png" 
                alt="Belims Hardware" 
                className="h-8 md:h-10 object-contain" 
              />

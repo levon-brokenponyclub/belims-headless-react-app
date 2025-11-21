@@ -1,5 +1,41 @@
 # 🛠️ Belims Hardware Store - Development Guide
 
+## **🚨 CRITICAL: Server Setup & Directory Structure**
+
+### **⚠️ MUST RUN FROM FRONTEND DIRECTORY**
+```bash
+# ❌ WRONG - Don't run from public/
+cd /Users/levongravett/Desktop/BPC/Sites/belims-headless/app/public
+npx vite  # This won't work! → 404 Page not found
+
+# ✅ CORRECT - Must be in frontend/
+cd /Users/levongravett/Desktop/BPC/Sites/belims-headless/app/public/frontend
+npx vite --host 0.0.0.0 --port 3000  # This works! ✅
+```
+
+### **Directory Structure**
+```
+/Users/levongravett/Desktop/BPC/Sites/belims-headless/app/public/
+├── frontend/           ← MUST be here to run server!
+│   ├── package.json    ← Contains vite config
+│   ├── index.html      ← Entry point  
+│   ├── constants.ts    ← Fixed TypeScript file
+│   └── App.tsx         ← Main React app
+└── wp-admin/          ← WordPress (not needed for dev)
+```
+
+### **Quick Debug Commands**
+```bash
+# Check you're in the right place
+pwd && ls package.json index.html
+
+# Kill all servers if stuck
+pkill -f "vite|npm|node"
+
+# Start fresh (from frontend/ directory)
+npx vite --host 0.0.0.0 --port 3000
+```
+
 ## 🎯 **Quick Start (5 Minutes)**
 
 ```bash

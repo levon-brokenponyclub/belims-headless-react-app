@@ -33,6 +33,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
   const [isStickyExpanded, setIsStickyExpanded] = useState(false);
   const rightBuyBoxRef = useRef<HTMLDivElement>(null);
   
+  // Buy Box Progressive Reveal
+  const [scrollY, setScrollY] = useState(0);
+  const [showBuyBoxMinimal, setShowBuyBoxMinimal] = useState(false);
+  const [showBuyBoxFull, setShowBuyBoxFull] = useState(false);
+  
   // Gallery Modal State
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   
@@ -57,20 +62,36 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [product]);
 
-  // Scroll Observer to trigger Left Sticky Bar Expansion
+  // Scroll listener for progressive buy box reveal
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      setScrollY(currentScrollY);
+      
+      // Show minimal buy box after 200px scroll
+      setShowBuyBoxMinimal(currentScrollY > 200);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll Observer to trigger Left Sticky Bar Expansion and Full Buy Box
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         const isBelow = entry.boundingClientRect.top < 100; 
         // Expand sticky bar if scrolled past
         setIsStickyExpanded(!entry.isIntersecting && isBelow);
+        // Show full buy box when price scrolls past
+        setShowBuyBoxFull(!entry.isIntersecting && isBelow);
         
         // Show bundle trigger if scrolled past and product has bundles
         if (product.bundleCandidates && product.bundleCandidates.length > 0) {
           setShowBundleTrigger(!entry.isIntersecting && isBelow);
         }
       },
-      { threshold: 0.1, rootMargin: "-100px 0px 0px 0px" }
+      { threshold: 0.1, rootMargin: "-140px 0px 0px 0px" }
     );
 
     if (rightBuyBoxRef.current) {
@@ -206,20 +227,24 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
         </button>
       )}
 
-      {/* Breadcrumbs */}
-      <div className="text-sm text-gray-500 mb-6 flex items-center gap-2">
-        <span className="cursor-pointer hover:text-belims-blue" onClick={onBack}>Home</span>
-        <ChevronRight size={14} />
-        <span className="cursor-pointer hover:text-belims-blue">{product.category}</span>
-        <ChevronRight size={14} />
-        <span className="font-bold text-gray-900 line-clamp-1">{product.name}</span>
+      {/* Fixed Breadcrumbs */}
+      <div className="fixed top-[130px] left-0 right-0 bg-white/98 backdrop-blur-md border-b border-gray-200 z-50 px-6 py-4 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-sm text-gray-600 flex items-center gap-2">
+            <span className="cursor-pointer hover:text-belims-blue transition-colors" onClick={onBack}>Home</span>
+            <ChevronRight size={14} className="text-gray-400" />
+            <span className="cursor-pointer hover:text-belims-blue transition-colors">{product.category}</span>
+            <ChevronRight size={14} className="text-gray-400" />
+            <span className="font-bold text-gray-900 line-clamp-1">{product.name}</span>
+          </div>
+        </div>
       </div>
 
       {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16 items-start relative">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16 items-start relative" style={{paddingTop: '50px'}}>
         
         {/* LEFT COLUMN: Sticky Image + Overlapping Sticky Control Box */}
-        <div className="lg:col-span-7 sticky top-24 h-[calc(100vh-120px)] flex flex-col relative z-30">
+        <div className="lg:col-span-7 sticky top-[190px] h-[calc(100vh-220px)] flex flex-col relative z-30" style={{paddingLeft: '0'}}>
           
           {/* Image Container */}
           <div className="flex-1 bg-white border border-gray-200 rounded-xl relative group cursor-zoom-in shadow-sm overflow-hidden flex flex-col">
@@ -233,7 +258,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
             </button>
 
             {/* Main Image */}
-            <div className="w-full h-full flex items-center justify-center p-8 pb-40"> 
+            <div className="w-full h-full flex items-center justify-center p-6"> 
                 <img 
                   src={mainImage} 
                   alt={product.name} 
@@ -242,12 +267,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
                 />
             </div>
 
-            {/* STICKY OVERLAP BAR (Bottom Aligned) */}
-            <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md rounded-xl border border-gray-200 shadow-2xl p-5 z-30 transition-all duration-500">
+            {/* STICKY OVERLAP BAR (Bottom Aligned) - Progressive Reveal */}
+            <div className={`absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md rounded-xl border border-gray-200 shadow-2xl z-30 transition-all duration-500 ${!showBuyBoxMinimal ? 'opacity-0 translate-y-4 pointer-events-none' : 'opacity-100 translate-y-0'} ${showBuyBoxFull ? 'p-5' : 'p-3'}`}>
                
                {/* EXPANDABLE SECTION: Brand, Title, Price, Stock */}
-               {/* Only visible when right column buy box is scrolled out */}
-               <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isStickyExpanded ? 'max-h-[200px] opacity-100 mb-3 border-b border-gray-100 pb-3' : 'max-h-0 opacity-0'}`}>
+               {/* Only visible when right column buy box is scrolled out AND in full mode */}
+               <div className={`overflow-hidden transition-all duration-500 ease-in-out ${(isStickyExpanded && showBuyBoxFull) ? 'max-h-[200px] opacity-100 mb-3 border-b border-gray-100 pb-3' : 'max-h-0 opacity-0'}`}>
                  <div className="flex flex-wrap items-center justify-between gap-4">
                    <div>
                       <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{product.brand}</div>
@@ -257,55 +282,81 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
                      <div className="text-2xl font-extrabold text-belims-blue font-heading">{CURRENCY_SYMBOL}{product.price.toLocaleString()}</div>
                    </div>
                  </div>
-                 <div className="mt-3 w-32 hidden sm:block">
+                 <div className="mt-3 w-full hidden sm:block">
                     <StockBar current={product.stock} max={product.maxStock} />
                  </div>
                </div>
 
-               {/* PERSISTENT SECTION: Controls & Fulfillment */}
-               <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    {/* Quantity */}
-                    <div className="flex items-center border border-gray-300 rounded-lg bg-gray-50 h-11">
-                      <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-3 hover:bg-gray-200 text-gray-600 h-full rounded-l-lg"><Minus size={16} /></button>
-                      <div className="w-8 text-center font-bold text-sm">{qty}</div>
-                      <button onClick={() => setQty(Math.min(product.stock, qty + 1))} className="px-3 hover:bg-gray-200 text-gray-600 h-full rounded-r-lg"><Plus size={16} /></button>
+               {/* PROGRESSIVE SECTION: Controls & Fulfillment */}
+               <div className={`flex flex-col transition-all duration-300 ${showBuyBoxFull ? 'gap-3' : 'gap-2'}`}>
+                  {showBuyBoxFull ? (
+                    // FULL MODE: Add to Cart and Buy Now - Side by Side with Quantity
+                    <div className="flex items-center gap-3">
+                      {/* Quantity */}
+                      <div className="flex items-center border border-gray-300 rounded-lg bg-gray-50 h-11">
+                        <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-3 hover:bg-gray-200 text-gray-600 h-full rounded-l-lg"><Minus size={16} /></button>
+                        <div className="w-8 text-center font-bold text-sm">{qty}</div>
+                        <button onClick={() => setQty(Math.min(product.stock, qty + 1))} className="px-3 hover:bg-gray-200 text-gray-600 h-full rounded-r-lg"><Plus size={16} /></button>
+                      </div>
+
+                      <button 
+                        onClick={handleAddToCart}
+                        disabled={product.stock === 0}
+                        className="flex-1 bg-belims-blue text-white font-bold text-sm h-11 rounded-lg shadow-md hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <ShoppingCart size={18} /> {product.stock > 0 ? 'Add' : 'Out of Stock'}
+                      </button>
+                      
+                      <button 
+                        onClick={handleBuyNowAction}
+                        disabled={product.stock === 0}
+                        className="flex-1 bg-belims-accent text-white font-bold text-sm h-11 rounded-lg shadow-md hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <Zap size={18} fill="currentColor" /> {product.stock > 0 ? 'Buy Now' : 'Out of Stock'}
+                      </button>
                     </div>
+                  ) : (
+                    // MINIMAL MODE: Just Add to Cart button
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center border border-gray-300 rounded-lg bg-gray-50 h-9">
+                        <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-2 hover:bg-gray-200 text-gray-600 h-full rounded-l-lg"><Minus size={14} /></button>
+                        <div className="w-6 text-center font-bold text-xs">{qty}</div>
+                        <button onClick={() => setQty(Math.min(product.stock, qty + 1))} className="px-2 hover:bg-gray-200 text-gray-600 h-full rounded-r-lg"><Plus size={14} /></button>
+                      </div>
+                      <button 
+                        onClick={handleAddToCart}
+                        disabled={product.stock === 0}
+                        className="flex-1 bg-belims-blue text-white font-bold text-xs h-9 rounded-lg shadow-md hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-1 disabled:opacity-50"
+                      >
+                        <ShoppingCart size={14} /> Add
+                      </button>
+                      <button 
+                        onClick={handleBuyNowAction}
+                        disabled={product.stock === 0}
+                        className="flex-1 bg-belims-accent text-white font-bold text-xs h-9 rounded-lg shadow-md hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-1 disabled:opacity-50"
+                      >
+                        <Zap size={14} /> Buy Now
+                      </button>
+                    </div>
+                  )}
 
-                    {/* Add to Cart */}
-                    <button 
-                      onClick={handleAddToCart}
-                      disabled={product.stock === 0}
-                      className="flex-1 bg-belims-blue text-white font-bold text-sm h-11 rounded-lg shadow-md hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <ShoppingCart size={18} /> {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
-                    </button>
-                  </div>
-
-                  {/* Buy Now Button */}
-                  <button 
-                    onClick={handleBuyNowAction}
-                    disabled={product.stock === 0}
-                    className="w-full bg-belims-accent text-white font-bold text-sm h-11 rounded-lg shadow-md hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <Zap size={18} fill="currentColor" /> {product.stock > 0 ? 'Buy Now' : 'Out of Stock'}
-                  </button>
-
-                  {/* Fulfillment Status (Compact Line) */}
-                  <div className="flex gap-4 text-[10px] font-bold text-gray-500 justify-center sm:justify-start items-center pt-1">
-                    <span 
-                        className="flex items-center gap-1 hover:text-belims-blue cursor-pointer"
-                        onClick={() => setIsLocatorOpen(true)}
-                    >
-                        <Store size={12} /> Pick Up Available
-                    </span>
-                    <span 
-                        className="flex items-center gap-1 hover:text-belims-blue cursor-pointer"
-                        onClick={() => setIsDeliveryModalOpen(true)}
-                    >
-                        <Truck size={12} /> Delivery Available
-                    </span>
-                  </div>
+                  {/* Fulfillment Status (Compact Line) - Only in full mode */}
+                  {showBuyBoxFull && (
+                    <div className="flex gap-4 text-[10px] font-bold text-gray-500 justify-center sm:justify-start items-center pt-1">
+                      <span 
+                          className="flex items-center gap-1 hover:text-belims-blue cursor-pointer"
+                          onClick={() => setIsLocatorOpen(true)}
+                      >
+                          <Store size={12} /> Pick Up Available
+                      </span>
+                      <span 
+                          className="flex items-center gap-1 hover:text-belims-blue cursor-pointer"
+                          onClick={() => setIsDeliveryModalOpen(true)}
+                      >
+                          <Truck size={12} /> Delivery Available
+                      </span>
+                    </div>
+                  )}
                </div>
             </div>
 
@@ -313,31 +364,33 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
         </div>
 
         {/* RIGHT COLUMN: Content (Scrollable) */}
-        <div className="lg:col-span-5 flex flex-col gap-8 pb-24 pt-4">
+        <div className="lg:col-span-5 flex flex-col gap-8 pb-24 pt-0">
            
            {/* Header Info */}
            <div>
-             <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-sm font-bold text-gray-500 mb-1 uppercase tracking-wider font-heading">{product.brand}</div>
-                  <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4 font-heading leading-tight">{product.name}</h1>
+             {/* First Row: Stars/Reviews with SKU below, Wishlist/Compare on right */}
+             <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3">
+                      <div className="flex text-yellow-400">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={18} fill={i < Math.round(product.rating) ? "currentColor" : "none"} />
+                        ))}
+                      </div>
+                      <span className="text-sm font-medium text-gray-500 hover:text-belims-blue cursor-pointer underline decoration-dotted">{product.reviews} Reviews</span>
+                    </div>
+                    <div className="text-xs text-gray-400 font-mono">SKU: {product.sku || 'N/A'}</div>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
+                <div className="flex gap-2 flex-shrink-0 items-center">
                    <button className="p-2 rounded-full bg-gray-100 hover:bg-red-50 hover:text-belims-accent transition-colors"><Heart size={20} /></button>
                    <button className="p-2 rounded-full bg-gray-100 hover:bg-blue-50 hover:text-belims-blue transition-colors"><Share2 size={20} /></button>
                 </div>
              </div>
              
-             <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="flex text-yellow-400">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={18} fill={i < Math.round(product.rating) ? "currentColor" : "none"} />
-                      ))}
-                    </div>
-                    <span className="text-sm font-medium text-gray-500 hover:text-belims-blue cursor-pointer underline decoration-dotted">{product.reviews} Reviews</span>
-                </div>
-                <div className="text-xs text-gray-400 font-mono">SKU: {product.sku || 'N/A'}</div>
+             {/* Second Row: Brand and Title only */}
+             <div className="mb-4">
+                <div className="text-sm font-bold text-gray-500 mb-1 uppercase tracking-wider font-heading">{product.brand}</div>
+                <h1 className="font-extrabold text-gray-900 font-heading leading-tight" style={{fontSize: '1.6rem'}}>{product.name}</h1>
              </div>
            </div>
 
@@ -345,9 +398,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
            <div ref={rightBuyBoxRef} className="bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-sm">
                 <div className="flex justify-between items-start mb-4">
                    <div>
-                      <div className="text-3xl font-extrabold text-belims-blue font-heading">{CURRENCY_SYMBOL}{product.price.toLocaleString()}</div>
-                      {product.isBundle && <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded mt-1 inline-block">Bundle Savings</span>}
+                      <div className="text-3xl font-extrabold text-belims-blue font-heading">{CURRENCY_SYMBOL}{product.price.toFixed(2)}</div>
                    </div>
+                   {product.isBundle && <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">Bundle Savings</span>}
                 </div>
 
                 {/* Fulfillment Options: Side-by-Side Cards */}
@@ -415,6 +468,25 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
                 </div>
            </div>
 
+           {/* STICKY COMPARE BUTTONS */}
+           {/* Uses CSS sticky to stay under the fixed breadcrumb when scrolling */}
+           <div className="sticky top-[190px] z-20 bg-white/95 backdrop-blur py-3 -my-2 border-b border-gray-100">
+               <div className="flex gap-3">
+                  <button 
+                    onClick={() => onCompare(product)}
+                    className="flex-1 text-sm font-bold text-gray-700 hover:text-belims-blue hover:border-belims-blue bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm transition-all flex items-center justify-center gap-2"
+                  >
+                    <Scale size={18} /> Compare
+                  </button>
+                  <button 
+                    onClick={() => onPriceMatch(product)}
+                    className="flex-1 text-sm font-bold text-belims-blue hover:text-white hover:bg-belims-blue bg-blue-50 px-4 py-3 rounded-lg border border-blue-100 shadow-sm transition-all flex items-center justify-center gap-2"
+                  >
+                    <ShieldCheck size={18} /> Price Match
+                  </button>
+               </div>
+           </div>
+
            {/* Bundle Section - Outside Buy Block with Blue Theme */}
            {product.bundleCandidates && product.bundleCandidates.length > 0 && (
              <div className="mb-8">
@@ -463,25 +535,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
              </div>
            )}
 
-           {/* STICKY COMPARE BUTTONS */}
-           {/* Uses CSS sticky to stay under the header when scrolling */}
-           <div className="sticky top-24 z-20 bg-white/95 backdrop-blur py-4 -my-2 border-b border-gray-100">
-               <div className="flex gap-3">
-                  <button 
-                    onClick={() => onCompare(product)}
-                    className="flex-1 text-sm font-bold text-gray-700 hover:text-belims-blue hover:border-belims-blue bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm transition-all flex items-center justify-center gap-2"
-                  >
-                    <Scale size={18} /> Compare
-                  </button>
-                  <button 
-                    onClick={() => onPriceMatch(product)}
-                    className="flex-1 text-sm font-bold text-belims-blue hover:text-white hover:bg-belims-blue bg-blue-50 px-4 py-3 rounded-lg border border-blue-100 shadow-sm transition-all flex items-center justify-center gap-2"
-                  >
-                    <ShieldCheck size={18} /> Price Match
-                  </button>
-               </div>
-           </div>
-
+           
            {/* Description & Tabs */}
            <div>
              <div className="flex border-b border-gray-200 mb-6">
@@ -505,52 +559,95 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
                    
                    <p className="text-gray-600 text-lg leading-relaxed">{product.description}</p>
 
-                   {/* AI Summary Enhanced */}
-                   <div className="bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-xl p-6 shadow-sm relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-purple-100 rounded-full -mr-10 -mt-10 opacity-50"></div>
-                      
-                      <div className="flex items-center justify-between mb-4 relative z-10">
-                        <div className="flex items-center gap-2">
-                           <div className="bg-white p-1.5 rounded shadow-sm">
-                             <Sparkles size={18} className="text-purple-600"/> 
-                           </div>
-                           <span className="font-bold text-purple-900 font-heading">Gemini AI Summary</span>
+                   {/* AI Summary Enhanced with Onboarding */}
+                   <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                      {/* Blue Header like Price Match Modal */}
+                      <div className="bg-gradient-to-r from-purple-600 to-belims-blue px-6 py-4 text-white">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-white/20 p-2 rounded-lg">
+                            <Sparkles size={20} className="text-white"/> 
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-lg font-heading">AI Product Assistant</h3>
+                            <p className="text-white/80 text-sm">Get personalized insights powered by Google Gemini</p>
+                          </div>
                         </div>
-                        
-                        {(aiDescription || !generatingDesc) && (
-                          <button 
-                            onClick={handleGenerateDescription}
-                            className="text-xs flex items-center gap-1 bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-full font-bold transition-all shadow-sm"
-                            title="Regenerate Description"
-                          >
-                            <RefreshCw size={12} className={generatingDesc ? "animate-spin" : ""} />
-                            {aiDescription ? 'Regenerate' : 'Generate'}
-                          </button>
-                        )}
                       </div>
                       
-                      {generatingDesc ? (
-                          <div className="space-y-3 animate-pulse">
-                              <div className="h-4 bg-purple-200 rounded w-3/4"></div>
-                              <div className="h-4 bg-purple-200 rounded w-full"></div>
-                              <div className="h-4 bg-purple-200 rounded w-5/6"></div>
+                      <div className="p-6">
+                        {!aiDescription ? (
+                          <div className="space-y-6">
+                            {/* Quick Explanation */}
+                            <div className="text-center">
+                              <p className="text-gray-700 text-base mb-4 leading-relaxed">
+                                Our AI analyzes this product's features, specifications, and use cases to create a personalized summary just for you.
+                              </p>
+                            </div>
+                            
+                            {/* 3-Step Process */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                                <div className="w-10 h-10 bg-purple-600 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">1</div>
+                                <h4 className="font-bold text-purple-900 text-sm mb-1">Analyze Product</h4>
+                                <p className="text-xs text-purple-700">AI reviews specs, features & customer feedback</p>
+                              </div>
+                              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                                <div className="w-10 h-10 bg-belims-blue text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">2</div>
+                                <h4 className="font-bold text-blue-900 text-sm mb-1">Personalize</h4>
+                                <p className="text-xs text-blue-700">Tailors insights to your project needs</p>
+                              </div>
+                              <div className="text-center p-4 bg-green-50 rounded-lg">
+                                <div className="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">3</div>
+                                <h4 className="font-bold text-green-900 text-sm mb-1">Generate Summary</h4>
+                                <p className="text-xs text-green-700">Creates custom buying guide & recommendations</p>
+                              </div>
+                            </div>
+                            
+                            <div className="text-center">
+                              <button 
+                                onClick={handleGenerateDescription} 
+                                disabled={generatingDesc}
+                                className="bg-gradient-to-r from-purple-600 to-belims-blue text-white px-8 py-3 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:transform-none font-heading flex items-center gap-3 mx-auto"
+                              >
+                                <Sparkles size={20} className={generatingDesc ? "animate-spin" : "animate-pulse"} />
+                                {generatingDesc ? 'Analyzing Product...' : 'Generate My Personal Summary'}
+                              </button>
+                              <p className="text-xs text-gray-500 mt-2">✨ Free • Powered by Google Gemini AI • Takes 3-5 seconds</p>
+                            </div>
                           </div>
-                      ) : aiDescription ? (
-                          <div className="prose prose-purple prose-sm max-w-none relative z-10">
-                             <ReactMarkdown>{aiDescription}</ReactMarkdown>
+                        ) : (
+                          <div>
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="font-bold text-gray-900 font-heading text-lg">Your Personalized Summary</h4>
+                              <button 
+                                onClick={handleGenerateDescription}
+                                className="text-xs flex items-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-full font-bold transition-all shadow-sm"
+                                title="Regenerate Description"
+                              >
+                                <RefreshCw size={12} className={generatingDesc ? "animate-spin" : ""} />
+                                Regenerate
+                              </button>
+                            </div>
+                            
+                            {generatingDesc ? (
+                              <div className="space-y-3 animate-pulse">
+                                  <div className="h-4 bg-purple-200 rounded w-3/4"></div>
+                                  <div className="h-4 bg-purple-200 rounded w-full"></div>
+                                  <div className="h-4 bg-purple-200 rounded w-5/6"></div>
+                              </div>
+                            ) : (
+                              <div className="prose prose-purple prose-sm max-w-none">
+                                 <ReactMarkdown>{aiDescription}</ReactMarkdown>
+                              </div>
+                            )}
+                            
+                            <div className="mt-4 text-xs text-purple-500 font-medium border-t border-purple-100 pt-3 flex items-center gap-2">
+                              <Sparkles size={12} /> 
+                              <span>Generated by Google Gemini AI • Personalized for your needs</span>
+                            </div>
                           </div>
-                      ) : (
-                          <div className="text-center py-4">
-                            <p className="text-sm text-purple-800 mb-3">Get a professional, AI-generated breakdown of why this product is perfect for your project.</p>
-                            <button onClick={handleGenerateDescription} className="text-sm font-bold text-white bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors shadow">
-                              Generate Summary
-                            </button>
-                          </div>
-                      )}
-                      
-                      {aiDescription && <div className="mt-4 text-[10px] text-purple-400 font-medium border-t border-purple-100 pt-2 flex items-center gap-1">
-                        <Sparkles size={10} /> Generated by Google Gemini AI
-                      </div>}
+                        )}
+                      </div>
                    </div>
 
                    {product.features && (
