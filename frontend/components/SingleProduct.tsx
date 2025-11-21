@@ -559,95 +559,52 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
                    
                    <p className="text-gray-600 text-lg leading-relaxed">{product.description}</p>
 
-                   {/* AI Summary Enhanced with Onboarding */}
-                   <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                      {/* Blue Header like Price Match Modal */}
-                      <div className="bg-gradient-to-r from-purple-600 to-belims-blue px-6 py-4 text-white">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-white/20 p-2 rounded-lg">
-                            <Sparkles size={20} className="text-white"/> 
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-lg font-heading">AI Product Assistant</h3>
-                            <p className="text-white/80 text-sm">Get personalized insights powered by Google Gemini</p>
-                          </div>
-                        </div>
-                      </div>
+                   {/* AI Summary Enhanced */}
+                   <div className="bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-xl p-6 shadow-sm relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-purple-100 rounded-full -mr-10 -mt-10 opacity-50"></div>
                       
-                      <div className="p-6">
-                        {!aiDescription ? (
-                          <div className="space-y-6">
-                            {/* Quick Explanation */}
-                            <div className="text-center">
-                              <p className="text-gray-700 text-base mb-4 leading-relaxed">
-                                Our AI analyzes this product's features, specifications, and use cases to create a personalized summary just for you.
-                              </p>
-                            </div>
-                            
-                            {/* 3-Step Process */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                                <div className="w-10 h-10 bg-purple-600 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">1</div>
-                                <h4 className="font-bold text-purple-900 text-sm mb-1">Analyze Product</h4>
-                                <p className="text-xs text-purple-700">AI reviews specs, features & customer feedback</p>
-                              </div>
-                              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                                <div className="w-10 h-10 bg-belims-blue text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">2</div>
-                                <h4 className="font-bold text-blue-900 text-sm mb-1">Personalize</h4>
-                                <p className="text-xs text-blue-700">Tailors insights to your project needs</p>
-                              </div>
-                              <div className="text-center p-4 bg-green-50 rounded-lg">
-                                <div className="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">3</div>
-                                <h4 className="font-bold text-green-900 text-sm mb-1">Generate Summary</h4>
-                                <p className="text-xs text-green-700">Creates custom buying guide & recommendations</p>
-                              </div>
-                            </div>
-                            
-                            <div className="text-center">
-                              <button 
-                                onClick={handleGenerateDescription} 
-                                disabled={generatingDesc}
-                                className="bg-gradient-to-r from-purple-600 to-belims-blue text-white px-8 py-3 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:transform-none font-heading flex items-center gap-3 mx-auto"
-                              >
-                                <Sparkles size={20} className={generatingDesc ? "animate-spin" : "animate-pulse"} />
-                                {generatingDesc ? 'Analyzing Product...' : 'Generate My Personal Summary'}
-                              </button>
-                              <p className="text-xs text-gray-500 mt-2">✨ Free • Powered by Google Gemini AI • Takes 3-5 seconds</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="flex items-center justify-between mb-4">
-                              <h4 className="font-bold text-gray-900 font-heading text-lg">Your Personalized Summary</h4>
-                              <button 
-                                onClick={handleGenerateDescription}
-                                className="text-xs flex items-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-full font-bold transition-all shadow-sm"
-                                title="Regenerate Description"
-                              >
-                                <RefreshCw size={12} className={generatingDesc ? "animate-spin" : ""} />
-                                Regenerate
-                              </button>
-                            </div>
-                            
-                            {generatingDesc ? (
-                              <div className="space-y-3 animate-pulse">
-                                  <div className="h-4 bg-purple-200 rounded w-3/4"></div>
-                                  <div className="h-4 bg-purple-200 rounded w-full"></div>
-                                  <div className="h-4 bg-purple-200 rounded w-5/6"></div>
-                              </div>
-                            ) : (
-                              <div className="prose prose-purple prose-sm max-w-none">
-                                 <ReactMarkdown>{aiDescription}</ReactMarkdown>
-                              </div>
-                            )}
-                            
-                            <div className="mt-4 text-xs text-purple-500 font-medium border-t border-purple-100 pt-3 flex items-center gap-2">
-                              <Sparkles size={12} /> 
-                              <span>Generated by Google Gemini AI • Personalized for your needs</span>
-                            </div>
-                          </div>
+                      <div className="flex items-center justify-between mb-4 relative z-10">
+                        <div className="flex items-center gap-2">
+                           <div className="bg-white p-1.5 rounded shadow-sm">
+                             <Sparkles size={18} className="text-purple-600"/> 
+                           </div>
+                           <span className="font-bold text-purple-900 font-heading">Gemini AI Summary</span>
+                        </div>
+                        
+                        {(aiDescription || !generatingDesc) && (
+                          <button 
+                            onClick={handleGenerateDescription}
+                            className="text-xs flex items-center gap-1 bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-full font-bold transition-all shadow-sm"
+                            title="Regenerate Description"
+                          >
+                            <RefreshCw size={12} className={generatingDesc ? "animate-spin" : ""} />
+                            {aiDescription ? 'Regenerate' : 'Generate'}
+                          </button>
                         )}
                       </div>
+                      
+                      {generatingDesc ? (
+                          <div className="space-y-3 animate-pulse">
+                              <div className="h-4 bg-purple-200 rounded w-3/4"></div>
+                              <div className="h-4 bg-purple-200 rounded w-full"></div>
+                              <div className="h-4 bg-purple-200 rounded w-5/6"></div>
+                          </div>
+                      ) : aiDescription ? (
+                          <div className="prose prose-purple prose-sm max-w-none relative z-10">
+                             <ReactMarkdown>{aiDescription}</ReactMarkdown>
+                          </div>
+                      ) : (
+                          <div className="text-center py-4">
+                            <p className="text-sm text-purple-800 mb-3">Get a professional, AI-generated breakdown of why this product is perfect for your project.</p>
+                            <button onClick={handleGenerateDescription} className="text-sm font-bold text-white bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors shadow">
+                              Generate Summary
+                            </button>
+                          </div>
+                      )}
+                      
+                      {aiDescription && <div className="mt-4 text-[10px] text-purple-400 font-medium border-t border-purple-100 pt-2 flex items-center gap-1">
+                        <Sparkles size={10} /> Generated by Google Gemini AI
+                      </div>}
                    </div>
 
                    {product.features && (
