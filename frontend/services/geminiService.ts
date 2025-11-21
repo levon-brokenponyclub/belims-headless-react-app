@@ -7,13 +7,13 @@ import { FEATURED_PRODUCTS, DEALS_PRODUCTS } from "../constants";
 // Environment Variables Debug (commented out for cleaner console)
 // console.log('🔍 Environment Variables Debug:', {
 //   allEnvKeys: Object.keys(import.meta.env),
-//   viteKeys: Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')),
-//   geminiKey: import.meta.env.VITE_GEMINI_API_KEY,
-//   geminiKeyLength: import.meta.env.VITE_GEMINI_API_KEY?.length,
-//   wooUrl: import.meta.env.VITE_WOO_SITE_URL
+//   reactAppKeys: Object.keys(import.meta.env).filter(key => key.startsWith('REACT_APP_')),
+//   geminiKey: import.meta.env.REACT_APP_GEMINI_API_KEY,
+//   geminiKeyLength: import.meta.env.REACT_APP_GEMINI_API_KEY?.length,
+//   wooUrl: import.meta.env.REACT_APP_WOO_SITE_URL
 // });
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const apiKey = import.meta.env.REACT_APP_GEMINI_API_KEY;
 // console.log('Debug: API Key check:', apiKey ? 'Found API key' : 'API key missing', 'Length:', apiKey?.length);
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
