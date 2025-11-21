@@ -29,7 +29,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onClose, onN
   const styles = {
     // Main container
     modalBackdrop: { backgroundColor: 'rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(12px)' },
-    modalContainer: { backgroundColor: '#322783', borderRadius: '24px', maxWidth: '1140px', height: '80vh', overflowY: 'hidden' as const },
+    modalContainer: { backgroundColor: '#322783', borderRadius: '24px', maxWidth: '1140px', height: '90vh', overflowY: 'hidden' as const },
     
     // Hero section
     heroTitle: { fontSize: '3rem', fontWeight: '600', color: '#ffffff', marginBottom: '16px', marginTop: '20px' },
@@ -386,9 +386,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onClose, onN
                           onChange={(e) => setProjectDesc(e.target.value)}
                           autoFocus
                         />
-                        <div className="absolute bottom-6 right-6 bg-gray-100 text-gray-400 p-2 rounded-full pointer-events-none">
-                           <Search size={20} />
-                        </div>
                       </div>
 
                       <div className="flex items-center gap-4 mt-8">
