@@ -14,32 +14,61 @@ export const getPaintRecommendations = async (userPrompt: string): Promise<Paint
     // Check if API key is available
     if (!ai) {
       console.warn('Gemini API key not found. Using mock paint recommendations.');
-      return [
+      // Return different sexy colors each time for better demos
+      const sexyColors = [
         {
-          colorName: "Ocean Breeze",
-          hexCode: "#4A90E2",
-          description: "A calming blue perfect for bedrooms and bathrooms",
-          mood: "Serene"
+          colorName: "Midnight Velvet",
+          hexCode: "#1a1a2e",
+          description: "Deep mysterious navy that exudes sophistication and drama",
+          mood: "Bold & Dramatic"
         },
         {
-          colorName: "Warm Earth",
-          hexCode: "#8B4513",
-          description: "Rich brown that brings warmth to living spaces",
-          mood: "Cozy"
+          colorName: "Sunset Blush",
+          hexCode: "#ff6b6b",
+          description: "Warm coral pink that captures the essence of passion",
+          mood: "Romantic & Warm"
         },
         {
-          colorName: "Fresh Mint",
-          hexCode: "#98FB98",
-          description: "Light green that energizes kitchens and offices",
-          mood: "Fresh"
+          colorName: "Forest Whisper",
+          hexCode: "#2d5016",
+          description: "Rich forest green that brings nature's tranquility indoors",
+          mood: "Natural & Calming"
         },
         {
-          colorName: "Sunset Glow",
-          hexCode: "#FF6347",
-          description: "Vibrant orange for accent walls and creative spaces",
-          mood: "Bold"
+          colorName: "Golden Hour",
+          hexCode: "#f39c12",
+          description: "Warm amber gold that radiates positive energy and luxury",
+          mood: "Energizing & Luxe"
+        },
+        {
+          colorName: "Ocean Depths",
+          hexCode: "#2c3e50",
+          description: "Deep teal blue reminiscent of mysterious ocean depths",
+          mood: "Sophisticated & Serene"
+        },
+        {
+          colorName: "Dusty Rose",
+          hexCode: "#d63384",
+          description: "Elegant mauve pink with vintage charm and romance",
+          mood: "Elegant & Vintage"
+        },
+        {
+          colorName: "Charcoal Storm",
+          hexCode: "#495057",
+          description: "Modern charcoal grey with depth and edgy character",
+          mood: "Modern & Edgy"
+        },
+        {
+          colorName: "Burgundy Passion",
+          hexCode: "#722f37",
+          description: "Rich wine red that speaks of passion and luxury",
+          mood: "Passionate & Bold"
         }
       ];
+      
+      // Shuffle and return 4 random colors for variety
+      const shuffled = sexyColors.sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, 4);
     }
     
     const modelId = "gemini-2.5-flash"; 

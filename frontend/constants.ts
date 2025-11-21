@@ -85,7 +85,40 @@ export const FEATURED_PRODUCTS: Product[] = [
     maxStock: 100,
     description: "Heavy duty angle grinder for cutting and grinding metal and stone.",
     brand: "Bosch",
-    tags: ['grinder', 'cutting', 'metal', 'wired']
+    tags: ['grinder', 'cutting', 'metal', 'wired'],
+    features: [
+        "900W powerful motor for heavy-duty applications",
+        "Adjustable guard for versatile cutting and grinding",
+        "Ergonomic design with anti-vibration handle"
+    ],
+    specifications: [
+        { label: "Power", value: "900W" },
+        { label: "Disc Size", value: "125mm" },
+        { label: "RPM", value: "11,000" }
+    ],
+    bundleCandidates: [
+      {
+        id: 'bundle4',
+        name: 'Cutting Discs Set (5pc)',
+        price: 199,
+        image: 'https://images.unsplash.com/photo-1609205277353-a9424f9e1326?auto=format&fit=crop&w=400&q=80',
+        category: 'Hand Tools'
+      },
+      {
+        id: 'bundle5', 
+        name: 'Safety Goggles & Face Shield',
+        price: 129,
+        image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=400&q=80',
+        category: 'Safety Gear'
+      },
+      {
+        id: 'bundle6',
+        name: 'Work Gloves (Heavy Duty)',
+        price: 79,
+        image: 'https://images.unsplash.com/photo-1558618047-3c8b2c4a1108?auto=format&fit=crop&w=400&q=80', 
+        category: 'Safety Gear'
+      }
+    ]
   },
   {
     id: 'bm1',
@@ -101,7 +134,40 @@ export const FEATURED_PRODUCTS: Product[] = [
     bundleSavings: 10,
     description: "High strength cement suitable for all structural concrete, mortar, and plaster applications.",
     brand: "PPC",
-    tags: ['cement', 'concrete', 'building', 'construction']
+    tags: ['cement', 'concrete', 'building', 'construction'],
+    features: [
+        "High strength 42.5N grade for structural applications",
+        "Fast setting time for quick project completion",
+        "Consistent quality and performance"
+    ],
+    specifications: [
+        { label: "Grade", value: "42.5N" },
+        { label: "Weight", value: "50kg" },
+        { label: "Setting Time", value: "Initial 45min" }
+    ],
+    bundleCandidates: [
+      {
+        id: 'bundle7',
+        name: 'Building Sand - 25kg',
+        price: 45,
+        image: 'https://images.unsplash.com/photo-1585250003309-694ff34512d7?auto=format&fit=crop&w=400&q=80',
+        category: 'Building Materials'
+      },
+      {
+        id: 'bundle8', 
+        name: 'Mixing Tub & Trowel Set',
+        price: 159,
+        image: 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?auto=format&fit=crop&w=400&q=80',
+        category: 'Hand Tools'
+      },
+      {
+        id: 'bundle9',
+        name: 'Waterproofing Agent - 5L',
+        price: 89,
+        image: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80', 
+        category: 'Building Materials'
+      }
+    ]
   },
   {
     id: 'sf1',
@@ -115,7 +181,40 @@ export const FEATURED_PRODUCTS: Product[] = [
     maxStock: 150,
     description: "Industrial grade safety boots with steel toe cap and oil resistant sole.",
     brand: "Bova",
-    tags: ['boots', 'safety', 'ppe', 'shoes']
+    tags: ['boots', 'safety', 'ppe', 'shoes'],
+    features: [
+        "Steel toe cap for maximum foot protection",
+        "Oil and slip resistant rubber sole",
+        "Breathable leather upper with moisture wicking lining"
+    ],
+    specifications: [
+        { label: "Safety Rating", value: "SB P FO E" },
+        { label: "Upper Material", value: "Full Grain Leather" },
+        { label: "Sole Type", value: "Oil Resistant Rubber" }
+    ],
+    bundleCandidates: [
+      {
+        id: 'bundle10',
+        name: 'Safety Helmet & Hi-Vis Vest',
+        price: 189,
+        image: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80',
+        category: 'Safety Gear'
+      },
+      {
+        id: 'bundle11', 
+        name: 'Work Socks (6-Pack)',
+        price: 99,
+        image: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&w=400&q=80',
+        category: 'Safety Gear'
+      },
+      {
+        id: 'bundle12',
+        name: 'Knee Pads & Tool Belt',
+        price: 149,
+        image: 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?auto=format&fit=crop&w=400&q=80', 
+        category: 'Safety Gear'
+      }
+    ]
   }
 ];
 
