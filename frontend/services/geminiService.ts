@@ -110,6 +110,16 @@ export const getPaintRecommendations = async (userPrompt: string): Promise<Paint
 
 export const getPersonalizedRecommendations = async (userType: 'personal' | 'business', projectDescription: string): Promise<Product[]> => {
   try {
+    // Check if API key is available
+    if (!ai) {
+      console.warn('Gemini API key not found. Using fallback recommendations.');
+      // Return smart fallback based on user type and project
+      if (userType === 'business' || projectDescription.toLowerCase().includes('construction')) {
+        return ALL_PRODUCTS.filter(p => p.category === 'Power Tools').slice(0, 3);
+      }
+      return ALL_PRODUCTS.slice(0, 3);
+    }
+
     // Create a lightweight inventory context
     const inventoryContext = ALL_PRODUCTS.map(p => ({
       id: p.id,
@@ -167,6 +177,12 @@ export const getPersonalizedRecommendations = async (userType: 'personal' | 'bus
 
 export const generateProductDescription = async (product: Product): Promise<string> => {
   try {
+    // Check if API key is available
+    if (!ai) {
+      console.warn('Gemini API key not found. Using fallback description.');
+      return `Professional ${product.name} from ${product.brand}. ${product.description || 'High-quality tool for all your ${product.category.toLowerCase()} needs.'} Perfect for both DIY enthusiasts and professional contractors.`;
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `Write a compelling, SEO-optimized product description (approx 100 words) for: ${product.name}. 
@@ -184,6 +200,17 @@ export const generateProductDescription = async (product: Product): Promise<stri
 
 export const findCompetitorPrices = async (product: Product): Promise<PriceMatchResult> => {
   try {
+    // Check if API key is available
+    if (!ai) {
+      console.warn('Gemini API key not found. Unable to perform real-time price check.');
+      return {
+        analysis: "Unable to perform real-time price check at this moment.",
+        sources: [],
+        isCompetitive: true,
+        lowestCompetitorPrice: null
+      };
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `Find current prices for "${product.name}" (SKU: ${product.sku}) in South Africa. 
