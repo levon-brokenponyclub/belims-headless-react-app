@@ -408,6 +408,29 @@ The project includes optimized build settings in `netlify.toml`:
 
 ---
 
+## 📝 **Deployment Lessons Learned (Nov 21, 2025)**
+
+### **Environment Variable Best Practices**
+1. **Consistent Prefixes**: Use `REACT_APP_` for both local and production
+2. **Vite Configuration**: Always configure `define` section for client-side variable access
+3. **API Key Security**: Never commit keys to repository, use local `.env` files
+4. **Error Debugging**: Distinguish between "undefined variable" vs "expired key" errors
+
+### **Deployment Workflow**
+1. **Test Locally**: Verify environment variables work in development
+2. **Configure Netlify**: Set all `REACT_APP_` variables in dashboard
+3. **Update Code**: Ensure code uses correct variable names
+4. **Trigger Rebuild**: Always deploy after environment changes
+5. **Validate Production**: Test AI features on live site
+
+### **Critical Files Modified**
+- `services/geminiService.ts`: Updated environment variable prefix
+- `vite.config.ts`: Added define section for variable exposure
+- `frontend/.env`: Local development configuration
+- **No commits**: API keys kept secure in environment only
+
+---
+
 **Built with ❤️ for Belims Hardware | Powering the construction industry with modern e-commerce**
 
 ---
@@ -422,17 +445,26 @@ The project includes optimized build settings in `netlify.toml`:
 - **Solution**: Click product cards from homepage instead of navigating directly to /product/X URLs
 - **Future Fix**: Implement React Router for proper URL routing
 
-#### **AI Functions Not Working**
-- **Issue**: Paint Assistant, Price Match, and AI features returning errors
-- **Cause**: Environment variables not accessible in production build
-- **Check**: Ensure these environment variables are set in Netlify Dashboard:
+#### **AI Functions Not Working** ⚠️ **RESOLVED - Nov 21, 2025**
+- **Issue**: Paint Assistant, Price Match, and AI features returning "API key expired" errors
+- **Root Cause**: Environment variable prefix mismatch between code and Netlify configuration
+  - **Problem**: Code was looking for `VITE_GEMINI_API_KEY` but Netlify was set with `REACT_APP_GEMINI_API_KEY`
+  - **Solution**: Updated `services/geminiService.ts` to use `REACT_APP_GEMINI_API_KEY`
+  - **Vite Config**: Added `define` section in `vite.config.ts` to expose `REACT_APP_` variables to client
+- **API Key Renewal**: Original API key had expired, replaced with new working key
+- **Environment Variables**: Ensure these are set in Netlify Dashboard:
   ```
   REACT_APP_GEMINI_API_KEY=your_google_gemini_api_key
   REACT_APP_WOO_SITE_URL=https://your-wordpress-site.com
   REACT_APP_WOO_CONSUMER_KEY=ck_your_woocommerce_key
   REACT_APP_WOO_CONSUMER_SECRET=cs_your_woocommerce_secret
   ```
-- **Vite Requirement**: Code uses `import.meta.env` (not `process.env`) for environment variables
+- **Critical Fix**: Updated `vite.config.ts` with proper environment variable handling:
+  ```typescript
+  define: {
+    'import.meta.env.REACT_APP_GEMINI_API_KEY': JSON.stringify(process.env.REACT_APP_GEMINI_API_KEY)
+  }
+  ```
 
 #### **Build Failures**
 - **"vite: not found" Error**: 
@@ -572,10 +604,14 @@ console.log(import.meta.env.REACT_APP_WOO_SITE_URL);
 2. Don't navigate directly to /product/X URLs
 3. Bundle appears below the "Buy Now" button section
 
-#### **AI Functions Failing**
-1. Check Netlify Dashboard → Site Settings → Environment Variables
-2. Ensure all REACT_APP_ variables are set
-3. Redeploy site after adding missing variables
+#### **AI Functions Failing** ⚠️ **COMMON ISSUE**
+1. **Check Environment Variable Prefixes**: Ensure code and Netlify use same prefix
+   - **Netlify**: Set `REACT_APP_GEMINI_API_KEY` in dashboard
+   - **Code**: Use `import.meta.env.REACT_APP_GEMINI_API_KEY`
+   - **Vite**: Must configure `define` in `vite.config.ts`
+2. **API Key Validation**: Test key locally first with `console.log(import.meta.env.REACT_APP_GEMINI_API_KEY)`
+3. **Browser Console**: Check for "API key expired" vs "Environment variable undefined" errors
+4. **Redeploy Required**: Always trigger new build after environment variable changes
 
 #### **Local Development Issues**
 ```bash
