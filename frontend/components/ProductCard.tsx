@@ -89,23 +89,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
           <button
             onClick={(e) => {
               e.stopPropagation();
-              addToCart(product);
+              if (product.stock > 0) addToCart(product);
             }}
-            className="bg-white border border-belims-blue text-belims-blue hover:bg-blue-50 py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading"
+            disabled={product.stock === 0}
+            className={`border py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading ${product.stock === 0
+                ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                : 'bg-white border-belims-blue text-belims-blue hover:bg-blue-50'
+              }`}
           >
             <ShoppingCart size={14} />
-            Add
+            {product.stock > 0 ? 'Add' : 'Out of Stock'}
           </button>
           {onBuyNow && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onBuyNow(product);
+                if (product.stock > 0) onBuyNow(product);
               }}
-              className="bg-belims-accent text-white hover:brightness-110 py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading shadow-sm"
+              disabled={product.stock === 0}
+              className={`py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading shadow-sm ${product.stock === 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-belims-accent text-white hover:brightness-110'
+                }`}
             >
               <Zap size={14} fill="currentColor" />
-              Buy Now
+              {product.stock > 0 ? 'Buy Now' : 'Out of Stock'}
             </button>
           )}
         </div>
