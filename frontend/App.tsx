@@ -35,7 +35,10 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
   const [isPaintOpen, setIsPaintOpen] = useState(false);
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(true); // Open by default on load
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => {
+    const hasSeen = localStorage.getItem('hasSeenOnboarding');
+    return !hasSeen;
+  });
   const [selectedStore, setSelectedStore] = useState<Store | null>(STORES[0]);
   const [userType, setUserType] = useState<'personal' | 'business'>('personal');
 
@@ -505,7 +508,10 @@ export default function App() {
       {/* AI Onboarding Wizard - Opens on Load if active */}
       {isOnboardingOpen && view === 'home' && (
         <OnboardingWizard
-          onClose={() => setIsOnboardingOpen(false)}
+          onClose={() => {
+            setIsOnboardingOpen(false);
+            localStorage.setItem('hasSeenOnboarding', 'true');
+          }}
           onNavigateToProduct={handleProductClick}
           addToCart={addToCart}
           onBuyNow={handleBuyNow}
