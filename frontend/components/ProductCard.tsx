@@ -92,9 +92,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
               if (product.stock > 0) addToCart(product);
             }}
             disabled={product.stock === 0}
-            className={`border py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading ${product.stock === 0
-                ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                : 'bg-white border-belims-blue text-belims-blue hover:bg-blue-50'
+            className={`py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading ${product.stock === 0
+                ? 'bg-gray-100 border border-gray-300 text-gray-400 cursor-not-allowed'
+                : 'bg-[#322783] text-white hover:bg-[#e40613]'
               }`}
           >
             <ShoppingCart size={14} />
@@ -108,8 +108,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
               }}
               disabled={product.stock === 0}
               className={`py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading shadow-sm ${product.stock === 0
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-belims-accent text-white hover:brightness-110'
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-belims-accent text-white hover:brightness-110'
                 }`}
             >
               <Zap size={14} fill="currentColor" />
