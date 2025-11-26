@@ -49,6 +49,12 @@ export interface Category {
   subcategories: string[];
 }
 
+export interface CategoryNode {
+  id: string;
+  label: string;
+  children?: CategoryNode[];
+}
+
 export enum StockStatus {
   IN_STOCK = 'In Stock',
   LOW_STOCK = 'Low Stock',

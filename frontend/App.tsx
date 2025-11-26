@@ -10,23 +10,27 @@ import { FreeShippingWidget } from './components/FreeShippingWidget';
 import { OnboardingWizard } from './components/OnboardingWizard';
 import { PriceMatchModal } from './components/PriceMatchModal';
 import { ComparisonModal } from './components/ComparisonModal';
+import { Archive } from './components/Archive';
 import { RecentlyViewed } from './components/RecentlyViewed';
 import { Product, CartItem, Store } from './types';
-import { 
-  FEATURED_PRODUCTS, 
-  STORES, 
-  HERO_SLIDES, 
-  CATEGORY_PILLS, 
-  PROJECT_IDEAS, 
-  CATEGORY_SLIDER_DATA
+import {
+  FEATURED_PRODUCTS,
+  STORES,
+  HERO_SLIDES,
+  CATEGORY_PILLS,
+  PROJECT_IDEAS,
+  CATEGORY_SLIDER_DATA,
+  SYNCED_PRODUCTS
 } from './constants';
 import { ArrowRight, Truck, ShieldCheck, CreditCard, ChevronRight, X } from 'lucide-react';
 
 export default function App() {
   // State
-  const [view, setView] = useState<'home' | 'product'>('home');
+  const [view, setView] = useState<'home' | 'product' | 'archive'>('home');
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
-  
+  const [currentCategory, setCurrentCategory] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
@@ -42,7 +46,7 @@ export default function App() {
 
   // Category Slider State
   const [activeCategory, setActiveCategory] = useState(CATEGORY_PILLS[0]);
-  
+
   // Derived State for Slider Content
   const currentSliderContent = CATEGORY_SLIDER_DATA[activeCategory] || CATEGORY_SLIDER_DATA['default'];
 
@@ -86,6 +90,20 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleCategoryClick = (category: string) => {
+    setCurrentCategory(category);
+    setSearchQuery('');
+    setView('archive');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setCurrentCategory('');
+    setView('archive');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Comparison Logic
   const addToCompare = (product: Product) => {
     setComparisonList(prev => {
@@ -106,27 +124,29 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans">
-      <Header 
-        selectedStore={selectedStore} 
-        cartItems={cartItems} 
+      <Header
+        selectedStore={selectedStore}
+        cartItems={cartItems}
         toggleCart={() => setIsCartOpen(true)}
         toggleStoreLocator={() => setIsLocatorOpen(true)}
         onOpenPaintAssistant={() => setIsPaintOpen(true)}
         onProductClick={handleProductClick}
         onCompare={addToCompare}
+        onCategoryClick={handleCategoryClick}
+        onSearch={handleSearch}
       />
 
       {/* Personal / Business Toggle - Top of Page (Only visible on Home) */}
       {view === 'home' && (
         <div className="bg-white border-b border-gray-200">
           <div className="container mx-auto px-4 flex gap-8">
-            <button 
+            <button
               className={`py-3 text-sm font-bold border-b-4 transition-colors font-heading ${userType === 'personal' ? 'border-belims-blue text-belims-blue' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
               onClick={() => setUserType('personal')}
             >
               Personal
             </button>
-            <button 
+            <button
               className={`py-3 text-sm font-bold border-b-4 transition-colors font-heading ${userType === 'business' ? 'border-belims-blue text-belims-blue' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
               onClick={() => setUserType('business')}
             >
@@ -138,29 +158,39 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 container mx-auto px-4 py-6 relative">
-        
+
         {view === 'product' && activeProduct ? (
-          <SingleProduct 
-            product={activeProduct} 
-            addToCart={addToCart} 
+          <SingleProduct
+            product={activeProduct}
+            addToCart={addToCart}
             onBuyNow={handleBuyNow}
-            onBack={() => setView('home')} 
+            onBack={() => setView('home')}
             onCompare={addToCompare}
             onPriceMatch={setPriceMatchProduct}
             onProductClick={handleProductClick}
+          />
+        ) : view === 'archive' ? (
+          <Archive
+            products={SYNCED_PRODUCTS}
+            category={currentCategory}
+            searchQuery={searchQuery}
+            addToCart={addToCart}
+            onBuyNow={handleBuyNow}
+            onProductClick={handleProductClick}
+            onCompare={addToCompare}
           />
         ) : (
           <>
             {/* Hero Section Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
-              
+
               {/* Left Column: Loyalty / Rewards */}
               <div className="lg:col-span-3 bg-belims-blue rounded-lg p-6 text-white flex flex-col relative overflow-hidden shadow-lg min-h-[300px]">
                 <div className="relative z-10">
                   <div className="border-b-4 border-belims-accent w-12 mb-4"></div>
                   <h2 className="text-2xl font-extrabold mb-1 font-heading tracking-tight">MyBelims</h2>
                   <h3 className="text-3xl font-extrabold mb-6 text-white font-heading tracking-tight">Pro Rewards</h3>
-                  
+
                   <div className="mb-8">
                     <p className="text-xl font-bold mb-2 font-heading">Build. Earn. Save.</p>
                     <p className="text-sm text-blue-100">Contractor benefits include:</p>
@@ -176,27 +206,27 @@ export default function App() {
                     Register as Pro
                   </button>
                 </div>
-                
+
                 {/* Decorative background shape */}
                 <div className="absolute -right-10 -bottom-20 w-64 h-64 bg-indigo-900 rounded-full opacity-50"></div>
               </div>
 
               {/* Center Column: Main Hero Promo */}
               <div className="lg:col-span-6 relative rounded-lg overflow-hidden shadow-lg group h-[400px] lg:h-auto">
-                <img 
-                  src={HERO_SLIDES[0].image} 
-                  alt="Hero" 
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                <img
+                  src={HERO_SLIDES[0].image}
+                  alt="Hero"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-transparent flex items-center">
-                    <div className="p-8 text-white max-w-md">
-                      <span className="bg-belims-accent text-white px-2 py-1 text-xs font-bold uppercase tracking-wider mb-4 inline-block rounded-sm font-heading">Power Tool Sale</span>
-                      <h2 className="text-4xl font-bold mb-4 leading-tight font-heading">{HERO_SLIDES[0].title}</h2>
-                      <p className="text-lg mb-6 text-gray-100 font-medium">{HERO_SLIDES[0].subtitle}</p>
-                      <button className="bg-white text-belims-blue font-bold py-3 px-6 rounded hover:bg-belims-accent hover:text-white transition-colors font-heading">
-                        {HERO_SLIDES[0].cta}
-                      </button>
-                    </div>
+                  <div className="p-8 text-white max-w-md">
+                    <span className="bg-belims-accent text-white px-2 py-1 text-xs font-bold uppercase tracking-wider mb-4 inline-block rounded-sm font-heading">Power Tool Sale</span>
+                    <h2 className="text-4xl font-bold mb-4 leading-tight font-heading">{HERO_SLIDES[0].title}</h2>
+                    <p className="text-lg mb-6 text-gray-100 font-medium">{HERO_SLIDES[0].subtitle}</p>
+                    <button className="bg-white text-belims-blue font-bold py-3 px-6 rounded hover:bg-belims-accent hover:text-white transition-colors font-heading">
+                      {HERO_SLIDES[0].cta}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -204,11 +234,11 @@ export default function App() {
               <div className="lg:col-span-3 flex flex-col gap-6 h-full">
                 {/* Inspiration Widget */}
                 <div className="bg-gray-50 rounded-lg p-6 flex-1 flex flex-col justify-center shadow-sm border border-gray-200 group cursor-pointer hover:border-belims-blue transition-colors">
-                    <h3 className="text-belims-blue font-bold mb-2 text-lg font-heading group-hover:text-belims-accent transition-colors">DIY Tips & Tricks</h3>
-                    <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-                      From laying bricks to wiring a plug, get expert advice for your next project.
-                    </p>
-                    <span className="text-belims-blue font-bold text-sm underline hover:text-belims-accent font-heading">View Guides</span>
+                  <h3 className="text-belims-blue font-bold mb-2 text-lg font-heading group-hover:text-belims-accent transition-colors">DIY Tips & Tricks</h3>
+                  <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                    From laying bricks to wiring a plug, get expert advice for your next project.
+                  </p>
+                  <span className="text-belims-blue font-bold text-sm underline hover:text-belims-accent font-heading">View Guides</span>
                 </div>
               </div>
             </div>
@@ -219,22 +249,22 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                 {PROJECT_IDEAS.map(item => (
                   <div key={item.id} className="group cursor-pointer flex flex-col h-full">
-                      {/* Image Container */}
-                      <div className="rounded-lg overflow-hidden mb-4 aspect-[4/3]">
-                        <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    {/* Image Container */}
+                    <div className="rounded-lg overflow-hidden mb-4 aspect-[4/3]">
+                      <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex flex-col flex-1">
+                      <h3 className="font-bold text-gray-900 leading-tight mb-2 font-heading text-lg">{item.title}</h3>
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-3">{item.description}</p>
+
+                      <div className="mt-auto">
+                        <span className="text-belims-blue font-bold text-sm border-b border-transparent group-hover:border-belims-blue transition-all inline-block font-heading">
+                          {item.linkText}
+                        </span>
                       </div>
-                      
-                      {/* Content */}
-                      <div className="flex flex-col flex-1">
-                        <h3 className="font-bold text-gray-900 leading-tight mb-2 font-heading text-lg">{item.title}</h3>
-                        <p className="text-sm text-gray-600 mb-4 line-clamp-3">{item.description}</p>
-                        
-                        <div className="mt-auto">
-                          <span className="text-belims-blue font-bold text-sm border-b border-transparent group-hover:border-belims-blue transition-all inline-block font-heading">
-                            {item.linkText}
-                          </span>
-                        </div>
-                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -244,18 +274,18 @@ export default function App() {
             <div className="mb-16">
               <h2 className="text-2xl font-bold text-gray-900 mb-6 font-heading">Shop by Category</h2>
               <p className="text-gray-500 mb-6">Hover over a category to preview top products.</p>
-              
+
               {/* Category Pills Navigation (Hover Enabled for Desktop) */}
               <div className="mb-6 overflow-x-auto no-scrollbar pb-2">
                 <div className="flex gap-3 min-w-max">
                   {CATEGORY_PILLS.map((pill, index) => (
-                    <button 
-                      key={index} 
+                    <button
+                      key={index}
                       onMouseEnter={() => setActiveCategory(pill)}
                       onClick={() => setActiveCategory(pill)} // Keep click for mobile
                       className={`px-6 py-3 rounded-full border font-bold font-heading transition-all whitespace-nowrap
-                        ${activeCategory === pill 
-                          ? 'bg-belims-blue text-white border-belims-blue shadow-md transform scale-105' 
+                        ${activeCategory === pill
+                          ? 'bg-belims-blue text-white border-belims-blue shadow-md transform scale-105'
                           : 'bg-white text-gray-700 border-gray-300 hover:border-belims-blue hover:text-belims-blue'
                         }`}
                     >
@@ -264,51 +294,51 @@ export default function App() {
                   ))}
                 </div>
               </div>
-              
+
               {/* Dynamic Content Area (Left Banner + Right Slider) */}
               <div className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[420px] animate-fadeIn">
-                  
-                  {/* Left Banner - Changes based on category */}
-                  <div className="w-full lg:w-1/3 xl:w-1/4 rounded-lg overflow-hidden relative group shadow-md min-h-[300px]">
-                    <img 
-                      src={currentSliderContent.image} 
-                      alt={currentSliderContent.title} 
-                      key={currentSliderContent.image} // key forces re-render animation
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 animate-fadeIn" 
-                    />
-                    <div className="absolute inset-0 bg-black/30"></div> {/* Overlay */}
-                    <div className="absolute inset-0 p-8 flex flex-col justify-center items-start text-center lg:text-left">
-                        <h3 className="text-3xl md:text-4xl font-extrabold text-white mb-4 font-heading leading-tight drop-shadow-lg">
-                          {currentSliderContent.title}
-                        </h3>
-                        <button className="mt-2 border-b-2 border-white text-white font-bold text-lg pb-0.5 hover:text-belims-accent hover:border-belims-accent transition-colors font-heading">
-                          Shop All {activeCategory}
-                        </button>
-                    </div>
-                  </div>
 
-                  {/* Right Slider (Horizontal Scroll) - Products change based on category */}
-                  <div className="flex-1 overflow-x-auto no-scrollbar flex gap-4 items-stretch pb-4">
-                    {currentSliderContent.products.map((product) => (
-                        <div key={product.id} className="min-w-[280px] max-w-[280px] h-full">
-                          <ProductCard 
-                            product={product} 
-                            addToCart={addToCart}
-                            onBuyNow={handleBuyNow}
-                            onClick={handleProductClick}
-                            onCompare={addToCompare}
-                            className="h-full" 
-                          />
-                        </div>
-                    ))}
-                    {/* See All Card */}
-                    <div className="min-w-[150px] flex flex-col items-center justify-center bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors group">
-                        <div className="w-12 h-12 rounded-full bg-white shadow flex items-center justify-center text-belims-blue group-hover:scale-110 transition-transform mb-3">
-                          <ArrowRight size={24} />
-                        </div>
-                        <span className="font-bold text-belims-blue font-heading">View All {activeCategory}</span>
-                    </div>
+                {/* Left Banner - Changes based on category */}
+                <div className="w-full lg:w-1/3 xl:w-1/4 rounded-lg overflow-hidden relative group shadow-md min-h-[300px]">
+                  <img
+                    src={currentSliderContent.image}
+                    alt={currentSliderContent.title}
+                    key={currentSliderContent.image} // key forces re-render animation
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 animate-fadeIn"
+                  />
+                  <div className="absolute inset-0 bg-black/30"></div> {/* Overlay */}
+                  <div className="absolute inset-0 p-8 flex flex-col justify-center items-start text-center lg:text-left">
+                    <h3 className="text-3xl md:text-4xl font-extrabold text-white mb-4 font-heading leading-tight drop-shadow-lg">
+                      {currentSliderContent.title}
+                    </h3>
+                    <button className="mt-2 border-b-2 border-white text-white font-bold text-lg pb-0.5 hover:text-belims-accent hover:border-belims-accent transition-colors font-heading">
+                      Shop All {activeCategory}
+                    </button>
                   </div>
+                </div>
+
+                {/* Right Slider (Horizontal Scroll) - Products change based on category */}
+                <div className="flex-1 overflow-x-auto no-scrollbar flex gap-4 items-stretch pb-4">
+                  {currentSliderContent.products.map((product) => (
+                    <div key={product.id} className="min-w-[280px] max-w-[280px] h-full">
+                      <ProductCard
+                        product={product}
+                        addToCart={addToCart}
+                        onBuyNow={handleBuyNow}
+                        onClick={handleProductClick}
+                        onCompare={addToCompare}
+                        className="h-full"
+                      />
+                    </div>
+                  ))}
+                  {/* See All Card */}
+                  <div className="min-w-[150px] flex flex-col items-center justify-center bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors group">
+                    <div className="w-12 h-12 rounded-full bg-white shadow flex items-center justify-center text-belims-blue group-hover:scale-110 transition-transform mb-3">
+                      <ArrowRight size={24} />
+                    </div>
+                    <span className="font-bold text-belims-blue font-heading">View All {activeCategory}</span>
+                  </div>
+                </div>
 
               </div>
             </div>
@@ -324,12 +354,12 @@ export default function App() {
                   View All <ChevronRight size={16} />
                 </a>
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {FEATURED_PRODUCTS.map(product => (
-                  <ProductCard 
-                    key={product.id} 
-                    product={product} 
+                  <ProductCard
+                    key={product.id}
+                    product={product}
                     addToCart={addToCart}
                     onBuyNow={handleBuyNow}
                     onClick={handleProductClick}
@@ -340,10 +370,10 @@ export default function App() {
             </section>
 
             {/* RECENTLY VIEWED PRODUCTS */}
-            <RecentlyViewed 
+            <RecentlyViewed
               addToCart={addToCart}
-              onBuyNow={handleBuyNow} 
-              onProductClick={handleProductClick} 
+              onBuyNow={handleBuyNow}
+              onProductClick={handleProductClick}
               onCompare={addToCompare}
             />            {/* Banner Strip */}
             <div className="bg-belims-gray rounded-xl p-8 mb-16 flex flex-col md:flex-row items-center justify-between gap-8 border border-gray-200">
@@ -358,33 +388,33 @@ export default function App() {
 
             {/* Value Props */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 border-t pt-12 pb-12">
-                <div className="flex items-start gap-4">
-                  <div className="bg-blue-50 p-3 rounded-full text-belims-blue">
-                    <Truck size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 mb-1 font-heading">Free Delivery</h3>
-                    <p className="text-sm text-gray-500">On orders over R1,000. Fast reliable shipping nationwide.</p>
-                  </div>
+              <div className="flex items-start gap-4">
+                <div className="bg-blue-50 p-3 rounded-full text-belims-blue">
+                  <Truck size={24} />
                 </div>
-                <div className="flex items-start gap-4">
-                  <div className="bg-blue-50 p-3 rounded-full text-belims-blue">
-                    <ShieldCheck size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 mb-1 font-heading">Extended Warranty</h3>
-                    <p className="text-sm text-gray-500">Free 1-year extended warranty on all power tools.</p>
-                  </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-1 font-heading">Free Delivery</h3>
+                  <p className="text-sm text-gray-500">On orders over R1,000. Fast reliable shipping nationwide.</p>
                 </div>
-                <div className="flex items-start gap-4">
-                  <div className="bg-blue-50 p-3 rounded-full text-belims-blue">
-                    <CreditCard size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 mb-1 font-heading">Secure Payment</h3>
-                    <p className="text-sm text-gray-500">100% secure payment processing with top SA gateways.</p>
-                  </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="bg-blue-50 p-3 rounded-full text-belims-blue">
+                  <ShieldCheck size={24} />
                 </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-1 font-heading">Extended Warranty</h3>
+                  <p className="text-sm text-gray-500">Free 1-year extended warranty on all power tools.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="bg-blue-50 p-3 rounded-full text-belims-blue">
+                  <CreditCard size={24} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-1 font-heading">Secure Payment</h3>
+                  <p className="text-sm text-gray-500">100% secure payment processing with top SA gateways.</p>
+                </div>
+              </div>
             </div>
           </>
         )}
@@ -394,40 +424,40 @@ export default function App() {
       {/* Footer */}
       <footer className="bg-[#1a1f2e] text-gray-400 py-12 text-sm pb-24"> {/* Extra padding bottom for sticky widget */}
         <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8">
-           <div>
-             <h4 className="text-white font-bold mb-4 uppercase tracking-wider font-heading">Customer Support</h4>
-             <ul className="space-y-3">
-               <li><a href="#" className="hover:text-white transition-colors">Contact Us</a></li>
-               <li><a href="#" className="hover:text-white transition-colors">Order Status</a></li>
-               <li><a href="#" className="hover:text-white transition-colors">Returns & Exchanges</a></li>
-               <li><a href="#" className="hover:text-white transition-colors">Shipping Info</a></li>
-             </ul>
-           </div>
-           <div>
-             <h4 className="text-white font-bold mb-4 uppercase tracking-wider font-heading">Services</h4>
-             <ul className="space-y-3">
-               <li><a href="#" className="hover:text-white transition-colors">Installation Services</a></li>
-               <li><a href="#" className="hover:text-white transition-colors">Tool Rental</a></li>
-               <li><a href="#" className="hover:text-white transition-colors">Gift Cards</a></li>
-               <li><a href="#" className="hover:text-white transition-colors">Pro Customers</a></li>
-             </ul>
-           </div>
-           <div>
-             <h4 className="text-white font-bold mb-4 uppercase tracking-wider font-heading">About Belims</h4>
-             <ul className="space-y-3">
-               <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-               <li><a href="#" className="hover:text-white transition-colors">Corporate Info</a></li>
-               <li><a href="#" className="hover:text-white transition-colors">Suppliers</a></li>
-             </ul>
-           </div>
-           <div>
-             <h4 className="text-white font-bold mb-4 uppercase tracking-wider font-heading">Stay Connected</h4>
-             <p className="mb-4 text-xs">Sign up for exclusive offers and tips.</p>
-             <div className="flex">
-               <input type="email" placeholder="Email Address" className="bg-gray-800 border-none rounded-l px-3 py-2 w-full focus:ring-1 focus:ring-belims-accent outline-none text-white" />
-               <button className="bg-belims-accent text-white font-bold px-4 rounded-r hover:bg-red-700 transition-colors">Go</button>
-             </div>
-           </div>
+          <div>
+            <h4 className="text-white font-bold mb-4 uppercase tracking-wider font-heading">Customer Support</h4>
+            <ul className="space-y-3">
+              <li><a href="#" className="hover:text-white transition-colors">Contact Us</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Order Status</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Returns & Exchanges</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Shipping Info</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-white font-bold mb-4 uppercase tracking-wider font-heading">Services</h4>
+            <ul className="space-y-3">
+              <li><a href="#" className="hover:text-white transition-colors">Installation Services</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Tool Rental</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Gift Cards</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Pro Customers</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-white font-bold mb-4 uppercase tracking-wider font-heading">About Belims</h4>
+            <ul className="space-y-3">
+              <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Corporate Info</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Suppliers</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-white font-bold mb-4 uppercase tracking-wider font-heading">Stay Connected</h4>
+            <p className="mb-4 text-xs">Sign up for exclusive offers and tips.</p>
+            <div className="flex">
+              <input type="email" placeholder="Email Address" className="bg-gray-800 border-none rounded-l px-3 py-2 w-full focus:ring-1 focus:ring-belims-accent outline-none text-white" />
+              <button className="bg-belims-accent text-white font-bold px-4 rounded-r hover:bg-red-700 transition-colors">Go</button>
+            </div>
+          </div>
         </div>
         <div className="container mx-auto px-4 mt-12 pt-8 border-t border-gray-800 text-center text-xs">
           &copy; 2024 Belims Hardware. All rights reserved. Prices are in ZAR.
@@ -438,16 +468,16 @@ export default function App() {
       <FreeShippingWidget cartItems={cartItems} />
 
       {/* Drawers & Modals */}
-      <CartDrawer 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)} 
-        items={cartItems} 
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        items={cartItems}
         updateQuantity={updateQuantity}
         removeItem={removeItem}
       />
-      
+
       {isLocatorOpen && (
-        <StoreLocator 
+        <StoreLocator
           currentStore={selectedStore}
           onSelectStore={setSelectedStore}
           onClose={() => setIsLocatorOpen(false)}
@@ -456,8 +486,8 @@ export default function App() {
 
       {/* Comparison Modal */}
       {isCompareOpen && (
-        <ComparisonModal 
-          products={comparisonList} 
+        <ComparisonModal
+          products={comparisonList}
           onClose={() => setIsCompareOpen(false)}
           onRemove={removeFromCompare}
           addToCart={addToCart}
@@ -466,18 +496,19 @@ export default function App() {
 
       {/* Price Match Modal */}
       {priceMatchProduct && (
-        <PriceMatchModal 
-          product={priceMatchProduct} 
+        <PriceMatchModal
+          product={priceMatchProduct}
           onClose={() => setPriceMatchProduct(null)}
         />
       )}
 
       {/* AI Onboarding Wizard - Opens on Load if active */}
       {isOnboardingOpen && view === 'home' && (
-        <OnboardingWizard 
+        <OnboardingWizard
           onClose={() => setIsOnboardingOpen(false)}
           onNavigateToProduct={handleProductClick}
           addToCart={addToCart}
+          onBuyNow={handleBuyNow}
           onCompare={addToCompare}
         />
       )}
@@ -486,16 +517,16 @@ export default function App() {
       {isPaintOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden relative max-h-[90vh] overflow-y-auto">
-            <button 
+            <button
               onClick={() => setIsPaintOpen(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
             >
               <X size={24} />
             </button>
             <div className="p-8">
-               <h2 className="text-2xl font-bold mb-2 text-belims-blue font-heading">Belims AI Paint Assistant</h2>
-               <p className="text-gray-600 mb-6">Describe your room or mood, and let us find your perfect color.</p>
-               <PaintAssistant />
+              <h2 className="text-2xl font-bold mb-2 text-belims-blue font-heading">Belims AI Paint Assistant</h2>
+              <p className="text-gray-600 mb-6">Describe your room or mood, and let us find your perfect color.</p>
+              <PaintAssistant />
             </div>
           </div>
         </div>

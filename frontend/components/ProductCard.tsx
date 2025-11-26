@@ -17,7 +17,7 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, onBuyNow, onClick, onCompare, className = "" }) => {
   return (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group overflow-hidden relative ${className}`}>
-      
+
       {/* Bundle Badge */}
       {product.isBundle && (
         <div className="absolute top-3 left-0 bg-belims-accent text-white text-xs font-bold px-3 py-1 z-10 shadow-sm font-heading tracking-wide">
@@ -27,7 +27,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
 
       {/* Compare Button */}
       {onCompare && (
-        <button 
+        <button
           onClick={(e) => {
             e.stopPropagation();
             onCompare(product);
@@ -39,20 +39,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
         </button>
       )}
 
-      <div 
+      <div
         className="relative h-48 overflow-hidden p-4 flex items-center justify-center bg-gray-50 group-hover:bg-white transition-colors cursor-pointer"
         onClick={() => onClick && onClick(product)}
       >
-         <img 
-          src={product.image} 
-          alt={product.name} 
+        <img
+          src={product.image}
+          alt={product.name}
           className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
         />
       </div>
 
       <div className="p-4 flex-1 flex flex-col">
         <div className="text-xs text-gray-500 mb-1 font-medium">{product.category}</div>
-        <h3 
+        <h3
           className="font-bold text-gray-900 text-sm md:text-base line-clamp-2 mb-2 flex-1 font-heading group-hover:text-belims-blue transition-colors cursor-pointer"
           onClick={() => onClick && onClick(product)}
         >
@@ -71,14 +71,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
 
         {/* Price */}
         <div className="mb-3">
-           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-gray-900 font-heading">{CURRENCY_SYMBOL}{product.price.toLocaleString()}</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-bold text-gray-900 font-heading">{CURRENCY_SYMBOL}{product.price.toFixed(2)}</span>
             {product.isBundle && (
               <span className="text-xs text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded">
-                Save {CURRENCY_SYMBOL}{product.bundleSavings}
+                Save {CURRENCY_SYMBOL}{product.bundleSavings?.toFixed(2)}
               </span>
             )}
-           </div>
+          </div>
         </div>
 
         {/* Stock Bar */}
@@ -86,7 +86,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
 
         {/* Actions: Add to Cart & Buy Now */}
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               addToCart(product);
@@ -97,7 +97,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
             Add
           </button>
           {onBuyNow && (
-            <button 
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 onBuyNow(product);

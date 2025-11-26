@@ -47,7 +47,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onClose, onN
     featureIndicator: { backgroundColor: '#f3f4f6', borderRadius: '8px', padding: '8px', border: '1px solid #e5e7eb' },
     
     // CTA button
-    ctaButton: { backgroundColor: '#2563eb', color: '#ffffff', fontSize: '16px', fontWeight: '600', padding: '12px 32px', borderRadius: '12px' },
+    ctaButton: { backgroundColor: '#f97316', color: '#ffffff', fontSize: '16px', fontWeight: '600', padding: '12px 32px', borderRadius: '12px' },
     
     // Skip button
     skipButton: { backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#9ca3af', padding: '8px 16px', borderRadius: '20px', border: '1px solid rgba(255, 255, 255, 0.1)' }
@@ -266,7 +266,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onClose, onN
               <div className={`flex justify-center transition-all duration-1200 delay-500 ${showLanding ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
                 <button 
                   onClick={handleGetStarted}
-                  className="hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center gap-2"
+                  className="hover:bg-orange-600 transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center gap-2"
                   style={styles.ctaButton}
                 >
                   Get Started

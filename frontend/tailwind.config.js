@@ -12,7 +12,7 @@ export default {
         belims: {
           blue: '#322783', // New Belims Deep Blue
           light: '#4a3fc2', // Slightly lighter for hover states/accents
-          accent: '#e40613', // New Belims Red
+          accent: '#f97316', // Construction Orange accent
           gray: '#f4f6f8', // Light background
           text: '#333333'
         }
