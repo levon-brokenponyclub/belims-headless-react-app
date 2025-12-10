@@ -29,6 +29,7 @@ export default function App() {
   const [view, setView] = useState<'home' | 'product' | 'archive'>('home');
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const [currentCategory, setCurrentCategory] = useState<string>('');
+  const [currentBrand, setCurrentBrand] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -95,6 +96,15 @@ export default function App() {
 
   const handleCategoryClick = (category: string) => {
     setCurrentCategory(category);
+    setCurrentBrand('');
+    setSearchQuery('');
+    setView('archive');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBrandClick = (brand: string) => {
+    setCurrentBrand(brand);
+    setCurrentCategory('');
     setSearchQuery('');
     setView('archive');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -103,6 +113,7 @@ export default function App() {
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     setCurrentCategory('');
+    setCurrentBrand('');
     setView('archive');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -133,6 +144,7 @@ export default function App() {
         toggleCart={() => setIsCartOpen(true)}
         toggleStoreLocator={() => setIsLocatorOpen(true)}
         onOpenPaintAssistant={() => setIsPaintOpen(true)}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
         onProductClick={handleProductClick}
         onCompare={addToCompare}
         onCategoryClick={handleCategoryClick}
@@ -505,8 +517,8 @@ export default function App() {
         />
       )}
 
-      {/* AI Onboarding Wizard - Opens on Load if active */}
-      {isOnboardingOpen && view === 'home' && (
+      {/* AI Onboarding Wizard - Opens on first load or when manually triggered */}
+      {isOnboardingOpen && (
         <OnboardingWizard
           onClose={() => {
             setIsOnboardingOpen(false);

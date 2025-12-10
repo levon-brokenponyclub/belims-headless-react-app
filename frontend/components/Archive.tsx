@@ -7,6 +7,7 @@ import { CATEGORY_TREE } from '../categoryTree';
 interface ArchiveProps {
     products: Product[];
     category?: string; // The selected category slug or name
+    brand?: string; // The selected brand
     searchQuery?: string;
     addToCart: (product: Product) => void;
     onBuyNow: (product: Product) => void;
@@ -17,6 +18,7 @@ interface ArchiveProps {
 export const Archive: React.FC<ArchiveProps> = ({
     products,
     category,
+    brand,
     searchQuery,
     addToCart,
     onBuyNow,
@@ -83,7 +85,14 @@ export const Archive: React.FC<ArchiveProps> = ({
             }
         }
 
-        // 2. Filter by Search Query
+        // 2. Filter by Brand
+        if (brand) {
+            filtered = filtered.filter(p =>
+                p.brand && p.brand.toLowerCase() === brand.toLowerCase()
+            );
+        }
+
+        // 3. Filter by Search Query
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(p =>
@@ -93,10 +102,10 @@ export const Archive: React.FC<ArchiveProps> = ({
             );
         }
 
-        // 3. Filter by Price
+        // 4. Filter by Price
         filtered = filtered.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
 
-        // 4. Sort
+        // 5. Sort
         switch (sortBy) {
             case 'price-asc':
                 filtered.sort((a, b) => a.price - b.price);
@@ -113,7 +122,7 @@ export const Archive: React.FC<ArchiveProps> = ({
         }
 
         return filtered;
-    }, [products, category, searchQuery, priceRange, sortBy]);
+    }, [products, category, brand, searchQuery, priceRange, sortBy]);
 
     // Get min/max price for slider
     const maxPrice = useMemo(() => {
@@ -126,10 +135,10 @@ export const Archive: React.FC<ArchiveProps> = ({
             {/* Header */}
             <div className="mb-8">
                 <div className="text-sm text-gray-500 mb-2">
-                    Home / {category ? category : 'Shop'}
+                    Home / {brand ? `Brand: ${brand}` : (category ? category : 'Shop')}
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 font-heading capitalize">
-                    {category ? category : (searchQuery ? `Search: "${searchQuery}"` : 'All Products')}
+                    {brand ? `${brand} Products` : (category ? category : (searchQuery ? `Search: "${searchQuery}"` : 'All Products'))}
                 </h1>
                 <p className="text-gray-600 mt-2">
                     Showing {filteredProducts.length} results

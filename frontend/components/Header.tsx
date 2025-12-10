@@ -32,6 +32,7 @@ interface HeaderProps {
   toggleCart: () => void;
   toggleStoreLocator: () => void;
   onOpenPaintAssistant: () => void;
+  onOpenOnboarding: () => void;
   onProductClick?: (product: Product) => void;
   onCompare?: (product: Product) => void;
   onCategoryClick?: (category: string) => void;
@@ -44,6 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
   toggleCart,
   toggleStoreLocator,
   onOpenPaintAssistant,
+  onOpenOnboarding,
   onProductClick,
   onCompare,
   onCategoryClick,
@@ -295,6 +297,15 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Sparkles size={16} />
             Paint Assistant
+          </button>
+
+          {/* ONBOARDING WIZARD BUTTON */}
+          <button
+            onClick={onOpenOnboarding}
+            className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-600 hover:bg-blue-500 hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading ml-2"
+          >
+            <ArrowRight size={16} />
+            Get Started
           </button>
 
           <div className="h-6 w-px bg-gray-300 mx-2"></div>

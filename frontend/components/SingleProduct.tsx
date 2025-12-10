@@ -20,9 +20,10 @@ interface SingleProductProps {
   onCompare: (product: Product) => void;
   onPriceMatch: (product: Product) => void;
   onProductClick: (product: Product) => void;
+  onBrandClick?: (brand: string) => void;
 }
 
-export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart, onBuyNow, onBack, onCompare, onPriceMatch, onProductClick }) => {
+export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart, onBuyNow, onBack, onCompare, onPriceMatch, onProductClick, onBrandClick }) => {
   const [mainImage, setMainImage] = useState(product.image);
   const [qty, setQty] = useState(1);
   const [selectedTab, setSelectedTab] = useState<'desc' | 'specs'>('desc');
@@ -275,7 +276,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
               <div className={`overflow-hidden transition-all duration-500 ease-in-out ${(isStickyExpanded && showBuyBoxFull) ? 'max-h-[200px] opacity-100 mb-3 border-b border-gray-100 pb-3' : 'max-h-0 opacity-0'}`}>
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{product.brand}</div>
+                    <div
+                      className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5 hover:text-belims-blue cursor-pointer transition-colors"
+                      onClick={() => product.brand && onBrandClick?.(product.brand)}
+                    >
+                      {product.brand}
+                    </div>
                     <h3 className="font-bold text-gray-900 font-heading text-base line-clamp-1">{product.name}</h3>
                   </div>
                   <div className="text-right">
@@ -389,7 +395,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({ product, addToCart
 
             {/* Second Row: Brand and Title only */}
             <div className="mb-4">
-              <div className="text-sm font-bold text-gray-500 mb-1 uppercase tracking-wider font-heading">{product.brand}</div>
+              <div
+                className="text-sm font-bold text-gray-500 mb-1 uppercase tracking-wider font-heading hover:text-belims-blue cursor-pointer transition-colors"
+                onClick={() => product.brand && onBrandClick?.(product.brand)}
+              >
+                {product.brand}
+              </div>
               <h1 className="font-extrabold text-gray-900 font-heading leading-tight" style={{ fontSize: '1.6rem' }}>{product.name}</h1>
             </div>
           </div>
