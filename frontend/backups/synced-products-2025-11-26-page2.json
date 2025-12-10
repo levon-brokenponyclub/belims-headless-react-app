@@ -1,0 +1,692 @@
+[
+  {
+    "id": "staples-2",
+    "name": "Staples",
+    "category": "Electrical Hand Tools",
+    "price": 25.3,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/3cec18660871145fcbf71f0d85242e7e.png",
+    "rating": 4,
+    "reviews": 20,
+    "stock": 1,
+    "maxStock": 3,
+    "brand": "Electrical Hand Tools",
+    "sku": "STS0112",
+    "description": "Staples ships directly from Belims staging warehouse.",
+    "tags": [
+      "electrical-hand-tools",
+      "staple-guns-and-staples",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU STS0112",
+      "Includes 15% VAT for storefront parity",
+      "1 in stock"
+    ]
+  },
+  {
+    "id": "socket-set-5",
+    "name": "Socket Set",
+    "category": "Hand Tools",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/7194f34b49a733508e0e3bc894d90c6d.png",
+    "rating": 4.2,
+    "reviews": 25,
+    "stock": 1,
+    "maxStock": 3,
+    "brand": "Hand Tools",
+    "sku": "HKTS12103",
+    "description": "Socket Set ships directly from Belims staging warehouse.",
+    "tags": [
+      "hand-tools",
+      "spanners-and-sockets",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HKTS12103",
+      "Includes 15% VAT for storefront parity",
+      "1 in stock"
+    ]
+  },
+  {
+    "id": "20v-lithium-ion-cordless-screwdriver",
+    "name": "20V Lithium-Ion Cordless Screwdriver",
+    "category": "Uncategorized",
+    "price": 8280,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/6c1ec97902d64adca561dc326e051756.png",
+    "rating": 4.4,
+    "reviews": 30,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Uncategorized",
+    "sku": "CSDLI0413",
+    "description": "20V Lithium-Ion Cordless Screwdriver ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU CSDLI0413",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "cordless-screwdriver-4v-with-bits",
+    "name": "Cordless Screwdriver 4V with Bits",
+    "category": "None",
+    "price": 722.2,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/9371261f2c3823c616882839756a70a8.png",
+    "rating": 4.6,
+    "reviews": 35,
+    "stock": 66,
+    "maxStock": 132,
+    "brand": "None",
+    "sku": "CSDLI0403",
+    "description": "Cordless Screwdriver 4V with Bits ships directly from Belims staging warehouse.",
+    "tags": [
+      "none",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU CSDLI0403",
+      "Includes 15% VAT for storefront parity",
+      "66 in stock"
+    ]
+  },
+  {
+    "id": "20v-ps-brad-nailer",
+    "name": "20V Ps+ Brad Nailer",
+    "category": "None",
+    "price": 4025,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/027cc10df5a689138fa49cd4710189cf.png",
+    "rating": 4.8,
+    "reviews": 40,
+    "stock": 8,
+    "maxStock": 16,
+    "brand": "None",
+    "sku": "CBNLI2028",
+    "description": "20V Ps+ Brad Nailer ships directly from Belims staging warehouse.",
+    "tags": [
+      "none",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU CBNLI2028",
+      "Includes 15% VAT for storefront parity",
+      "8 in stock"
+    ]
+  },
+  {
+    "id": "socket-set-4",
+    "name": "Socket Set",
+    "category": "Hand Tools",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/a772f652f4c1f2da9a7c1bcb42245933.png",
+    "rating": 4,
+    "reviews": 45,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Hand Tools",
+    "sku": "HKTS14103",
+    "description": "Socket Set ships directly from Belims staging warehouse.",
+    "tags": [
+      "hand-tools",
+      "spanners-and-sockets",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HKTS14103",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "plier-set-2",
+    "name": "Plier Set",
+    "category": "Hand Tools",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/bc0fba4785e78a67f61deac0b3f6bd13.png",
+    "rating": 4.2,
+    "reviews": 50,
+    "stock": 3,
+    "maxStock": 6,
+    "brand": "Hand Tools",
+    "sku": "HKPS08212",
+    "description": "Plier Set ships directly from Belims staging warehouse.",
+    "tags": [
+      "hand-tools",
+      "pliers",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HKPS08212",
+      "Includes 15% VAT for storefront parity",
+      "3 in stock"
+    ]
+  },
+  {
+    "id": "water-pump-plier-3",
+    "name": "Water Pump Plier",
+    "category": "Hand Tools",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/784da671d5b298ab76572b11bce38f2a.png",
+    "rating": 4.4,
+    "reviews": 55,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Hand Tools",
+    "sku": "HPP28251",
+    "description": "Water Pump Plier ships directly from Belims staging warehouse.",
+    "tags": [
+      "hand-tools",
+      "pliers",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HPP28251",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "plier-combination-160mm-anti-rust",
+    "name": "PLIER COMBINATION 160MM ANTI RUST",
+    "category": "Hand Tools",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/50b6f555096347388640be98e228ed8d.png",
+    "rating": 4.6,
+    "reviews": 60,
+    "stock": 2,
+    "maxStock": 4,
+    "brand": "Hand Tools",
+    "sku": "HCP12160",
+    "description": "PLIER COMBINATION 160MM ANTI RUST ships directly from Belims staging warehouse.",
+    "tags": [
+      "hand-tools",
+      "pliers",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HCP12160",
+      "Includes 15% VAT for storefront parity",
+      "2 in stock"
+    ]
+  },
+  {
+    "id": "brad-nail-3",
+    "name": "Brad Nail",
+    "category": "Fasteners and Adhesives",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/646e7178e023173be1e8273ac5a72072.png",
+    "rating": 4.8,
+    "reviews": 65,
+    "stock": 1,
+    "maxStock": 3,
+    "brand": "Fasteners and Adhesives",
+    "sku": "ANA18301",
+    "description": "Brad Nail ships directly from Belims staging warehouse.",
+    "tags": [
+      "fasteners-and-adhesives",
+      "nails",
+      "nails-nails"
+    ],
+    "features": [
+      "Live SKU ANA18301",
+      "Includes 15% VAT for storefront parity",
+      "1 in stock"
+    ]
+  },
+  {
+    "id": "air-ratchet-wrench",
+    "name": "Air Ratchet Wrench",
+    "category": "Uncategorized",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/1c6c57587456fc43ee3f80f8e6ee96cc.png",
+    "rating": 4,
+    "reviews": 70,
+    "stock": 2,
+    "maxStock": 4,
+    "brand": "Uncategorized",
+    "sku": "ARW121",
+    "description": "Air Ratchet Wrench ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU ARW121",
+      "Includes 15% VAT for storefront parity",
+      "2 in stock"
+    ]
+  },
+  {
+    "id": "mitre-saw",
+    "name": "Mitre Saw",
+    "category": "Uncategorized",
+    "price": 2298.85,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/cef84ff10296d8f1a3ee95e8858efb9a.png",
+    "rating": 4.2,
+    "reviews": 75,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Uncategorized",
+    "sku": "BMS18002",
+    "description": "Mitre Saw ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU BMS18002",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "rotary-sander",
+    "name": "Rotary Sander",
+    "category": "Power Tools",
+    "price": 1437.5,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/6c276985a4f62874a722141d53dfb07e.png",
+    "rating": 4.4,
+    "reviews": 80,
+    "stock": 2,
+    "maxStock": 4,
+    "brand": "Power Tools",
+    "sku": "RS4508",
+    "description": "Rotary Sander ships directly from Belims staging warehouse.",
+    "tags": [
+      "power-tools",
+      "sander",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU RS4508",
+      "Includes 15% VAT for storefront parity",
+      "2 in stock"
+    ]
+  },
+  {
+    "id": "impact-drill-2",
+    "name": "Impact Drill",
+    "category": "Drills",
+    "price": 803.85,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/cee4443ff0b56fd8b17ec531830e1f4d.png",
+    "rating": 4.6,
+    "reviews": 85,
+    "stock": 12,
+    "maxStock": 24,
+    "brand": "Drills",
+    "sku": "ID8108",
+    "description": "Impact Drill ships directly from Belims staging warehouse.",
+    "tags": [
+      "drills",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU ID8108",
+      "Includes 15% VAT for storefront parity",
+      "12 in stock"
+    ]
+  },
+  {
+    "id": "air-tools-set-2",
+    "name": "Air Tools Set",
+    "category": "Uncategorized",
+    "price": 609.5,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/8afc1928d6f2ce12955280be69d8a0b0.png",
+    "rating": 4.8,
+    "reviews": 90,
+    "stock": 3,
+    "maxStock": 6,
+    "brand": "Uncategorized",
+    "sku": "AKT0053",
+    "description": "Air Tools Set ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU AKT0053",
+      "Includes 15% VAT for storefront parity",
+      "3 in stock"
+    ]
+  },
+  {
+    "id": "tape-measure-2",
+    "name": "Tape Measure",
+    "category": "Measuring And Marking Tools",
+    "price": 109.25,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/6e448b559bdfa06d1f5a54f0493fa939.png",
+    "rating": 4,
+    "reviews": 95,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Measuring And Marking Tools",
+    "sku": "HSMT08825-1",
+    "description": "Tape Measure ships directly from Belims staging warehouse.",
+    "tags": [
+      "measuring-and-marking-tools",
+      "measuring-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HSMT08825-1",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "tape-measure",
+    "name": "Tape Measure",
+    "category": "Measuring And Marking Tools",
+    "price": 78.2,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/2affb979623196dbf1295dca34d99d8d.png",
+    "rating": 4.2,
+    "reviews": 100,
+    "stock": 14,
+    "maxStock": 28,
+    "brand": "Measuring And Marking Tools",
+    "sku": "HSMT08519-1",
+    "description": "Tape Measure ships directly from Belims staging warehouse.",
+    "tags": [
+      "measuring-and-marking-tools",
+      "measuring-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HSMT08519-1",
+      "Includes 15% VAT for storefront parity",
+      "14 in stock"
+    ]
+  },
+  {
+    "id": "angle-grinder-750w-115mm-nt",
+    "name": "Angle Grinder 750W 115mm Nt",
+    "category": "Grinders",
+    "price": 678.5,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/9890143ac03d57f9e36dbd1490013869.png",
+    "rating": 4.4,
+    "reviews": 105,
+    "stock": 18,
+    "maxStock": 36,
+    "brand": "Grinders",
+    "sku": "AG75028",
+    "description": "Angle Grinder 750W 115mm Nt ships directly from Belims staging warehouse.",
+    "tags": [
+      "grinders",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU AG75028",
+      "Includes 15% VAT for storefront parity",
+      "18 in stock"
+    ]
+  },
+  {
+    "id": "20v-ps-pressure-washer",
+    "name": "20V Ps+ Pressure Washer",
+    "category": "Machinery",
+    "price": 1838.84,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/98ee21743f3a8ed786b2f7f24618d607.png",
+    "rating": 4.6,
+    "reviews": 110,
+    "stock": 31,
+    "maxStock": 62,
+    "brand": "Machinery",
+    "sku": "CPWLI2008",
+    "description": "20V Ps+ Pressure Washer ships directly from Belims staging warehouse.",
+    "tags": [
+      "machinery",
+      "pressure-washer",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU CPWLI2008",
+      "Includes 15% VAT for storefront parity",
+      "31 in stock"
+    ]
+  },
+  {
+    "id": "20v-ps-palm-sander-mouse",
+    "name": "20V Ps+ Palm Sander (Mouse)",
+    "category": "Power Tools",
+    "price": 1148.86,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/e405b319476902f55785968a1a8d6358.png",
+    "rating": 4.8,
+    "reviews": 115,
+    "stock": 2,
+    "maxStock": 4,
+    "brand": "Power Tools",
+    "sku": "CDSLI2051",
+    "description": "20V Ps+ Palm Sander (Mouse) ships directly from Belims staging warehouse.",
+    "tags": [
+      "power-tools",
+      "sander",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU CDSLI2051",
+      "Includes 15% VAT for storefront parity",
+      "2 in stock"
+    ]
+  },
+  {
+    "id": "20v-ps-rotary-drill-brushless",
+    "name": "20V Ps+ Rotary Drill Brushless",
+    "category": "Drills",
+    "price": 1148.86,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/c68e02a8ba81d8647464558bd9583a87.png",
+    "rating": 4,
+    "reviews": 120,
+    "stock": 65,
+    "maxStock": 130,
+    "brand": "Drills",
+    "sku": "CRHLI20228",
+    "description": "20V Ps+ Rotary Drill Brushless ships directly from Belims staging warehouse.",
+    "tags": [
+      "drills",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU CRHLI20228",
+      "Includes 15% VAT for storefront parity",
+      "65 in stock"
+    ]
+  },
+  {
+    "id": "20v-ps-grinder-brushless-115mm-2",
+    "name": "20V Ps+ Grinder Brushless 115mm",
+    "category": "Grinders",
+    "price": 2058.5,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/3de0248a448a93e63b8b0c6cd07ea605.png",
+    "rating": 4.2,
+    "reviews": 125,
+    "stock": 158,
+    "maxStock": 316,
+    "brand": "Grinders",
+    "sku": "CAGLI201158",
+    "description": "20V Ps+ Grinder Brushless 115mm ships directly from Belims staging warehouse.",
+    "tags": [
+      "grinders",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU CAGLI201158",
+      "Includes 15% VAT for storefront parity",
+      "158 in stock"
+    ]
+  },
+  {
+    "id": "20v-ps-cordless-battery-5-0ah",
+    "name": "20V Ps+ Cordless Battery 5.0Ah",
+    "category": "Cordless Tools Batt and Acc",
+    "price": 782,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/ea21f245420fe04e3fe612224f158737.png",
+    "rating": 4.4,
+    "reviews": 130,
+    "stock": 68,
+    "maxStock": 136,
+    "brand": "Cordless Tools Batt and Acc",
+    "sku": "FBLI2003",
+    "description": "20V Ps+ Cordless Battery 5.0Ah ships directly from Belims staging warehouse.",
+    "tags": [
+      "cordless-tools-batt-and-acc",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU FBLI2003",
+      "Includes 15% VAT for storefront parity",
+      "68 in stock"
+    ]
+  },
+  {
+    "id": "20v-ps-cordless-battery-2-0ah",
+    "name": "20V-Ps+ Cordless Battery 2.0Ah",
+    "category": "Cordless Tools Batt and Acc",
+    "price": 343.85,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/e52cd4cce258578b4940c1a4472c2c98.png",
+    "rating": 4.6,
+    "reviews": 135,
+    "stock": 9,
+    "maxStock": 18,
+    "brand": "Cordless Tools Batt and Acc",
+    "sku": "FBLI20011",
+    "description": "20V-Ps+ Cordless Battery 2.0Ah ships directly from Belims staging warehouse.",
+    "tags": [
+      "cordless-tools-batt-and-acc",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU FBLI20011",
+      "Includes 15% VAT for storefront parity",
+      "9 in stock"
+    ]
+  },
+  {
+    "id": "20v-ps-cordless-wrench-300nm-imp",
+    "name": "20V Ps+ Cordless Wrench 300Nm Imp",
+    "category": "Drills",
+    "price": 2298.85,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/5e73091a07e8abd59d8c435310de3aa1.png",
+    "rating": 4.8,
+    "reviews": 140,
+    "stock": 141,
+    "maxStock": 282,
+    "brand": "Drills",
+    "sku": "CIWLI2038",
+    "description": "20V Ps+ Cordless Wrench 300Nm Imp ships directly from Belims staging warehouse.",
+    "tags": [
+      "drills",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU CIWLI2038",
+      "Includes 15% VAT for storefront parity",
+      "141 in stock"
+    ]
+  },
+  {
+    "id": "20v-ps-cordless-grass-trimmer-8200-min",
+    "name": "20V Ps+ Cordless Grass Trimmer 8200/Min",
+    "category": "Garden Cordless Power Tools",
+    "price": 1265,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/01/45a2457a942fcdc055cc7f82bb90c10e.png",
+    "rating": 4,
+    "reviews": 145,
+    "stock": 44,
+    "maxStock": 88,
+    "brand": "Garden Cordless Power Tools",
+    "sku": "CGTLI20018",
+    "description": "20V Ps+ Cordless Grass Trimmer 8200/Min ships directly from Belims staging warehouse.",
+    "tags": [
+      "garden-cordless-power-tools",
+      "gardening-tools",
+      "outdoor-garden-and-patio"
+    ],
+    "features": [
+      "Live SKU CGTLI20018",
+      "Includes 15% VAT for storefront parity",
+      "44 in stock"
+    ]
+  },
+  {
+    "id": "20v-ps-cordless-drill-45nm-kit-1b",
+    "name": "20V Ps+ Cordless Drill 45Nm Kit 1B",
+    "category": "Drills",
+    "price": 1493.86,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/01/c6c2bf919ba13f4c8db274d461d683f5.png",
+    "rating": 4.2,
+    "reviews": 150,
+    "stock": 321,
+    "maxStock": 642,
+    "brand": "Drills",
+    "sku": "CDLI20024",
+    "description": "20V Ps+ Cordless Drill 45Nm Kit 1B ships directly from Belims staging warehouse.",
+    "tags": [
+      "drills",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU CDLI20024",
+      "Includes 15% VAT for storefront parity",
+      "321 in stock"
+    ]
+  },
+  {
+    "id": "aluminum-ruler-includes-level",
+    "name": "Aluminum Ruler Includes Level",
+    "category": "Uncategorized",
+    "price": 189.75,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/97e52f3daea31d77cf8c5a2a3d108d95.png",
+    "rating": 4.4,
+    "reviews": 155,
+    "stock": 4,
+    "maxStock": 8,
+    "brand": "Uncategorized",
+    "sku": "HAR01060",
+    "description": "Aluminum Ruler Includes Level ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU HAR01060",
+      "Includes 15% VAT for storefront parity",
+      "4 in stock"
+    ]
+  },
+  {
+    "id": "glue-gun-100w-and-2-piece-glue-sticks",
+    "name": "Glue Gun 100W and 2 Piece Glue Sticks",
+    "category": "Uncategorized",
+    "price": 436.99,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/4854c13673b24a71fcec2df73fb841f1.png",
+    "rating": 4.6,
+    "reviews": 160,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Uncategorized",
+    "sku": "GG148",
+    "description": "Glue Gun 100W and 2 Piece Glue Sticks ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU GG148",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "sand-sheet-ran-orbital-150mm-5-piece",
+    "name": "Sand Sheet Ran/Orbital 150mm &#8211; 5 Piece",
+    "category": "Uncategorized",
+    "price": 40.24,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/9f8ae4136223a2a7b0bd233b39697e43.png",
+    "rating": 4.8,
+    "reviews": 165,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Uncategorized",
+    "sku": "AKRS150051",
+    "description": "Sand Sheet Ran/Orbital 150mm &#8211; 5 Piece ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU AKRS150051",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  }
+]
