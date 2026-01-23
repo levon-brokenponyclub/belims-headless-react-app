@@ -54,6 +54,7 @@ class Belims_Headless_API {
         require_once BELIMS_API_PLUGIN_DIR . 'includes/class-products-endpoint.php';
         require_once BELIMS_API_PLUGIN_DIR . 'includes/class-categories-endpoint.php';
         require_once BELIMS_API_PLUGIN_DIR . 'includes/class-orders-endpoint.php';
+        require_once BELIMS_API_PLUGIN_DIR . 'includes/class-ftg-sync-endpoint.php';
     }
 
     /**
@@ -76,6 +77,9 @@ class Belims_Headless_API {
 
         $orders = new Belims_Orders_Endpoint();
         $orders->register_routes();
+        
+        $ftg_sync = new Belims_FTG_Sync_Endpoint();
+        $ftg_sync->register_routes();
     }
 
     /**

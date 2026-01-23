@@ -18,7 +18,7 @@ import { Product, Category } from "../types";
 
 // Environment variable - just the site URL
 const SITE_URL =
-  import.meta.env.VITE_WOO_SITE_URL ||
+  import.meta.env.REACT_APP_WOO_SITE_URL ||
   "https://wordpress-1482444-6163809.cloudwaysapps.com";
 
 // Base URL for custom API

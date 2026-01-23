@@ -418,6 +418,68 @@ acf_add_local_field_group(array(
             ),
         ),
         array(
+            'key' => 'field_belims_ftg_section',
+            'label' => 'Find The Gap API',
+            'name' => 'ftg_section',
+            'type' => 'tab',
+        ),
+        array(
+            'key' => 'field_belims_ftg_enabled',
+            'label' => 'Enable Find The Gap Integration',
+            'name' => 'ftg_enabled',
+            'type' => 'true_false',
+            'instructions' => 'Enable product sync with Find The Gap',
+            'ui' => 1,
+        ),
+        array(
+            'key' => 'field_belims_ftg_email',
+            'label' => 'FTG Account Email',
+            'name' => 'ftg_email',
+            'type' => 'email',
+            'instructions' => 'Your Find The Gap account email',
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_ftg_enabled',
+                        'operator' => '==',
+                        'value' => '1',
+                    ),
+                ),
+            ),
+        ),
+        array(
+            'key' => 'field_belims_ftg_password',
+            'label' => 'FTG Account Password',
+            'name' => 'ftg_password',
+            'type' => 'password',
+            'instructions' => 'Your Find The Gap account password (stored securely)',
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_ftg_enabled',
+                        'operator' => '==',
+                        'value' => '1',
+                    ),
+                ),
+            ),
+        ),
+        array(
+            'key' => 'field_belims_ftg_collection_token',
+            'label' => 'FTG Collection Token',
+            'name' => 'ftg_collection_token',
+            'type' => 'text',
+            'instructions' => 'Your Find The Gap collection token (get from /instances endpoint after login)',
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_ftg_enabled',
+                        'operator' => '==',
+                        'value' => '1',
+                    ),
+                ),
+            ),
+        ),
+        array(
             'key' => 'field_belims_payment_section',
             'label' => 'Payment Gateway',
             'name' => 'payment_section',
