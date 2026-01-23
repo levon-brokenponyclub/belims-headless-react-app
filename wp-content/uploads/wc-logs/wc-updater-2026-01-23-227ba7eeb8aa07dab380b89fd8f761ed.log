@@ -1,0 +1,5 @@
+2026-01-23T20:10:54+00:00 INFO Automatic database update triggered.
+2026-01-23T20:10:54+00:00 INFO Scheduling database updates (from 10.3.7)...
+2026-01-23T20:10:54+00:00 INFO   [10.4.0] Scheduled 'wc_update_1040_add_idx_date_paid_status_parent'.
+2026-01-23T20:10:54+00:00 INFO   [10.4.0] Scheduled 'wc_update_1040_cleanup_legacy_ptk_patterns_fetching'.
+2026-01-23T20:10:54+00:00 INFO Database updates scheduled.
