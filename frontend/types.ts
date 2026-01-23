@@ -1,9 +1,11 @@
-
 export interface Product {
   id: string;
   name: string;
   category: string;
-  price: number;
+  price: number; // Final price (VAT-inclusive)
+  regular_price?: number;
+  sale_price?: number;
+  price_excl_vat?: number;
   image: string;
   images?: string[]; // For gallery
   rating: number;
@@ -21,14 +23,19 @@ export interface Product {
   specifications?: { label: string; value: string }[];
   tags?: string[]; // For AI matching
   bundleCandidates?: BundleCandidate[];
+  in_stock?: boolean;
 }
 
 export interface BundleCandidate {
   id: string;
   name: string;
   price: number;
+  regular_price?: number;
   image: string;
   category?: string;
+  rating?: number;
+  reviews?: number;
+  stock?: number;
 }
 
 export interface Store {
@@ -56,9 +63,9 @@ export interface CategoryNode {
 }
 
 export enum StockStatus {
-  IN_STOCK = 'In Stock',
-  LOW_STOCK = 'Low Stock',
-  OUT_OF_STOCK = 'Out of Stock'
+  IN_STOCK = "In Stock",
+  LOW_STOCK = "Low Stock",
+  OUT_OF_STOCK = "Out of Stock",
 }
 
 export interface PaintRecommendation {

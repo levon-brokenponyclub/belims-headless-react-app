@@ -230,7 +230,8 @@ class Belims_Products_Endpoint {
     }
 
     /**
-     * Get bundle candidates (related products)
+     * Get bundle candidates (related products) - sorted by relevance
+     * Candidates are sorted by rating, then by price (ascending)
      */
     private function get_bundle_candidates($product) {
         $candidates = array();
@@ -242,9 +243,10 @@ class Belims_Products_Endpoint {
             return $candidates;
         }
 
+        // Query with better sorting: rating (descending), then price (ascending)
         $args = array(
             'post_type' => 'product',
-            'posts_per_page' => 4,
+            'posts_per_page' => 6,
             'post__not_in' => array($product->get_id()),
             'tax_query' => array(
                 array(
@@ -253,7 +255,11 @@ class Belims_Products_Endpoint {
                     'terms' => $categories[0],
                 )
             ),
-            'orderby' => 'rand',
+            'orderby' => array(
+                'meta_value_num' => 'DESC',  // Sort by rating (highest first)
+                'date' => 'DESC',             // Then by date (newest first)
+            ),
+            'meta_key' => '_wc_average_rating',
         );
 
         $query = new WP_Query($args);
@@ -263,22 +269,28 @@ class Belims_Products_Endpoint {
                 $query->the_post();
                 $related_product = wc_get_product(get_the_ID());
                 
-                if ($related_product) {
+                if ($related_product && $related_product->is_in_stock()) {
                     $price = floatval($related_product->get_price());
                     $price_vat = round($price * 1.15, 2);
+                    $rating = floatval($related_product->get_average_rating());
                     
                     $candidates[] = array(
                         'id' => (string) $related_product->get_id(),
                         'name' => $related_product->get_name(),
                         'price' => $price_vat,
-                        'image' => wp_get_attachment_url($related_product->get_image_id()),
+                        'regular_price' => $price_vat,
+                        'image' => wp_get_attachment_url($related_product->get_image_id()) ?: '',
                         'category' => $categories[0],
+                        'rating' => $rating,
+                        'reviews' => intval($related_product->get_review_count()),
+                        'stock' => intval($related_product->get_stock_quantity()),
                     );
                 }
             }
             wp_reset_postdata();
         }
 
-        return $candidates;
+        // Return up to 4 best matches (sorted by rating & stock status)
+        return array_slice($candidates, 0, 4);
     }
 }

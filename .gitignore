@@ -1,0 +1,71 @@
+# WordPress Core
+/wp-admin/
+/wp-includes/
+/index.php
+/wp-activate.php
+/wp-blog-header.php
+/wp-comments-post.php
+/wp-config-sample.php
+/wp-cron.php
+/wp-links-opml.php
+/wp-load.php
+/wp-login.php
+/wp-mail.php
+/wp-settings.php
+/wp-signup.php
+/wp-trackback.php
+/xmlrpc.php
+/license.txt
+/readme.html
+/wp-config.php
+
+# WooCommerce Plugin (managed separately)
+/wp-content/plugins/woocommerce/
+
+# Other managed plugins
+/wp-content/plugins/all-in-one-wp-migration/
+
+# Uploads
+/wp-content/uploads/
+
+# Logs
+/wp-content/uploads/wc-logs/
+
+# Node modules
+/node_modules/
+/frontend/node_modules/
+
+# Build outputs
+/frontend/dist/
+/frontend/.vite/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# History
+.history/
+
+# Backups
+*.backup.sql
+wordpress_backup.sql
+pre_reset_backup.sql
+bad_import_backup.sql
+
+# Video files
+*.mp4
+*.mp4.part
+
+# Keep custom plugins and theme changes
+!wp-content/plugins/belims-headless-api/
+!wp-content/plugins/belims-custom-site-settings/
+!wp-content/plugins/uafrica-shipping/
