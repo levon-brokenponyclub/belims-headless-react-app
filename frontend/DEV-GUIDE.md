@@ -3,6 +3,7 @@
 ## **🚨 CRITICAL: Server Setup & Directory Structure**
 
 ### **⚠️ MUST RUN FROM FRONTEND DIRECTORY**
+
 ```bash
 # ❌ WRONG - Don't run from public/
 cd /Users/levongravett/Desktop/BPC/Sites/belims-headless/app/public
@@ -14,17 +15,19 @@ npx vite --host 0.0.0.0 --port 3000  # This works! ✅
 ```
 
 ### **Directory Structure**
+
 ```
 /Users/levongravett/Desktop/BPC/Sites/belims-headless/app/public/
 ├── frontend/           ← MUST be here to run server!
 │   ├── package.json    ← Contains vite config
-│   ├── index.html      ← Entry point  
+│   ├── index.html      ← Entry point
 │   ├── constants.ts    ← Fixed TypeScript file
 │   └── App.tsx         ← Main React app
 └── wp-admin/          ← WordPress (not needed for dev)
 ```
 
 ### **Quick Debug Commands**
+
 ```bash
 # Check you're in the right place
 pwd && ls package.json index.html
@@ -63,6 +66,7 @@ open http://localhost:5173
 ## 🔧 **Two Versions Explained**
 
 ### **🏠 Local Development Version**
+
 - **Purpose**: For learning, development, and testing
 - **Environment**: Your computer (`localhost:5173`)
 - **Data**: Uses mock data if API keys missing
@@ -70,6 +74,7 @@ open http://localhost:5173
 - **AI Functions**: Falls back to sample paint colors if no Gemini key
 
 ### **🌐 Production Version (Netlify)**
+
 - **Purpose**: Live website for users
 - **Environment**: https://belims-headless-react-app.netlify.app/
 - **Data**: Requires real API keys for full functionality
@@ -81,6 +86,7 @@ open http://localhost:5173
 ## 🚀 **Running Local Development Server**
 
 ### **Method 1: Basic Setup (Recommended for Learning)**
+
 ```bash
 # Navigate to project
 cd belims-headless-react-app/frontend
@@ -99,6 +105,7 @@ npm run dev
 ```
 
 ### **Method 2: Full Setup (With Real API Integration)**
+
 ```bash
 # 1. Copy environment template
 cp .env.example .env
@@ -123,6 +130,7 @@ npm run dev
 ## 📝 **Understanding the Development Server**
 
 ### **What Happens When You Run `npm run dev`**
+
 1. **Vite starts** the development server
 2. **TypeScript compiles** your code in real-time
 3. **Tailwind CSS processes** your styles
@@ -130,6 +138,7 @@ npm run dev
 5. **Browser opens** automatically to your app
 
 ### **Development Server Features**
+
 - **Port**: Usually `5173` (auto-increments if busy)
 - **Hot Reload**: Changes appear instantly without page refresh
 - **Error Overlay**: Helpful error messages in browser
@@ -141,6 +150,7 @@ npm run dev
 ## 🎨 **Key Features to Test**
 
 ### **1. Bundle & Save System**
+
 ```bash
 # Test Steps:
 1. Click any product card from homepage
@@ -157,6 +167,7 @@ npm run dev
 ```
 
 ### **2. Buy Now Workflow**
+
 ```bash
 # Test Steps:
 1. Click orange "Buy Now" button on any product
@@ -171,6 +182,7 @@ npm run dev
 ```
 
 ### **3. AI Paint Assistant**
+
 ```bash
 # Test Steps:
 1. Click "Paint Assistant" in header
@@ -191,6 +203,7 @@ npm run dev
 ## 🔍 **Development Tools & Commands**
 
 ### **Essential Commands**
+
 ```bash
 # Start development
 npm run dev
@@ -209,6 +222,7 @@ npm install package-name
 ```
 
 ### **Useful Development Shortcuts**
+
 ```bash
 # Quick server restart
 Ctrl+C  # Stop server
@@ -229,6 +243,7 @@ pkill -f node
 ## 🎯 **Learning Path**
 
 ### **Week 1: Getting Familiar**
+
 - [ ] Run `npm run dev` and explore the homepage
 - [ ] Click through product cards to product pages
 - [ ] Test the Bundle & Save accordion
@@ -236,6 +251,7 @@ pkill -f node
 - [ ] Open browser dev tools and explore
 
 ### **Week 2: Understanding the Code**
+
 - [ ] Open VS Code and explore the file structure
 - [ ] Look at `App.tsx` to see main application logic
 - [ ] Examine `SingleProduct.tsx` for product page layout
@@ -243,6 +259,7 @@ pkill -f node
 - [ ] Review Tailwind CSS classes
 
 ### **Week 3: Making Changes**
+
 - [ ] Change colors in `tailwind.config.js`
 - [ ] Update product data in `constants.ts`
 - [ ] Modify text content in components
@@ -254,6 +271,7 @@ pkill -f node
 ## 🐛 **Common Issues & Solutions**
 
 ### **Server Won't Start**
+
 ```bash
 # Problem: Port already in use
 # Solution: Kill existing process or use different port
@@ -263,6 +281,7 @@ npm run dev -- --port 3000
 ```
 
 ### **"Cannot find module" Errors**
+
 ```bash
 # Problem: Missing dependencies
 # Solution: Reinstall node_modules
@@ -271,6 +290,7 @@ npm install
 ```
 
 ### **TypeScript Errors**
+
 ```bash
 # Problem: Type checking issues
 # Solution: Check for missing imports or prop types
@@ -279,6 +299,7 @@ npm install
 ```
 
 ### **Styles Not Loading**
+
 ```bash
 # Problem: Tailwind CSS not working
 # Solution: Restart dev server
@@ -324,3 +345,98 @@ frontend/
 5. **Deploy changes** to your own Netlify site
 
 **Remember: The app works perfectly with mock data, so you can learn everything without needing API keys!**
+
+## 🧠 Git: Correct Setup & Best Commands (Do This, Nothing Else)
+
+### One-Time Git Setup
+
+````bash
+git config --global user.name "Levon Gravett"
+git config --global user.email "you@domain.com"
+git config --global init.defaultBranch main
+git config --global http.postBuffer 524288000
+Correct Remote (HTTPS – Stable for Large Pushes)
+git remote -v
+git remote set-url origin https://github.com/levon-brokenponyclub/belims-headless-react-app.git
+Branch Workflow
+git checkout -b temp-push || git checkout temp-push
+Commit (One Change at a Time)
+git status
+git add .gitignore frontend/.gitignore
+git commit -m "Update .gitignore to ignore backups, builds, and node_modules"
+Push (Safe for Large Repos)
+git push -u origin temp-push --verbose
+If Push Freezes
+pkill -f git
+git push origin temp-push --verbose
+Monitor Push Size (macOS / zsh)
+while true; do du -sh .git/objects/pack/; sleep 2; done
+Emergency Reset (Use Carefully)
+git merge --abort || true
+git rebase --abort || true
+git fetch origin
+git reset --hard origin/temp-push
+GitHub Auth Reminder
+GitHub HTTPS requires a Personal Access Token (not your password)
+
+Create one at: https://github.com/settings/tokens
+
+Scope required: repo
+
+Sanity Check
+git status
+git branch
+git remote -v
+
+If you want, I can now **compress this to a brutal 10-line “just push the damn thing” version** or **convert it into a checklist for README.md**.## 🧠 Git: Correct Setup & Best Commands (Do This, Nothing Else)
+
+### One-Time Git Setup
+```bash
+git config --global user.name "Levon Gravett"
+git config --global user.email "you@domain.com"
+git config --global init.defaultBranch main
+git config --global http.postBuffer 524288000
+Correct Remote (HTTPS – Stable for Large Pushes)
+git remote -v
+git remote set-url origin https://github.com/levon-brokenponyclub/belims-headless-react-app.git
+Branch Workflow
+git checkout -b temp-push || git checkout temp-push
+Commit (One Change at a Time)
+git status
+git add .gitignore frontend/.gitignore
+git commit -m "Update .gitignore to ignore backups, builds, and node_modules"
+Push (Safe for Large Repos)
+git push -u origin temp-push --verbose
+If Push Freezes
+pkill -f git
+git push origin temp-push --verbose
+Monitor Push Size (macOS / zsh)
+while true; do du -sh .git/objects/pack/; sleep 2; done
+Emergency Reset (Use Carefully)
+git merge --abort || true
+git rebase --abort || true
+git fetch origin
+git reset --hard origin/temp-push
+GitHub Auth Reminder
+GitHub HTTPS requires a Personal Access Token (not your password)
+
+Create one at: https://github.com/settings/tokens
+
+Scope required: repo
+
+Sanity Check
+git status
+git branch
+git remote -v
+
+If you want, I can now **compress this to a brutal 10-line “just push the damn thing” version** or **convert it into a checklist for README.md**.
+
+### Fast Push Rescue (Stuck Compression)
+1) Stop any hung pushes: `pkill -f git || true`
+2) Keep ignored stuff out: `git ls-files -i --exclude-standard -z | xargs -0 git rm --cached -r || true`
+3) Bigger buffer for large packs: `git config --global http.postBuffer 524288000`
+4) Use SSH for stability: `git remote set-url origin git@github.com:levon-brokenponyclub/belims-headless-react-app.git`
+5) Push with verbose logging: `git push --verbose origin main`
+6) If it still hangs, repack then retry: `git repack -a -d && git gc --prune=now && git push --verbose origin main`
+7) Last resort: push a temp branch then merge on GitHub: `git checkout -b temp-push && git push --verbose origin temp-push`
+````

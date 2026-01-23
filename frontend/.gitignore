@@ -1,4 +1,75 @@
+# --------------------
+# WordPress Core
+# --------------------
+/wp-admin/
+/wp-includes/
+/index.php
+/wp-activate.php
+/wp-blog-header.php
+/wp-comments-post.php
+/wp-config-sample.php
+/wp-cron.php
+/wp-links-opml.php
+/wp-load.php
+/wp-login.php
+/wp-mail.php
+/wp-settings.php
+/wp-signup.php
+/wp-trackback.php
+/xmlrpc.php
+/license.txt
+/readme.html
+/wp-config.php
+
+# --------------------
+# WooCommerce & Managed Plugins
+# --------------------
+/wp-content/plugins/woocommerce/
+/wp-content/plugins/all-in-one-wp-migration/
+
+# Custom plugins to keep
+!wp-content/plugins/belims-headless-api/
+!wp-content/plugins/belims-custom-site-settings/
+!wp-content/plugins/uafrica-shipping/
+
+# --------------------
+# Uploads
+# --------------------
+/wp-content/uploads/
+# Logs inside uploads
+/wp-content/uploads/wc-logs/
+
+# --------------------
+# Backups
+# --------------------
+wp-content/ai1wm-backups/*.wpress
+*.backup.sql
+wordpress_backup.sql
+pre_reset_backup.sql
+bad_import_backup.sql
+
+# --------------------
+# Node / Frontend
+# --------------------
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+dist/
+dist-ssr/
+*.local
+
+# --------------------
+# Environment variables
+# --------------------
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --------------------
 # Logs
+# --------------------
 logs
 *.log
 npm-debug.log*
@@ -7,15 +78,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# --------------------
+# IDE / Editor
+# --------------------
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
 *.suo
 *.ntvs*
@@ -23,7 +94,13 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
-.env
-.env.*
-!.env.example
+# --------------------
+# History
+# --------------------
+.history/
+
+# --------------------
+# Video files
+# --------------------
+*.mp4
+*.mp4.part
