@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Menu, Search, ShoppingCart, MapPin, User, ChevronDown, X, Heart, LayoutGrid, Sparkles, ArrowRight, Scale } from 'lucide-react';
 import { Store, CategoryNode, CartItem, Product } from '../types';
-import { QUICK_LINKS, CURRENCY_SYMBOL, FEATURED_PRODUCTS, DEALS_PRODUCTS, CATEGORY_TREE } from '../constants';
+import { CURRENCY_SYMBOL, FEATURED_PRODUCTS, DEALS_PRODUCTS, CATEGORY_TREE } from '../constants';
 
 interface SearchCategoryResult {
   id: string;
@@ -116,7 +116,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 font-sans shadow-md">
+    <header className="sticky top-0 z-[300] font-sans shadow-md">
 
       {/* Primary Blue Bar (Walmart Style) */}
       <div className="bg-belims-blue text-white py-3">
@@ -290,10 +290,13 @@ export const Header: React.FC<HeaderProps> = ({
             <ChevronDown size={14} />
           </div>
 
+          {/* Spacer pushes CTAs to the right */}
+          <div className="flex-1" />
+
           {/* PAINT ASSISTANT BUTTON */}
           <button
             onClick={onOpenPaintAssistant}
-            className="flex items-center gap-2 bg-belims-accent/10 border border-belims-accent/20 text-belims-accent hover:bg-belims-accent hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading ml-2"
+            className="flex items-center gap-2 bg-belims-accent/10 border border-belims-accent/20 text-belims-accent hover:bg-belims-accent hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading"
           >
             <Sparkles size={16} />
             Paint Assistant
@@ -302,27 +305,18 @@ export const Header: React.FC<HeaderProps> = ({
           {/* ONBOARDING WIZARD BUTTON */}
           <button
             onClick={onOpenOnboarding}
-            className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-600 hover:bg-blue-500 hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading ml-2"
+            className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-600 hover:bg-blue-500 hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading"
           >
             <ArrowRight size={16} />
             Get Started
           </button>
-
-          <div className="h-6 w-px bg-gray-300 mx-2"></div>
-
-          {/* Quick Links */}
-          {QUICK_LINKS.map((link, idx) => (
-            <a key={idx} href="#" className="text-sm font-medium text-gray-700 hover:underline whitespace-nowrap px-2 hover:text-belims-blue">
-              {link}
-            </a>
-          ))}
 
         </div>
 
         {/* Full Width Mega Menu Dropdown */}
         {isMegaMenuOpen && (
           <div
-            className="absolute top-full left-0 w-full bg-white shadow-2xl border-t border-gray-200 z-[100] animate-fadeIn"
+            className="absolute top-full left-0 w-full bg-white shadow-2xl border-t border-gray-200 z-[200] animate-fadeIn"
             onMouseEnter={() => setIsMegaMenuOpen(true)}
             onMouseLeave={() => setIsMegaMenuOpen(false)}
           >

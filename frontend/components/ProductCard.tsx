@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Star, ShoppingCart, Scale, Zap } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle, Star, ShoppingCart, Scale, Zap } from 'lucide-react';
 import { Product } from '../types';
 import { StockBar } from './StockBar';
 import { CURRENCY_SYMBOL } from '../constants';
@@ -11,10 +11,29 @@ interface ProductCardProps {
   onBuyNow?: (product: Product) => void;
   onClick?: (product: Product) => void;
   onCompare?: (product: Product) => void;
+  onNotify?: (product: Product) => Promise<void> | void;
   className?: string;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, onBuyNow, onClick, onCompare, className = "" }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, onBuyNow, onClick, onCompare, onNotify, className = "" }) => {
+  const [notifyStatus, setNotifyStatus] = React.useState<'idle' | 'pending' | 'sent' | 'error'>('idle');
+
+  const handleNotify = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (notifyStatus === 'pending' || notifyStatus === 'sent') return;
+
+    try {
+      setNotifyStatus('pending');
+      if (onNotify) {
+        await onNotify(product);
+      }
+      setNotifyStatus('sent');
+    } catch (error) {
+      console.error('Failed to register back-in-stock notification', error);
+      setNotifyStatus('error');
+    }
+  };
+
   return (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group overflow-hidden relative ${className}`}>
 
@@ -53,7 +72,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
       <div className="p-4 flex-1 flex flex-col">
         <div className="text-xs text-gray-500 mb-1 font-medium">{product.category}</div>
         <h3
-          className="font-bold text-gray-900 text-sm md:text-base line-clamp-2 mb-2 flex-1 font-heading group-hover:text-belims-blue transition-colors cursor-pointer"
+          className="font-bold text-gray-900 text-sm md:text-base leading-5 line-clamp-2 mb-2 flex-1 font-heading group-hover:text-belims-blue transition-colors cursor-pointer"
           onClick={() => onClick && onClick(product)}
         >
           {product.name}
@@ -81,42 +100,57 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, addToCart, on
           </div>
         </div>
 
-        {/* Stock Bar */}
-        <StockBar current={product.stock} max={product.maxStock} />
+        {/* Stock Bar (hide when out of stock) */}
+        {product.stock > 0 && <StockBar current={product.stock} max={product.maxStock} />}
 
         {/* Actions: Add to Cart & Buy Now */}
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (product.stock > 0) addToCart(product);
-            }}
-            disabled={product.stock === 0}
-            className={`py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading ${product.stock === 0
-                ? 'bg-gray-100 border border-gray-300 text-gray-400 cursor-not-allowed'
-                : 'bg-[#322783] text-white hover:bg-[#e40613]'
-              }`}
-          >
-            <ShoppingCart size={14} />
-            {product.stock > 0 ? 'Add' : 'Out of Stock'}
-          </button>
-          {onBuyNow && (
+        {product.stock > 0 ? (
+          <div className={`mt-4 grid ${onBuyNow ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (product.stock > 0) onBuyNow(product);
+                addToCart(product);
               }}
-              disabled={product.stock === 0}
-              className={`py-2 rounded font-bold text-xs flex items-center justify-center gap-1 transition-all font-heading shadow-sm ${product.stock === 0
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-belims-accent text-white hover:brightness-110'
-                }`}
+              className="py-2.5 rounded font-bold text-sm leading-5 flex items-center justify-center gap-1 transition-all font-heading bg-[#322783] text-white hover:bg-[#e40613]"
             >
-              <Zap size={14} fill="currentColor" />
-              {product.stock > 0 ? 'Buy Now' : 'Out of Stock'}
+              <ShoppingCart size={14} />
+              Add
             </button>
-          )}
-        </div>
+            {onBuyNow && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBuyNow(product);
+                }}
+                className="py-2.5 rounded font-bold text-sm leading-5 flex items-center justify-center gap-1 transition-all font-heading shadow-sm bg-belims-accent text-white hover:brightness-110"
+              >
+                <Zap size={14} fill="currentColor" />
+                Buy Now
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 grid grid-cols-1 gap-2">
+            <div className="flex items-center gap-2 py-2.5 px-3 text-sm leading-5 font-semibold text-red-700 bg-red-50 border border-red-200 rounded">
+              <AlertTriangle size={14} />
+              Currently out of stock
+            </div>
+            <button
+              onClick={handleNotify}
+              disabled={notifyStatus === 'pending' || notifyStatus === 'sent'}
+              className={`py-2.5 rounded font-bold text-sm leading-5 flex items-center justify-center gap-1 transition-all font-heading shadow-sm ${notifyStatus === 'sent' ? 'bg-green-100 text-green-800 border border-green-200' : notifyStatus === 'error' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-belims-accent text-white hover:brightness-110'} ${notifyStatus === 'pending' ? 'opacity-70 cursor-wait' : ''}`}
+            >
+              {notifyStatus === 'sent' ? <CheckCircle size={14} /> : <Bell size={14} />}
+              {notifyStatus === 'sent'
+                ? 'Notification set'
+                : notifyStatus === 'pending'
+                  ? 'Setting reminder...'
+                  : notifyStatus === 'error'
+                    ? 'Try again'
+                    : 'Notify Me'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

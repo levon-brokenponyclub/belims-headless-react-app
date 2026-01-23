@@ -53,6 +53,13 @@ function belims_register_rest_endpoints() {
             )
         )
     ));
+    
+    // API settings endpoint (for frontend configuration)
+    register_rest_route('belims/v1', '/api-settings', array(
+        'methods' => 'GET',
+        'callback' => 'belims_get_api_settings_api',
+        'permission_callback' => '__return_true'
+    ));
 }
 
 /**

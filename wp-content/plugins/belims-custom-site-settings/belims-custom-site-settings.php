@@ -55,7 +55,7 @@ class BelimsCustomSiteSettings {
     }
     
     public function register_options_page() {
-        // Add main menu page
+        // Add main menu page with custom rendering
         add_menu_page(
             __('Site Settings', 'belims-settings'),
             __('Site Settings', 'belims-settings'),
@@ -65,17 +65,6 @@ class BelimsCustomSiteSettings {
             'dashicons-admin-settings',
             30
         );
-
-        // Register for ACF but don't show in menu
-        acf_add_options_page(array(
-            'page_title'    => __('Site Settings', 'belims-settings'),
-            'menu_title'    => __('Site Settings', 'belims-settings'),
-            'menu_slug'     => 'belims-site-settings-acf',
-            'capability'    => 'manage_options',
-            'parent_slug'   => null,
-            'redirect'      => false,
-            'show_in_menu'  => false
-        ));
     }
     
     public function acf_missing_notice() {
@@ -128,6 +117,10 @@ class BelimsCustomSiteSettings {
             'ai_features' => array(
                 'title' => __('AI Features', 'belims-settings'),
                 'group' => 'group_belims_ai_features'
+            ),
+            'apis' => array(
+                'title' => __('APIs', 'belims-settings'),
+                'group' => 'group_belims_apis'
             )
         );
 

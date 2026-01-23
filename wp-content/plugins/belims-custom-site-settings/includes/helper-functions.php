@@ -125,3 +125,85 @@ function belims_calculate_delivery_fee($cart_total, $express = false) {
     
     return $express ? belims_get_express_delivery_fee() : belims_get_delivery_fee();
 }
+
+/**
+ * API Configuration Functions
+ */
+
+/**
+ * Get WooCommerce API credentials
+ * These are server-side only and should never be exposed to frontend
+ */
+function belims_get_woocommerce_credentials() {
+    return array(
+        'consumer_key' => get_field('woo_consumer_key', 'option'),
+        'consumer_secret' => get_field('woo_consumer_secret', 'option'),
+    );
+}
+
+/**
+ * Check if WooCommerce API is properly configured
+ */
+function belims_is_woocommerce_configured() {
+    $creds = belims_get_woocommerce_credentials();
+    return !empty($creds['consumer_key']) && !empty($creds['consumer_secret']);
+}
+
+function belims_get_api_settings() {
+    return array(
+        'headless_frontend_url' => get_field('headless_frontend_url', 'option'),
+        'bobgo' => belims_get_bobgo_settings(),
+        'payment' => belims_get_payment_settings(),
+        'gemini' => belims_get_gemini_settings(),
+    );
+}
+
+function belims_get_bobgo_settings() {
+    return array(
+        'enabled' => get_field('bobgo_enabled', 'option'),
+        'api_url' => get_field('bobgo_api_url', 'option'),
+        'channel_id' => get_field('bobgo_channel_id', 'option'),
+        // API key is intentionally not returned to frontend
+    );
+}
+
+function belims_get_payment_settings() {
+    return array(
+        'gateway' => get_field('payment_gateway', 'option') ?: 'payfast',
+        // API keys are intentionally not returned to frontend
+    );
+}
+
+function belims_get_gemini_settings() {
+    return array(
+        'enabled' => get_field('gemini_enabled', 'option'),
+        // API key is intentionally not returned to frontend
+    );
+}
+
+/**
+ * Check if API is configured
+ */
+function belims_is_bobgo_configured() {
+    $settings = belims_get_bobgo_settings();
+    return $settings['enabled'] && !empty($settings['api_url']) && !empty($settings['channel_id']);
+}
+
+function belims_is_gemini_configured() {
+    return !empty(get_field('gemini_api_key', 'option'));
+}
+
+/**
+ * REST API Callback for public API configuration
+ * Returns only public settings, no API keys or secrets
+ */
+function belims_get_api_settings_api($request) {
+    $api_url = get_field('headless_frontend_url', 'option');
+    
+    return array(
+        'headless_url' => $api_url ?: home_url(),
+        'bobgo' => belims_get_bobgo_settings(),
+        'payment' => belims_get_payment_settings(),
+        'gemini' => belims_get_gemini_settings(),
+    );
+}

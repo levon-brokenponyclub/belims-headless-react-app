@@ -1,0 +1,686 @@
+[
+  {
+    "id": "tct-blade-2",
+    "name": "TCT Blade",
+    "category": "Jigsaw and Bandsaw Blades",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/796bcddbf9f058a83377fe187c16dc4b.png",
+    "rating": 4,
+    "reviews": 20,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Jigsaw and Bandsaw Blades",
+    "sku": "TSB118513",
+    "description": "TCT Blade ships directly from Belims staging warehouse.",
+    "tags": [
+      "jigsaw-and-bandsaw-blades",
+      "saws-accessories",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU TSB118513",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "tct-blade",
+    "name": "TCT Blade",
+    "category": "Jigsaw and Bandsaw Blades",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/5d7543cd93370c69293a3fd181ff6b7d.png",
+    "rating": 4.2,
+    "reviews": 25,
+    "stock": 1,
+    "maxStock": 3,
+    "brand": "Jigsaw and Bandsaw Blades",
+    "sku": "TSB116511",
+    "description": "TCT Blade ships directly from Belims staging warehouse.",
+    "tags": [
+      "jigsaw-and-bandsaw-blades",
+      "saws-accessories",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU TSB116511",
+      "Includes 15% VAT for storefront parity",
+      "1 in stock"
+    ]
+  },
+  {
+    "id": "brad-naill-1x2x1-2mm-1000pc",
+    "name": "BRAD NAILL 1X2X1.2MM 1000PC",
+    "category": "Fasteners and Adhesives",
+    "price": 23,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/e349e297b92378056be94f953763d78d.png",
+    "rating": 4.4,
+    "reviews": 30,
+    "stock": 5,
+    "maxStock": 10,
+    "brand": "Fasteners and Adhesives",
+    "sku": "STS0310",
+    "description": "BRAD NAILL 1X2X1.2MM 1000PC ships directly from Belims staging warehouse.",
+    "tags": [
+      "fasteners-and-adhesives",
+      "nail-in-anchors",
+      "nails"
+    ],
+    "features": [
+      "Live SKU STS0310",
+      "Includes 15% VAT for storefront parity",
+      "5 in stock"
+    ]
+  },
+  {
+    "id": "staples",
+    "name": "Staples",
+    "category": "Electrical Hand Tools",
+    "price": 20.7,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/cbe7d6df4a1aeb360fa9d973db742978.png",
+    "rating": 4.6,
+    "reviews": 35,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Electrical Hand Tools",
+    "sku": "STS0108",
+    "description": "Staples ships directly from Belims staging warehouse.",
+    "tags": [
+      "electrical-hand-tools",
+      "staple-guns-and-staples",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU STS0108",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "blade-recip-2",
+    "name": "Blade Recip",
+    "category": "Jigsaw and Bandsaw Blades",
+    "price": 86.25,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/1cccb9cf5d4efa7f0065c14154c08b1d.png",
+    "rating": 4.8,
+    "reviews": 40,
+    "stock": 9,
+    "maxStock": 18,
+    "brand": "Jigsaw and Bandsaw Blades",
+    "sku": "SSB922EF",
+    "description": "Blade Recip ships directly from Belims staging warehouse.",
+    "tags": [
+      "jigsaw-and-bandsaw-blades",
+      "saws-accessories",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU SSB922EF",
+      "Includes 15% VAT for storefront parity",
+      "9 in stock"
+    ]
+  },
+  {
+    "id": "blade-recip",
+    "name": "Blade Recip",
+    "category": "Jigsaw and Bandsaw Blades",
+    "price": 40.24,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/01fbf3e99e988aaaa6be79b735cd8e86.png",
+    "rating": 4,
+    "reviews": 45,
+    "stock": 4,
+    "maxStock": 8,
+    "brand": "Jigsaw and Bandsaw Blades",
+    "sku": "SSB644D",
+    "description": "Blade Recip ships directly from Belims staging warehouse.",
+    "tags": [
+      "jigsaw-and-bandsaw-blades",
+      "saws-accessories",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU SSB644D",
+      "Includes 15% VAT for storefront parity",
+      "4 in stock"
+    ]
+  },
+  {
+    "id": "keyless-chuck",
+    "name": "Keyless Chuck",
+    "category": "Chucks and Keys",
+    "price": 155.25,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/b494f7378dd0c6d1d9680f9efa78c395.png",
+    "rating": 4.2,
+    "reviews": 50,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Chucks and Keys",
+    "sku": "KCL1301",
+    "description": "Keyless Chuck ships directly from Belims staging warehouse.",
+    "tags": [
+      "chucks-and-keys",
+      "drill-accessories",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU KCL1301",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "key-chuck-with-adaptor",
+    "name": "Key Chuck With Adaptor",
+    "category": "Chucks and Keys",
+    "price": 143.76,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/8c60e984e759329d9762508911101943.png",
+    "rating": 4.4,
+    "reviews": 55,
+    "stock": 2,
+    "maxStock": 4,
+    "brand": "Chucks and Keys",
+    "sku": "KC1301.1",
+    "description": "Key Chuck With Adaptor ships directly from Belims staging warehouse.",
+    "tags": [
+      "chucks-and-keys",
+      "drill-accessories",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU KC1301.1",
+      "Includes 15% VAT for storefront parity",
+      "2 in stock"
+    ]
+  },
+  {
+    "id": "jigsaw",
+    "name": "Jigsaw",
+    "category": "Power Tools",
+    "price": 917.7,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/000173ef681cc932a3a35f897e04ea57.png",
+    "rating": 4.6,
+    "reviews": 60,
+    "stock": 34,
+    "maxStock": 68,
+    "brand": "Power Tools",
+    "sku": "JS57028",
+    "description": "Jigsaw ships directly from Belims staging warehouse.",
+    "tags": [
+      "power-tools",
+      "saws",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU JS57028",
+      "Includes 15% VAT for storefront parity",
+      "34 in stock"
+    ]
+  },
+  {
+    "id": "wire-stripper-plier-2",
+    "name": "Wire Stripper Plier",
+    "category": "Hand Tools",
+    "price": 149.5,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/26ce3e3bc7b2c752d52f821ee5d74d01.png",
+    "rating": 4.8,
+    "reviews": 65,
+    "stock": 7,
+    "maxStock": 14,
+    "brand": "Hand Tools",
+    "sku": "HWSP851",
+    "description": "Wire Stripper Plier ships directly from Belims staging warehouse.",
+    "tags": [
+      "hand-tools",
+      "pliers",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HWSP851",
+      "Includes 15% VAT for storefront parity",
+      "7 in stock"
+    ]
+  },
+  {
+    "id": "wire-stripper-plier",
+    "name": "Wire Stripper Plier",
+    "category": "Hand Tools",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/b72dbba12628f7d96bf8d88bfdf0e379.png",
+    "rating": 4,
+    "reviews": 70,
+    "stock": 1,
+    "maxStock": 3,
+    "brand": "Hand Tools",
+    "sku": "HWSP101",
+    "description": "Wire Stripper Plier ships directly from Belims staging warehouse.",
+    "tags": [
+      "hand-tools",
+      "pliers",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HWSP101",
+      "Includes 15% VAT for storefront parity",
+      "1 in stock"
+    ]
+  },
+  {
+    "id": "wrecking-bar-4",
+    "name": "Wrecking Bar",
+    "category": "Uncategorized",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/a5daeb5d137b2be4699d58d418f3e268.png",
+    "rating": 4.2,
+    "reviews": 75,
+    "stock": 1,
+    "maxStock": 3,
+    "brand": "Uncategorized",
+    "sku": "HWBA01482",
+    "description": "Wrecking Bar ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU HWBA01482",
+      "Includes 15% VAT for storefront parity",
+      "1 in stock"
+    ]
+  },
+  {
+    "id": "angle-grinder-950w-115mm",
+    "name": "Angle Grinder 950W 115mm",
+    "category": "Grinders",
+    "price": 861.35,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/1c39a55100f9fe749f7bb698ca429fd9.png",
+    "rating": 4.4,
+    "reviews": 80,
+    "stock": 29,
+    "maxStock": 58,
+    "brand": "Grinders",
+    "sku": "AG8508",
+    "description": "Angle Grinder 950W 115mm ships directly from Belims staging warehouse.",
+    "tags": [
+      "grinders",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU AG8508",
+      "Includes 15% VAT for storefront parity",
+      "29 in stock"
+    ]
+  },
+  {
+    "id": "pump-750w-max-flow-50l-min",
+    "name": "Pump 750W Max Flow 50L/Min",
+    "category": "Water Storage",
+    "price": 1494.99,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/6431291c986b7011d63b68f6b3ac1819.png",
+    "rating": 4.6,
+    "reviews": 85,
+    "stock": 27,
+    "maxStock": 54,
+    "brand": "Water Storage",
+    "sku": "VPM7508",
+    "description": "Pump 750W Max Flow 50L/Min ships directly from Belims staging warehouse.",
+    "tags": [
+      "water-storage",
+      "water-tank-pumps",
+      "water-tanks-and-filtration"
+    ],
+    "features": [
+      "Live SKU VPM7508",
+      "Includes 15% VAT for storefront parity",
+      "27 in stock"
+    ]
+  },
+  {
+    "id": "drill-rotary-hammer-1500w-bmc",
+    "name": "Drill Rotary Hammer 1500W BMC",
+    "category": "Drills",
+    "price": 2068.85,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/d33ab889b70c3ccc038561aaaaf608d8.png",
+    "rating": 4.8,
+    "reviews": 90,
+    "stock": 18,
+    "maxStock": 36,
+    "brand": "Drills",
+    "sku": "RH150028",
+    "description": "Drill Rotary Hammer 1500W BMC ships directly from Belims staging warehouse.",
+    "tags": [
+      "drills",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU RH150028",
+      "Includes 15% VAT for storefront parity",
+      "18 in stock"
+    ]
+  },
+  {
+    "id": "rotary-drill-hammer-800w",
+    "name": "Rotary Drill Hammer 800W",
+    "category": "Drills",
+    "price": 1667.5,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/4cdf052c4f448bdb4c3eed6a9c4f0482.png",
+    "rating": 4,
+    "reviews": 95,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Drills",
+    "sku": "RGH9028",
+    "description": "Rotary Drill Hammer 800W ships directly from Belims staging warehouse.",
+    "tags": [
+      "drills",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU RGH9028",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "drill-rotary-hammer-1050w-bmc",
+    "name": "Drill Rotary Hammer 1050W BMC",
+    "category": "Drills",
+    "price": 2068.85,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2023/09/d4e4400b53bc4a4b0b48fe8ede7ced64.png",
+    "rating": 4.2,
+    "reviews": 100,
+    "stock": 28,
+    "maxStock": 56,
+    "brand": "Drills",
+    "sku": "RH10508",
+    "description": "Drill Rotary Hammer 1050W BMC ships directly from Belims staging warehouse.",
+    "tags": [
+      "drills",
+      "power-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU RH10508",
+      "Includes 15% VAT for storefront parity",
+      "28 in stock"
+    ]
+  },
+  {
+    "id": "retractable-utility-knife-2",
+    "name": "Retractable Utility Knife",
+    "category": "Uncategorized",
+    "price": 69,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/703ffad797f9e05ca79fb2c808eaadeb.png",
+    "rating": 4.4,
+    "reviews": 105,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Uncategorized",
+    "sku": "HUK615",
+    "description": "Retractable Utility Knife ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU HUK615",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "tape-measure-with-rubber-case-10m-x-25mm",
+    "name": "Tape Measure with Rubber Case 10m x 25mm",
+    "category": "Measuring And Marking Tools",
+    "price": 149.5,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/f0e2f493de8cffab3480161eb2c119db.png",
+    "rating": 4.6,
+    "reviews": 110,
+    "stock": 60,
+    "maxStock": 120,
+    "brand": "Measuring And Marking Tools",
+    "sku": "HSMT081025-1",
+    "description": "Tape Measure with Rubber Case 10m x 25mm ships directly from Belims staging warehouse.",
+    "tags": [
+      "measuring-and-marking-tools",
+      "measuring-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HSMT081025-1",
+      "Includes 15% VAT for storefront parity",
+      "60 in stock"
+    ]
+  },
+  {
+    "id": "tape-measure-with-rubber-case-8m-x-25mm",
+    "name": "Tape Measure with Rubber Case 8m x 25mm",
+    "category": "Measuring And Marking Tools",
+    "price": 109.25,
+    "image": "",
+    "rating": 4.8,
+    "reviews": 115,
+    "stock": 38,
+    "maxStock": 76,
+    "brand": "Measuring And Marking Tools",
+    "sku": "HSMT0808.1",
+    "description": "Tape Measure with Rubber Case 8m x 25mm ships directly from Belims staging warehouse.",
+    "tags": [
+      "measuring-and-marking-tools",
+      "measuring-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HSMT0808.1",
+      "Includes 15% VAT for storefront parity",
+      "38 in stock"
+    ]
+  },
+  {
+    "id": "tape-measure-with-rubber-case-5m-x-19mm",
+    "name": "Tape Measure with Rubber Case 5m x 19mm",
+    "category": "Measuring And Marking Tools",
+    "price": 74.75,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/ceb842fe7bf03ca661ea5cb0918d1a07.png",
+    "rating": 4,
+    "reviews": 120,
+    "stock": 22,
+    "maxStock": 44,
+    "brand": "Measuring And Marking Tools",
+    "sku": "HSMT08052.1",
+    "description": "Tape Measure with Rubber Case 5m x 19mm ships directly from Belims staging warehouse.",
+    "tags": [
+      "measuring-and-marking-tools",
+      "measuring-tools",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HSMT08052.1",
+      "Includes 15% VAT for storefront parity",
+      "22 in stock"
+    ]
+  },
+  {
+    "id": "tape-measure-with-rubber-case-3m-x-16mm",
+    "name": "Tape Measure with Rubber Case 3m x 16mm",
+    "category": "Uncategorized",
+    "price": 51.75,
+    "image": "",
+    "rating": 4.2,
+    "reviews": 125,
+    "stock": 45,
+    "maxStock": 90,
+    "brand": "Uncategorized",
+    "sku": "HSMT0803.1",
+    "description": "Tape Measure with Rubber Case 3m x 16mm ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU HSMT0803.1",
+      "Includes 15% VAT for storefront parity",
+      "45 in stock"
+    ]
+  },
+  {
+    "id": "safety-goggles",
+    "name": "Safety Goggles",
+    "category": "Uncategorized",
+    "price": 61.98,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/07/8e8f53947afb2814e16f6e1dc3da27c3.png",
+    "rating": 4.4,
+    "reviews": 130,
+    "stock": 13,
+    "maxStock": 26,
+    "brand": "Uncategorized",
+    "sku": "HSG08",
+    "description": "Safety Goggles ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU HSG08",
+      "Includes 15% VAT for storefront parity",
+      "13 in stock"
+    ]
+  },
+  {
+    "id": "adjustable-safety-spectacles",
+    "name": "Adjustable Safety Spectacles",
+    "category": "Uncategorized",
+    "price": 23,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/7e9bdb7e0e121cfdd273e49e0e4a008e.png",
+    "rating": 4.6,
+    "reviews": 135,
+    "stock": 66,
+    "maxStock": 132,
+    "brand": "Uncategorized",
+    "sku": "HSG04",
+    "description": "Adjustable Safety Spectacles ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU HSG04",
+      "Includes 15% VAT for storefront parity",
+      "66 in stock"
+    ]
+  },
+  {
+    "id": "phillips-number-2-screwdriver-150mm",
+    "name": "Phillips Number 2 Screwdriver 150mm",
+    "category": "Hand Tools",
+    "price": 25.3,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2025/05/dd620c2c25fe6096963e9048d79d3088.png",
+    "rating": 4.8,
+    "reviews": 140,
+    "stock": 4,
+    "maxStock": 8,
+    "brand": "Hand Tools",
+    "sku": "HS58PH2150P",
+    "description": "Phillips Number 2 Screwdriver 150mm ships directly from Belims staging warehouse.",
+    "tags": [
+      "hand-tools",
+      "screwdrivers-and-allen-keys",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HS58PH2150P",
+      "Includes 15% VAT for storefront parity",
+      "4 in stock"
+    ]
+  },
+  {
+    "id": "phillips-number-2-screwdriver-125mm",
+    "name": "Phillips Number 2 Screwdriver 125mm",
+    "category": "Hand Tools",
+    "price": 23,
+    "image": "",
+    "rating": 4,
+    "reviews": 145,
+    "stock": 2,
+    "maxStock": 4,
+    "brand": "Hand Tools",
+    "sku": "HS58PH2125P",
+    "description": "Phillips Number 2 Screwdriver 125mm ships directly from Belims staging warehouse.",
+    "tags": [
+      "hand-tools",
+      "screwdrivers-and-allen-keys",
+      "tools-and-machinery"
+    ],
+    "features": [
+      "Live SKU HS58PH2125P",
+      "Includes 15% VAT for storefront parity",
+      "2 in stock"
+    ]
+  },
+  {
+    "id": "wrecking-bar-3",
+    "name": "Wrecking Bar",
+    "category": "Uncategorized",
+    "price": 454.25,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/7ed5bd7758eb4af93a4a93e7fd03053d.png",
+    "rating": 4.2,
+    "reviews": 150,
+    "stock": 1,
+    "maxStock": 3,
+    "brand": "Uncategorized",
+    "sku": "HWBA01362",
+    "description": "Wrecking Bar ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU HWBA01362",
+      "Includes 15% VAT for storefront parity",
+      "1 in stock"
+    ]
+  },
+  {
+    "id": "wrecking-bar-2",
+    "name": "Wrecking Bar",
+    "category": "Uncategorized",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/bf44eb2e190f2f37cf3593d2c6cedcd0.png",
+    "rating": 4.4,
+    "reviews": 155,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Uncategorized",
+    "sku": "HWBA01242",
+    "description": "Wrecking Bar ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU HWBA01242",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "wrecking-bar",
+    "name": "Wrecking Bar",
+    "category": "Uncategorized",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/29388755bf1ca303d9776e4816cd85b7.png",
+    "rating": 4.6,
+    "reviews": 160,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Uncategorized",
+    "sku": "HWBA01142",
+    "description": "Wrecking Bar ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU HWBA01142",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  },
+  {
+    "id": "vernier-caliper",
+    "name": "Vernier Caliper",
+    "category": "Uncategorized",
+    "price": 0,
+    "image": "https://staging.belims.co.za/wp-content/uploads/2024/10/ad7dc4a6448bc4f95d6f27f03621dd90.png",
+    "rating": 4.8,
+    "reviews": 165,
+    "stock": 0,
+    "maxStock": 0,
+    "brand": "Uncategorized",
+    "sku": "HVC01200",
+    "description": "Vernier Caliper ships directly from Belims staging warehouse.",
+    "tags": [],
+    "features": [
+      "Live SKU HVC01200",
+      "Includes 15% VAT for storefront parity",
+      "Out of stock"
+    ]
+  }
+]

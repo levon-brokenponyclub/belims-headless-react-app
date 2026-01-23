@@ -75,7 +75,7 @@ acf_add_local_field_group(array(
             array(
                 'param' => 'options_page',
                 'operator' => '==',
-                'value' => 'belims-site-settings-acf',
+                'value' => 'belims-site-settings',
             ),
         ),
     ),
@@ -126,7 +126,7 @@ acf_add_local_field_group(array(
             array(
                 'param' => 'options_page',
                 'operator' => '==',
-                'value' => 'belims-site-settings-acf',
+                'value' => 'belims-site-settings',
             ),
         ),
     ),
@@ -180,7 +180,7 @@ acf_add_local_field_group(array(
             array(
                 'param' => 'options_page',
                 'operator' => '==',
-                'value' => 'belims-site-settings-acf',
+                'value' => 'belims-site-settings',
             ),
         ),
     ),
@@ -247,7 +247,7 @@ acf_add_local_field_group(array(
             array(
                 'param' => 'options_page',
                 'operator' => '==',
-                'value' => 'belims-site-settings-acf',
+                'value' => 'belims-site-settings',
             ),
         ),
     ),
@@ -304,11 +304,214 @@ acf_add_local_field_group(array(
             array(
                 'param' => 'options_page',
                 'operator' => '==',
-                'value' => 'belims-site-settings-acf',
+                'value' => 'belims-site-settings',
             ),
         ),
     ),
     'menu_order' => 5,
+));
+
+// APIs Configuration
+acf_add_local_field_group(array(
+    'key' => 'group_belims_apis',
+    'title' => 'APIs Configuration',
+    'fields' => array(
+        array(
+            'key' => 'field_belims_api_info',
+            'label' => 'API Information',
+            'name' => 'api_info',
+            'type' => 'message',
+            'message' => 'Configure external API integrations for shipping, payments, and AI features.',
+        ),
+        array(
+            'key' => 'field_belims_headless_url',
+            'label' => 'Headless Frontend URL',
+            'name' => 'headless_frontend_url',
+            'type' => 'url',
+            'instructions' => 'The URL of your React headless frontend (used for CORS)',
+            'placeholder' => 'http://localhost:3001',
+            'required' => 0,
+        ),
+        array(
+            'key' => 'field_belims_woocommerce_section',
+            'label' => 'WooCommerce API',
+            'name' => 'woocommerce_section',
+            'type' => 'tab',
+        ),
+        array(
+            'key' => 'field_belims_woo_consumer_key',
+            'label' => 'WooCommerce Consumer Key',
+            'name' => 'woo_consumer_key',
+            'type' => 'password',
+            'instructions' => 'Your WooCommerce REST API consumer key (stored securely)',
+            'required' => 0,
+        ),
+        array(
+            'key' => 'field_belims_woo_consumer_secret',
+            'label' => 'WooCommerce Consumer Secret',
+            'name' => 'woo_consumer_secret',
+            'type' => 'password',
+            'instructions' => 'Your WooCommerce REST API consumer secret (stored securely)',
+            'required' => 0,
+        ),
+        array(
+            'key' => 'field_belims_bobgo_section',
+            'label' => 'BobGo Shipping API',
+            'name' => 'bobgo_section',
+            'type' => 'tab',
+        ),
+        array(
+            'key' => 'field_belims_bobgo_enabled',
+            'label' => 'Enable BobGo Integration',
+            'name' => 'bobgo_enabled',
+            'type' => 'true_false',
+            'instructions' => 'Enable shipping integration with BobGo',
+            'ui' => 1,
+        ),
+        array(
+            'key' => 'field_belims_bobgo_api_url',
+            'label' => 'BobGo API URL',
+            'name' => 'bobgo_api_url',
+            'type' => 'url',
+            'instructions' => 'The BobGo API endpoint',
+            'placeholder' => 'https://api.bobgo.co.za/v2',
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_bobgo_enabled',
+                        'operator' => '==',
+                        'value' => '1',
+                    ),
+                ),
+            ),
+        ),
+        array(
+            'key' => 'field_belims_bobgo_api_key',
+            'label' => 'BobGo API Key',
+            'name' => 'bobgo_api_key',
+            'type' => 'password',
+            'instructions' => 'Your BobGo API key (stored securely)',
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_bobgo_enabled',
+                        'operator' => '==',
+                        'value' => '1',
+                    ),
+                ),
+            ),
+        ),
+        array(
+            'key' => 'field_belims_bobgo_channel_id',
+            'label' => 'BobGo Channel ID',
+            'name' => 'bobgo_channel_id',
+            'type' => 'text',
+            'instructions' => 'Your BobGo Channel ID',
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_bobgo_enabled',
+                        'operator' => '==',
+                        'value' => '1',
+                    ),
+                ),
+            ),
+        ),
+        array(
+            'key' => 'field_belims_payment_section',
+            'label' => 'Payment Gateway',
+            'name' => 'payment_section',
+            'type' => 'tab',
+        ),
+        array(
+            'key' => 'field_belims_payment_gateway',
+            'label' => 'Payment Provider',
+            'name' => 'payment_gateway',
+            'type' => 'select',
+            'choices' => array(
+                'payfast' => 'PayFast',
+                'yoco' => 'Yoco',
+                'paystack' => 'Paystack',
+                'stripe' => 'Stripe',
+                'manual' => 'Manual/Bank Transfer',
+            ),
+            'instructions' => 'Select your preferred payment gateway',
+            'default_value' => 'payfast',
+            'allow_null' => 0,
+        ),
+        array(
+            'key' => 'field_belims_payment_api_key',
+            'label' => 'Payment Gateway API Key',
+            'name' => 'payment_api_key',
+            'type' => 'password',
+            'instructions' => 'Your payment provider API key (stored securely)',
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_payment_gateway',
+                        'operator' => '!=',
+                        'value' => 'manual',
+                    ),
+                ),
+            ),
+        ),
+        array(
+            'key' => 'field_belims_payment_secret',
+            'label' => 'Payment Gateway Secret Key',
+            'name' => 'payment_secret',
+            'type' => 'password',
+            'instructions' => 'Your payment provider secret key (stored securely)',
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_payment_gateway',
+                        'operator' => '!=',
+                        'value' => 'manual',
+                    ),
+                ),
+            ),
+        ),
+        array(
+            'key' => 'field_belims_ai_section',
+            'label' => 'AI Services',
+            'name' => 'ai_section',
+            'type' => 'tab',
+        ),
+        array(
+            'key' => 'field_belims_gemini_enabled',
+            'label' => 'Enable Google Gemini AI',
+            'name' => 'gemini_enabled',
+            'type' => 'true_false',
+            'instructions' => 'Enable AI product descriptions and paint color matching',
+            'ui' => 1,
+        ),
+        array(
+            'key' => 'field_belims_gemini_api_key',
+            'label' => 'Google Gemini API Key',
+            'name' => 'gemini_api_key',
+            'type' => 'password',
+            'instructions' => 'Get your key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a>',
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_gemini_enabled',
+                        'operator' => '==',
+                        'value' => '1',
+                    ),
+                ),
+            ),
+        ),
+    ),
+    'location' => array(
+        array(
+            array(
+                'param' => 'options_page',
+                'operator' => '==',
+                'value' => 'belims-site-settings',
+            ),
+        ),
+    ),
+    'menu_order' => 6,
 ));
 
 endif;
