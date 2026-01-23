@@ -1,4 +1,6 @@
+# --------------------
 # WordPress Core
+# --------------------
 /wp-admin/
 /wp-includes/
 /index.php
@@ -19,53 +21,85 @@
 /readme.html
 /wp-config.php
 
-# WooCommerce Plugin (managed separately)
+# --------------------
+# WooCommerce & Managed Plugins
+# --------------------
 /wp-content/plugins/woocommerce/
-
-# Other managed plugins
 /wp-content/plugins/all-in-one-wp-migration/
 
-# Uploads
-/wp-content/uploads/
+# Custom plugins to keep
+!wp-content/plugins/belims-headless-api/
+!wp-content/plugins/belims-custom-site-settings/
+!wp-content/plugins/uafrica-shipping/
 
-# Logs
+# --------------------
+# Uploads
+# --------------------
+/wp-content/uploads/
 /wp-content/uploads/wc-logs/
 
-# Node modules
-/node_modules/
-/frontend/node_modules/
-
-# Build outputs
-/frontend/dist/
-/frontend/.vite/
-
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# History
-.history/
-
+# --------------------
 # Backups
+# --------------------
+wp-content/ai1wm-backups/*.wpress
 *.backup.sql
 wordpress_backup.sql
 pre_reset_backup.sql
 bad_import_backup.sql
 
+# --------------------
+# Node / Frontend
+# --------------------
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+dist/
+dist-ssr/
+*.local
+
+# --------------------
+# Environment variables
+# --------------------
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --------------------
+# Logs
+# --------------------
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --------------------
+# IDE / Editor
+# --------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --------------------
+# History
+# --------------------
+.history/
+
+# --------------------
 # Video files
+# --------------------
 *.mp4
 *.mp4.part
-
-# Keep custom plugins and theme changes
-!wp-content/plugins/belims-headless-api/
-!wp-content/plugins/belims-custom-site-settings/
-!wp-content/plugins/uafrica-shipping/
