@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "wp-content/plugins/belims-**"
+      - "wp-content/plugins/global-site-settings/**"
       - "wp-content/plugins/uafrica-shipping/**"
       - "wp-config.php"
       - ".github/workflows/deploy-cloudways.yml"
@@ -27,25 +27,13 @@ jobs:
           git diff --name-only HEAD^..HEAD
           echo "files=$(git diff --name-only HEAD^..HEAD | tr '\n' ' ')" >> $GITHUB_OUTPUT
 
-      - name: Deploy Belims Headless API Plugin
-        if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/belims-headless-api')
+      - name: Deploy Global Site Settings Plugin
+        if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/global-site-settings')
         uses: Burnett01/rsync-deployments@7.0.1
         with:
           switches: -avzr --delete
-          path: wp-content/plugins/belims-headless-api/
-          remote_path: /public_html/wp-content/plugins/belims-headless-api/
-          remote_host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
-          remote_user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
-          remote_password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
-          remote_port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-
-      - name: Deploy Belims Site Settings Plugin
-        if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/belims-custom-site-settings')
-        uses: Burnett01/rsync-deployments@7.0.1
-        with:
-          switches: -avzr --delete
-          path: wp-content/plugins/belims-custom-site-settings/
-          remote_path: /public_html/wp-content/plugins/belims-custom-site-settings/
+          path: wp-content/plugins/global-site-settings/
+          remote_path: /public_html/wp-content/plugins/global-site-settings/
           remote_host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
           remote_user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
           remote_password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
