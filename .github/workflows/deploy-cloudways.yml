@@ -29,50 +29,51 @@ jobs:
 
       - name: Deploy Belims Headless API Plugin
         if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/belims-headless-api')
-        uses: appleboy/scp-action@v0.1.7
+        uses: Burnett01/rsync-deployments@7.0.1
         with:
-          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
-          username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
-          password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
-          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          source: "wp-content/plugins/belims-headless-api/*"
-          target: "/public_html/wp-content/plugins/"
-          strip_components: 2
+          switches: -avzr --delete
+          path: wp-content/plugins/belims-headless-api/
+          remote_path: /public_html/wp-content/plugins/belims-headless-api/
+          remote_host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          remote_user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          remote_password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          remote_port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
 
       - name: Deploy Belims Site Settings Plugin
         if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/belims-custom-site-settings')
-        uses: appleboy/scp-action@v0.1.7
+        uses: Burnett01/rsync-deployments@7.0.1
         with:
-          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
-          username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
-          password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
-          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          source: "wp-content/plugins/belims-custom-site-settings/*"
-          target: "/public_html/wp-content/plugins/"
-          strip_components: 2
+          switches: -avzr --delete
+          path: wp-content/plugins/belims-custom-site-settings/
+          remote_path: /public_html/wp-content/plugins/belims-custom-site-settings/
+          remote_host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          remote_user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          remote_password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          remote_port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
 
       - name: Deploy uAfrica Shipping Plugin
         if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/uafrica-shipping')
-        uses: appleboy/scp-action@v0.1.7
+        uses: Burnett01/rsync-deployments@7.0.1
         with:
-          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
-          username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
-          password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
-          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          source: "wp-content/plugins/uafrica-shipping/*"
-          target: "/public_html/wp-content/plugins/"
-          strip_components: 2
+          switches: -avzr --delete
+          path: wp-content/plugins/uafrica-shipping/
+          remote_path: /public_html/wp-content/plugins/uafrica-shipping/
+          remote_host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          remote_user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          remote_password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          remote_port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
 
       - name: Deploy wp-config.php
         if: contains(steps.changed-files.outputs.files, 'wp-config.php')
-        uses: appleboy/scp-action@v0.1.7
+        uses: Burnett01/rsync-deployments@7.0.1
         with:
-          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
-          username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
-          password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
-          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          source: "wp-config.php"
-          target: "/public_html/"
+          switches: -avz
+          path: wp-config.php
+          remote_path: /public_html/wp-config.php
+          remote_host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          remote_user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          remote_password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          remote_port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
 
       - name: Deployment Summary
         if: success()
