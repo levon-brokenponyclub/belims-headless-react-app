@@ -26,6 +26,19 @@ define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
  * Initialize the plugin
  */
 function global_site_settings_init() {
+    // Create ACF Options Pages
+    if (function_exists('acf_add_options_page')) {
+        acf_add_options_page(array(
+            'page_title'    => 'Site Settings',
+            'menu_title'    => 'Site Settings',
+            'menu_slug'     => 'belims-site-settings',
+            'capability'    => 'manage_options',
+            'icon_url'      => 'dashicons-admin-generic',
+            'position'      => 2,
+            'redirect'      => false
+        ));
+    }
+
     // Load ACF field groups (site settings)
     if (file_exists(GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/acf-field-groups.php')) {
         require_once GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/acf-field-groups.php';
