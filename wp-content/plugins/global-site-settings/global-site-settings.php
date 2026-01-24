@@ -44,6 +44,11 @@ function global_site_settings_init() {
         require_once GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/acf-field-groups.php';
     }
 
+    // Load FTG Sync Admin Page
+    if (file_exists(GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/admin-ftg-sync-page.php')) {
+        require_once GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/admin-ftg-sync-page.php';
+    }
+
     // Load REST API endpoint classes
     $endpoints = [
         'class-products-endpoint.php',
