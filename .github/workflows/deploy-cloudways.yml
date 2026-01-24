@@ -1,0 +1,112 @@
+name: Deploy WordPress to Cloudways
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wp-content/plugins/belims-**"
+      - "wp-content/plugins/uafrica-shipping/**"
+      - "wp-config.php"
+      - ".github/workflows/deploy-cloudways.yml"
+
+jobs:
+  deploy:
+    name: Deploy to Cloudways Staging
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          echo "Changed files:"
+          git diff --name-only HEAD^..HEAD
+          echo "files=$(git diff --name-only HEAD^..HEAD | tr '\n' ' ')" >> $GITHUB_OUTPUT
+
+      - name: Deploy Belims Headless API Plugin
+        if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/belims-headless-api')
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
+          protocol: ftps
+          local-dir: ./wp-content/plugins/belims-headless-api/
+          server-dir: /public_html/wp-content/plugins/belims-headless-api/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.DS_Store
+            **/README.md
+            **/*.md
+          log-level: verbose
+
+      - name: Deploy Belims Site Settings Plugin
+        if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/belims-custom-site-settings')
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
+          protocol: ftps
+          local-dir: ./wp-content/plugins/belims-custom-site-settings/
+          server-dir: /public_html/wp-content/plugins/belims-custom-site-settings/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.DS_Store
+            **/README.md
+            **/*.md
+          log-level: verbose
+
+      - name: Deploy uAfrica Shipping Plugin
+        if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/uafrica-shipping')
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
+          protocol: ftps
+          local-dir: ./wp-content/plugins/uafrica-shipping/
+          server-dir: /public_html/wp-content/plugins/uafrica-shipping/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.DS_Store
+            **/README.md
+            **/*.md
+          log-level: verbose
+
+      - name: Deploy wp-config.php
+        if: contains(steps.changed-files.outputs.files, 'wp-config.php')
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
+          protocol: ftps
+          local-dir: ./
+          server-dir: /public_html/
+          exclude: |
+            **/*
+            !wp-config.php
+          log-level: verbose
+
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo "✅ Deployment successful!"
+          echo "🌍 Site: https://wordpress-1482444-6163809.cloudwaysapps.com"
+          echo "📦 Deployed plugins:"
+          echo "${{ steps.changed-files.outputs.files }}" | grep "wp-content/plugins" || echo "No plugin changes"
