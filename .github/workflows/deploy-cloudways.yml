@@ -35,7 +35,7 @@ jobs:
           username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
           password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
           port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          protocol: ftps
+          protocol: ftps-legacy
           local-dir: ./wp-content/plugins/belims-headless-api/
           server-dir: /public_html/wp-content/plugins/belims-headless-api/
           exclude: |
@@ -55,7 +55,7 @@ jobs:
           username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
           password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
           port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          protocol: ftps
+          protocol: ftps-legacy
           local-dir: ./wp-content/plugins/belims-custom-site-settings/
           server-dir: /public_html/wp-content/plugins/belims-custom-site-settings/
           exclude: |
@@ -75,7 +75,7 @@ jobs:
           username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
           password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
           port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          protocol: ftps
+          protocol: ftps-legacy
           local-dir: ./wp-content/plugins/uafrica-shipping/
           server-dir: /public_html/wp-content/plugins/uafrica-shipping/
           exclude: |
@@ -95,7 +95,7 @@ jobs:
           username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
           password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
           port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          protocol: ftps
+          protocol: ftps-legacy
           local-dir: ./
           server-dir: /public_html/
           exclude: |
