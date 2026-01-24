@@ -29,79 +29,50 @@ jobs:
 
       - name: Deploy Belims Headless API Plugin
         if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/belims-headless-api')
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
           username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
           password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
           port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          protocol: ftps-legacy
-          local-dir: ./wp-content/plugins/belims-headless-api/
-          server-dir: /public_html/wp-content/plugins/belims-headless-api/
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/.DS_Store
-            **/README.md
-            **/*.md
-          log-level: verbose
+          source: "wp-content/plugins/belims-headless-api/*"
+          target: "/public_html/wp-content/plugins/"
+          strip_components: 2
 
       - name: Deploy Belims Site Settings Plugin
         if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/belims-custom-site-settings')
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
           username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
           password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
           port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          protocol: ftps-legacy
-          local-dir: ./wp-content/plugins/belims-custom-site-settings/
-          server-dir: /public_html/wp-content/plugins/belims-custom-site-settings/
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/.DS_Store
-            **/README.md
-            **/*.md
-          log-level: verbose
+          source: "wp-content/plugins/belims-custom-site-settings/*"
+          target: "/public_html/wp-content/plugins/"
+          strip_components: 2
 
       - name: Deploy uAfrica Shipping Plugin
         if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/uafrica-shipping')
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
           username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
           password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
           port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          protocol: ftps-legacy
-          local-dir: ./wp-content/plugins/uafrica-shipping/
-          server-dir: /public_html/wp-content/plugins/uafrica-shipping/
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/.DS_Store
-            **/README.md
-            **/*.md
-          log-level: verbose
+          source: "wp-content/plugins/uafrica-shipping/*"
+          target: "/public_html/wp-content/plugins/"
+          strip_components: 2
 
       - name: Deploy wp-config.php
         if: contains(steps.changed-files.outputs.files, 'wp-config.php')
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
           username: ${{ secrets.CLOUDWAYS_SFTP_USER }}
           password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
           port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
-          protocol: ftps-legacy
-          local-dir: ./
-          server-dir: /public_html/
-          exclude: |
-            **/*
-            !wp-config.php
-          log-level: verbose
+          source: "wp-config.php"
+          target: "/public_html/"
 
       - name: Deployment Summary
         if: success()
