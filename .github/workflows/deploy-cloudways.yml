@@ -29,39 +29,39 @@ jobs:
 
       - name: Deploy Global Site Settings Plugin
         if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/global-site-settings')
-        uses: Burnett01/rsync-deployments@7.0.1
+        uses: pressidium/lftp-mirror-action@v1
         with:
-          switches: -avzr --delete
-          path: wp-content/plugins/global-site-settings/
-          remote_path: /public_html/wp-content/plugins/global-site-settings/
-          remote_host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
-          remote_user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
-          remote_password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
-          remote_port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
+          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
+          user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          pass: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          localDir: "wp-content/plugins/global-site-settings/"
+          remoteDir: "/public_html/wp-content/plugins/global-site-settings/"
+          options: "--verbose --only-newer"
 
       - name: Deploy uAfrica Shipping Plugin
         if: contains(steps.changed-files.outputs.files, 'wp-content/plugins/uafrica-shipping')
-        uses: Burnett01/rsync-deployments@7.0.1
+        uses: pressidium/lftp-mirror-action@v1
         with:
-          switches: -avzr --delete
-          path: wp-content/plugins/uafrica-shipping/
-          remote_path: /public_html/wp-content/plugins/uafrica-shipping/
-          remote_host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
-          remote_user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
-          remote_password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
-          remote_port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
+          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
+          user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          pass: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          localDir: "wp-content/plugins/uafrica-shipping/"
+          remoteDir: "/public_html/wp-content/plugins/uafrica-shipping/"
+          options: "--verbose --only-newer"
 
       - name: Deploy wp-config.php
         if: contains(steps.changed-files.outputs.files, 'wp-config.php')
-        uses: Burnett01/rsync-deployments@7.0.1
+        uses: pressidium/lftp-mirror-action@v1
         with:
-          switches: -avz
-          path: wp-config.php
-          remote_path: /public_html/wp-config.php
-          remote_host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
-          remote_user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
-          remote_password: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
-          remote_port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
+          host: ${{ secrets.CLOUDWAYS_SFTP_HOST }}
+          port: ${{ secrets.CLOUDWAYS_SFTP_PORT }}
+          user: ${{ secrets.CLOUDWAYS_SFTP_USER }}
+          pass: ${{ secrets.CLOUDWAYS_SFTP_PASSWORD }}
+          localDir: "./"
+          remoteDir: "/public_html/"
+          options: "--verbose --include wp-config.php --exclude-glob *"
 
       - name: Deployment Summary
         if: success()
