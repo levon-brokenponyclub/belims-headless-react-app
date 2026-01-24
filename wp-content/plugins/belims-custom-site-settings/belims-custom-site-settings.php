@@ -210,4 +210,4 @@ class BelimsCustomSiteSettings {
 }
 
 // Initialize the plugin
-new BelimsCustomSiteSettings();
+new BelimsCustomSiteSettings();// Trigger site settings deployment
