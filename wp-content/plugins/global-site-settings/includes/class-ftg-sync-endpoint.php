@@ -14,7 +14,7 @@ class Belims_FTG_Sync_Endpoint {
     private $ftg_api;
     
     public function __construct() {
-        require_once BELIMS_API_PLUGIN_DIR . 'includes/class-ftg-api.php';
+        require_once GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/class-ftg-api.php';
         $this->ftg_api = new Belims_FTG_API();
     }
     

@@ -21,7 +21,7 @@ function global_site_settings_add_ftg_sync_page() {
         'global_site_settings_ftg_sync_page_html'
     );
 }
-add_action('admin_menu', 'global_site_settings_add_ftg_sync_page');
+add_action('admin_menu', 'global_site_settings_add_ftg_sync_page', 20);
 
 /**
  * Render FTG Sync page
