@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import {
   AlertTriangle,
   Bell,
@@ -16,7 +17,6 @@ interface ProductCardProps {
   product: Product;
   addToCart: (product: Product) => void;
   onBuyNow?: (product: Product) => void;
-  onClick?: (product: Product) => void;
   onCompare?: (product: Product) => void;
   onNotify?: (product: Product) => Promise<void> | void;
   className?: string;
@@ -26,7 +26,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   addToCart,
   onBuyNow,
-  onClick,
   onCompare,
   onNotify,
   className = "",
@@ -76,27 +75,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </button>
       )}
 
-      <div
+      <Link
+        to={`/product/${product.id}`}
         className="relative h-48 overflow-hidden p-4 flex items-center justify-center bg-gray-50 group-hover:bg-white transition-colors cursor-pointer"
-        onClick={() => onClick && onClick(product)}
       >
         <img
           src={product.image}
           alt={product.name}
           className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
         />
-      </div>
+      </Link>
 
       <div className="p-4 flex-1 flex flex-col">
         <div className="text-xs text-gray-500 mb-1 font-medium">
           {product.category}
         </div>
-        <h3
-          className="font-bold text-gray-900 text-sm md:text-base leading-5 line-clamp-2 mb-2 flex-1 font-heading group-hover:text-belims-blue transition-colors cursor-pointer"
-          onClick={() => onClick && onClick(product)}
+        <Link
+          to={`/product/${product.id}`}
+          className="font-bold text-gray-900 text-sm md:text-base leading-5 line-clamp-2 mb-2 flex-1 font-heading group-hover:text-belims-blue transition-colors cursor-pointer block"
         >
           {product.name}
-        </h3>
+        </Link>
 
         {/* Ratings */}
         <div className="flex items-center mb-2">

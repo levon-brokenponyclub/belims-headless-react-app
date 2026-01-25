@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Star,
   ShoppingCart,
@@ -38,10 +39,8 @@ interface SingleProductProps {
   product: Product;
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
-  onBack: () => void;
   onCompare: (product: Product) => void;
   onPriceMatch: (product: Product) => void;
-  onProductClick: (product: Product) => void;
   onBrandClick?: (brand: string) => void;
 }
 
@@ -49,12 +48,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   product,
   addToCart,
   onBuyNow,
-  onBack,
   onCompare,
   onPriceMatch,
-  onProductClick,
   onBrandClick,
 }) => {
+  const navigate = useNavigate();
   const [mainImage, setMainImage] = useState(product.image);
   const [qty, setQty] = useState(1);
   const [selectedTab, setSelectedTab] = useState<"desc" | "specs">("desc");
@@ -308,7 +306,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           <div className="text-sm text-gray-600 flex items-center gap-2">
             <span
               className="cursor-pointer hover:text-belims-blue transition-colors"
-              onClick={onBack}
+              onClick={() => navigate(-1)}
             >
               Home
             </span>
@@ -1023,7 +1021,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         addToCart={addToCart}
         onBuyNow={onBuyNow}
         onProductClick={(p) => {
-          onProductClick(p);
+          navigate(`/product/${p.id}`);
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
         onCompare={onCompare}

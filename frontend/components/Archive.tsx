@@ -11,7 +11,6 @@ interface ArchiveProps {
   searchQuery?: string;
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
-  onProductClick: (product: Product) => void;
   onCompare: (product: Product) => void;
 }
 
@@ -22,7 +21,6 @@ export const Archive: React.FC<ArchiveProps> = ({
   searchQuery,
   addToCart,
   onBuyNow,
-  onProductClick,
   onCompare,
 }) => {
   const [sortBy, setSortBy] = useState<
@@ -461,7 +459,6 @@ export const Archive: React.FC<ArchiveProps> = ({
                       product={product}
                       addToCart={addToCart}
                       onBuyNow={onBuyNow}
-                      onClick={onProductClick}
                       onCompare={onCompare}
                       className="product-card h-full"
                     />

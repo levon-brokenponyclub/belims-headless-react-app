@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Menu,
   Search,
@@ -50,10 +51,7 @@ interface HeaderProps {
   toggleStoreLocator: () => void;
   onOpenPaintAssistant: () => void;
   onOpenOnboarding: () => void;
-  onProductClick?: (product: Product) => void;
   onCompare?: (product: Product) => void;
-  onCategoryClick?: (category: string) => void;
-  onSearch?: (query: string) => void;
   products?: Product[];
 }
 
@@ -64,12 +62,10 @@ export const Header: React.FC<HeaderProps> = ({
   toggleStoreLocator,
   onOpenPaintAssistant,
   onOpenOnboarding,
-  onProductClick,
   onCompare,
-  onCategoryClick,
-  onSearch,
   products = [],
 }) => {
+  const navigate = useNavigate();
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -127,25 +123,24 @@ export const Header: React.FC<HeaderProps> = ({
   }, [searchQuery, flatCategoryList, products]);
 
   const handleProductSelect = (product: Product) => {
-    if (onProductClick) onProductClick(product);
+    navigate(`/product/${product.id}`);
     setSearchQuery(""); // Clear search
     setSearchResults(null);
   };
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (onSearch && searchQuery.trim()) {
-      onSearch(searchQuery);
+    if (searchQuery.trim()) {
+      navigate(`/shop?search=${encodeURIComponent(searchQuery)}`);
       setSearchResults(null);
+      setSearchQuery("");
     }
   };
 
   const handleCategorySelect = (category: string) => {
-    if (onCategoryClick) {
-      onCategoryClick(category);
-      setIsMegaMenuOpen(false);
-      setMobileMenuOpen(false);
-    }
+    navigate(`/shop/${encodeURIComponent(category)}`);
+    setIsMegaMenuOpen(false);
+    setMobileMenuOpen(false);
   };
 
   return (
@@ -159,16 +154,16 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Logo */}
-          <div
+          <Link
+            to="/"
             className="flex items-center gap-1 cursor-pointer flex-shrink-0 mr-2"
-            onClick={() => window.location.reload()}
           >
             <img
               src="/images/belims-logo-white.png"
               alt="Belims Hardware"
               className="h-8 md:h-10 object-contain"
             />
-          </div>
+          </Link>
 
           {/* Pickup/Delivery Button */}
           <div
