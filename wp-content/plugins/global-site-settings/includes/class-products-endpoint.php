@@ -103,17 +103,16 @@ class Belims_Products_Endpoint {
      * Includes VAT, bundles, weight, etc.
      */
     private function format_product($product) {
-        // Get WooCommerce prices (these are VAT-inclusive from FTG sync)
-        $regular_price_incl_vat = floatval($product->get_regular_price());
-        $sale_price_incl_vat = floatval($product->get_sale_price());
+        // Get base prices (excl VAT)
+        $regular_price = floatval($product->get_regular_price());
+        $sale_price = floatval($product->get_sale_price());
         
-        // Calculate VAT exclusive prices (divide by 1.15 for 15% VAT)
-        $regular_price_excl_vat = round($regular_price_incl_vat / 1.15, 2);
-        $sale_price_excl_vat = $sale_price_incl_vat > 0 ? round($sale_price_incl_vat / 1.15, 2) : 0;
+        // Calculate VAT inclusive prices (15%)
+        $regular_price_vat = round($regular_price * 1.15, 2);
+        $sale_price_vat = $sale_price > 0 ? round($sale_price * 1.15, 2) : 0;
         
-        // Determine final prices (frontend should display excl VAT)
-        $price_excl_vat = $sale_price_excl_vat > 0 ? $sale_price_excl_vat : $regular_price_excl_vat;
-        $price_incl_vat = $sale_price_incl_vat > 0 ? $sale_price_incl_vat : $regular_price_incl_vat;
+        // Determine final price (with VAT)
+        $final_price = $sale_price_vat > 0 ? $sale_price_vat : $regular_price_vat;
 
         // Get product images
         $images = array();
@@ -158,12 +157,11 @@ class Belims_Products_Endpoint {
         return array(
             'id' => (string) $product->get_id(),
             'name' => $product->get_name(),
-            'slug' => $product->get_slug(),
             'category' => $category_name,
-            'price' => $price_excl_vat, // Display price excluding VAT
-            'regular_price' => $regular_price_excl_vat,
-            'sale_price' => $sale_price_excl_vat,
-            'price_incl_vat' => $price_incl_vat, // Also provide incl VAT for checkout
+            'price' => $final_price,
+            'regular_price' => $regular_price_vat,
+            'sale_price' => $sale_price_vat,
+            'price_excl_vat' => $regular_price,
             'image' => $main_image ?: '',
             'images' => $images,
             'rating' => floatval($product->get_average_rating()),

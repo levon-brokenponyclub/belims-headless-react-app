@@ -1,7 +1,25 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Menu, Search, ShoppingCart, MapPin, User, ChevronDown, X, Heart, LayoutGrid, Sparkles, ArrowRight, Scale } from 'lucide-react';
-import { Store, CategoryNode, CartItem, Product } from '../types';
-import { CURRENCY_SYMBOL, FEATURED_PRODUCTS, DEALS_PRODUCTS, CATEGORY_TREE } from '../constants';
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Menu,
+  Search,
+  ShoppingCart,
+  MapPin,
+  User,
+  ChevronDown,
+  X,
+  Heart,
+  LayoutGrid,
+  Sparkles,
+  ArrowRight,
+  Scale,
+} from "lucide-react";
+import { Store, CategoryNode, CartItem, Product } from "../types";
+import {
+  CURRENCY_SYMBOL,
+  FEATURED_PRODUCTS,
+  DEALS_PRODUCTS,
+} from "../constants";
+import { CATEGORY_TREE } from "../categoryTree";
 
 interface SearchCategoryResult {
   id: string;
@@ -9,8 +27,11 @@ interface SearchCategoryResult {
   fullPath: string;
 }
 
-const flattenCategoryTree = (nodes: CategoryNode[], parentPath = ''): SearchCategoryResult[] => {
-  return nodes.flatMap(node => {
+const flattenCategoryTree = (
+  nodes: CategoryNode[],
+  parentPath = "",
+): SearchCategoryResult[] => {
+  return nodes.flatMap((node) => {
     const fullPath = parentPath ? `${parentPath} / ${node.label}` : node.label;
     const current: SearchCategoryResult = {
       id: node.id,
@@ -49,19 +70,28 @@ export const Header: React.FC<HeaderProps> = ({
   onProductClick,
   onCompare,
   onCategoryClick,
-  onSearch
+  onSearch,
 }) => {
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ categories: SearchCategoryResult[], products: Product[] } | null>(null);
-  const [activeMegaCategory, setActiveMegaCategory] = useState<CategoryNode | null>(CATEGORY_TREE[0] ?? null);
-  const [expandedMobileCategory, setExpandedMobileCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{
+    categories: SearchCategoryResult[];
+    products: Product[];
+  } | null>(null);
+  const [activeMegaCategory, setActiveMegaCategory] =
+    useState<CategoryNode | null>(CATEGORY_TREE[0] ?? null);
+  const [expandedMobileCategory, setExpandedMobileCategory] = useState<
+    string | null
+  >(null);
 
-  const flatCategoryList = useMemo(() => flattenCategoryTree(CATEGORY_TREE), []);
+  const flatCategoryList = useMemo(
+    () => flattenCategoryTree(CATEGORY_TREE),
+    [],
+  );
 
   const toggleMobileMenu = () => {
-    setMobileMenuOpen(prev => {
+    setMobileMenuOpen((prev) => {
       const next = !prev;
       if (!next) {
         setExpandedMobileCategory(null);
@@ -83,10 +113,16 @@ export const Header: React.FC<HeaderProps> = ({
       const lowerQuery = searchQuery.toLowerCase();
       const allProducts = [...FEATURED_PRODUCTS, ...DEALS_PRODUCTS];
 
-      const matchedCats = flatCategoryList.filter(cat =>
-        cat.label.toLowerCase().includes(lowerQuery) || cat.fullPath.toLowerCase().includes(lowerQuery)
+      const matchedCats = flatCategoryList.filter(
+        (cat) =>
+          cat.label.toLowerCase().includes(lowerQuery) ||
+          cat.fullPath.toLowerCase().includes(lowerQuery),
       );
-      const matchedProds = allProducts.filter(p => p.name.toLowerCase().includes(lowerQuery) || p.category.toLowerCase().includes(lowerQuery));
+      const matchedProds = allProducts.filter(
+        (p) =>
+          p.name.toLowerCase().includes(lowerQuery) ||
+          p.category.toLowerCase().includes(lowerQuery),
+      );
       setSearchResults({ categories: matchedCats, products: matchedProds });
     } else {
       setSearchResults(null);
@@ -95,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleProductSelect = (product: Product) => {
     if (onProductClick) onProductClick(product);
-    setSearchQuery(''); // Clear search
+    setSearchQuery(""); // Clear search
     setSearchResults(null);
   };
 
@@ -117,18 +153,19 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-[300] font-sans shadow-md">
-
       {/* Primary Blue Bar (Walmart Style) */}
       <div className="bg-belims-blue text-white py-3">
         <div className="container mx-auto px-4 flex items-center gap-4 md:gap-6">
-
           {/* Mobile Menu Trigger */}
           <button className="md:hidden text-white" onClick={toggleMobileMenu}>
             <Menu size={24} />
           </button>
 
           {/* Logo */}
-          <div className="flex items-center gap-1 cursor-pointer flex-shrink-0 mr-2" onClick={() => window.location.reload()}>
+          <div
+            className="flex items-center gap-1 cursor-pointer flex-shrink-0 mr-2"
+            onClick={() => window.location.reload()}
+          >
             <img
               src="/images/belims-logo-white.png"
               alt="Belims Hardware"
@@ -145,9 +182,13 @@ export const Header: React.FC<HeaderProps> = ({
               <MapPin size={18} />
             </div>
             <div className="flex flex-col leading-none">
-              <span className="text-xs font-semibold text-white font-heading">Pickup or delivery</span>
+              <span className="text-xs font-semibold text-white font-heading">
+                Pickup or delivery
+              </span>
               <span className="text-sm font-bold text-white truncate max-w-[140px] font-heading">
-                {selectedStore ? selectedStore.address.split(',')[0] : 'Select Store'}
+                {selectedStore
+                  ? selectedStore.address.split(",")[0]
+                  : "Select Store"}
               </span>
             </div>
             <ChevronDown size={14} className="text-white" />
@@ -163,92 +204,124 @@ export const Header: React.FC<HeaderProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full rounded-full py-2.5 pl-5 pr-12 text-black text-sm focus:outline-none focus:ring-2 focus:ring-belims-accent shadow-sm font-medium"
               />
-              <button type="submit" className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-belims-blue p-2 rounded-full text-white hover:bg-belims-light transition-colors">
+              <button
+                type="submit"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-belims-blue p-2 rounded-full text-white hover:bg-belims-light transition-colors"
+              >
                 <Search size={18} />
               </button>
             </form>
 
             {/* Search Results Dropdown */}
-            {searchResults && (searchResults.categories.length > 0 || searchResults.products.length > 0) && (
-              <div className="absolute top-full left-0 right-0 bg-white rounded-lg shadow-xl mt-2 border border-gray-200 overflow-hidden z-50">
-                {searchResults.categories.length > 0 && (
-                  <div className="p-2 bg-gray-50">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase px-2 mb-1 font-heading">Categories</h4>
-                    {searchResults.categories.map(c => (
-                      <div
-                        key={c.id}
-                        className="px-2 py-1.5 hover:bg-white hover:text-belims-blue cursor-pointer rounded text-sm font-medium"
-                        onClick={() => handleCategorySelect(c.label)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{c.label}</span>
-                          <ChevronDown size={12} className="-rotate-90 text-gray-300" />
+            {searchResults &&
+              (searchResults.categories.length > 0 ||
+                searchResults.products.length > 0) && (
+                <div className="absolute top-full left-0 right-0 bg-white rounded-lg shadow-xl mt-2 border border-gray-200 overflow-hidden z-50">
+                  {searchResults.categories.length > 0 && (
+                    <div className="p-2 bg-gray-50">
+                      <h4 className="text-xs font-bold text-gray-500 uppercase px-2 mb-1 font-heading">
+                        Categories
+                      </h4>
+                      {searchResults.categories.map((c) => (
+                        <div
+                          key={c.id}
+                          className="px-2 py-1.5 hover:bg-white hover:text-belims-blue cursor-pointer rounded text-sm font-medium"
+                          onClick={() => handleCategorySelect(c.label)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{c.label}</span>
+                            <ChevronDown
+                              size={12}
+                              className="-rotate-90 text-gray-300"
+                            />
+                          </div>
+                          <div className="text-[11px] text-gray-500 font-normal truncate">
+                            {c.fullPath}
+                          </div>
                         </div>
-                        <div className="text-[11px] text-gray-500 font-normal truncate">{c.fullPath}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {searchResults.products.length > 0 && (
-                  <div className="p-2">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase px-2 mb-1 mt-1 font-heading">Products</h4>
-                    {searchResults.products.map(p => (
-                      <div
-                        key={p.id}
-                        className="px-2 py-2 hover:bg-gray-50 cursor-pointer rounded flex gap-3 items-center group"
-                        onClick={() => handleProductSelect(p)}
-                      >
-                        <img src={p.image} className="w-10 h-10 object-contain rounded bg-white border border-gray-100" alt="" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-bold text-gray-800 truncate font-heading group-hover:text-belims-blue">{p.name}</div>
-                          <div className="text-xs text-gray-500">{p.category}</div>
-                        </div>
-                        <div className="text-sm font-bold text-belims-blue">{CURRENCY_SYMBOL}{p.price.toFixed(2)}</div>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.products.length > 0 && (
+                    <div className="p-2">
+                      <h4 className="text-xs font-bold text-gray-500 uppercase px-2 mb-1 mt-1 font-heading">
+                        Products
+                      </h4>
+                      {searchResults.products.map((p) => (
+                        <div
+                          key={p.id}
+                          className="px-2 py-2 hover:bg-gray-50 cursor-pointer rounded flex gap-3 items-center group"
+                          onClick={() => handleProductSelect(p)}
+                        >
+                          <img
+                            src={p.image}
+                            className="w-10 h-10 object-contain rounded bg-white border border-gray-100"
+                            alt=""
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-bold text-gray-800 truncate font-heading group-hover:text-belims-blue">
+                              {p.name}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {p.category}
+                            </div>
+                          </div>
+                          <div className="text-sm font-bold text-belims-blue">
+                            {CURRENCY_SYMBOL}
+                            {p.price.toFixed(2)}
+                          </div>
 
-                        {/* Add Compare Button to Search Results */}
-                        {onCompare && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCompare(p);
-                            }}
-                            className="p-1.5 rounded-full hover:bg-belims-blue hover:text-white text-gray-400 transition-colors ml-2"
-                            title="Compare"
-                          >
-                            <Scale size={16} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                          {/* Add Compare Button to Search Results */}
+                          {onCompare && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onCompare(p);
+                              }}
+                              className="p-1.5 rounded-full hover:bg-belims-blue hover:text-white text-gray-400 transition-colors ml-2"
+                              title="Compare"
+                            >
+                              <Scale size={16} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="p-3 bg-gray-50 border-t text-center">
+                    <button
+                      onClick={() => handleSearchSubmit()}
+                      className="text-sm font-bold text-belims-blue hover:underline flex items-center justify-center gap-1 w-full"
+                    >
+                      View all results <ArrowRight size={14} />
+                    </button>
                   </div>
-                )}
-                <div className="p-3 bg-gray-50 border-t text-center">
-                  <button
-                    onClick={() => handleSearchSubmit()}
-                    className="text-sm font-bold text-belims-blue hover:underline flex items-center justify-center gap-1 w-full"
-                  >
-                    View all results <ArrowRight size={14} />
-                  </button>
                 </div>
-              </div>
-            )}
+              )}
           </div>
 
           {/* Right Side Icons */}
           <div className="flex items-center gap-6 text-white">
-
             {/* Reorder / My Items */}
             <div className="hidden md:flex flex-col items-center cursor-pointer hover:text-gray-200 group">
               <Heart size={20} className="mb-0.5" />
-              <div className="text-[11px] leading-tight font-medium">Reorder</div>
-              <div className="text-sm font-bold leading-tight font-heading">My Items</div>
+              <div className="text-[11px] leading-tight font-medium">
+                Reorder
+              </div>
+              <div className="text-sm font-bold leading-tight font-heading">
+                My Items
+              </div>
             </div>
 
             {/* Sign In / Account */}
             <div className="hidden md:flex flex-col items-center cursor-pointer hover:text-gray-200 group">
               <User size={20} className="mb-0.5" />
-              <div className="text-[11px] leading-tight font-medium">Sign In</div>
-              <div className="text-sm font-bold leading-tight font-heading">Account</div>
+              <div className="text-[11px] leading-tight font-medium">
+                Sign In
+              </div>
+              <div className="text-sm font-bold leading-tight font-heading">
+                Account
+              </div>
             </div>
 
             {/* Cart */}
@@ -262,25 +335,34 @@ export const Header: React.FC<HeaderProps> = ({
                   {cartCount}
                 </span>
               </div>
-              <div className="text-[10px] mt-0.5 font-bold hidden md:block font-heading">{CURRENCY_SYMBOL}{cartItems.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</div>
+              <div className="text-[10px] mt-0.5 font-bold hidden md:block font-heading">
+                {CURRENCY_SYMBOL}
+                {cartItems
+                  .reduce((acc, i) => acc + i.price * i.quantity, 0)
+                  .toFixed(2)}
+              </div>
             </div>
-
           </div>
         </div>
       </div>
 
       {/* Secondary Light Blue Bar (Departments / Services) */}
-      <div className="bg-blue-50 border-b border-gray-200 py-2 hidden md:block shadow-inner relative" onMouseLeave={() => setIsMegaMenuOpen(false)}>
+      <div
+        className="bg-blue-50 border-b border-gray-200 py-2 hidden md:block shadow-inner relative"
+        onMouseLeave={() => setIsMegaMenuOpen(false)}
+      >
         <div className="container mx-auto px-4 flex items-center gap-3">
-
           {/* Departments Button - MEGA MENU TRIGGER */}
           <div
-            className={`flex items-center gap-2 border border-transparent px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading ${isMegaMenuOpen ? 'bg-belims-blue text-white' : 'bg-white text-belims-blue hover:border-belims-blue'}`}
+            className={`flex items-center gap-2 border border-transparent px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading ${isMegaMenuOpen ? "bg-belims-blue text-white" : "bg-white text-belims-blue hover:border-belims-blue"}`}
             onMouseEnter={() => setIsMegaMenuOpen(true)}
           >
             <LayoutGrid size={16} />
             Departments
-            <ChevronDown size={14} className={`transition-transform ${isMegaMenuOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              size={14}
+              className={`transition-transform ${isMegaMenuOpen ? "rotate-180" : ""}`}
+            />
           </div>
 
           {/* Services Button */}
@@ -310,7 +392,6 @@ export const Header: React.FC<HeaderProps> = ({
             <ArrowRight size={16} />
             Get Started
           </button>
-
         </div>
 
         {/* Full Width Mega Menu Dropdown */}
@@ -323,22 +404,31 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="container mx-auto flex min-h-[450px]">
               {/* Left Sidebar: Top Level Categories */}
               <div className="w-1/4 bg-gray-50 py-6 border-r border-gray-100 overflow-y-auto max-h-[600px]">
-                {CATEGORY_TREE.map(cat => {
+                {CATEGORY_TREE.map((cat) => {
                   const isActive = activeMegaCategory?.id === cat.id;
                   return (
                     <div
                       key={cat.id}
-                      className={`px-6 py-3 cursor-pointer font-semibold flex justify-between items-center text-sm font-heading transition-colors ${isActive ? 'bg-white text-belims-blue shadow-sm border-l-4 border-belims-blue' : 'hover:bg-gray-100 text-gray-700 border-l-4 border-transparent'}`}
+                      className={`px-6 py-3 cursor-pointer font-semibold flex justify-between items-center text-sm font-heading transition-colors ${isActive ? "bg-white text-belims-blue shadow-sm border-l-4 border-belims-blue" : "hover:bg-gray-100 text-gray-700 border-l-4 border-transparent"}`}
                       onMouseEnter={() => setActiveMegaCategory(cat)}
                     >
                       {cat.label}
-                      {isActive && <ChevronDown size={14} className="-rotate-90 text-belims-blue" />}
+                      {isActive && (
+                        <ChevronDown
+                          size={14}
+                          className="-rotate-90 text-belims-blue"
+                        />
+                      )}
                     </div>
                   );
                 })}
                 <div className="my-4 border-t border-gray-200 mx-6"></div>
-                <div className="px-6 py-2 hover:text-belims-blue cursor-pointer text-sm font-medium text-gray-600">Contractor Deals</div>
-                <div className="px-6 py-2 hover:text-belims-blue cursor-pointer text-sm font-medium text-gray-600">New Power Tools</div>
+                <div className="px-6 py-2 hover:text-belims-blue cursor-pointer text-sm font-medium text-gray-600">
+                  Contractor Deals
+                </div>
+                <div className="px-6 py-2 hover:text-belims-blue cursor-pointer text-sm font-medium text-gray-600">
+                  New Power Tools
+                </div>
               </div>
 
               {/* Right Content: Subcategories */}
@@ -347,30 +437,40 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="animate-fadeIn">
                     <div className="flex justify-between items-end mb-6 border-b border-gray-100 pb-4">
                       <div>
-                        <h4 className="font-bold text-2xl text-belims-blue font-heading">{activeMegaCategory.label}</h4>
-                        <p className="text-sm text-gray-500 mt-1">Browse all products in {activeMegaCategory.label}</p>
+                        <h4 className="font-bold text-2xl text-belims-blue font-heading">
+                          {activeMegaCategory.label}
+                        </h4>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Browse all products in {activeMegaCategory.label}
+                        </p>
                       </div>
                       <button
-                        onClick={() => handleCategorySelect(activeMegaCategory.label)}
+                        onClick={() =>
+                          handleCategorySelect(activeMegaCategory.label)
+                        }
                         className="text-sm font-bold text-belims-accent hover:underline flex items-center gap-1"
                       >
                         View All <ArrowRight size={14} />
                       </button>
                     </div>
 
-                    {activeMegaCategory.children && activeMegaCategory.children.length > 0 ? (
+                    {activeMegaCategory.children &&
+                    activeMegaCategory.children.length > 0 ? (
                       <div className="grid grid-cols-3 gap-x-8 gap-y-8">
-                        {activeMegaCategory.children.map(section => (
+                        {activeMegaCategory.children.map((section) => (
                           <div key={section.id} className="break-inside-avoid">
                             <div className="font-bold text-gray-900 mb-3 text-base border-b border-gray-100 pb-1 flex items-center gap-2">
                               {section.label}
                             </div>
                             <div className="flex flex-col gap-2">
-                              {section.children && section.children.length > 0 ? (
-                                section.children.map(child => (
+                              {section.children &&
+                              section.children.length > 0 ? (
+                                section.children.map((child) => (
                                   <button
                                     key={child.id}
-                                    onClick={() => handleCategorySelect(child.label)}
+                                    onClick={() =>
+                                      handleCategorySelect(child.label)
+                                    }
                                     className="text-sm text-gray-600 hover:text-belims-blue hover:translate-x-1 transition-transform inline-block text-left"
                                   >
                                     {child.label}
@@ -378,7 +478,9 @@ export const Header: React.FC<HeaderProps> = ({
                                 ))
                               ) : (
                                 <button
-                                  onClick={() => handleCategorySelect(section.label)}
+                                  onClick={() =>
+                                    handleCategorySelect(section.label)
+                                  }
                                   className="text-sm text-gray-600 hover:text-belims-blue hover:underline text-left"
                                 >
                                   Shop {section.label}
@@ -390,9 +492,13 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                        <p className="text-lg">Browse all {activeMegaCategory.label} products.</p>
+                        <p className="text-lg">
+                          Browse all {activeMegaCategory.label} products.
+                        </p>
                         <button
-                          onClick={() => handleCategorySelect(activeMegaCategory.label)}
+                          onClick={() =>
+                            handleCategorySelect(activeMegaCategory.label)
+                          }
                           className="mt-4 bg-belims-blue text-white px-6 py-2 rounded-full font-bold hover:bg-belims-accent transition-colors"
                         >
                           Shop Now
@@ -407,8 +513,12 @@ export const Header: React.FC<HeaderProps> = ({
                           <LayoutGrid className="text-belims-blue" size={24} />
                         </div>
                         <div>
-                          <div className="font-bold text-belims-blue font-heading text-lg">Pro Services</div>
-                          <div className="text-sm text-gray-600">Bulk pricing for registered contractors.</div>
+                          <div className="font-bold text-belims-blue font-heading text-lg">
+                            Pro Services
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Bulk pricing for registered contractors.
+                          </div>
                         </div>
                       </div>
                       <div className="bg-orange-50 p-5 rounded-xl flex gap-5 items-center border border-orange-100 hover:shadow-md transition-shadow cursor-pointer group">
@@ -416,14 +526,20 @@ export const Header: React.FC<HeaderProps> = ({
                           <Sparkles className="text-orange-500" size={24} />
                         </div>
                         <div>
-                          <div className="font-bold text-orange-600 font-heading text-lg">Current Deals</div>
-                          <div className="text-sm text-gray-600">Shop the latest specials and savings.</div>
+                          <div className="font-bold text-orange-600 font-heading text-lg">
+                            Current Deals
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Shop the latest specials and savings.
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-600">Hover a department to explore detailed categories.</p>
+                  <p className="text-sm text-gray-600">
+                    Hover a department to explore detailed categories.
+                  </p>
                 )}
               </div>
             </div>
@@ -438,74 +554,111 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="p-4 bg-belims-blue text-white flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <User size={20} />
-                <span className="font-bold font-heading">Sign In / Account</span>
+                <span className="font-bold font-heading">
+                  Sign In / Account
+                </span>
               </div>
-              <button onClick={closeMobileMenu}><X /></button>
+              <button onClick={closeMobileMenu}>
+                <X />
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto bg-gray-50">
               {/* Mobile Store Selector */}
-              <div className="bg-white p-4 mb-2 border-b border-gray-100" onClick={() => {
-                toggleStoreLocator();
-                closeMobileMenu();
-              }}>
+              <div
+                className="bg-white p-4 mb-2 border-b border-gray-100"
+                onClick={() => {
+                  toggleStoreLocator();
+                  closeMobileMenu();
+                }}
+              >
                 <div className="flex items-start gap-3">
                   <MapPin className="text-belims-blue mt-1" size={20} />
                   <div>
                     <div className="text-xs text-gray-500">Your Store</div>
-                    <div className="font-bold text-belims-blue text-sm font-heading">{selectedStore ? selectedStore.name : 'Select Store'}</div>
+                    <div className="font-bold text-belims-blue text-sm font-heading">
+                      {selectedStore ? selectedStore.name : "Select Store"}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Mobile Paint Assistant */}
-              <div className="bg-white p-4 mb-2 border-b border-gray-100" onClick={() => {
-                onOpenPaintAssistant();
-                closeMobileMenu();
-              }}>
+              <div
+                className="bg-white p-4 mb-2 border-b border-gray-100"
+                onClick={() => {
+                  onOpenPaintAssistant();
+                  closeMobileMenu();
+                }}
+              >
                 <div className="flex items-center gap-2 text-belims-accent font-bold font-heading">
                   <Sparkles size={18} /> Paint Assistant
                 </div>
               </div>
 
               <div className="bg-white py-2">
-                <div className="px-4 py-3 font-bold text-lg border-b border-gray-100 font-heading">Departments</div>
-                {CATEGORY_TREE.map(cat => {
+                <div className="px-4 py-3 font-bold text-lg border-b border-gray-100 font-heading">
+                  Departments
+                </div>
+                {CATEGORY_TREE.map((cat) => {
                   const isExpanded = expandedMobileCategory === cat.id;
                   return (
                     <div key={cat.id} className="border-b border-gray-100">
                       <button
                         className="w-full px-4 py-3 flex justify-between items-center text-gray-700 font-semibold"
-                        onClick={() => setExpandedMobileCategory(isExpanded ? null : cat.id)}
+                        onClick={() =>
+                          setExpandedMobileCategory(isExpanded ? null : cat.id)
+                        }
                       >
                         {cat.label}
-                        <ChevronDown size={16} className={`${isExpanded ? 'rotate-0' : '-rotate-90'} text-gray-400 transition-transform`} />
+                        <ChevronDown
+                          size={16}
+                          className={`${isExpanded ? "rotate-0" : "-rotate-90"} text-gray-400 transition-transform`}
+                        />
                       </button>
-                      {isExpanded && cat.children && cat.children.length > 0 && (
-                        <div className="bg-gray-50">
-                          {cat.children.map(sub => (
-                            <div key={sub.id} className="px-6 py-2 border-t border-gray-100">
-                              <div className="text-sm font-semibold text-gray-800">{sub.label}</div>
-                              {sub.children && sub.children.length > 0 && (
-                                <div className="mt-1 flex flex-col gap-1 text-sm text-gray-600">
-                                  {sub.children.map(child => (
-                                    <span key={child.id} className="pl-2 py-0.5">{child.label}</span>
-                                  ))}
+                      {isExpanded &&
+                        cat.children &&
+                        cat.children.length > 0 && (
+                          <div className="bg-gray-50">
+                            {cat.children.map((sub) => (
+                              <div
+                                key={sub.id}
+                                className="px-6 py-2 border-t border-gray-100"
+                              >
+                                <div className="text-sm font-semibold text-gray-800">
+                                  {sub.label}
                                 </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                                {sub.children && sub.children.length > 0 && (
+                                  <div className="mt-1 flex flex-col gap-1 text-sm text-gray-600">
+                                    {sub.children.map((child) => (
+                                      <span
+                                        key={child.id}
+                                        className="pl-2 py-0.5"
+                                      >
+                                        {child.label}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   );
                 })}
               </div>
 
               <div className="bg-white mt-2 py-2">
-                <div className="px-4 py-3 font-bold text-lg border-b border-gray-100 font-heading">Help & Settings</div>
-                <div className="px-4 py-3 border-b border-gray-100 text-gray-700">Track Order</div>
-                <div className="px-4 py-3 border-b border-gray-100 text-gray-700">Help Center</div>
+                <div className="px-4 py-3 font-bold text-lg border-b border-gray-100 font-heading">
+                  Help & Settings
+                </div>
+                <div className="px-4 py-3 border-b border-gray-100 text-gray-700">
+                  Track Order
+                </div>
+                <div className="px-4 py-3 border-b border-gray-100 text-gray-700">
+                  Help Center
+                </div>
               </div>
             </div>
           </div>

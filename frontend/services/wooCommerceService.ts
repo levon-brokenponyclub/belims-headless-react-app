@@ -3,20 +3,36 @@ import { Product, Category } from "../types";
 /**
  * BELIMS HEADLESS API SERVICE
  * ------------------------------------
- * Uses Netlify proxy to bypass CORS in production
+ * Automatically detects environment and uses appropriate API endpoint
  *
- * Production: /api/belims/v1/* → Netlify proxies to cms.belims.co.za/wp-json/belims/v1/*
- * Development: http://localhost:5173/api/belims/v1/* (also uses proxy in dev for consistency)
+ * Production (https://belims-headless-react-app.netlify.app):
+ *   Uses Netlify proxy: /api/belims/v1/* → cms.belims.co.za/wp-json/belims/v1/*
+ *
+ * Development (http://localhost:3000):
+ *   Uses direct API: http://belims-headless.local/wp-json/belims/v1/*
  *
  * Endpoints:
- * - GET /api/belims/v1/products
- * - GET /api/belims/v1/products/:id
- * - GET /api/belims/v1/categories
- * - POST /api/belims/v1/orders
+ * - GET /products
+ * - GET /products/:id
+ * - GET /categories
+ * - POST /orders
  */
 
-// Always use the Netlify proxy endpoint
-const BASE_URL = "/api/belims/v1";
+// Detect environment and set appropriate API base URL
+function getApiBaseUrl(): string {
+  // In development (localhost:3000)
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname === "localhost"
+  ) {
+    return "http://belims-headless.local/wp-json/belims/v1";
+  }
+
+  // In production (Netlify) - use relative proxy path
+  return "/api/belims/v1";
+}
+
+const BASE_URL = getApiBaseUrl();
 
 /**
  * Fetch Products from WooCommerce via custom API
@@ -31,9 +47,22 @@ export const fetchProducts = async (category?: string): Promise<Product[]> => {
     }
 
     const url = params.toString() ? `${endpoint}?${params}` : endpoint;
-    const response = await fetch(url);
+    console.log(`Fetching products from: ${url}`);
 
-    if (!response.ok) throw new Error("Failed to fetch products");
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include", // Include cookies for CORS requests
+    });
+
+    if (!response.ok) {
+      console.error(`API Error: ${response.status} ${response.statusText}`);
+      const responseText = await response.text();
+      console.error("Response:", responseText.substring(0, 200));
+      throw new Error(`Failed to fetch products: ${response.status}`);
+    }
 
     const data = await response.json();
 
@@ -50,8 +79,22 @@ export const fetchProducts = async (category?: string): Promise<Product[]> => {
  */
 export const fetchCategories = async (): Promise<Category[]> => {
   try {
-    const response = await fetch(`${BASE_URL}/categories`);
-    if (!response.ok) throw new Error("Failed to fetch categories");
+    const url = `${BASE_URL}/categories`;
+    console.log(`Fetching categories from: ${url}`);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      console.error(`API Error: ${response.status} ${response.statusText}`);
+      throw new Error("Failed to fetch categories");
+    }
+
     return await response.json();
   } catch (error) {
     console.error("Belims API Error:", error);

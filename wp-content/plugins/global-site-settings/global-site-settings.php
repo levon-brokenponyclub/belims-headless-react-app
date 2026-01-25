@@ -19,11 +19,25 @@ define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 /**
+ * Get the current CORS origin based on environment setting
+ */
+function get_cors_origin() {
+    $environment = get_option('belims_frontend_environment', 'production');
+    
+    if ($environment === 'development') {
+        return 'http://localhost:3000';
+    }
+    
+    // Default to production
+    return 'https://belims-headless-react-app.netlify.app';
+}
+
+/**
  * Handle OPTIONS preflight requests FIRST (before WordPress does anything)
  */
 add_action('init', function() {
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-        header('Access-Control-Allow-Origin: https://belims-headless-react-app.netlify.app');
+        header('Access-Control-Allow-Origin: ' . get_cors_origin());
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-WP-Nonce');
         header('Access-Control-Allow-Credentials: true');
@@ -38,8 +52,8 @@ add_action('init', function() {
  * This fires AFTER WordPress processes the request but BEFORE sending response
  */
 add_filter('rest_pre_serve_request', function($served, $result, $request, $server) {
-    // Hardcoded for production reliability - change this if needed
-    header('Access-Control-Allow-Origin: https://belims-headless-react-app.netlify.app');
+    // Use dynamic CORS origin based on environment setting
+    header('Access-Control-Allow-Origin: ' . get_cors_origin());
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-WP-Nonce');
     header('Access-Control-Allow-Credentials: true');
@@ -108,6 +122,33 @@ function clear_ftg_credentials_handler() {
     delete_option('belims_ftg_token_expiry');
     
     wp_send_json_success('FTG credentials cleared');
+}
+
+/**
+ * AJAX handler to switch frontend environment
+ */
+add_action('wp_ajax_switch_frontend_environment', 'switch_frontend_environment_handler');
+function switch_frontend_environment_handler() {
+    check_ajax_referer('switch_env_nonce', 'nonce');
+    
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+        return;
+    }
+    
+    $environment = sanitize_text_field($_POST['environment'] ?? 'production');
+    
+    if (!in_array($environment, ['production', 'development'])) {
+        wp_send_json_error('Invalid environment');
+        return;
+    }
+    
+    update_option('belims_frontend_environment', $environment);
+    
+    wp_send_json_success([
+        'message' => 'Environment switched to ' . $environment,
+        'cors_origin' => get_cors_origin()
+    ]);
 }
 
 /**
@@ -853,10 +894,88 @@ function global_site_settings_main_page() {
 
             <!-- APIs Tab -->
             <div id="tab-apis" class="bpc-tab-content">
+                <!-- Environment Toggle Card -->
                 <div class="bpc-card">
                     <div class="bpc-card-header">
+                        <h2 class="bpc-card-title">Frontend Environment</h2>
+                        <p class="bpc-card-description">Switch between development and production frontends.</p>
+                    </div>
+                    
+                    <?php
+                    $current_env = get_option('belims_frontend_environment', 'production');
+                    ?>
+                    
+                    <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; margin-bottom: 8px;">Active Environment: 
+                                <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; <?php echo $current_env === 'production' ? 'background: #d1fae5; color: #065f46;' : 'background: #fef3c7; color: #92400e;'; ?>">
+                                    <?php echo ucfirst($current_env); ?>
+                                </span>
+                            </div>
+                            <div style="font-size: 13px; color: #64748b;">
+                                CORS Origin: <code style="background: white; padding: 2px 6px; border-radius: 3px;"><?php echo esc_html(get_cors_origin()); ?></code>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" id="switch-to-dev" class="button <?php echo $current_env === 'development' ? 'button-primary' : 'button-secondary'; ?>" style="white-space: nowrap;">
+                                <span class="dashicons dashicons-laptop" style="margin-right: 5px;"></span>
+                                Development
+                            </button>
+                            <button type="button" id="switch-to-prod" class="button <?php echo $current_env === 'production' ? 'button-primary' : 'button-secondary'; ?>" style="white-space: nowrap;">
+                                <span class="dashicons dashicons-cloud" style="margin-right: 5px;"></span>
+                                Production
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="env-switch-status" style="margin-top: 15px;"></div>
+                    
+                    <script>
+                    jQuery(document).ready(function($) {
+                        $('#switch-to-dev').on('click', function() {
+                            switchEnvironment('development', $(this));
+                        });
+                        
+                        $('#switch-to-prod').on('click', function() {
+                            switchEnvironment('production', $(this));
+                        });
+                        
+                        function switchEnvironment(env, btn) {
+                            var statusDiv = $('#env-switch-status');
+                            statusDiv.html('<p>🔄 Switching to ' + env + '...</p>');
+                            
+                            $.ajax({
+                                url: ajaxurl,
+                                method: 'POST',
+                                data: {
+                                    action: 'switch_frontend_environment',
+                                    environment: env,
+                                    nonce: '<?php echo wp_create_nonce('switch_env_nonce'); ?>'
+                                },
+                                success: function(response) {
+                                    if (response.success) {
+                                        statusDiv.html('<div class="notice notice-success inline"><p>✅ Switched to ' + env + ' environment. CORS origin is now: <code>' + response.data.cors_origin + '</code></p></div>');
+                                        setTimeout(function() {
+                                            location.reload();
+                                        }, 1500);
+                                    } else {
+                                        statusDiv.html('<div class="notice notice-error inline"><p>❌ Failed to switch environment.</p></div>');
+                                    }
+                                },
+                                error: function() {
+                                    statusDiv.html('<div class="notice notice-error inline"><p>❌ Error switching environment.</p></div>');
+                                }
+                            });
+                        }
+                    });
+                    </script>
+                </div>
+                
+                <!-- API Settings Card -->
+                <div class="bpc-card" style="margin-top: 20px;">
+                    <div class="bpc-card-header">
                         <h2 class="bpc-card-title">API Settings</h2>
-                        <p class="bpc-card-description">Configure CORS for your headless frontend and third-party API credentials.</p>
+                        <p class="bpc-card-description">Configure additional CORS settings and third-party API credentials.</p>
                     </div>
                     
                     <?php 

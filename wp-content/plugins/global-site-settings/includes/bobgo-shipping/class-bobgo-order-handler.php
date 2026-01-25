@@ -231,6 +231,17 @@ class BobGo_Order_Handler {
         // Get selected shipping method details
         $shipping_meta = $this->get_shipping_meta($order);
         
+        // Log the structure of the data being returned
+        error_log('BobGo Order Data Structure: ' . print_r(array(
+            'collection_address' => $collection_address,
+            'delivery_address' => $delivery_address,
+            'parcels' => $parcels,
+            'service_level_code' => $shipping_meta['service_level'] ?? 'ECO',
+            'opt_in_rates' => array(),
+            'opt_in_time_based_rates' => false,
+            'custom_tracking_reference' => 'Order #' . $order->get_order_number(),
+        ), true));
+        
         return array(
             'collection_address' => $collection_address,
             'delivery_address' => $delivery_address,

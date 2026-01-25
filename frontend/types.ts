@@ -1,12 +1,11 @@
 export interface Product {
   id: string;
   name: string;
-  slug: string; // URL slug for permalinks
-  category: string;
-  price: number; // Price excluding VAT
+  category: string; // Final price (VAT-inclusive)
+  price: number;
   regular_price?: number;
   sale_price?: number;
-  price_incl_vat?: number; // Price including VAT (display this)
+  price_excl_vat?: number;
   image: string;
   images?: string[]; // For gallery
   rating: number;
