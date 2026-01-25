@@ -1,6 +1,7 @@
 export interface Product {
   id: string;
   name: string;
+  slug: string; // URL slug for permalinks
   category: string;
   price: number; // Price excluding VAT
   regular_price?: number;

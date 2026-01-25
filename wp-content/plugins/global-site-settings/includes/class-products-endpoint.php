@@ -158,6 +158,7 @@ class Belims_Products_Endpoint {
         return array(
             'id' => (string) $product->get_id(),
             'name' => $product->get_name(),
+            'slug' => $product->get_slug(),
             'category' => $category_name,
             'price' => $price_excl_vat, // Display price excluding VAT
             'regular_price' => $regular_price_excl_vat,
