@@ -44,9 +44,9 @@ export default function App() {
   const [currentBrand, setCurrentBrand] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Product data state
-  const [products, setProducts] = useState<Product[]>(SYNCED_PRODUCTS);
-  const [loading, setLoading] = useState(false);
+  // Product data state - Start empty, load only from WooCommerce API
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -83,11 +83,16 @@ export default function App() {
         const apiProducts = await fetchProducts();
         if (apiProducts && apiProducts.length > 0) {
           setProducts(apiProducts);
-          console.log(`Loaded ${apiProducts.length} products from Belims API`);
+          console.log(
+            `Loaded ${apiProducts.length} products from WooCommerce API`,
+          );
+        } else {
+          console.warn("No products returned from API");
+          setProducts([]);
         }
       } catch (error) {
-        console.error("Failed to load products:", error);
-        // Fallback to constants if API fails
+        console.error("Failed to load products from WooCommerce:", error);
+        setProducts([]); // Show empty state instead of fallback
       } finally {
         setLoading(false);
       }
