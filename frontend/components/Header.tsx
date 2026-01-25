@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Store, CategoryNode, CartItem, Product } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
-import { CATEGORY_TREE } from "../categoryTree";
+import { initializeCategoryTree } from "../categoryTree";
 
 interface SearchCategoryResult {
   id: string;
@@ -73,15 +73,28 @@ export const Header: React.FC<HeaderProps> = ({
     categories: SearchCategoryResult[];
     products: Product[];
   } | null>(null);
+  const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
   const [activeMegaCategory, setActiveMegaCategory] =
-    useState<CategoryNode | null>(CATEGORY_TREE[0] ?? null);
+    useState<CategoryNode | null>(null);
   const [expandedMobileCategory, setExpandedMobileCategory] = useState<
     string | null
   >(null);
 
+  // Initialize category tree from API
+  useEffect(() => {
+    const loadCategories = async () => {
+      const tree = await initializeCategoryTree();
+      setCategoryTree(tree);
+      if (tree.length > 0 && !activeMegaCategory) {
+        setActiveMegaCategory(tree[0]);
+      }
+    };
+    loadCategories();
+  }, []);
+
   const flatCategoryList = useMemo(
-    () => flattenCategoryTree(CATEGORY_TREE),
-    [],
+    () => flattenCategoryTree(categoryTree),
+    [categoryTree],
   );
 
   const toggleMobileMenu = () => {
@@ -396,7 +409,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="container mx-auto flex min-h-[450px]">
               {/* Left Sidebar: Top Level Categories */}
               <div className="w-1/4 bg-gray-50 py-6 border-r border-gray-100 overflow-y-auto max-h-[600px]">
-                {CATEGORY_TREE.map((cat) => {
+                {categoryTree.map((cat) => {
                   const isActive = activeMegaCategory?.id === cat.id;
                   return (
                     <div
@@ -592,7 +605,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="px-4 py-3 font-bold text-lg border-b border-gray-100 font-heading">
                   Departments
                 </div>
-                {CATEGORY_TREE.map((cat) => {
+                {categoryTree.map((cat) => {
                   const isExpanded = expandedMobileCategory === cat.id;
                   return (
                     <div key={cat.id} className="border-b border-gray-100">
