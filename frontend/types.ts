@@ -2,10 +2,10 @@ export interface Product {
   id: string;
   name: string;
   category: string;
-  price: number; // Final price (VAT-inclusive)
+  price: number; // Price excluding VAT
   regular_price?: number;
   sale_price?: number;
-  price_excl_vat?: number;
+  price_incl_vat?: number; // Price including VAT (display this)
   image: string;
   images?: string[]; // For gallery
   rating: number;

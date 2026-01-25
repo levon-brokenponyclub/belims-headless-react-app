@@ -182,20 +182,21 @@ function test_bobgo_connection_handler() {
 
 /**
  * Redirect homepage to login for headless CMS
+ * DISABLED: This was causing login session issues
  */
-function belims_redirect_home_to_login() {
-    // Don't redirect admin pages, login page, or AJAX requests
-    if (is_admin() || $GLOBALS['pagenow'] === 'wp-login.php' || wp_doing_ajax()) {
-        return;
-    }
-    
-    // Redirect any frontend page to login if not logged in
-    if (!is_user_logged_in()) {
-        auth_redirect();
-        exit;
-    }
-}
-add_action('template_redirect', 'belims_redirect_home_to_login');
+// function belims_redirect_home_to_login() {
+//     // Don't redirect admin pages, login page, or AJAX requests
+//     if (is_admin() || $GLOBALS['pagenow'] === 'wp-login.php' || wp_doing_ajax()) {
+//         return;
+//     }
+//     
+//     // Redirect any frontend page to login if not logged in
+//     if (!is_user_logged_in()) {
+//         auth_redirect();
+//         exit;
+//     }
+// }
+// add_action('template_redirect', 'belims_redirect_home_to_login');
 
 /**
  * Customize login page with Belims branding

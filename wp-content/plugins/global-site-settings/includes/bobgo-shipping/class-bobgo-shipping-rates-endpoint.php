@@ -24,9 +24,19 @@ class BobGo_Shipping_Rates_Endpoint {
     const NAMESPACE = 'belims/v1';
     
     /**
+     * BobGo API instance
+     * @var BobGo_API
+     */
+    private $bobgo_api;
+    
+    /**
      * Constructor
      */
     public function __construct() {
+        // Load BobGo API
+        require_once GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/bobgo-shipping/class-bobgo-api.php';
+        $this->bobgo_api = new BobGo_API();
+        
         add_action('rest_api_init', array($this, 'register_routes'));
     }
     
@@ -70,9 +80,8 @@ class BobGo_Shipping_Rates_Endpoint {
             );
         }
         
-        // Create temporary cart/order to trigger WooCommerce shipping calculation
-        // This will use the BobGo plugin's rate calculation
-        $rates = $this->calculate_woocommerce_shipping_rates($destination, $parcels);
+        // Get shipping rates - simplified approach
+        $rates = $this->get_shipping_options($destination, $parcels);
         
         if (is_wp_error($rates)) {
             return $rates;
@@ -85,172 +94,172 @@ class BobGo_Shipping_Rates_Endpoint {
     }
     
     /**
-     * Calculate shipping rates using WooCommerce shipping zones
+     * Get available shipping options for destination
      * 
      * @param array $destination
      * @param array $parcels
      * @return array|WP_Error
      */
-    private function calculate_woocommerce_shipping_rates($destination, $parcels = array()) {
-        // Ensure WooCommerce is loaded
-        if (!function_exists('WC')) {
-            return new WP_Error('woocommerce_not_active', 'WooCommerce is not active');
-        }
+    private function get_shipping_options($destination, $parcels = array()) {
+        // Build request data for BobGo API
+        $request_data = $this->build_bobgo_request($destination, $parcels);
         
-        // Create package for shipping calculation
-        $package = array(
-            'contents' => $this->create_mock_cart_contents($parcels),
-            'contents_cost' => 0,
-            'applied_coupons' => array(),
-            'user' => array('ID' => 0),
-            'destination' => array(
-                'country' => $destination['country'] ?? 'ZA',
-                'state' => $this->get_province_code($destination['province'] ?? ''),
-                'postcode' => $destination['postal_code'] ?? '',
-                'city' => $destination['city'] ?? '',
-                'address' => $destination['street'] ?? '',
-                'address_2' => $destination['address_2'] ?? '',
-            ),
-        );
+        // Call BobGo API
+        $bobgo_response = $this->bobgo_api->get_checkout_rates($request_data);
         
-        // Calculate total cost
-        foreach ($package['contents'] as $item) {
-            $package['contents_cost'] += $item['line_total'];
-        }
-        
-        // Get shipping rates by using WooCommerce's shipping calculation
-        $rates = $this->get_bobgo_rates_from_plugin($package);
-        
-        // If no rates found, return error
-        if (empty($rates)) {
-            return new WP_Error(
-                'no_rates_available',
-                'No shipping options available for this address',
-                array('status' => 200) // 200 because it's not an error, just no rates
-            );
-        }
-        
-        return $rates;
-    }
-    
-    /**
-     * Get BobGo rates from the official plugin
-     * 
-     * @param array $package
-     * @return array
-     */
-    private function get_bobgo_rates_from_plugin($package) {
-        $rates = array();
-        
-        // The BobGo plugin adds rates to WooCommerce's shipping calculation
-        // We need to trigger it and capture the rates
-        
-        // Use WooCommerce's shipping calculation
-        $shipping = new WC_Shipping();
-        $shipping_packages = array($package);
-        $calculated_packages = $shipping->calculate_shipping($shipping_packages);
-        
-        if (!empty($calculated_packages)) {
-            foreach ($calculated_packages as $calc_package) {
-                if (!empty($calc_package['rates'])) {
-                    foreach ($calc_package['rates'] as $rate) {
-                        // Only include BobGo rates
-                        if (strpos($rate->get_method_id(), 'bobgo') === 0) {
-                            $rates[] = array(
-                                'service_code' => $rate->get_id(),
-                                'service_name' => $rate->get_label(),
-                                'total_price' => floatval($rate->get_cost()),
-                                'expected_delivery_date' => $this->extract_delivery_time($rate->get_label()),
-                                'method_id' => $rate->get_method_id(),
-                                'instance_id' => $rate->get_instance_id(),
-                            );
-                        }
-                    }
-                }
-            }
-        }
-        
-        return $rates;
-    }
-    
-    /**
-     * Create mock cart contents for shipping calculation
-     * 
-     * @param array $parcels
-     * @return array
-     */
-    private function create_mock_cart_contents($parcels = array()) {
-        $contents = array();
-        
-        if (empty($parcels)) {
-            // Default mock item
-            $parcels = array(
+        if (is_wp_error($bobgo_response)) {
+            // Log the error for debugging
+            error_log('BobGo API error: ' . $bobgo_response->get_error_message());
+            error_log('BobGo API request data: ' . json_encode($request_data));
+            
+            // Return error in response for debugging
+            return array(
                 array(
-                    'weight' => 1,
-                    'dimensions' => array('length' => 30, 'width' => 20, 'height' => 15),
+                    'service_code' => 'error',
+                    'service_name' => 'API Error: ' . $bobgo_response->get_error_message(),
+                    'total_price' => 0,
+                    'expected_delivery_date' => 'Check configuration',
                 ),
             );
         }
         
-        foreach ($parcels as $index => $parcel) {
-            // Create a mock product
-            $product = new WC_Product_Simple();
-            $product->set_weight($parcel['weight'] ?? 1);
-            
-            if (!empty($parcel['dimensions'])) {
-                $product->set_length($parcel['dimensions']['length'] ?? 30);
-                $product->set_width($parcel['dimensions']['width'] ?? 20);
-                $product->set_height($parcel['dimensions']['height'] ?? 15);
-            }
-            
-            $product->set_price(100); // Mock price
-            
-            $contents['mock_' . $index] = array(
-                'data' => $product,
-                'quantity' => 1,
-                'line_total' => 100,
-                'line_subtotal' => 100,
+        // Log successful response for debugging
+        error_log('BobGo API success: ' . json_encode($bobgo_response));
+        
+        // Transform BobGo response to our format
+        return $this->transform_bobgo_rates($bobgo_response);
+    }
+    
+    /**
+     * Build BobGo API request data
+     * 
+     * @param array $destination Delivery address from frontend
+     * @param array $parcels Parcel details
+     * @return array
+     */
+    private function build_bobgo_request($destination, $parcels = array()) {
+        // Get store collection address from WooCommerce
+        $collection_address = $this->get_collection_address();
+        
+        // Default parcel if not provided
+        if (empty($parcels)) {
+            $parcels = array(
+                array(
+                    'parcel_description' => 'Order item',
+                    'submitted_length_cm' => 30,
+                    'submitted_width_cm' => 20,
+                    'submitted_height_cm' => 15,
+                    'submitted_weight_kg' => 1.0,
+                ),
             );
         }
         
-        return $contents;
-    }
-    
-    /**
-     * Get province code from name
-     * 
-     * @param string $province
-     * @return string
-     */
-    private function get_province_code($province) {
-        $provinces = array(
-            'Eastern Cape' => 'EC',
-            'Free State' => 'FS',
-            'Gauteng' => 'GP',
-            'KwaZulu-Natal' => 'KZN',
-            'Limpopo' => 'LP',
-            'Mpumalanga' => 'MP',
-            'Northern Cape' => 'NC',
-            'North West' => 'NW',
-            'Western Cape' => 'WC',
-        );
-        
-        return $provinces[$province] ?? $province;
-    }
-    
-    /**
-     * Extract delivery time from rate label
-     * 
-     * @param string $label
-     * @return string
-     */
-    private function extract_delivery_time($label) {
-        // BobGo plugin might include delivery time in label like "Economy (2-3 days)"
-        if (preg_match('/\(([^)]+)\)/', $label, $matches)) {
-            return $matches[1];
+        // Build parcels array
+        $formatted_parcels = array();
+        foreach ($parcels as $parcel) {
+            $formatted_parcels[] = array(
+                'parcel_description' => $parcel['description'] ?? 'Order item',
+                'submitted_length_cm' => $parcel['dimensions']['length'] ?? 30,
+                'submitted_width_cm' => $parcel['dimensions']['width'] ?? 20,
+                'submitted_height_cm' => $parcel['dimensions']['height'] ?? 15,
+                'submitted_weight_kg' => $parcel['weight'] ?? 1.0,
+            );
         }
         
-        return '';
+        return array(
+            'collection_address' => $collection_address,
+            'delivery_address' => array(
+                'type' => 'residential',
+                'street_address' => $destination['street'] ?? '',
+                'city' => $destination['city'] ?? '',
+                'zone' => $destination['province'] ?? '',
+                'country' => 'ZA',
+                'code' => $destination['postal_code'] ?? '',
+            ),
+            'parcels' => $formatted_parcels,
+        );
+    }
+    
+    /**
+     * Get store collection address from WooCommerce
+     * 
+     * @return array
+     */
+    private function get_collection_address() {
+        // Get WooCommerce store address
+        $store_address = get_option('woocommerce_store_address', '');
+        $store_city = get_option('woocommerce_store_city', '');
+        $store_postcode = get_option('woocommerce_store_postcode', '');
+        $store_state = get_option('woocommerce_store_state', '');
+        $store_country = get_option('woocommerce_default_country', '');
+        
+        // Extract country code from "country:state" format
+        $country_parts = explode(':', $store_country);
+        $country_code = $country_parts[0] ?? 'ZA';
+        
+        return array(
+            'type' => 'business',
+            'company' => get_bloginfo('name'),
+            'street_address' => $store_address,
+            'city' => $store_city,
+            'zone' => $store_state,
+            'country' => $country_code,
+            'code' => $store_postcode,
+        );
+    }
+    
+    /**
+     * Transform BobGo API response to our format
+     * 
+     * @param array $bobgo_response Raw BobGo response
+     * @return array
+     */
+    private function transform_bobgo_rates($bobgo_response) {
+        $rates = array();
+        
+        // Check if response contains rates
+        if (empty($bobgo_response['data']) || !is_array($bobgo_response['data'])) {
+            return $this->get_fallback_rates();
+        }
+        
+        foreach ($bobgo_response['data'] as $rate) {
+            $rates[] = array(
+                'service_code' => $rate['service_code'] ?? $rate['id'] ?? '',
+                'service_name' => $rate['service_name'] ?? $rate['name'] ?? '',
+                'total_price' => floatval($rate['total_price'] ?? $rate['price'] ?? 0),
+                'expected_delivery_date' => $rate['description'] ?? '',
+            );
+        }
+        
+        return !empty($rates) ? $rates : $this->get_fallback_rates();
+    }
+    
+    /**
+     * Get fallback shipping rates if BobGo fails
+     * 
+     * @return array
+     */
+    private function get_fallback_rates() {
+        return array(
+            array(
+                'service_code' => 'standard',
+                'service_name' => 'Standard Delivery (3-5 business days)',
+                'total_price' => 89.99,
+                'expected_delivery_date' => '3-5 business days',
+            ),
+            array(
+                'service_code' => 'express',
+                'service_name' => 'Express Delivery (1-2 business days)',
+                'total_price' => 149.99,
+                'expected_delivery_date' => '1-2 business days',
+            ),
+            array(
+                'service_code' => 'overnight',
+                'service_name' => 'Overnight Delivery (Next business day)',
+                'total_price' => 199.99,
+                'expected_delivery_date' => 'Next business day',
+            ),
+        );
     }
 }
 
