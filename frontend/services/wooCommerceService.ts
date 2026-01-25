@@ -3,10 +3,10 @@ import { Product, Category } from "../types";
 /**
  * BELIMS HEADLESS API SERVICE
  * ------------------------------------
- * Uses Netlify proxy to bypass CORS (production) or direct URL (development)
+ * Uses Netlify proxy to bypass CORS in production
  *
- * Production: Requests go to /api/belims/v1/* → Netlify proxies to cms.belims.co.za/wp-json/belims/v1/*
- * Development: Requests go directly to https://cms.belims.co.za/wp-json/belims/v1/*
+ * Production: /api/belims/v1/* → Netlify proxies to cms.belims.co.za/wp-json/belims/v1/*
+ * Development: http://localhost:5173/api/belims/v1/* (also uses proxy in dev for consistency)
  *
  * Endpoints:
  * - GET /api/belims/v1/products
@@ -15,11 +15,8 @@ import { Product, Category } from "../types";
  * - POST /api/belims/v1/orders
  */
 
-// Use Netlify proxy in production, direct URL in dev
-const isDev = import.meta.env.DEV;
-const BASE_URL = isDev
-  ? "https://cms.belims.co.za/wp-json/belims/v1"
-  : "/api/belims/v1";
+// Always use the Netlify proxy endpoint
+const BASE_URL = "/api/belims/v1";
 
 /**
  * Fetch Products from WooCommerce via custom API
