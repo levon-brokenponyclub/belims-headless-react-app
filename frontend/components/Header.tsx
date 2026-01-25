@@ -14,11 +14,7 @@ import {
   Scale,
 } from "lucide-react";
 import { Store, CategoryNode, CartItem, Product } from "../types";
-import {
-  CURRENCY_SYMBOL,
-  FEATURED_PRODUCTS,
-  DEALS_PRODUCTS,
-} from "../constants";
+import { CURRENCY_SYMBOL } from "../constants";
 import { CATEGORY_TREE } from "../categoryTree";
 
 interface SearchCategoryResult {
@@ -58,6 +54,7 @@ interface HeaderProps {
   onCompare?: (product: Product) => void;
   onCategoryClick?: (category: string) => void;
   onSearch?: (query: string) => void;
+  products?: Product[];
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -71,6 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
   onCompare,
   onCategoryClick,
   onSearch,
+  products = [],
 }) => {
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -111,14 +109,13 @@ export const Header: React.FC<HeaderProps> = ({
   useEffect(() => {
     if (searchQuery.length > 1) {
       const lowerQuery = searchQuery.toLowerCase();
-      const allProducts = [...FEATURED_PRODUCTS, ...DEALS_PRODUCTS];
 
       const matchedCats = flatCategoryList.filter(
         (cat) =>
           cat.label.toLowerCase().includes(lowerQuery) ||
           cat.fullPath.toLowerCase().includes(lowerQuery),
       );
-      const matchedProds = allProducts.filter(
+      const matchedProds = products.filter(
         (p) =>
           p.name.toLowerCase().includes(lowerQuery) ||
           p.category.toLowerCase().includes(lowerQuery),
@@ -127,7 +124,7 @@ export const Header: React.FC<HeaderProps> = ({
     } else {
       setSearchResults(null);
     }
-  }, [searchQuery, flatCategoryList]);
+  }, [searchQuery, flatCategoryList, products]);
 
   const handleProductSelect = (product: Product) => {
     if (onProductClick) onProductClick(product);

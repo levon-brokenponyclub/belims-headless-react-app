@@ -15,7 +15,6 @@ import { RecentlyViewed } from "./components/RecentlyViewed";
 import { Product, CartItem, Store } from "./types";
 import { fetchProducts } from "./services/wooCommerceService";
 import {
-  FEATURED_PRODUCTS,
   STORES,
   HERO_SLIDES,
   CATEGORY_PILLS,
@@ -245,6 +244,7 @@ export default function App() {
         onCompare={addToCompare}
         onCategoryClick={handleCategoryClick}
         onSearch={handleSearch}
+        products={products}
       />
 
       {/* Personal / Business Toggle - Top of Page (Only visible on Home) */}
@@ -529,7 +529,7 @@ export default function App() {
 
                 {/* Right Slider (Horizontal Scroll) - Products change based on category */}
                 <div className="flex-1 overflow-x-auto no-scrollbar flex gap-4 items-stretch">
-                  {currentSliderContent.products.map((product) => (
+                  {products.slice(0, 6).map((product) => (
                     <div
                       key={product.id}
                       className="min-w-[280px] max-w-[280px] h-full"
@@ -576,7 +576,7 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {FEATURED_PRODUCTS.map((product) => (
+                {products.slice(0, 4).map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
