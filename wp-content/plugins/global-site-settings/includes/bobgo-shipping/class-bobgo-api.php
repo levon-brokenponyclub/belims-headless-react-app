@@ -37,8 +37,9 @@ class BobGo_API {
      * Constructor
      */
     public function __construct() {
-        $this->environment = get_option('bobgo_environment', 'sandbox');
-        $this->api_token = get_option('bobgo_api_token', '');
+        // Get settings from ACF options page
+        $this->environment = get_field('bobgo_environment', 'option') ?: 'sandbox';
+        $this->api_token = get_field('bobgo_api_key', 'option') ?: '';
         $this->base_url = $this->get_base_url();
     }
     

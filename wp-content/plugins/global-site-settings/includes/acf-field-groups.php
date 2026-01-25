@@ -328,6 +328,30 @@ acf_add_local_field_group(array(
             'ui' => 1,
         ),
         array(
+            'key' => 'field_belims_bobgo_environment',
+            'label' => 'BobGo Environment',
+            'name' => 'bobgo_environment',
+            'type' => 'select',
+            'instructions' => 'Select the BobGo environment (Sandbox for testing, Production for live)',
+            'choices' => array(
+                'sandbox' => 'Sandbox (Testing)',
+                'production' => 'Production (Live)',
+            ),
+            'default_value' => 'sandbox',
+            'allow_null' => 0,
+            'multiple' => 0,
+            'ui' => 1,
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_bobgo_enabled',
+                        'operator' => '==',
+                        'value' => '1',
+                    ),
+                ),
+            ),
+        ),
+        array(
             'key' => 'field_belims_bobgo_api_url',
             'label' => 'BobGo API URL',
             'name' => 'bobgo_api_url',
