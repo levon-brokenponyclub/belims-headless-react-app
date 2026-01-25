@@ -33,7 +33,7 @@ const API_BASE_URL = "/api/belims/v1";
 export const getShippingRates = async (
   params: ShippingQuoteParams,
 ): Promise<ShippingRate[]> => {
-  console.log("Fetching BobGo rates for:", params);
+  console.log("Fetching shipping rates for:", params);
 
   try {
     const response = await fetch(`${API_BASE_URL}/shipping/rates`, {
@@ -52,30 +52,13 @@ export const getShippingRates = async (
     const data = await response.json();
 
     if (!data.success || !data.rates || data.rates.length === 0) {
-      console.log("No BobGo rates available, returning free shipping fallback");
-      return [
-        {
-          service_code: "free-shipping",
-          service_name: "Free Shipping (Testing)",
-          total_price: 0,
-          expected_delivery_date: "3-5 business days",
-        },
-      ];
+      throw new Error("No shipping rates available for this address");
     }
 
-    console.log("Received BobGo rates:", data.rates);
+    console.log("Received shipping rates:", data.rates);
     return data.rates;
   } catch (error) {
-    console.error("Error fetching BobGo rates:", error);
-    // Return free shipping fallback on error
-    console.log("Returning free shipping fallback due to error");
-    return [
-      {
-        service_code: "free-shipping",
-        service_name: "Free Shipping (Testing)",
-        total_price: 0,
-        expected_delivery_date: "3-5 business days",
-      },
-    ];
+    console.error("Error fetching shipping rates:", error);
+    throw error;
   }
 };

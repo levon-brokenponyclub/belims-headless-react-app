@@ -101,6 +101,21 @@ class BobGo_Shipping_Rates_Endpoint {
      * @return array|WP_Error
      */
     private function get_shipping_options($destination, $parcels = array()) {
+        // Check if BobGo integration is enabled
+        $bobgo_enabled = get_option('options_bobgo_enabled', false);
+        
+        if (!$bobgo_enabled) {
+            // BobGo disabled - return free shipping fallback
+            return array(
+                array(
+                    'service_code' => 'free-shipping',
+                    'service_name' => 'Free Shipping',
+                    'total_price' => 0,
+                    'expected_delivery_date' => '3-5 business days',
+                ),
+            );
+        }
+        
         // Build request data for BobGo API
         $request_data = $this->build_bobgo_request($destination, $parcels);
         
@@ -112,19 +127,13 @@ class BobGo_Shipping_Rates_Endpoint {
             error_log('BobGo API error: ' . $bobgo_response->get_error_message());
             error_log('BobGo API request data: ' . json_encode($request_data));
             
-            // Check if BobGo is configured
-            if ($bobgo_response->get_error_code() === 'no_token') {
-                // BobGo not configured - return empty array (no shipping options)
-                return array();
-            }
-            
-            // Return error in response for other API errors
+            // BobGo is enabled but errored - return error (no fallback)
             return array(
                 array(
                     'service_code' => 'error',
                     'service_name' => 'Shipping unavailable',
                     'total_price' => 0,
-                    'expected_delivery_date' => 'Contact support',
+                    'expected_delivery_date' => 'Please contact support',
                 ),
             );
         }
