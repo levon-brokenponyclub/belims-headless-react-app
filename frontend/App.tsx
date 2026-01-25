@@ -13,7 +13,10 @@ import { Checkout } from "./components/Checkout";
 import { Archive } from "./components/Archive";
 import { RecentlyViewed } from "./components/RecentlyViewed";
 import { Product, CartItem, Store } from "./types";
-import { fetchProducts } from "./services/wooCommerceService";
+import {
+  fetchProducts,
+  fetchFeaturedProducts,
+} from "./services/wooCommerceService";
 import {
   STORES,
   HERO_SLIDES,
@@ -43,6 +46,7 @@ export default function App() {
 
   // Product data state
   const [products, setProducts] = useState<Product[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -81,6 +85,15 @@ export default function App() {
         if (apiProducts && apiProducts.length > 0) {
           setProducts(apiProducts);
           console.log(`Loaded ${apiProducts.length} products from Belims API`);
+        }
+
+        // Load featured products
+        const apiFeaturedProducts = await fetchFeaturedProducts();
+        if (apiFeaturedProducts && apiFeaturedProducts.length > 0) {
+          setFeaturedProducts(apiFeaturedProducts);
+          console.log(
+            `Loaded ${apiFeaturedProducts.length} featured products from Belims API`,
+          );
         }
       } catch (error) {
         console.error("Failed to load products:", error);
@@ -576,7 +589,10 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {products.slice(0, 4).map((product) => (
+                {(featuredProducts.length > 0
+                  ? featuredProducts
+                  : products.slice(0, 4)
+                ).map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}

@@ -38,14 +38,26 @@ class Belims_Products_Endpoint {
             'post_status' => 'publish',
         );
 
-        // Filter by category
-        if (!empty($params['category'])) {
+        // Filter by featured products
+        if (!empty($params['featured']) && $params['featured'] === 'true') {
             $args['tax_query'] = array(
                 array(
-                    'taxonomy' => 'product_cat',
-                    'field' => 'slug',
-                    'terms' => sanitize_text_field($params['category']),
+                    'taxonomy' => 'product_visibility',
+                    'field' => 'name',
+                    'terms' => 'featured',
                 )
+            );
+        }
+
+        // Filter by category
+        if (!empty($params['category'])) {
+            if (!isset($args['tax_query'])) {
+                $args['tax_query'] = array();
+            }
+            $args['tax_query'][] = array(
+                'taxonomy' => 'product_cat',
+                'field' => 'slug',
+                'terms' => sanitize_text_field($params['category']),
             );
         }
 
@@ -154,6 +166,9 @@ class Belims_Products_Endpoint {
         // Bundle candidates (products from same category)
         $bundle_candidates = $this->get_bundle_candidates($product);
 
+        // Check if product is featured
+        $is_featured = $this->is_product_featured($product);
+
         return array(
             'id' => (string) $product->get_id(),
             'name' => $product->get_name(),
@@ -172,6 +187,7 @@ class Belims_Products_Endpoint {
             'description' => wp_strip_all_tags($product->get_description()),
             'short_description' => wp_strip_all_tags($product->get_short_description()),
             'isBundle' => $product->is_type('grouped') || $product->is_type('bundle'),
+            'isFeatured' => $is_featured,
             'sku' => $product->get_sku(),
             'brand' => $brand ?: '',
             'features' => $features,
@@ -228,6 +244,19 @@ class Belims_Products_Endpoint {
         return array_map(function($tag) {
             return $tag->name;
         }, $tags);
+    }
+
+    /**
+     * Check if product is featured
+     */
+    private function is_product_featured($product) {
+        $terms = wp_get_post_terms($product->get_id(), 'product_visibility');
+        foreach ($terms as $term) {
+            if ($term->name === 'featured') {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

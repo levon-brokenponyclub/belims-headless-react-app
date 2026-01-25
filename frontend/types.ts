@@ -14,6 +14,7 @@ export interface Product {
   maxStock: number; // For the stock bar visual
   weight?: number; // Weight in kg for shipping calculation
   isBundle?: boolean;
+  isFeatured?: boolean; // WooCommerce featured product flag
   bundleSavings?: number;
   description?: string;
   colors?: string[];

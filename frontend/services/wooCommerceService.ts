@@ -75,6 +75,35 @@ export const fetchProducts = async (category?: string): Promise<Product[]> => {
 };
 
 /**
+ * Fetch Featured Products from WooCommerce
+ */
+export const fetchFeaturedProducts = async (): Promise<Product[]> => {
+  try {
+    const url = `${BASE_URL}/products?featured=true`;
+    console.log(`Fetching featured products from: ${url}`);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      console.error(`API Error: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch featured products: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Belims API Error:", error);
+    return [];
+  }
+};
+
+/**
  * Fetch Categories from WooCommerce via custom API
  */
 export const fetchCategories = async (): Promise<Category[]> => {
