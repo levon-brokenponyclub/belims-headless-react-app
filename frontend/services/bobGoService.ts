@@ -51,14 +51,31 @@ export const getShippingRates = async (
 
     const data = await response.json();
 
-    if (!data.success || !data.rates) {
-      throw new Error("No shipping rates available for this address");
+    if (!data.success || !data.rates || data.rates.length === 0) {
+      console.log("No BobGo rates available, returning free shipping fallback");
+      return [
+        {
+          service_code: "free-shipping",
+          service_name: "Free Shipping (Testing)",
+          total_price: 0,
+          expected_delivery_date: "3-5 business days",
+        },
+      ];
     }
 
     console.log("Received BobGo rates:", data.rates);
     return data.rates;
   } catch (error) {
     console.error("Error fetching BobGo rates:", error);
-    throw error;
+    // Return free shipping fallback on error
+    console.log("Returning free shipping fallback due to error");
+    return [
+      {
+        service_code: "free-shipping",
+        service_name: "Free Shipping (Testing)",
+        total_price: 0,
+        expected_delivery_date: "3-5 business days",
+      },
+    ];
   }
 };
