@@ -48,6 +48,14 @@ pre_reset_backup.sql
 bad_import_backup.sql
 
 # --------------------
+# Environment Variables & Secrets
+# --------------------
+netlify-env-vars.env
+*.env
+.env.local
+.env.production
+
+# --------------------
 # Node / Frontend
 # --------------------
 node_modules/
