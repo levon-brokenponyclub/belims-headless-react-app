@@ -27,13 +27,14 @@ class Belims_Categories_Endpoint {
         $args = array(
             'taxonomy' => 'product_cat',
             'hide_empty' => false,
-            'parent' => 0, // Only top-level categories
+            'orderby' => 'name',
+            'order' => 'ASC',
         );
 
-        $categories = get_terms($args);
+        $all_categories = get_terms($args);
         $formatted_categories = array();
 
-        foreach ($categories as $category) {
+        foreach ($all_categories as $category) {
             $formatted_categories[] = $this->format_category($category);
         }
 
@@ -41,31 +42,46 @@ class Belims_Categories_Endpoint {
     }
 
     /**
-     * Format category data
+     * Format category data with parent hierarchy
      */
     private function format_category($category) {
         $thumbnail_id = get_term_meta($category->term_id, 'thumbnail_id', true);
         $image = $thumbnail_id ? wp_get_attachment_url($thumbnail_id) : '';
 
-        // Get subcategories
-        $subcategories = get_terms(array(
+        // Get direct children
+        $children = get_terms(array(
             'taxonomy' => 'product_cat',
             'parent' => $category->term_id,
             'hide_empty' => false,
         ));
 
-        $subcategory_names = array();
-        foreach ($subcategories as $subcat) {
-            $subcategory_names[] = $subcat->name;
+        $child_categories = array();
+        foreach ($children as $child) {
+            $child_categories[] = array(
+                'id' => $child->term_id,
+                'slug' => $child->slug,
+                'name' => $child->name,
+                'parent' => $category->slug,
+            );
+        }
+
+        // Get parent slug if exists
+        $parent_slug = null;
+        if ($category->parent > 0) {
+            $parent = get_term($category->parent, 'product_cat');
+            if ($parent && !is_wp_error($parent)) {
+                $parent_slug = $parent->slug;
+            }
         }
 
         return array(
-            'id' => $category->slug,
+            'id' => $category->term_id,
             'name' => $category->name,
             'slug' => $category->slug,
+            'parent' => $parent_slug,
             'count' => $category->count,
             'image' => $image,
-            'subcategories' => $subcategory_names,
+            'children' => $child_categories,
         );
     }
 }
