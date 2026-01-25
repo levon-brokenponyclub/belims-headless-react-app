@@ -56,7 +56,7 @@ export const CATEGORIES: Category[] = [
     subcategories: ["Interior", "Exterior", "Primers", "Brushes"],
   },
   {
-    slug: 'tool-vest',
+    slug: "tool-vest",
     id: "safety",
     name: "Safety Gear",
     image:
@@ -66,14 +66,15 @@ export const CATEGORIES: Category[] = [
 ];
 
 // CORE HARDWARE PRODUCTS - Synced from WooCommerce 2025-11-26 (30 products captured, 23 with complete pricing)
-export const SYNCED_PRODUCTS: Product[] = [
+// NOTE: This is now loaded from WooCommerce API only. Keeping for reference but not exported.
+const SYNCED_PRODUCTS_DEPRECATED: Product[] = [];
   {
     id: "20v-lithium-ion-battery-and-charger-kit",
     slug: "20v-lithium-ion-battery-and-charger-kit",
     name: "20V Lithium-Ion Battery And Charger Kit",
     category: "Cordless Tools Batt and Acc",
     price: 688.85,
-    slug: 'hex-chisel-2',
+    slug: "hex-chisel-2",
     image:
       "https://staging.belims.co.za/wp-content/uploads/2025/05/6070f46fde67bacca245b32d9981478b.png",
     rating: 4,
@@ -89,7 +90,6 @@ export const SYNCED_PRODUCTS: Product[] = [
       "Live SKU FBCPK1222",
       "Includes 15% VAT for storefront parity",
       "2 in stock",
-    slug: 't-handle-torx-wrench-set',
     ],
   },
   {
@@ -105,7 +105,7 @@ export const SYNCED_PRODUCTS: Product[] = [
     stock: 5,
     maxStock: 10,
     brand: "Fasteners and Adhesives",
-    slug: 'screwdriver-set-3',
+    slug: "screwdriver-set-3",
     sku: "STS6110",
     description: "Staples ships directly from Belims staging warehouse.",
     tags: ["fasteners-and-adhesives", "nail-in-anchors", "nails"],
@@ -1703,8 +1703,9 @@ export const SYNCED_PRODUCTS: Product[] = [
   },
 ];
 
-export const FEATURED_PRODUCTS: Product[] = SYNCED_PRODUCTS.slice(0, 4);
-export const DEALS_PRODUCTS: Product[] = SYNCED_PRODUCTS.slice(4);
+// Products now loaded from API only
+export const FEATURED_PRODUCTS: Product[] = [];
+export const DEALS_PRODUCTS: Product[] = [];
 
 export const HERO_SLIDES = [
   {
@@ -1782,14 +1783,8 @@ const pickProducts = (
   predicate: (product: Product) => boolean,
   limit = 4,
 ): Product[] => {
-  const matches = SYNCED_PRODUCTS.filter(predicate);
-  if (matches.length >= limit) {
-    return matches.slice(0, limit);
-  }
-  if (matches.length) {
-    return [...matches, ...SYNCED_PRODUCTS].slice(0, limit);
-  }
-  return SYNCED_PRODUCTS.slice(0, limit);
+  // Products now loaded from API only
+  return [];
 };
 
 const getProductsByTag = (tag: string, limit = 4) =>
@@ -1837,6 +1832,6 @@ export const CATEGORY_SLIDER_DATA: Record<
     title: "Hardware for Hard Work.",
     image:
       "https://images.unsplash.com/photo-1593307315564-c96172dc89dc?q=80&w=772&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    products: SYNCED_PRODUCTS,
+    products: [],
   },
 };
