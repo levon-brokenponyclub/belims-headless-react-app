@@ -63,6 +63,20 @@ class Belims_FTG_Sync_Endpoint {
             'callback' => array($this, 'get_single_product'),
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
+        
+        // Cleanup duplicate attributes
+        register_rest_route('belims/v1', '/ftg/cleanup-attributes', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'cleanup_duplicate_attributes'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+        
+        // Get product filters (Range, Color, Brand)
+        register_rest_route('belims/v1', '/products/filters', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_product_filters'),
+            'permission_callback' => '__return_true', // Public endpoint
+        ));
     }
     
     /**
@@ -206,10 +220,14 @@ class Belims_FTG_Sync_Endpoint {
         $params = $request->get_json_params();
         $collection_token = $params['collection_token'] ?? '';
         $limit = $params['limit'] ?? null; // null = all products
+        $offset = $params['offset'] ?? 0;
+        $batch_size = $params['batch_size'] ?? ($limit ?? 50);
         
         error_log('=== FTG Product Sync Started ===');
         error_log('Collection Token: ' . $collection_token);
         error_log('Limit: ' . ($limit ?? 'ALL'));
+        error_log('Offset: ' . $offset);
+        error_log('Batch Size: ' . $batch_size);
         
         if (empty($collection_token)) {
             return new WP_Error('missing_token', 'Collection token required', array('status' => 400));
@@ -248,8 +266,30 @@ class Belims_FTG_Sync_Endpoint {
             ));
         }
         
-        // Apply limit AFTER retrieval (FTG API returns all products at once)
-        if ($limit !== null && $limit > 0) {
+        // Filter for Ingco brand products only (if limit is small, assume test sync)
+        $brand_filter = null;
+        $total_available = 0;
+        if ($limit !== null && $limit <= 20) {
+            $brand_filter = 'Ingco';
+            error_log('Filtering for brand: ' . $brand_filter);
+            $filtered_products = array();
+            foreach ($products as $product) {
+                $product_data = $product['productData'] ?? $product;
+                $brand = $product_data['brand'] ?? '';
+                if (strcasecmp($brand, $brand_filter) === 0) {
+                    $filtered_products[] = $product;
+                }
+            }
+            $products = $filtered_products;
+            $total_available = count($products);
+            error_log('Filtered to ' . $total_available . ' Ingco products total');
+            
+            // Apply offset and batch_size for chunked processing
+            $products = array_slice($products, $offset, $batch_size);
+            error_log('Processing chunk: offset=' . $offset . ', batch_size=' . $batch_size . ', count=' . count($products));
+        } elseif ($limit !== null && $limit > 0) {
+            // Apply limit for non-brand-filtered syncs
+            $total_available = count($products);
             $products = array_slice($products, 0, $limit);
             error_log('Limited to ' . $limit . ' products for processing');
         }
@@ -257,6 +297,8 @@ class Belims_FTG_Sync_Endpoint {
         $synced_count = 0;
         $skipped_count = 0;
         $errors = array();
+        $synced_items = array();
+        $skipped_items = array();
         
         foreach ($products as $index => $ftg_product) {
             if ($index < 2) {
@@ -267,9 +309,53 @@ class Belims_FTG_Sync_Endpoint {
             $product_data = $ftg_product['productData'] ?? $ftg_product;
             $product_name = $product_data['description1'] ?? $product_data['description2'] ?? '';
             $sku = $product_data['productCode'] ?? '';
+            $brand = $product_data['brand'] ?? '';
+            $ftg_id_report = $ftg_product['ftgOneId'] ?? $product_data['ftgOneId'] ?? '';
+            // Compute item details for reporting
+            $price_excl_vat = isset($product_data['sellingPrice']) ? floatval($product_data['sellingPrice']) : 0;
+            $price_incl_vat = $price_excl_vat > 0 ? round($price_excl_vat * 1.15, 2) : 0;
+            $stock_qty = 0;
+            if (isset($product_data['additionalErpDetails']['stockQuantity'])) {
+                $stock_qty = intval($product_data['additionalErpDetails']['stockQuantity']);
+            }
+            $length = floatval($product_data['length'] ?? 0);
+            $width  = floatval($product_data['width'] ?? 0);
+            $height = floatval($product_data['height'] ?? 0);
+            $dim_unit = 'cm';
+            if (isset($product_data['productDimensionUnit']) && $product_data['productDimensionUnit'] === 'mm') {
+                $length = $length > 0 ? round($length / 10, 1) : 0;
+                $width  = $width  > 0 ? round($width  / 10, 1) : 0;
+                $height = $height > 0 ? round($height / 10, 1) : 0;
+                $dim_unit = 'cm';
+            }
+            $weight = 0.0; $weight_unit = 'kg';
+            if (!empty($product_data['weight'])) {
+                $weight = floatval($product_data['weight']);
+                if (isset($product_data['weightUnit']) && $product_data['weightUnit'] === 'g') {
+                    $weight = round($weight / 1000, 3);
+                    $weight_unit = 'kg';
+                }
+            }
+            $categories_names = array();
+            if (isset($product_data['webUrlHierarchyCollection']['web_hierarchy']) && is_array($product_data['webUrlHierarchyCollection']['web_hierarchy'])) {
+                foreach ($product_data['webUrlHierarchyCollection']['web_hierarchy'] as $level_data) {
+                    if (!empty($level_data['value'])) {
+                        $categories_names[] = $level_data['value'];
+                    }
+                }
+            }
+            $has_image = !empty($product_data['imageUrl']);
+            $has_description = !empty($product_data['description2']);
+            $range = !empty($product_data['range']) ? sanitize_text_field($product_data['range']) : '';
+            $color = !empty($product_data['colour']) ? sanitize_text_field($product_data['colour']) : '';
             
             if (empty($product_name)) {
                 $skipped_count++;
+                $skipped_items[] = array(
+                    'sku' => $sku,
+                    'reason' => 'No Name',
+                    'brand' => $brand,
+                );
                 error_log('SKIPPED Product (No Name): ' . $sku);
                 continue; // Skip to next product
             }
@@ -278,6 +364,22 @@ class Belims_FTG_Sync_Endpoint {
             
             if ($result['success']) {
                 $synced_count++;
+                $synced_items[] = array(
+                    'sku' => $result['sku'] ?? $sku,
+                    'name' => $result['name'] ?? $product_name,
+                    'product_id' => $result['product_id'] ?? 0,
+                    'price' => $price_incl_vat,
+                    'categories' => $categories_names,
+                    'brand' => $brand,
+                    'range' => $range,
+                    'color' => $color,
+                    'image' => $has_image ? 'Yes' : 'No',
+                    'description' => $has_description ? 'Yes' : 'No',
+                    'stock' => $stock_qty,
+                    'dimensions' => array('length' => $length, 'width' => $width, 'height' => $height, 'unit' => $dim_unit),
+                    'weight' => array('value' => $weight, 'unit' => $weight_unit),
+                    'ftg_id' => $ftg_id_report,
+                );
                 error_log('Product synced: ' . $result['name'] . ' (SKU: ' . $result['sku'] . ')');
             } else {
                 $errors[] = $result['error'] . ' (SKU: ' . ($result['sku'] ?? 'unknown') . ')';
@@ -300,12 +402,25 @@ class Belims_FTG_Sync_Endpoint {
         error_log('Skipped (no price/name): ' . $skipped_count);
         error_log('Errors: ' . count($errors));
         
+        // Calculate if there are more products to process
+        $total_requested = $limit ?? count($products);
+        $next_offset = $offset + $batch_size;
+        $has_more = ($total_available > 0) && ($next_offset < $total_requested);
+        $progress = ($total_requested > 0) ? min(100, round(($next_offset / $total_requested) * 100)) : 100;
+        
+        error_log('Progress calculation: offset=' . $offset . ', batch_size=' . $batch_size . ', next_offset=' . $next_offset . ', total_requested=' . $total_requested . ', has_more=' . ($has_more ? 'yes' : 'no') . ', progress=' . $progress . '%');
+        
         return rest_ensure_response(array(
             'success' => true,
             'synced' => $synced_count,
             'skipped' => $skipped_count,
             'total' => count($products),
+            'has_more' => $has_more,
+            'next_offset' => $next_offset,
+            'progress' => $progress,
             'errors' => $errors,
+            'synced_items' => $synced_items,
+            'skipped_items' => $skipped_items,
         ));
     }
     
@@ -342,9 +457,13 @@ class Belims_FTG_Sync_Endpoint {
             $product->set_name($product_name);
             $product->set_sku($sku);
             
+            // Log description fields for debugging
+            error_log("Product $sku - description1: " . ($product_data['description1'] ?? 'EMPTY'));
+            error_log("Product $sku - description2: " . ($product_data['description2'] ?? 'EMPTY'));
+            error_log("Product $sku - description3: " . ($product_data['description3'] ?? 'EMPTY'));
+            
             // Set description
-            $long_description = trim(($product_data['description2'] ?? '') . ' ' . ($product_data['description3'] ?? ''));
-            $product->set_description($long_description);
+            $product->set_description($product_data['description2'] ?? '');
             $product->set_short_description($product_data['description1'] ?? '');
             
             // Set pricing (FTG prices are EXCLUDING VAT - add 15%)
@@ -422,6 +541,15 @@ class Belims_FTG_Sync_Endpoint {
             // Save product FIRST (required before setting taxonomy terms)
             $product_id = $product->save();
             
+            // Set product image from FTG
+            if (!empty($product_data['imageUrl'])) {
+                error_log('Setting image for product ' . $sku . ': ' . $product_data['imageUrl']);
+                $this->set_product_image($product, $product_data['imageUrl']);
+                $product->save(); // Save again after image is set
+            } else {
+                error_log('No image URL found for SKU: ' . $sku);
+            }
+            
             // Set brand as product attribute AFTER saving (enables filtering & permalinks)
             if (!empty($product_data['brand'])) {
                 $brand_name = sanitize_text_field($product_data['brand']);
@@ -429,6 +557,20 @@ class Belims_FTG_Sync_Endpoint {
                 $this->set_product_brand($product_id, $brand_name);
             } else {
                 error_log('No brand found in product data for SKU: ' . $sku);
+            }
+            
+            // Set range as product attribute AFTER saving
+            if (!empty($product_data['range'])) {
+                $range_name = sanitize_text_field($product_data['range']);
+                error_log('Setting range for product ' . $sku . ': ' . $range_name);
+                $this->set_product_taxonomy($product_id, 'product_range', $range_name, 'Range');
+            }
+            
+            // Set color as product attribute AFTER saving
+            if (!empty($product_data['colour'])) {
+                $color_name = sanitize_text_field($product_data['colour']);
+                error_log('Setting color for product ' . $sku . ': ' . $color_name);
+                $this->set_product_taxonomy($product_id, 'product_color', $color_name, 'Color');
             }
             
             return array(
@@ -571,6 +713,48 @@ class Belims_FTG_Sync_Endpoint {
     }
     
     /**
+     * Set product taxonomy term (for product_range, product_color, etc.)
+     * Taxonomies are pre-registered on init hook in main plugin file
+     */
+    private function set_product_taxonomy($product_id, $taxonomy, $term_name, $display_name) {
+        if (empty($term_name)) {
+            return;
+        }
+        
+        error_log('set_product_taxonomy called: ' . $taxonomy . ' = ' . $term_name . ' for product ID: ' . $product_id);
+        
+        // Get or create term
+        $term = term_exists($term_name, $taxonomy);
+        if (!$term) {
+            error_log('Creating ' . $taxonomy . ' term: ' . $term_name);
+            $term = wp_insert_term($term_name, $taxonomy);
+            
+            if (is_wp_error($term)) {
+                error_log($taxonomy . ' term creation failed: ' . $term->get_error_message());
+                return;
+            }
+        }
+        
+        $term_id = is_array($term) ? $term['term_id'] : $term;
+        error_log($taxonomy . ' term ID: ' . $term_id);
+        
+        // Verify term was created
+        $check_term = get_term($term_id, $taxonomy);
+        if ($check_term && !is_wp_error($check_term)) {
+            error_log('Verified ' . $taxonomy . ' term: ' . $check_term->name . ' (ID: ' . $check_term->term_id . ')');
+        }
+        
+        // Set the taxonomy term for the product
+        $result = wp_set_object_terms($product_id, (int)$term_id, $taxonomy);
+        
+        if (is_wp_error($result)) {
+            error_log('Failed to set ' . $taxonomy . ' term: ' . $result->get_error_message());
+        } else {
+            error_log($taxonomy . ' set successfully for product ID: ' . $product_id);
+        }
+    }
+    
+    /**
      * Get sync status
      */
     public function get_sync_status($request) {
@@ -596,8 +780,8 @@ class Belims_FTG_Sync_Endpoint {
             return new WP_Error('missing_token', 'FTG Collection token not configured', array('status' => 400));
         }
         
-        // Get all products from FTG
-        $ftg_result = $this->ftg_api->get_products($collection_token);
+        // Get all products from FTG (request large limit to get all products)
+        $ftg_result = $this->ftg_api->get_products($collection_token, array('limit' => 10000));
         
         if (isset($ftg_result['error'])) {
             return new WP_Error('ftg_error', $ftg_result['error'], array('status' => 500));
@@ -611,19 +795,25 @@ class Belims_FTG_Sync_Endpoint {
             $products = $ftg_result['data'];
         }
         
-        // Find product by SKU
+        // Find product by SKU (check multiple possible code fields)
         $found_product = null;
         foreach ($products as $product) {
             $product_data = $product['productData'] ?? $product;
             $product_code = $product_data['productCode'] ?? '';
+            $mdr_code = $product_data['mdrProductCode'] ?? '';
+            $alt_code = $product_data['altProductCode'] ?? '';
             
-            if (strcasecmp($product_code, $sku) === 0) {
+            // Check all possible code fields
+            if (strcasecmp($product_code, $sku) === 0 || 
+                strcasecmp($mdr_code, $sku) === 0 || 
+                strcasecmp($alt_code, $sku) === 0) {
                 $found_product = $product_data;
                 break;
             }
         }
         
         if (!$found_product) {
+            error_log("Product not found: $sku. Total products in FTG: " . count($products));
             return new WP_Error('not_found', 'Product not found: ' . $sku, array('status' => 404));
         }
         
@@ -683,4 +873,144 @@ class Belims_FTG_Sync_Endpoint {
         
         return rest_ensure_response($response);
     }
-}
+    
+    /**
+     * Cleanup duplicate attributes (product_range, product_color)
+     * Removes duplicates and keeps only one of each attribute
+     */
+    public function cleanup_duplicate_attributes($request) {
+        global $wpdb;
+        
+        error_log('=== Cleaning up duplicate attributes ===');
+        
+        // Find all duplicate product_range and product_color attributes
+        $attributes_to_clean = array('product_range', 'product_color');
+        $cleanup_report = array();
+        
+        foreach ($attributes_to_clean as $attr_slug) {
+            // Get all terms for this taxonomy
+            $terms = get_terms(array(
+                'taxonomy' => $attr_slug,
+                'hide_empty' => false,
+            ));
+            
+            if (is_wp_error($terms) || empty($terms)) {
+                error_log('No terms found for taxonomy: ' . $attr_slug);
+                continue;
+            }
+            
+            // Group terms by name to find duplicates
+            $term_groups = array();
+            foreach ($terms as $term) {
+                if (!isset($term_groups[$term->name])) {
+                    $term_groups[$term->name] = array();
+                }
+                $term_groups[$term->name][] = $term;
+            }
+            
+            // For each term name with duplicates, keep the first and delete the rest
+            $deleted_count = 0;
+            foreach ($term_groups as $term_name => $term_list) {
+                if (count($term_list) > 1) {
+                    error_log('Found ' . count($term_list) . ' duplicate terms for: ' . $term_name);
+                    
+                    // Keep the first term, delete the rest
+                    $keep_term = $term_list[0];
+                    for ($i = 1; $i < count($term_list); $i++) {
+                        $delete_term = $term_list[$i];
+                        error_log('Deleting duplicate term: ' . $delete_term->name . ' (ID: ' . $delete_term->term_id . ')');
+                        wp_delete_term($delete_term->term_id, $attr_slug);
+                        $deleted_count++;
+                    }
+                }
+            }
+            
+            $cleanup_report[$attr_slug] = array(
+                'duplicates_removed' => $deleted_count,
+                'terms_remaining' => count($terms) - $deleted_count,
+            );
+        }
+        
+        error_log('=== Cleanup Complete ===');
+        error_log('Cleanup Report: ' . json_encode($cleanup_report));
+        
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'Duplicate attributes cleaned up',
+            'report' => $cleanup_report,
+        ));
+    }
+    
+    /**
+     * Get product filters (Range, Color, Brand) with product counts
+     */
+    public function get_product_filters($request) {
+        $filters = array();
+        
+        // Get Range filter
+        $range_terms = get_terms(array(
+            'taxonomy' => 'product_range',
+            'hide_empty' => true,
+            'orderby' => 'name',
+            'order' => 'ASC',
+        ));
+        
+        if (!is_wp_error($range_terms) && !empty($range_terms)) {
+            $ranges = array();
+            foreach ($range_terms as $term) {
+                $ranges[] = array(
+                    'id' => $term->term_id,
+                    'slug' => $term->slug,
+                    'name' => $term->name,
+                    'count' => $term->count,
+                );
+            }
+            $filters['range'] = $ranges;
+        }
+        
+        // Get Color filter
+        $color_terms = get_terms(array(
+            'taxonomy' => 'product_color',
+            'hide_empty' => true,
+            'orderby' => 'name',
+            'order' => 'ASC',
+        ));
+        
+        if (!is_wp_error($color_terms) && !empty($color_terms)) {
+            $colors = array();
+            foreach ($color_terms as $term) {
+                $colors[] = array(
+                    'id' => $term->term_id,
+                    'slug' => $term->slug,
+                    'name' => $term->name,
+                    'count' => $term->count,
+                );
+            }
+            $filters['color'] = $colors;
+        }
+        
+        // Get Brand filter
+        $brand_terms = get_terms(array(
+            'taxonomy' => 'product_brand',
+            'hide_empty' => true,
+            'orderby' => 'name',
+            'order' => 'ASC',
+        ));
+        
+        if (!is_wp_error($brand_terms) && !empty($brand_terms)) {
+            $brands = array();
+            foreach ($brand_terms as $term) {
+                $brands[] = array(
+                    'id' => $term->term_id,
+                    'slug' => $term->slug,
+                    'name' => $term->name,
+                    'count' => $term->count,
+                );
+            }
+            $filters['brand'] = $brands;
+        }
+        
+        return rest_ensure_response($filters);
+    }
+
+    }

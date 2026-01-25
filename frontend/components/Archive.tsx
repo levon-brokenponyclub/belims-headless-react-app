@@ -1,8 +1,15 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Product, CategoryNode } from "../types";
 import { ProductCard } from "./ProductCard";
 import { Filter, ChevronDown, ChevronRight, Search, X } from "lucide-react";
 import { CATEGORY_TREE } from "../categoryTree";
+
+interface FilterOption {
+  id: number;
+  slug: string;
+  name: string;
+  count: number;
+}
 
 interface ArchiveProps {
   products: Product[];
@@ -32,6 +39,42 @@ export const Archive: React.FC<ArchiveProps> = ({
   // Additional local filters
   const [filterInStock, setFilterInStock] = useState(false);
   const [filterOnSale, setFilterOnSale] = useState(false);
+  const [selectedRanges, setSelectedRanges] = useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+
+  // Filter data from API
+  const [rangeFilters, setRangeFilters] = useState<FilterOption[]>([]);
+  const [colorFilters, setColorFilters] = useState<FilterOption[]>([]);
+
+  // Fetch filters from API
+  useEffect(() => {
+    const fetchFilters = async () => {
+      const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+      if (!apiBase) {
+        console.error(
+          "Failed to fetch product filters: VITE_API_URL is not set",
+        );
+        return;
+      }
+      try {
+        const response = await fetch(
+          `${apiBase}/wp-json/belims/v1/products/filters`,
+        );
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(
+            `HTTP ${response.status} ${response.statusText}: ${body.slice(0, 200)}`,
+          );
+        }
+        const data = await response.json();
+        setRangeFilters(data.range || []);
+        setColorFilters(data.color || []);
+      } catch (error) {
+        console.error("Failed to fetch product filters:", error);
+      }
+    };
+    fetchFilters();
+  }, []);
 
   // Dynamic Facet Data
   const uniqueBrands = useMemo(() => {
@@ -179,6 +222,22 @@ export const Archive: React.FC<ArchiveProps> = ({
       setSelectedFacetBrands((prev) => prev.filter((x) => x !== b));
     } else {
       setSelectedFacetBrands((prev) => [...prev, b]);
+    }
+  };
+
+  const toggleRange = (r: string) => {
+    if (selectedRanges.includes(r)) {
+      setSelectedRanges((prev) => prev.filter((x) => x !== r));
+    } else {
+      setSelectedRanges((prev) => [...prev, r]);
+    }
+  };
+
+  const toggleColor = (c: string) => {
+    if (selectedColors.includes(c)) {
+      setSelectedColors((prev) => prev.filter((x) => x !== c));
+    } else {
+      setSelectedColors((prev) => [...prev, c]);
     }
   };
 
@@ -396,6 +455,80 @@ export const Archive: React.FC<ArchiveProps> = ({
                             </div>
                             <span className="text-gray-600 group-hover/item:text-gray-900 transition-colors">
                               {b}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
+
+                {/* Range Filter */}
+                {rangeFilters.length > 0 && (
+                  <div className="border-b border-gray-200 pb-6">
+                    <details className="group" open>
+                      <summary className="flex justify-between items-center cursor-pointer list-none text-gray-900 font-medium mb-4">
+                        <span>Range</span>
+                        <span className="transition group-open:rotate-180">
+                          <ChevronDown size={16} />
+                        </span>
+                      </summary>
+                      <div className="space-y-3 pt-2 max-h-48 overflow-y-auto">
+                        {rangeFilters.map((r) => (
+                          <label
+                            key={r.slug}
+                            className="flex items-center space-x-3 cursor-pointer group/item"
+                          >
+                            <div className="relative flex items-start">
+                              <input
+                                type="checkbox"
+                                className="peer h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                                checked={selectedRanges.includes(r.slug)}
+                                onChange={() => toggleRange(r.slug)}
+                              />
+                            </div>
+                            <span className="text-gray-600 group-hover/item:text-gray-900 transition-colors">
+                              {r.name}
+                            </span>
+                            <span className="text-gray-400 text-sm ml-auto">
+                              ({r.count})
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
+
+                {/* Color Filter */}
+                {colorFilters.length > 0 && (
+                  <div className="border-b border-gray-200 pb-6">
+                    <details className="group" open>
+                      <summary className="flex justify-between items-center cursor-pointer list-none text-gray-900 font-medium mb-4">
+                        <span>Color</span>
+                        <span className="transition group-open:rotate-180">
+                          <ChevronDown size={16} />
+                        </span>
+                      </summary>
+                      <div className="space-y-3 pt-2 max-h-48 overflow-y-auto">
+                        {colorFilters.map((c) => (
+                          <label
+                            key={c.slug}
+                            className="flex items-center space-x-3 cursor-pointer group/item"
+                          >
+                            <div className="relative flex items-start">
+                              <input
+                                type="checkbox"
+                                className="peer h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                                checked={selectedColors.includes(c.slug)}
+                                onChange={() => toggleColor(c.slug)}
+                              />
+                            </div>
+                            <span className="text-gray-600 group-hover/item:text-gray-900 transition-colors">
+                              {c.name}
+                            </span>
+                            <span className="text-gray-400 text-sm ml-auto">
+                              ({c.count})
                             </span>
                           </label>
                         ))}
