@@ -18,8 +18,7 @@ import { Product, Category } from "../types";
 
 // Environment variable - just the site URL
 const SITE_URL =
-  import.meta.env.REACT_APP_WOO_SITE_URL ||
-  "https://wordpress-1482444-6163809.cloudwaysapps.com";
+  import.meta.env.REACT_APP_WOO_SITE_URL || "https://cms.belims.co.za";
 
 // Base URL for custom API
 const BASE_URL = `${SITE_URL}/wp-json/belims/v1`;

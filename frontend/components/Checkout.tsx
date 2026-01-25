@@ -217,15 +217,25 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     setCustomer({ ...customer, city: e.target.value })
                   }
                 />
-                <input
+                <select
                   required
-                  placeholder="Province"
                   className="border p-3 rounded w-full"
                   value={customer.province}
                   onChange={(e) =>
                     setCustomer({ ...customer, province: e.target.value })
                   }
-                />
+                >
+                  <option value="">Select Province</option>
+                  <option value="Eastern Cape">Eastern Cape</option>
+                  <option value="Free State">Free State</option>
+                  <option value="Gauteng">Gauteng</option>
+                  <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+                  <option value="Limpopo">Limpopo</option>
+                  <option value="Mpumalanga">Mpumalanga</option>
+                  <option value="Northern Cape">Northern Cape</option>
+                  <option value="North West">North West</option>
+                  <option value="Western Cape">Western Cape</option>
+                </select>
                 <input
                   required
                   placeholder="Postal Code"

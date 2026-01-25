@@ -32,26 +32,33 @@ export const getShippingRates = async (
 ): Promise<ShippingRate[]> => {
   console.log("Fetching BobGo rates for:", params);
 
-  // In a real implementation, you'd fetch from your backend or BobGo directly (if CORS allows, usually backend proxy required)
-  // return fetch(`${BOBGO_API_URL}/rates`, ...).then(res => res.json());
+  try {
+    const response = await fetch(
+      `${import.meta.env.REACT_APP_WOO_SITE_URL}/wp-json/belims/v1/shipping/rates`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(params),
+      },
+    );
 
-  // MOCK RESPONSE
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        {
-          service_code: "eco",
-          service_name: "Economy Road",
-          total_price: 150.0,
-          expected_delivery_date: "3-5 Days",
-        },
-        {
-          service_code: "exp",
-          service_name: "Express Air",
-          total_price: 350.5,
-          expected_delivery_date: "1-2 Days",
-        },
-      ]);
-    }, 1000);
-  });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to fetch shipping rates");
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.rates) {
+      throw new Error("No shipping rates available for this address");
+    }
+
+    console.log("Received BobGo rates:", data.rates);
+    return data.rates;
+  } catch (error) {
+    console.error("Error fetching BobGo rates:", error);
+    throw error;
+  }
 };
