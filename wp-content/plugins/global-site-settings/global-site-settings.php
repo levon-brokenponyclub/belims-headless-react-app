@@ -19,73 +19,30 @@ define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 /**
- * Enable CORS for headless frontend
+ * Handle OPTIONS preflight requests FIRST (before WordPress does anything)
  */
-function belims_add_cors_headers() {
-    // Get allowed origins from settings, fallback to default list
-    $cors_setting = get_option('belims_cors_origin', '');
-    
-    if (empty($cors_setting) || $cors_setting === '*') {
-        // Default allowed origins
-        $allowed_origins = [
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'https://belims.co.za',
-            'https://www.belims.co.za',
-            'https://belims.netlify.app'
-        ];
-    } else {
-        // Parse comma-separated origins from settings
-        $allowed_origins = array_map('trim', explode(',', $cors_setting));
-    }
-    
-    $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
-    
-    if ($cors_setting === '*' || in_array($origin, $allowed_origins)) {
-        $allow_origin = ($cors_setting === '*') ? '*' : $origin;
-        header("Access-Control-Allow-Origin: {$allow_origin}");
-        header('Access-Control-Allow-Credentials: true');
-        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-        header('Access-Control-Max-Age: 86400');
-    }
-    
-    // Handle preflight OPTIONS requests
+add_action('init', function() {
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        header('Access-Control-Allow-Origin: https://belims-headless-react-app.netlify.app');
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-WP-Nonce');
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Max-Age: 86400');
         status_header(200);
         exit;
     }
-}
-add_action('rest_api_init', 'belims_add_cors_headers', 15);
-add_action('init', 'belims_add_cors_headers', 1);
+}, 0); // Priority 0 = runs before everything else
 
 /**
- * Send CORS headers with REST API responses
+ * Send CORS headers with every REST API response
+ * This fires AFTER WordPress processes the request but BEFORE sending response
  */
 add_filter('rest_pre_serve_request', function($served, $result, $request, $server) {
-    $cors_setting = get_option('belims_cors_origin', '');
-    
-    if (empty($cors_setting) || $cors_setting === '*') {
-        $allowed_origins = [
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'https://belims.co.za',
-            'https://www.belims.co.za',
-            'https://belims.netlify.app'
-        ];
-    } else {
-        $allowed_origins = array_map('trim', explode(',', $cors_setting));
-    }
-    
-    $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
-    
-    if ($cors_setting === '*' || in_array($origin, $allowed_origins)) {
-        $allow_origin = ($cors_setting === '*') ? '*' : $origin;
-        header("Access-Control-Allow-Origin: {$allow_origin}");
-        header('Access-Control-Allow-Credentials: true');
-        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-    }
+    // Hardcoded for production reliability - change this if needed
+    header('Access-Control-Allow-Origin: https://belims-headless-react-app.netlify.app');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-WP-Nonce');
+    header('Access-Control-Allow-Credentials: true');
     
     return $served;
 }, 10, 4);
@@ -157,8 +114,7 @@ function clear_ftg_credentials_handler() {
  * Register system settings
  */
 function global_site_settings_register_system_settings() {
-    register_setting('global_site_settings_system', 'belims_cors_origin');
-    register_setting('global_site_settings_system', 'belims_suppress_logs');
+    // Moved to ACF APIs Tab
 }
 add_action('admin_init', 'global_site_settings_register_system_settings');
 
@@ -399,16 +355,6 @@ function global_site_settings_main_page() {
                 <a class="bpc-nav-item" data-tab="apis">
                     <span class="dashicons dashicons-admin-network"></span>
                     APIs
-                </a>
-                <a class="bpc-nav-item" data-tab="ai">
-                    <span class="dashicons dashicons-lightbulb"></span>
-                    AI
-                </a>
-                
-                <div class="bpc-nav-group-title">System</div>
-                <a class="bpc-nav-item" data-tab="api-logs">
-                    <span class="dashicons dashicons-admin-tools"></span>
-                    API / Logs
                 </a>
             </nav>
             
@@ -909,175 +855,162 @@ function global_site_settings_main_page() {
                 <div class="bpc-card">
                     <div class="bpc-card-header">
                         <h2 class="bpc-card-title">API Settings</h2>
-                        <p class="bpc-card-description">Configure third-party API credentials and integrations.</p>
+                        <p class="bpc-card-description">Configure CORS for your headless frontend and third-party API credentials.</p>
                     </div>
+                    
+                    <?php 
+                    // Debug: Show current CORS setting being used
+                    $cors_field = function_exists('get_field') ? get_field('headless_frontend_url', 'option') : '';
+                    $cors_option = get_option('belims_cors_origin', '');
+                    $active_cors = !empty($cors_field) ? $cors_field : $cors_option;
+                    
+                    if (!empty($active_cors) || !empty($cors_field) || !empty($cors_option)) {
+                        echo '<div style="background: #f0f6fc; border-left: 4px solid #0969da; padding: 12px 16px; margin-bottom: 20px; border-radius: 6px;">';
+                        echo '<strong style="color: #0969da;">Current Active CORS Setting:</strong><br>';
+                        if (!empty($cors_field)) {
+                            echo '<code style="background: white; padding: 2px 6px; border-radius: 3px;">' . esc_html($cors_field) . '</code> <span style="color: #1a7f37;">(from ACF)</span>';
+                        } elseif (!empty($cors_option)) {
+                            echo '<code style="background: white; padding: 2px 6px; border-radius: 3px;">' . esc_html($cors_option) . '</code> <span style="color: #9a6700;">(from legacy option - will be replaced when you save)</span>';
+                        } else {
+                            echo '<span style="color: #656d76;">(using defaults)</span>';
+                        }
+                        echo '</div>';
+                    }
+                    ?>
+                    
                     <?php 
                     if (function_exists('acf_form')) {
                         acf_form(array(
                             'post_id'    => 'options',
                             'field_groups' => array('group_belims_apis'),
                             'return'     => '',
-                            'submit_value' => 'Save API Settings',
+                            'submit_value' => 'Save API & CORS Settings',
                         ));
                     } else {
                         echo '<p>Please install and activate Advanced Custom Fields PRO.</p>';
                     }
                     ?>
                 </div>
-            </div>
 
-            <!-- AI Tab -->
-            <div id="tab-ai" class="bpc-tab-content">
-                <div class="bpc-card">
-                    <div class="bpc-card-header">
-                        <h2 class="bpc-card-title">AI Settings</h2>
-                        <p class="bpc-card-description">Configure AI services and integrations.</p>
-                    </div>
-                    <?php 
-                    if (function_exists('acf_form')) {
-                        acf_form(array(
-                            'post_id'    => 'options',
-                            'field_groups' => array('group_belims_ai'),
-                            'return'     => '',
-                            'submit_value' => 'Save AI Settings',
-                        ));
-                    } else {
-                        echo '<p>Please install and activate Advanced Custom Fields PRO.</p>';
-                    }
-                    ?>
-                </div>
-            </div>
-            
-            <!-- API / Logs Tab -->
-            <div id="tab-api-logs" class="bpc-tab-content">
-                <div class="bpc-card">
-                    <div class="bpc-card-header">
-                        <h2 class="bpc-card-title">System & API Settings</h2>
-                        <p class="bpc-card-description">Configure CORS, logging, and view API documentation.</p>
-                    </div>
-                    
-                    <form method="post" action="options.php">
-                        <?php settings_fields('global_site_settings_system'); ?>
-                        
-                        <table class="bpc-modern-table">
-                            <tr>
-                                <th>CORS Allowed Origin</th>
-                                <td>
-                                    <input type="text" name="belims_cors_origin" value="<?php echo esc_attr(get_option('belims_cors_origin', '*')); ?>" class="regular-text" placeholder="*" />
-                                    <p class="description">Enter '*' or a specific domain (e.g. https://yourfrontend.com)</p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Suppress Logs</th>
-                                <td>
-                                    <label>
-                                        <input type="checkbox" name="belims_suppress_logs" value="1" <?php checked(1, get_option('belims_suppress_logs', false)); ?> />
-                                        Hide system logs in frontend console.
-                                    </label>
-                                </td>
-                            </tr>
-                        </table>
-                        
-                        <div class="bpc-submit-bar">
-                            <input type="submit" name="submit" class="bpc-btn-primary" value="Save Settings" />
-                        </div>
-                    </form>
-                </div>
-                
+                <!-- API Verification & Documentation Card -->
                 <div class="bpc-card" style="margin-top: 20px;">
                     <div class="bpc-card-header">
-                        <h2 class="bpc-card-title">Documentation Endpoints</h2>
-                        <p class="bpc-card-description">Public JSON endpoints for your headless frontend.</p>
+                        <h2 class="bpc-card-title">API Verification & Documentation</h2>
+                        <p class="bpc-card-description">Test your API endpoints and verify CORS configuration.</p>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; margin-bottom: 25px;">
+                        <button type="button" id="test-api-endpoints-consolidated" class="bpc-btn-primary">
+                            <span class="dashicons dashicons-rest-api" style="margin-top: 3px;"></span> Test Endpoints
+                        </button>
+                        <button type="button" id="test-cors-config" class="button button-secondary">
+                            <span class="dashicons dashicons-shield" style="margin-top: 3px;"></span> Verify CORS
+                        </button>
                     </div>
                     
-                    <h3>Available Endpoints:</h3>
-                    <ul style="font-family: monospace; background: #f5f5f5; padding: 20px; border-radius: 8px;">
-                        <li style="margin-bottom: 10px;">
-                            <a href="<?php echo rest_url('belims/v1/products'); ?>" target="_blank">
-                                <?php echo rest_url('belims/v1/products'); ?>
+                    <div id="api-verification-results" style="margin-top: 15px;"></div>
+                    
+                    <h3 style="margin-top: 30px;">Quick Documentation:</h3>
+                    <ul style="font-family: monospace; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <li style="margin-bottom: 12px;">
+                            <span style="display:inline-block; width: 60px; color: #64748b;">[GET]</span>
+                            <a href="<?php echo rest_url('belims/v1/products'); ?>" target="_blank" style="color: #2563eb; text-decoration: none;">
+                                <?php echo str_replace(home_url(), '', rest_url('belims/v1/products')); ?>
                             </a>
                         </li>
-                        <li style="margin-bottom: 10px;">
-                            <a href="<?php echo rest_url('belims/v1/categories'); ?>" target="_blank">
-                                <?php echo rest_url('belims/v1/categories'); ?>
+                        <li style="margin-bottom: 12px;">
+                            <span style="display:inline-block; width: 60px; color: #64748b;">[GET]</span>
+                            <a href="<?php echo rest_url('belims/v1/categories'); ?>" target="_blank" style="color: #2563eb; text-decoration: none;">
+                                <?php echo str_replace(home_url(), '', rest_url('belims/v1/categories')); ?>
                             </a>
                         </li>
-                        <li style="margin-bottom: 10px;">
-                            <a href="<?php echo rest_url('belims/v1/orders'); ?>" target="_blank">
-                                <?php echo rest_url('belims/v1/orders'); ?>
-                            </a>
-                        </li>
-                        <li style="margin-bottom: 10px;">
-                            <a href="<?php echo rest_url('belims/v1/ftg/instances'); ?>" target="_blank">
-                                <?php echo rest_url('belims/v1/ftg/instances'); ?>
+                        <li style="margin-bottom: 0;">
+                            <span style="display:inline-block; width: 60px; color: #64748b;">[POST]</span>
+                            <a href="<?php echo rest_url('belims/v1/orders'); ?>" target="_blank" style="color: #2563eb; text-decoration: none;">
+                                <?php echo str_replace(home_url(), '', rest_url('belims/v1/orders')); ?>
                             </a>
                         </li>
                     </ul>
-                    
-                    <p style="margin-top: 20px;">
-                        <button type="button" id="test-api-endpoints" class="bpc-btn-primary">Test API Endpoints</button>
-                    </p>
-                    <div id="api-test-results" style="margin-top: 15px;"></div>
-                    
+
                     <script>
                     jQuery(document).ready(function($) {
-                        $('#test-api-endpoints').on('click', function() {
+                        // Test API Endpoints
+                        $('#test-api-endpoints-consolidated').on('click', function() {
                             var btn = $(this);
-                            var results = $('#api-test-results');
+                            var results = $('#api-verification-results');
                             
-                            btn.prop('disabled', true).text('Testing...');
-                            results.html('<p>Testing API endpoints...</p>');
+                            btn.prop('disabled', true).html('Testing...');
+                            results.html('<p>🔄 Testing production endpoints...</p>');
                             
                             var endpoints = [
                                 '<?php echo rest_url('belims/v1/products'); ?>',
-                                '<?php echo rest_url('belims/v1/categories'); ?>',
-                                '<?php echo rest_url('belims/v1/ftg/instances'); ?>'
+                                '<?php echo rest_url('belims/v1/categories'); ?>'
                             ];
                             
-                            var testResults = [];
                             var completed = 0;
+                            var html = '<div style="background: white; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px;">';
+                            html += '<h4 style="margin-top:0;">API Status:</h4>';
                             
                             endpoints.forEach(function(url) {
                                 $.ajax({
                                     url: url,
                                     method: 'GET',
                                     success: function(response) {
-                                        testResults.push({url: url, status: 'success', response: response});
+                                        var count = Array.isArray(response) ? response.length : (response.data ? 'Obj' : '1');
+                                        html += '<div style="margin-bottom: 8px; font-size: 13px; color: #059669;">✅ ' + url.replace("<?php echo rest_url(); ?>", "") + ' - OK (' + count + ' items)</div>';
                                     },
                                     error: function(xhr) {
-                                        testResults.push({url: url, status: 'error', message: xhr.statusText});
+                                        html += '<div style="margin-bottom: 8px; font-size: 13px; color: #dc2626;">❌ ' + url.replace("<?php echo rest_url(); ?>", "") + ' - Failed (' + xhr.status + ')</div>';
                                     },
                                     complete: function() {
                                         completed++;
                                         if (completed === endpoints.length) {
-                                            displayResults();
+                                            html += '</div>';
+                                            results.html(html);
+                                            btn.prop('disabled', false).html('<span class="dashicons dashicons-rest-api" style="margin-top: 3px;"></span> Test Endpoints');
                                         }
                                     }
                                 });
                             });
+                        });
+
+                        // Verify CORS Config
+                        $('#test-cors-config').on('click', function() {
+                            var btn = $(this);
+                            var results = $('#api-verification-results');
+                            var testOrigin = prompt("Enter a frontend URL to simulate a request from:", "https://belims-headless-react-app.netlify.app");
                             
-                            function displayResults() {
-                                btn.prop('disabled', false).text('Test API Endpoints');
-                                var html = '<div style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 4px;">';
-                                html += '<h4>Test Results:</h4>';
-                                
-                                testResults.forEach(function(result) {
-                                    var icon = result.status === 'success' ? '✅' : '❌';
-                                    var color = result.status === 'success' ? '#10b981' : '#ef4444';
-                                    html += '<div style="margin-bottom: 10px; padding: 10px; background: #f9f9f9; border-left: 3px solid ' + color + ';">';
-                                    html += '<div style="font-weight: bold;">' + icon + ' ' + result.url + '</div>';
-                                    if (result.status === 'success') {
-                                        var count = Array.isArray(result.response) ? result.response.length : 'N/A';
-                                        html += '<div style="color: #666; font-size: 12px;">Status: OK | Items: ' + count + '</div>';
+                            if (!testOrigin) return;
+
+                            btn.prop('disabled', true).html('Verifying...');
+                            results.html('<p>🛡️ Verifying CORS headers for origin: <code>' + testOrigin + '</code>...</p>');
+
+                            $.ajax({
+                                url: '<?php echo rest_url('belims/v1/products'); ?>',
+                                method: 'OPTIONS', // Simulated preflight
+                                beforeSend: function(xhr) {
+                                    xhr.setRequestHeader('Origin', testOrigin);
+                                    xhr.setRequestHeader('Access-Control-Request-Method', 'GET');
+                                },
+                                complete: function(xhr) {
+                                    btn.prop('disabled', false).html('<span class="dashicons dashicons-shield" style="margin-top: 3px;"></span> Verify CORS');
+                                    
+                                    var acao = xhr.getResponseHeader('Access-Control-Allow-Origin');
+                                    var html = '<div style="padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff;">';
+                                    html += '<h4 style="margin-top:0;">CORS Analysis:</h4>';
+                                    
+                                    if (acao === '*' || acao === testOrigin) {
+                                        html += '<div style="color: #059669; font-weight: 600;">✅ Success! CORS is properly configured.</div>';
+                                        html += '<div style="font-size: 12px; margin-top: 5px;">Response Header: <code>Access-Control-Allow-Origin: ' + acao + '</code></div>';
                                     } else {
-                                        html += '<div style="color: #ef4444; font-size: 12px;">Error: ' + result.message + '</div>';
+                                        html += '<div style="color: #dc2626; font-weight: 600;">❌ CORS Mismatch</div>';
+                                        html += '<div style="font-size: 12px; margin-top: 5px;">Server returned: <code>Access-Control-Allow-Origin: ' + (acao || 'NONE') + '</code></div>';
+                                        html += '<div style="font-size: 12px; margin-top: 3px; color: #6b7280;">Make sure <code>' + testOrigin + '</code> is added to the "Allowed CORS Origins" field above and settings are saved.</div>';
                                     }
                                     html += '</div>';
-                                });
-                                
-                                html += '</div>';
-                                results.html(html);
-                            }
+                                    results.html(html);
+                                }
+                            });
                         });
                     });
                     </script>

@@ -3,25 +3,23 @@ import { Product, Category } from "../types";
 /**
  * BELIMS HEADLESS API SERVICE
  * ------------------------------------
- * Uses custom WordPress plugin endpoints (no API keys needed!)
+ * Uses Netlify proxy to bypass CORS (production) or direct URL (development)
  *
- * Setup:
- * 1. Activate "Belims Headless API" plugin in WordPress
- * 2. Set VITE_WOO_SITE_URL in .env to your WordPress URL
+ * Production: Requests go to /api/belims/v1/* → Netlify proxies to cms.belims.co.za/wp-json/belims/v1/*
+ * Development: Requests go directly to https://cms.belims.co.za/wp-json/belims/v1/*
  *
  * Endpoints:
- * - GET /wp-json/belims/v1/products
- * - GET /wp-json/belims/v1/products/:id
- * - GET /wp-json/belims/v1/categories
- * - POST /wp-json/belims/v1/orders
+ * - GET /api/belims/v1/products
+ * - GET /api/belims/v1/products/:id
+ * - GET /api/belims/v1/categories
+ * - POST /api/belims/v1/orders
  */
 
-// Environment variable - just the site URL
-const SITE_URL =
-  import.meta.env.REACT_APP_WOO_SITE_URL || "https://cms.belims.co.za";
-
-// Base URL for custom API
-const BASE_URL = `${SITE_URL}/wp-json/belims/v1`;
+// Use Netlify proxy in production, direct URL in dev
+const isDev = import.meta.env.DEV;
+const BASE_URL = isDev
+  ? "https://cms.belims.co.za/wp-json/belims/v1"
+  : "/api/belims/v1";
 
 /**
  * Fetch Products from WooCommerce via custom API
