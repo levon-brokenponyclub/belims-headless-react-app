@@ -254,63 +254,6 @@ acf_add_local_field_group(array(
     'menu_order' => 4,
 ));
 
-// AI Features
-acf_add_local_field_group(array(
-    'key' => 'group_belims_ai_features',
-    'title' => 'AI Features & Integrations',
-    'fields' => array(
-        array(
-            'key' => 'field_belims_gemini_api_key',
-            'label' => 'Google Gemini AI API Key',
-            'name' => 'gemini_api_key',
-            'type' => 'password',
-            'instructions' => 'API key for AI-powered features (paint recommendations, etc.)',
-        ),
-        array(
-            'key' => 'field_belims_ai_features',
-            'label' => 'AI Features Settings',
-            'name' => 'ai_features',
-            'type' => 'group',
-            'sub_fields' => array(
-                array(
-                    'key' => 'field_belims_ai_paint_assistant',
-                    'label' => 'Enable AI Paint Assistant',
-                    'name' => 'ai_paint_assistant_enabled',
-                    'type' => 'true_false',
-                    'default_value' => 1,
-                    'ui' => 1,
-                ),
-                array(
-                    'key' => 'field_belims_ai_delivery_optimizer',
-                    'label' => 'Enable AI Delivery Optimizer',
-                    'name' => 'ai_delivery_optimizer_enabled',
-                    'type' => 'true_false',
-                    'default_value' => 1,
-                    'ui' => 1,
-                ),
-                array(
-                    'key' => 'field_belims_ai_price_matching',
-                    'label' => 'Enable AI Price Matching',
-                    'name' => 'ai_price_matching_enabled',
-                    'type' => 'true_false',
-                    'default_value' => 1,
-                    'ui' => 1,
-                ),
-            ),
-        ),
-    ),
-    'location' => array(
-        array(
-            array(
-                'param' => 'options_page',
-                'operator' => '==',
-                'value' => 'belims-site-settings',
-            ),
-        ),
-    ),
-    'menu_order' => 5,
-));
-
 // APIs Configuration
 acf_add_local_field_group(array(
     'key' => 'group_belims_apis',
@@ -324,13 +267,29 @@ acf_add_local_field_group(array(
             'message' => 'Configure external API integrations for shipping, payments, and AI features.',
         ),
         array(
+            'key' => 'field_belims_cors_section',
+            'label' => 'CORS & Security',
+            'name' => 'cors_section',
+            'type' => 'tab',
+        ),
+        array(
             'key' => 'field_belims_headless_url',
-            'label' => 'Headless Frontend URL',
+            'label' => 'Allowed CORS Origins',
             'name' => 'headless_frontend_url',
-            'type' => 'url',
-            'instructions' => 'The URL of your React headless frontend (used for CORS)',
-            'placeholder' => 'http://localhost:3001',
+            'type' => 'textarea',
+            'instructions' => 'Enter allowed origins (URLs), one per line. Use * to allow all (not recommended for production).',
+            'placeholder' => "http://localhost:3000\nhttps://belims-headless-react-app.netlify.app",
             'required' => 0,
+            'rows' => 3,
+        ),
+        array(
+            'key' => 'field_belims_suppress_logs',
+            'label' => 'Suppress Console Logs',
+            'name' => 'suppress_logs',
+            'type' => 'true_false',
+            'instructions' => 'Hide system logs in frontend console.',
+            'ui' => 1,
+            'default_value' => 0,
         ),
         array(
             'key' => 'field_belims_woocommerce_section',
@@ -553,6 +512,47 @@ acf_add_local_field_group(array(
             'name' => 'gemini_api_key',
             'type' => 'password',
             'instructions' => 'Get your key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a>',
+            'conditional_logic' => array(
+                array(
+                    array(
+                        'field' => 'field_belims_gemini_enabled',
+                        'operator' => '==',
+                        'value' => '1',
+                    ),
+                ),
+            ),
+        ),
+        array(
+            'key' => 'field_belims_ai_feature_toggles',
+            'label' => 'Active AI Features',
+            'name' => 'ai_feature_toggles',
+            'type' => 'group',
+            'sub_fields' => array(
+                array(
+                    'key' => 'field_belims_ai_paint_assistant',
+                    'label' => 'Enable AI Paint Assistant',
+                    'name' => 'ai_paint_assistant_enabled',
+                    'type' => 'true_false',
+                    'default_value' => 1,
+                    'ui' => 1,
+                ),
+                array(
+                    'key' => 'field_belims_ai_delivery_optimizer',
+                    'label' => 'Enable AI Delivery Optimizer',
+                    'name' => 'ai_delivery_optimizer_enabled',
+                    'type' => 'true_false',
+                    'default_value' => 1,
+                    'ui' => 1,
+                ),
+                array(
+                    'key' => 'field_belims_ai_price_matching',
+                    'label' => 'Enable AI Price Matching',
+                    'name' => 'ai_price_matching_enabled',
+                    'type' => 'true_false',
+                    'default_value' => 1,
+                    'ui' => 1,
+                ),
+            ),
             'conditional_logic' => array(
                 array(
                     array(

@@ -55,7 +55,7 @@ class Belims_Products_Endpoint {
                 $args['tax_query'] = array();
             }
             $args['tax_query'][] = array(
-                'taxonomy' => 'pa_brand', // Adjust if your brand attribute slug is different
+                'taxonomy' => 'product_brand',
                 'field' => 'slug',
                 'terms' => sanitize_text_field($params['brand']),
             );
@@ -134,8 +134,9 @@ class Belims_Products_Endpoint {
         $categories = wp_get_post_terms($product->get_id(), 'product_cat');
         $category_name = !empty($categories) ? $categories[0]->name : 'Uncategorized';
 
-        // Get brand (assuming brand is a product attribute)
-        $brand = $product->get_attribute('pa_brand') ?: $product->get_attribute('brand');
+        // Get brand from product_brand taxonomy
+        $brand_terms = wp_get_post_terms($product->get_id(), 'product_brand');
+        $brand = !empty($brand_terms) ? $brand_terms[0]->name : '';
 
         // Get features (from short description or custom field)
         $features = array();

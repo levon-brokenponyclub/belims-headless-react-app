@@ -1,0 +1,208 @@
+.udb-is-hidden {
+	display: none;
+}
+
+/**
+ * --------------------------------------------------
+ * Select2 patch
+ * --------------------------------------------------
+ */
+.heatbox-admin .select2-results__option {
+	margin-bottom: 0;
+}
+
+.heatbox-admin > .select2-container .select2-search {
+	padding: 6px;
+}
+
+.heatbox-admin > .select2-container .select2-search__field {
+	margin-left: 0;
+	margin-right: 0;
+	min-height: 20px;
+	line-height: normal;
+}
+
+.heatbox .select2-label {
+	display: block;
+}
+
+.heatbox .use-select2 {
+	position: relative;
+	width: 100%;
+}
+
+.heatbox .select2-selection--multiple {
+	position: relative;
+	display: block;
+	width: 100%;
+	padding-top: 0;
+	padding-bottom: 5px;
+	line-height: 20px;
+}
+
+.heatbox .select2-selection--multiple .select2-selection__rendered {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+.heatbox .select2-selection--multiple .select2-selection__choice {
+	display: inline-flex;
+	align-items: center;
+	padding-left: 0;
+	margin-top: 5px;
+	margin-bottom: 0;
+}
+
+.heatbox .select2-selection--multiple .select2-selection__choice__remove {
+	display: inline-flex;
+	align-items: center;
+	position: relative;
+	height: 20px;
+	line-height: 1;
+}
+
+.heatbox .select2-selection--multiple .select2-selection__choice__remove span {
+	position: relative;
+	top: -1px;
+}
+
+.heatbox .select2-selection--multiple .select2-selection__choice__display {
+	display: inline-block;
+	padding-left: 4px;
+	line-height: 1;
+}
+
+.heatbox .select2-selection--multiple .select2-search--inline {
+	display: inline;
+}
+
+.heatbox
+	.select2-selection--multiple
+	.select2-search--inline
+	.select2-search__field {
+	position: relative;
+	display: inline-block;
+	margin-top: 5px;
+	height: 20px;
+	line-height: inherit;
+}
+
+/**
+ * Fix custom admin bar menu item icon.
+ */
+.udb-admin-bar-output--menu-link .ab-icon {
+	top: 2px;
+}
+
+/**
+ * Highlight PRO upgrade link.
+ */
+#adminmenu #menu-posts-udb_widgets a[href="https://ultimatedashboard.io/pro/"],
+#adminmenu #menu-posts-udb_widgets a[href="edit.php?post_type=udb_widgets&page=udb_plugin_onboarding"] {
+	background: #00a32a;
+	color: #fff;
+}
+
+/**
+ * Notices for metabox.
+ */
+.udb-notice-metabox .heatbox-content p:last-child {
+	margin-bottom: 0;
+}
+
+.udb-notice-metabox.is-success {
+	border-left-width: 4px;
+	border-left-color: #00a32a;
+}
+
+.udb-notice-metabox.is-warning {
+	border-left-width: 4px;
+	border-left-color: #dba617;
+}
+
+.udb-notice-metabox.is-info {
+	border-left-width: 4px;
+	border-left-color: #72aee6;
+}
+
+/**
+ * BFCM Notice.
+ */
+.udb-bfcm-notice {
+	padding: 25px 20px;
+}
+
+.udb-bfcm-notice .notice-body {
+	display: flex;
+}
+
+.udb-bfcm-notice .notice-icon {
+	padding-right: 25px;
+}
+
+.udb-bfcm-notice .notice-icon img {
+	max-width: 55px;
+}
+
+.udb-bfcm-notice .notice-content {
+	width: 100%;
+}
+
+.udb-bfcm-notice .notice-content h2 {
+	margin-top: 0;
+	margin-bottom: 10px;
+	font-weight: 700;
+}
+
+.udb-bfcm-notice .notice-content > p {
+	margin-top: 0;
+	margin-bottom: 10px;
+}
+
+.udb-bfcm-notice .notice-content > p:last-child {
+	margin-bottom: 0;
+}
+
+/**
+ * Upgrade nag.
+ */
+.udb-pro-upgrade-nag {
+	margin-top: 15px;
+	background: #197cff;
+	color: #fff;
+	margin-bottom: 20px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 20px;
+	font-weight: 700;
+}
+
+.udb-pro-upgrade-nag > * {
+	margin: 0;
+}
+
+.udb-pro-upgrade-nag .button {
+	background: rgba(0, 45, 96, 0.5);
+	padding: 5px 15px !important;
+}
+
+.udb-pro-upgrade-nag .button:hover {
+	background: rgba(0, 45, 96, 0.6);
+}
+
+.udb-pro-admin-bar-notice {
+	border-top: none;
+	margin-top: 0;
+	padding-top: 0;
+}
+
+@media screen and (max-width: 991px) {
+	.udb-pro-upgrade-nag {
+		flex-wrap: wrap;
+	}
+	.udb-pro-upgrade-nag .button {
+		margin-top: 20px;
+		margin-bottom: 0;
+	}
+}

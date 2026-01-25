@@ -1,3 +1,21 @@
+# BEGIN CORS Headers for Headless Frontend
+<IfModule mod_headers.c>
+    # Allow requests from your Netlify frontend
+    SetEnvIf Origin "^https://belims-headless-react-app\.netlify\.app$" AccessControlAllowOrigin=$0
+    SetEnvIf Origin "^http://localhost:3000$" AccessControlAllowOrigin=$0
+    SetEnvIf Origin "^http://localhost:3001$" AccessControlAllowOrigin=$0
+    
+    Header always set Access-Control-Allow-Origin %{AccessControlAllowOrigin}e env=AccessControlAllowOrigin
+    Header always set Access-Control-Allow-Credentials "true"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Origin, Accept"
+    Header always set Access-Control-Max-Age "86400"
+    
+    # Handle preflight OPTIONS requests
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=200,L]
+</IfModule>
+# END CORS Headers
 
 # BEGIN WordPress
 # The directives (lines) between "BEGIN WordPress" and "END WordPress" are

@@ -23,7 +23,7 @@ Fill in:
 
 ```bash
 # Login and get collection token
-curl -X POST https://wordpress-1482444-6163809.cloudwaysapps.com/wp-json/belims/v1/ftg/instances \
+curl -X POST https://cms.belims.co.za/wp-json/belims/v1/ftg/instances \
   -H "Authorization: Bearer YOUR_WP_AUTH_TOKEN"
 ```
 
@@ -47,7 +47,7 @@ Copy the `collectionToken` value and paste it into the Belims Settings.
 Test the connection by viewing products:
 
 ```bash
-curl https://wordpress-1482444-6163809.cloudwaysapps.com/wp-json/belims/v1/ftg/products/YOUR_TOKEN?limit=10
+curl https://cms.belims.co.za/wp-json/belims/v1/ftg/products/YOUR_TOKEN?limit=10
 ```
 
 ### 4. Sync Products to WooCommerce
@@ -55,7 +55,7 @@ curl https://wordpress-1482444-6163809.cloudwaysapps.com/wp-json/belims/v1/ftg/p
 **Manual Sync via REST API:**
 
 ```bash
-curl -X POST https://wordpress-1482444-6163809.cloudwaysapps.com/wp-json/belims/v1/ftg/sync \
+curl -X POST https://cms.belims.co.za/wp-json/belims/v1/ftg/sync \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_WP_AUTH_TOKEN" \
   -d '{
@@ -79,10 +79,51 @@ curl -X POST https://wordpress-1482444-6163809.cloudwaysapps.com/wp-json/belims/
 ### 5. Check Sync Status
 
 ```bash
-curl https://wordpress-1482444-6163809.cloudwaysapps.com/wp-json/belims/v1/ftg/sync/status
+curl https://cms.belims.co.za/wp-json/belims/v1/ftg/sync/status
 ```
 
+## Admin UI Testing
+
+The FTG Sync admin page (WordPress Admin → FTG Sync) provides convenient buttons for testing:
+
+### Get Token
+
+Retrieves your FTG collection token using saved credentials
+
+### Test Connection
+
+Verifies FTG API credentials and displays account information
+
+### Inspect Product
+
+Fetches a single product from FTG by SKU for debugging data mapping issues:
+
+- Enter any FTG product SKU (e.g., "0-6200-2402-4")
+- Returns full FTG product JSON structure
+- Useful for verifying stock levels, categories, prices, brand data
+
+### Test Sync (5 Products)
+
+Syncs first 5 products from FTG to test the sync process without affecting all products
+
+### Sync All Products
+
+Performs full product sync from FTG to WooCommerce
+
+### Disconnect FTG
+
+Clears saved FTG credentials and collection token
+
 ## Available Endpoints
+
+### GET `/wp-json/belims/v1/ftg/product/{sku}`
+
+Inspect a single FTG product by SKU for debugging
+
+- **Params**: SKU in URL path
+- **Auth**: WordPress admin
+- **Returns**: Full FTG product JSON structure
+- **Example**: `/wp-json/belims/v1/ftg/product/0-6200-2402-4`
 
 ### GET `/wp-json/belims/v1/ftg/instances`
 
@@ -115,22 +156,45 @@ Get last sync information
 
 FTG products are mapped to WooCommerce as follows:
 
-| FTG Field                      | WooCommerce Field        |
-| ------------------------------ | ------------------------ |
-| `code` / `mdrProductCode`      | SKU                      |
-| `description` / `name`         | Product Name             |
-| `longDescription`              | Description              |
-| `shortDescription`             | Short Description        |
-| `price` / `sellingPrice`       | Regular Price (excl VAT) |
-| `stockLevel` / `quantity`      | Stock Quantity           |
-| `departmentDescription`        | Category                 |
-| `primaryImageUrl` / `imageUrl` | Product Image            |
+| FTG Field                                   | WooCommerce Field              |
+| ------------------------------------------- | ------------------------------ |
+| `code` / `mdrProductCode`                   | SKU                            |
+| `description` / `name`                      | Product Name                   |
+| `longDescription`                           | Description                    |
+| `shortDescription`                          | Short Description              |
+| `sellingPrice.priceExcl`                    | Regular Price (excl VAT)       |
+| `stockLocations[0].stockLocations[0].stock` | Stock Quantity                 |
+| `categoryTree[]`                            | Categories (hierarchical)      |
+| `brandDescription`                          | Brand (product_brand taxonomy) |
+| `primaryImageUrl` / `imageUrl`              | Product Image                  |
 
 ### Metadata Stored:
 
 - `_ftg_one_id`: FTG product ID
 - `_ftg_product_code`: FTG product code
 - `_ftg_last_sync`: Last sync timestamp
+
+### Special Handling:
+
+**Price on Application (POA)**:
+
+- Products with invalid/zero prices automatically set to "POA"
+- Regular price set to 0
+- Product tagged with "POA" for frontend filtering
+
+**Brand Taxonomy**:
+
+- Brands stored as custom taxonomy: `product_brand`
+- Hierarchical structure with WordPress admin UI
+- Accessible at: `/wp-admin/edit-tags.php?taxonomy=product_brand&post_type=product`
+- Synced from FTG `brandDescription` field
+- Available in REST API for frontend filtering
+
+**Categories**:
+
+- Supports nested category structures from FTG `categoryTree`
+- Creates parent-child relationships automatically
+- Handles multiple category levels (e.g., Tools > Power Tools > Drills)
 
 ## VAT Handling
 
@@ -192,9 +256,63 @@ add_action('belims_ftg_daily_sync', function() {
 - Only WordPress admins can trigger syncs
 - CORS headers allow frontend API access
 
-## Files Created
+## Plugin Structure
 
-- `/includes/class-ftg-api.php` - FTG API client
-- `/includes/class-ftg-sync-endpoint.php` - WordPress REST endpoints
-- Updated: `belims-headless-api.php` - Plugin loader
-- Updated: `acf-field-groups.php` - Settings UI fields
+```
+wp-content/plugins/global-site-settings/
+├── global-site-settings.php           # Main plugin file, registers hooks and loads includes
+├── FTG-INTEGRATION.md                 # This documentation file
+├── assets/
+│   ├── css/
+│   │   └── admin.css                  # Consolidated admin styles with Belims branding
+│   ├── js/
+│   │   └── admin.js                   # Consolidated admin JavaScript with tab navigation
+│   └── images/
+│       └── belims-logo-white.png      # Belims logo for login page
+└── includes/
+    ├── acf-field-groups.php           # ACF field definitions for Site Settings
+    ├── admin-ftg-sync-page.php        # FTG Sync admin page UI with test buttons
+    ├── class-categories-endpoint.php  # REST endpoint for categories
+    ├── class-ftg-api.php              # FTG API client with authentication
+    ├── class-ftg-sync-endpoint.php    # FTG sync REST endpoints with brand taxonomy
+    ├── class-orders-endpoint.php      # REST endpoint for orders
+    └── class-products-endpoint.php    # REST endpoint for products with brand filtering
+```
+
+## Production Environment
+
+**Domain**: [cms.belims.co.za](https://cms.belims.co.za)
+
+**Hosting**: Cloudways (wordpress-1482444-6163809.cloudwaysapps.com)
+
+**DNS**: CNAME record pointing to Cloudways server
+
+**Headless Architecture**:
+
+- Backend: WordPress + WooCommerce (cms.belims.co.za)
+- Frontend: React/TypeScript separate application
+- Home redirect: `/` → `/wp-login.php` (headless CMS only)
+
+## Branding & UI
+
+**Belims Brand Colors**:
+
+- Primary Blue: `#322783`
+- Light Blue: `#4a3fc2` (hover states)
+- Orange: `#f97316` (accent)
+- Red: `#e40613` (toggles, danger actions)
+- Gray: `#f4f6f8` (backgrounds)
+
+**Login Page**:
+
+- Custom gradient background (blue)
+- Belims logo replaces WordPress logo
+- Rounded input fields with modern styling
+
+**Admin Interface**:
+
+- Consolidated CSS (admin.css) with CSS variables
+- Primary buttons: Belims blue with 2px border
+- Secondary buttons: Transparent with blue border
+- Toggle switches: Belims red when active
+- Tab navigation with consistent styling
