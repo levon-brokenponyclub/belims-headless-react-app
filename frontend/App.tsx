@@ -40,6 +40,8 @@ export default function App() {
   const isHomePage = location.pathname === "/";
 
   // State
+  const [currentCategory, setCurrentCategory] = useState<string>("");
+  const [currentBrand, setCurrentBrand] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Product data state
