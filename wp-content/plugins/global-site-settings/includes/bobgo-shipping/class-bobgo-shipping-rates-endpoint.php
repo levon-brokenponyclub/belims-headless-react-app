@@ -118,43 +118,8 @@ class BobGo_Shipping_Rates_Endpoint {
             $package['contents_cost'] += $item['line_total'];
         }
         
-        // Get shipping zones
-        $shipping_zones = WC_Shipping_Zones::get_zones();
-        $matched_zone = null;
-        
-        // Find matching zone for destination
-        foreach ($shipping_zones as $zone_data) {
-            $zone = WC_Shipping_Zones::get_zone($zone_data['zone_id']);
-            if ($zone->is_valid_location_postcode($package['destination']['postcode'], $package['destination']['state'], $package['destination']['country'])) {
-                $matched_zone = $zone;
-                break;
-            }
-        }
-        
-        // If no specific zone matches, try default zone
-        if (!$matched_zone) {
-            $matched_zone = new WC_Shipping_Zone(0); // Zone 0 is "Rest of the World"
-        }
-        
-        // Get shipping methods for this zone
-        $shipping_methods = $matched_zone->get_shipping_methods(true); // true = enabled only
-        
-        $rates = array();
-        
-        foreach ($shipping_methods as $method) {
-            // Only process BobGo shipping method
-            if ($method->id !== 'bobgo') {
-                continue;
-            }
-            
-            // Trigger the BobGo plugin to calculate rates
-            // This will call the official BobGo plugin which talks to their API
-            $method_rates = $this->get_bobgo_rates_from_plugin($package);
-            
-            if (!empty($method_rates)) {
-                $rates = array_merge($rates, $method_rates);
-            }
-        }
+        // Get shipping rates by using WooCommerce's shipping calculation
+        $rates = $this->get_bobgo_rates_from_plugin($package);
         
         // If no rates found, return error
         if (empty($rates)) {
