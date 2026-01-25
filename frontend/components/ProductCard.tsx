@@ -119,7 +119,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div className="flex items-baseline gap-2">
             <span className="text-xl font-bold text-gray-900 font-heading">
               {CURRENCY_SYMBOL}
-              {(product.price_incl_vat || product.price).toFixed(2)}
+              {product.price.toFixed(2)}
             </span>
             {product.isBundle && (
               <span className="text-xs text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded">
