@@ -21,6 +21,7 @@ import { ComparisonModal } from "./components/ComparisonModal";
 import { Checkout } from "./components/Checkout";
 import { Archive } from "./components/Archive";
 import { RecentlyViewed } from "./components/RecentlyViewed";
+import { ShopByCategory } from "./components/ShopByCategory";
 import { Product, CartItem, Store } from "./types";
 import {
   fetchProducts,
@@ -122,6 +123,7 @@ const HomePage = ({
   handleBuyNow,
   handleProductClick,
   addToCompare,
+  categoryPills,
 }) => {
   const navigate = useNavigate();
   const activeHero = heroCategorySlides[heroCategoryIndex];
@@ -301,79 +303,12 @@ const HomePage = ({
       </div>
 
       {/* INTERACTIVE CATEGORY PREVIEW SECTION */}
-      <div className="mb-16">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 font-heading">
-          Shop by Category
-        </h2>
-        <div className="mb-6 overflow-x-auto no-scrollbar pb-2">
-          <div className="flex gap-3 min-w-max">
-            {CATEGORY_PILLS.map((pill, index) => (
-              <button
-                key={index}
-                onMouseEnter={() => setActiveCategory(pill)}
-                onClick={() => navigate(`/shop/${encodeURIComponent(pill)}`)}
-                className={`px-5 py-2.5 rounded-full border font-bold font-heading transition-all whitespace-nowrap text-[0.8rem] ${activeCategory === pill ? "bg-belims-blue text-white border-belims-blue shadow-md" : "bg-white text-gray-700 border-gray-300 hover:border-belims-blue hover:text-belims-blue"}`}
-              >
-                {pill}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[420px] animate-fadeIn">
-          <div className="w-full lg:w-1/3 xl:w-1/4 rounded-lg overflow-hidden relative group shadow-md h-[360px] lg:h-[420px]">
-            <img
-              src={currentSliderContent.image}
-              alt={currentSliderContent.title}
-              key={currentSliderContent.image}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 animate-fadeIn"
-            />
-            <div className="absolute inset-0 bg-black/30"></div>
-            <div className="absolute inset-0 p-8 flex flex-col justify-center items-start text-center lg:text-left">
-              <h3 className="text-3xl md:text-4xl font-extrabold text-white mb-4 font-heading leading-tight drop-shadow-lg">
-                {currentSliderContent.title}
-              </h3>
-              <button
-                onClick={() =>
-                  navigate(`/shop/${encodeURIComponent(activeCategory)}`)
-                }
-                className="mt-2 border-b-2 border-white text-white font-bold text-lg pb-0.5 hover:text-belims-accent hover:border-belims-accent transition-colors font-heading"
-              >
-                Shop All {activeCategory}
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-x-auto no-scrollbar flex gap-4 items-stretch">
-            {products.slice(0, 6).map((product) => (
-              <div
-                key={product.id}
-                className="min-w-[280px] max-w-[280px] h-full"
-              >
-                <ProductCard
-                  product={product}
-                  addToCart={addToCart}
-                  onBuyNow={handleBuyNow}
-                  onCompare={addToCompare}
-                  className="h-full"
-                />
-              </div>
-            ))}
-            <div
-              onClick={() =>
-                navigate(`/shop/${encodeURIComponent(activeCategory)}`)
-              }
-              className="min-w-[150px] flex flex-col items-center justify-center bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors group"
-            >
-              <div className="w-12 h-12 rounded-full bg-white shadow flex items-center justify-center text-belims-blue group-hover:scale-110 transition-transform mb-3">
-                <ArrowRight size={24} />
-              </div>
-              <span className="font-bold text-belims-blue font-heading">
-                View All {activeCategory}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ShopByCategory
+        products={products}
+        addToCart={addToCart}
+        onBuyNow={handleBuyNow}
+        onCompare={addToCompare}
+      />
 
       {/* Featured Products Grid */}
       <section className="mb-16">
@@ -499,6 +434,7 @@ export default function App() {
   const [priceMatchProduct, setPriceMatchProduct] = useState<Product | null>(
     null,
   );
+  const [categoryPills, setCategoryPills] = useState<string[]>(CATEGORY_PILLS);
 
   // Slider State (Moved up to pass to HomePage)
   const [heroCategoryIndex, setHeroCategoryIndex] = useState(0);
@@ -508,6 +444,35 @@ export default function App() {
   // Derived State for Slider Content
   const currentSliderContent =
     CATEGORY_SLIDER_DATA[activeCategory] || CATEGORY_SLIDER_DATA["default"];
+
+  // Load categories from WooCommerce
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+        if (!apiBase) return;
+
+        const response = await fetch(`${apiBase}/wp-json/belims/v1/categories`);
+        if (response.ok) {
+          const categories = await response.json();
+          // Filter for child categories only (those with a parent)
+          const childCategories = categories
+            .filter((cat: any) => cat.parent !== null)
+            .map((cat: any) => cat.name)
+            .sort();
+
+          if (childCategories.length > 0) {
+            // Add "Top Deals" at the beginning
+            setCategoryPills(["Top Deals", ...childCategories]);
+            setActiveCategory("Top Deals");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load categories:", error);
+      }
+    };
+    loadCategories();
+  }, []);
 
   // Load products
   useEffect(() => {
@@ -669,6 +634,7 @@ export default function App() {
         nextProjectSlide={nextProjectSlide}
         prevProjectSlide={prevProjectSlide}
         currentSliderContent={currentSliderContent}
+        categoryPills={categoryPills}
       />
     </Router>
   );

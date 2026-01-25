@@ -269,7 +269,7 @@ class Belims_FTG_Sync_Endpoint {
         // Filter for Ingco brand products only (if limit is small, assume test sync)
         $brand_filter = null;
         $total_available = 0;
-        if ($limit !== null && $limit <= 20) {
+        if ($limit !== null && $limit <= 250) {
             $brand_filter = 'Ingco';
             error_log('Filtering for brand: ' . $brand_filter);
             $filtered_products = array();
@@ -405,8 +405,10 @@ class Belims_FTG_Sync_Endpoint {
         // Calculate if there are more products to process
         $total_requested = $limit ?? count($products);
         $next_offset = $offset + $batch_size;
-        $has_more = ($total_available > 0) && ($next_offset < $total_requested);
-        $progress = ($total_requested > 0) ? min(100, round(($next_offset / $total_requested) * 100)) : 100;
+        // Check against the actual available count when filtering by brand
+        $total_to_sync = ($total_available > 0) ? min($total_requested, $total_available) : $total_requested;
+        $has_more = ($next_offset < $total_to_sync);
+        $progress = ($total_to_sync > 0) ? min(100, round(($next_offset / $total_to_sync) * 100)) : 100;
         
         error_log('Progress calculation: offset=' . $offset . ', batch_size=' . $batch_size . ', next_offset=' . $next_offset . ', total_requested=' . $total_requested . ', has_more=' . ($has_more ? 'yes' : 'no') . ', progress=' . $progress . '%');
         
@@ -1011,6 +1013,106 @@ class Belims_FTG_Sync_Endpoint {
         }
         
         return rest_ensure_response($filters);
+    }
+
+    /**
+     * Sync a single product by SKU from FTG
+     * 
+     * @param string $ftg_token FTG Collection token
+     * @param string $sku Product SKU to sync
+     * @return array Success status with message and product details
+     */
+    public function sync_single_product_by_sku($ftg_token, $sku) {
+        error_log("=== Syncing Single Product by SKU: $sku ===");
+        
+        if (empty($ftg_token)) {
+            return array(
+                'success' => false,
+                'message' => 'FTG token not provided',
+            );
+        }
+        
+        if (empty($sku)) {
+            return array(
+                'success' => false,
+                'message' => 'SKU is required',
+            );
+        }
+        
+        try {
+            // Get all products from FTG
+            $ftg_result = $this->ftg_api->get_products($ftg_token, array('limit' => 10000));
+            
+            if (isset($ftg_result['error'])) {
+                return array(
+                    'success' => false,
+                    'message' => 'Failed to fetch from FTG: ' . $ftg_result['error'],
+                );
+            }
+            
+            // Extract products array
+            $products = array();
+            if (isset($ftg_result['data']['response']) && is_array($ftg_result['data']['response'])) {
+                $products = $ftg_result['data']['response'];
+            } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
+                $products = $ftg_result['data'];
+            }
+            
+            // Find product by SKU (check multiple possible code fields)
+            $found_product = null;
+            foreach ($products as $product) {
+                $product_data = $product['productData'] ?? $product;
+                $product_code = $product_data['productCode'] ?? '';
+                $mdr_code = $product_data['mdrProductCode'] ?? '';
+                $alt_code = $product_data['altProductCode'] ?? '';
+                
+                // Check all possible code fields
+                if (strcasecmp($product_code, $sku) === 0 || 
+                    strcasecmp($mdr_code, $sku) === 0 || 
+                    strcasecmp($alt_code, $sku) === 0) {
+                    $found_product = $product;
+                    break;
+                }
+            }
+            
+            if (!$found_product) {
+                error_log("Product not found in FTG: $sku");
+                return array(
+                    'success' => false,
+                    'message' => 'Product not found in FTG',
+                );
+            }
+            
+            // Create or update WC product
+            $result = $this->create_or_update_wc_product($found_product);
+            
+            if (!$result['success']) {
+                return array(
+                    'success' => false,
+                    'message' => $result['error'] ?? 'Failed to update product',
+                );
+            }
+            
+            // Get the product name for response
+            $product_data = $found_product['productData'] ?? $found_product;
+            $product_name = $product_data['description1'] ?? $product_data['description2'] ?? 'Product';
+            
+            error_log("Successfully synced product: $sku - $product_name");
+            
+            return array(
+                'success' => true,
+                'message' => 'Product synced successfully',
+                'product_name' => $product_name,
+                'sku' => $sku,
+            );
+            
+        } catch (Exception $e) {
+            error_log("Exception while syncing product $sku: " . $e->getMessage());
+            return array(
+                'success' => false,
+                'message' => 'Exception: ' . $e->getMessage(),
+            );
+        }
     }
 
     }

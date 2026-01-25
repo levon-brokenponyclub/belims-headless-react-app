@@ -782,7 +782,7 @@ function global_site_settings_main_page() {
                                     🔍 Inspect Product
                                 </button>
                                 <button type="button" id="ftg-test-sync" class="button button-secondary" style="margin-right: 10px;">
-                                    ✅ Test Sync (5 Ingco Products)
+                                    ✅ Test Sync (250 Ingco Products)
                                 </button>
                                 <button type="button" id="ftg-sync-products" class="button button-primary" style="margin-right: 10px;">
                                     🔄 Sync All Products
@@ -982,13 +982,13 @@ function global_site_settings_main_page() {
                                 });
                                 
                                 $('#ftg-test-sync').on('click', function() {
-                                    if (!confirm('Test sync 5 Ingco products from FTG?')) return;
+                                    if (!confirm('Test sync 250 Ingco products from FTG?')) return;
                                     
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
                                     
                                     btn.prop('disabled', true).text('Testing...');
-                                    status.html('<p>⏳ Syncing 5 Ingco products from FTG...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Starting sync...</p>');
+                                    status.html('<p>⏳ Syncing 250 Ingco products from FTG...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Starting sync...</p>');
                                     
                                     // Track totals across all batches
                                     var totalSynced = 0;
@@ -998,8 +998,8 @@ function global_site_settings_main_page() {
                                     var allSkippedItems = [];
                                     
                                     function syncBatch(offset) {
-                                        var limit = 5;
-                                        var batchSize = 5; // Process 5 products at a time
+                                        var limit = 250;
+                                        var batchSize = 50; // Process 50 products at a time
                                         
                                         $.ajax({
                                             url: '<?php echo rest_url('belims/v1/ftg/sync'); ?>',
@@ -1040,7 +1040,7 @@ function global_site_settings_main_page() {
                                                         syncBatch(response.next_offset);
                                                     } else {
                                                         // All done!
-                                                        btn.prop('disabled', false).text('✅ Test Sync (5 Ingco Products)');
+                                                        btn.prop('disabled', false).text('✅ Test Sync (250 Ingco Products)');
                                                         $('.ftg-progress-fill').css('width', '100%').text('100%');
                                                         $('.ftg-progress-text').html('Sync complete!');
                                                         
@@ -1127,13 +1127,13 @@ function global_site_settings_main_page() {
                                                         status.html(summaryHtml + detailsHtml);
                                                     }
                                                 } else {
-                                                    btn.prop('disabled', false).text('✅ Test Sync (5 Ingco Products)');
+                                                    btn.prop('disabled', false).text('✅ Test Sync (250 Ingco Products)');
                                                     var message = response.message || 'Unknown error';
                                                     status.html('<div class="notice notice-warning inline"><p>⚠️ ' + message + '</p></div>');
                                                 }
                                             },
                                             error: function(xhr) {
-                                                btn.prop('disabled', false).text('✅ Test Sync (5 Ingco Products)');
+                                                btn.prop('disabled', false).text('✅ Test Sync (250 Ingco Products)');
                                                 var errorMsg = xhr.responseJSON?.message || 'Sync failed';
                                                 status.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
                                             }
@@ -1662,11 +1662,132 @@ function belims_add_ftg_view_row_action($actions, $post) {
     if (!empty($sku)) {
         $ftg_url = 'https://my.ftgone.co.za/ftg/product/?q=' . rawurlencode($sku);
         $actions['view_in_ftg'] = '<a href="' . esc_url($ftg_url) . '" target="_blank" rel="noopener">View in FTG</a>';
+        
+        // Add Sync Product action
+        $sync_url = wp_nonce_url(
+            admin_url('admin-ajax.php?action=belims_sync_single_product&product_id=' . $post->ID),
+            'sync_product_nonce'
+        );
+        $actions['sync_product'] = '<a href="' . esc_url($sync_url) . '" class="belims-sync-single-product" data-product-id="' . $post->ID . '" data-sku="' . esc_attr($sku) . '">Sync Product</a>';
     }
 
     return $actions;
 }
 add_filter('post_row_actions', 'belims_add_ftg_view_row_action', 10, 2);
+
+/**
+ * AJAX Handler: Sync Single Product from FTG
+ */
+function belims_sync_single_product_ajax() {
+    check_ajax_referer('sync_product_nonce', '_wpnonce');
+    
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => 'Permission denied'));
+    }
+    
+    $product_id = intval($_POST['product_id']);
+    $product = wc_get_product($product_id);
+    
+    if (!$product) {
+        wp_send_json_error(array('message' => 'Product not found'));
+    }
+    
+    $sku = $product->get_sku();
+    if (empty($sku)) {
+        wp_send_json_error(array('message' => 'Product has no SKU'));
+    }
+    
+    // Get FTG token
+    $ftg_token = get_option('belims_ftg_collection_token');
+    if (empty($ftg_token)) {
+        wp_send_json_error(array('message' => 'FTG not connected. Please connect FTG first.'));
+    }
+    
+    // Sync single product
+    require_once GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/ftg-sync/class-ftg-sync-endpoint.php';
+    $sync_endpoint = new Belims_FTG_Sync_Endpoint();
+    
+    $result = $sync_endpoint->sync_single_product_by_sku($ftg_token, $sku);
+    
+    if ($result['success']) {
+        wp_send_json_success(array(
+            'message' => 'Product synced successfully!',
+            'product_name' => $result['product_name'],
+            'sku' => $sku
+        ));
+    } else {
+        wp_send_json_error(array(
+            'message' => $result['message'] ?? 'Failed to sync product'
+        ));
+    }
+}
+add_action('wp_ajax_belims_sync_single_product', 'belims_sync_single_product_ajax');
+
+/**
+ * Enqueue admin scripts for single product sync
+ */
+function belims_enqueue_product_sync_script($hook) {
+    if ($hook !== 'edit.php') {
+        return;
+    }
+    
+    $screen = get_current_screen();
+    if ($screen->post_type !== 'product') {
+        return;
+    }
+    
+    ?>
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+        // Handle sync product button click
+        $('.sync-product-button').on('click', function(e) {
+            e.preventDefault();
+            
+            var $button = $(this);
+            var productId = $button.data('product-id');
+            var nonce = $button.data('nonce');
+            
+            if (!confirm('Sync this product from FTG?')) {
+                return;
+            }
+            
+            // Show loading state
+            var originalText = $button.text();
+            $button.text('Syncing...').prop('disabled', true);
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'belims_sync_single_product',
+                    product_id: productId,
+                    _wpnonce: nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('✓ Product synced successfully: ' + response.data.product_name);
+                        $button.text('✓ Synced');
+                        $button.css('color', '#00a32a');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        alert('Error: ' + (response.data.message || 'Unknown error'));
+                        $button.text(originalText).prop('disabled', false);
+                    }
+                },
+                error: function(xhr) {
+                    console.error('AJAX error:', xhr);
+                    alert('Error: Failed to sync product. Please try again.');
+                    $button.text(originalText).prop('disabled', false);
+                }
+            });
+        });
+    });
+    </script>
+    <?php
+}
+add_action('admin_footer', 'belims_enqueue_product_sync_script');
 
 /**
  * Add FTG Sync Status to Product Publish Box
@@ -1706,6 +1827,8 @@ function belims_add_ftg_sync_status_to_publish_box() {
         Sync Status: <strong><?php echo esc_html($sync_status); ?></strong>
         <?php if ($is_synced && !empty($sku)): ?>
             <a href="<?php echo esc_url('https://my.ftgone.co.za/ftg/product/?q=' . rawurlencode($sku)); ?>" target="_blank" rel="noopener" class="edit-ftg-sync">View</a>
+            |
+            <a href="#" class="sync-product-button" data-product-id="<?php echo intval($post->ID); ?>" data-nonce="<?php echo esc_attr(wp_create_nonce('sync_product_nonce')); ?>">Sync Product</a>
         <?php endif; ?>
     </div>
     <?php
