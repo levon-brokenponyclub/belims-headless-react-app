@@ -1,4 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
+import {
+  Routes,
+  Route,
+  useNavigate,
+  useParams,
+  useLocation,
+} from "react-router-dom";
 import { Header } from "./components/Header";
 import { ProductCard } from "./components/ProductCard";
 import { CartDrawer } from "./components/CartDrawer";
@@ -35,11 +42,10 @@ import {
 } from "lucide-react";
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // State
-  const [view, setView] = useState<"home" | "product" | "archive" | "checkout">(
-    "home",
-  );
-  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const [currentCategory, setCurrentCategory] = useState<string>("");
   const [currentBrand, setCurrentBrand] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -147,8 +153,7 @@ export default function App() {
   };
 
   const handleProductClick = (product: Product) => {
-    setActiveProduct(product);
-    setView("product");
+    navigate(`/product/${product.id}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -156,7 +161,7 @@ export default function App() {
     setCurrentCategory(category);
     setCurrentBrand("");
     setSearchQuery("");
-    setView("archive");
+    navigate(`/category/${category}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -164,7 +169,7 @@ export default function App() {
     setCurrentBrand(brand);
     setCurrentCategory("");
     setSearchQuery("");
-    setView("archive");
+    navigate(`/brand/${brand}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -172,7 +177,7 @@ export default function App() {
     setSearchQuery(query);
     setCurrentCategory("");
     setCurrentBrand("");
-    setView("archive");
+    navigate(`/search?q=${encodeURIComponent(query)}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
