@@ -23,6 +23,7 @@ import { OrderConfirmation } from "./components/OrderConfirmation";
 import { Archive } from "./components/Archive";
 import { RecentlyViewed } from "./components/RecentlyViewed";
 import { ShopByCategory } from "./components/ShopByCategory";
+import { TrackOrderPage } from "./components/TrackOrderPage"; // New Import
 import { Product, CartItem, Store } from "./types";
 import {
   fetchProducts,
@@ -44,14 +45,6 @@ import {
   CreditCard,
   ChevronRight,
   X,
-  Package,
-  Route as RouteIcon,
-  MapPin,
-  CheckCircle2,
-  RefreshCcw,
-  Copy,
-  Sparkles,
-  TimerReset,
 } from "lucide-react";
 
 // --- WRAPPER COMPONENTS FOR ROUTING ---
@@ -308,7 +301,6 @@ const HomePage = ({
         </div>
       </div>
 
-      {/* INTERACTIVE CATEGORY PREVIEW SECTION */}
       <ShopByCategory
         products={products}
         addToCart={addToCart}
@@ -357,7 +349,6 @@ const HomePage = ({
         onCompare={addToCompare}
       />
 
-      {/* Banner Strip */}
       <div className="bg-belims-gray rounded-xl p-8 mb-16 flex flex-col md:flex-row items-center justify-between gap-8 border border-gray-200">
         <div>
           <h2 className="text-3xl font-bold text-belims-blue mb-2 font-heading">
@@ -373,7 +364,6 @@ const HomePage = ({
         </button>
       </div>
 
-      {/* Value Props */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 border-t pt-12 pb-12">
         <div className="flex items-start gap-4">
           <div className="bg-blue-50 p-3 rounded-full text-belims-blue">
@@ -419,805 +409,6 @@ const HomePage = ({
   );
 };
 
-/* -------------------------------------------------------
-   TRACKING (Enhanced + Polished)
--------------------------------------------------------- */
-
-type StepKey =
-  | "created"
-  | "collected"
-  | "in_transit"
-  | "out_for_delivery"
-  | "delivered";
-
-const TRACK_STEPS: {
-  key: StepKey;
-  label: string;
-  Icon: any;
-  match: (s: string) => boolean;
-}[] = [
-  {
-    key: "created",
-    label: "Created",
-    Icon: Package,
-    match: (s) =>
-      s.includes("created") ||
-      s.includes("submitted") ||
-      s.includes("booked") ||
-      s.includes("pending collection") ||
-      s.includes("pending"),
-  },
-  {
-    key: "collected",
-    label: "Collected",
-    Icon: Truck,
-    match: (s) => s.includes("collected") || s.includes("collection"),
-  },
-  {
-    key: "in_transit",
-    label: "In transit",
-    Icon: RouteIcon,
-    match: (s) =>
-      s.includes("in transit") ||
-      s.includes("transit") ||
-      s.includes("linehaul"),
-  },
-  {
-    key: "out_for_delivery",
-    label: "Out for delivery",
-    Icon: MapPin,
-    match: (s) =>
-      s.includes("out for delivery") ||
-      s.includes("delivery run") ||
-      s.includes("driver") ||
-      s.includes("on route"),
-  },
-  {
-    key: "delivered",
-    label: "Delivered",
-    Icon: CheckCircle2,
-    match: (s) => s.includes("delivered") || s.includes("complete"),
-  },
-];
-
-function normalizeStatus(status?: string): string {
-  return (status || "").toLowerCase().trim();
-}
-
-function activeStepIndexFromStatus(status?: string): number {
-  const s = normalizeStatus(status);
-  if (!s) return 0;
-
-  // Special case: "Pending collection" means CREATED stage
-  if (s.includes("pending collection")) return 0;
-
-  const idx = TRACK_STEPS.findIndex((st) => st.match(s));
-  return idx >= 0 ? idx : 0;
-}
-
-function safeDate(value: any): Date | null {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d;
-}
-
-function formatFriendlyDate(value: any) {
-  const d = safeDate(value);
-  if (!d) return value ? String(value) : "";
-  return d.toLocaleString(undefined, {
-    weekday: "short",
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatEtaText(eta?: any) {
-  if (!eta) return "";
-
-  const text = String(eta);
-
-  // Already a nice range
-  if (text.includes("–")) return text;
-  if (text.includes(" - ")) return text.replace(" - ", " – ");
-
-  // Sometimes API sends ISO-ish "2026-01-30 17:00:00+02:00"
-  // Try normalize for Date parsing:
-  const cleaned = text.replace(" ", "T");
-  const d = safeDate(cleaned);
-  if (d) {
-    return d.toLocaleDateString(undefined, {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    });
-  }
-
-  return text;
-}
-
-function pickEventLabel(ev: any) {
-  const raw =
-    ev?.label ||
-    ev?.status_description ||
-    ev?.statusDescription ||
-    ev?.status ||
-    ev?.event ||
-    ev?.description ||
-    ev?.message ||
-    ev?.title ||
-    ev?.name ||
-    "";
-
-  const s = String(raw || "").trim();
-  if (!s) return "Tracking update";
-
-  // Make it nicer
-  if (s.toLowerCase() === "update") return "Tracking update";
-  return s;
-}
-
-function pickEventTime(ev: any) {
-  return (
-    ev?.time ||
-    ev?.timestamp ||
-    ev?.created_at ||
-    ev?.createdAt ||
-    ev?.created ||
-    ev?.date ||
-    ev?.datetime ||
-    ""
-  );
-}
-
-function pickEventLocation(ev: any) {
-  return (
-    ev?.location ||
-    ev?.location_name ||
-    ev?.hub ||
-    ev?.facility ||
-    ev?.city ||
-    ev?.area ||
-    ev?.branch ||
-    ""
-  );
-}
-
-type NormalizedEvent = {
-  label: string;
-  timestamp: string;
-  location?: string;
-  status?: string;
-};
-
-type NormalizedTracking = {
-  trackingRef: string;
-  status: string;
-  statusBadge: string;
-  etaText?: string;
-  lastUpdated?: string;
-  details?: {
-    orderNo?: string | number;
-    courier?: string;
-    serviceLevel?: string;
-    customer?: string;
-  };
-  events: NormalizedEvent[];
-};
-
-function normalizeTrackingResult(data: any): NormalizedTracking {
-  const trackingRef =
-    data?.trackingRef ||
-    data?.tracking_reference ||
-    data?.reference ||
-    data?.ref ||
-    "";
-
-  const rawStatus =
-    data?.status ||
-    data?.current_status ||
-    data?.raw?.status ||
-    data?.raw?.current_status ||
-    "";
-
-  const status = String(rawStatus || "Pending collection");
-
-  const eta =
-    data?.eta_range ||
-    data?.etaText ||
-    data?.eta ||
-    data?.expected_delivery_date ||
-    data?.raw?.expected_delivery_date ||
-    data?.raw?.eta ||
-    "";
-
-  const rawEvents =
-    data?.events ||
-    data?.raw?.events ||
-    data?.raw?.tracking_events ||
-    data?.raw?.history ||
-    [];
-
-  const events: NormalizedEvent[] = (Array.isArray(rawEvents) ? rawEvents : [])
-    .map((ev) => ({
-      label: pickEventLabel(ev),
-      timestamp: String(pickEventTime(ev) || ""),
-      location: String(pickEventLocation(ev) || "") || undefined,
-      status: String(ev?.status || ev?.state || ev?.event || "") || undefined,
-    }))
-    .filter((ev) => ev.label || ev.timestamp);
-
-  // Sort newest -> oldest when timestamps exist
-  events.sort((a, b) => {
-    const da = safeDate(a.timestamp)?.getTime() ?? 0;
-    const db = safeDate(b.timestamp)?.getTime() ?? 0;
-    return db - da;
-  });
-
-  const details = {
-    orderNo:
-      data?.orderNo ||
-      data?.raw?.order_number ||
-      data?.raw?.order ||
-      data?.raw?.order_id ||
-      undefined,
-    serviceLevel:
-      data?.serviceLevel ||
-      data?.raw?.service_level ||
-      data?.raw?.serviceLevel ||
-      data?.raw?.service ||
-      undefined,
-    courier: data?.courier || data?.raw?.courier || data?.raw?.provider,
-    customer: data?.customer || data?.raw?.customer,
-  };
-
-  const badge =
-    normalizeStatus(status).includes("delivered") ||
-    normalizeStatus(status).includes("complete")
-      ? "Delivered"
-      : normalizeStatus(status).includes("out for delivery")
-        ? "Out for delivery"
-        : normalizeStatus(status).includes("transit")
-          ? "In transit"
-          : normalizeStatus(status).includes("collected")
-            ? "Collected"
-            : "Pending collection";
-
-  const lastUpdated = events?.[0]?.timestamp
-    ? formatFriendlyDate(events[0].timestamp)
-    : "";
-
-  return {
-    trackingRef: String(trackingRef || "").toUpperCase(),
-    status,
-    statusBadge: badge,
-    etaText: eta ? formatEtaText(eta) : "",
-    lastUpdated,
-    details,
-    events,
-  };
-}
-
-/* -----------------------------------
-   Polished Tracking Card Component
------------------------------------- */
-
-const TrackingProgressCard = ({
-  data,
-  onRefresh,
-  loading,
-  autoRefresh,
-  onToggleAutoRefresh,
-}: {
-  data: NormalizedTracking;
-  onRefresh: () => void;
-  loading: boolean;
-  autoRefresh: boolean;
-  onToggleAutoRefresh: (v: boolean) => void;
-}) => {
-  const activeIdx = activeStepIndexFromStatus(data.status);
-  const progressPct =
-    TRACK_STEPS.length === 1 ? 0 : (activeIdx / (TRACK_STEPS.length - 1)) * 100;
-
-  const badgeTone =
-    data.statusBadge === "Delivered"
-      ? "bg-green-50 text-green-700 border-green-200"
-      : data.statusBadge === "Out for delivery"
-        ? "bg-amber-50 text-amber-700 border-amber-200"
-        : data.statusBadge === "In transit"
-          ? "bg-blue-50 text-belims-blue border-blue-200"
-          : "bg-gray-50 text-gray-700 border-gray-200";
-
-  const copyLink = async () => {
-    const link = `${window.location.origin}/track-order?order-number=${encodeURIComponent(
-      data.trackingRef,
-    )}`;
-    try {
-      await navigator.clipboard.writeText(link);
-      alert("Tracking link copied ✅");
-    } catch {
-      // fallback
-      prompt("Copy this tracking link:", link);
-    }
-  };
-
-  return (
-    <div className="space-y-5">
-      {/* Header / Summary Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 md:px-6 md:py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-belims-blue">
-                <Package size={18} />
-              </div>
-
-              <div className="min-w-0">
-                <div className="text-xs text-gray-500">Tracking reference</div>
-                <div className="text-lg font-extrabold tracking-tight text-gray-900 font-heading truncate">
-                  {data.trackingRef}
-                </div>
-              </div>
-
-              <span
-                className={`ml-auto md:ml-0 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-bold ${badgeTone}`}
-              >
-                <Sparkles size={14} />
-                {data.statusBadge}
-              </span>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-500">
-              {data.details?.courier ? (
-                <span className="inline-flex items-center rounded-full bg-gray-50 border border-gray-200 px-3 py-1">
-                  Courier:{" "}
-                  <span className="ml-1 font-bold">{data.details.courier}</span>
-                </span>
-              ) : null}
-
-              {data.details?.serviceLevel ? (
-                <span className="inline-flex items-center rounded-full bg-gray-50 border border-gray-200 px-3 py-1">
-                  Service:{" "}
-                  <span className="ml-1 font-bold">
-                    {data.details.serviceLevel}
-                  </span>
-                </span>
-              ) : null}
-
-              {data.etaText ? (
-                <span className="inline-flex items-center rounded-full bg-gray-50 border border-gray-200 px-3 py-1">
-                  ETA: <span className="ml-1 font-bold">{data.etaText}</span>
-                </span>
-              ) : null}
-
-              {data.lastUpdated ? (
-                <span className="inline-flex items-center rounded-full bg-gray-50 border border-gray-200 px-3 py-1">
-                  <TimerReset size={14} className="mr-1" />
-                  Updated:{" "}
-                  <span className="ml-1 font-bold">{data.lastUpdated}</span>
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 justify-end">
-            <button
-              onClick={copyLink}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 transition"
-            >
-              <Copy size={16} />
-              Copy link
-            </button>
-
-            <button
-              onClick={onRefresh}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 transition disabled:opacity-60"
-            >
-              <RefreshCcw
-                size={16}
-                className={`${loading ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </button>
-          </div>
-        </div>
-
-        {/* Progress */}
-        <div className="px-5 pb-5 md:px-6 md:pb-6">
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Order tracking</span>
-
-            <label className="inline-flex items-center gap-2 select-none">
-              <span className="font-semibold text-gray-600">Auto-refresh</span>
-              <button
-                type="button"
-                onClick={() => onToggleAutoRefresh(!autoRefresh)}
-                className={[
-                  "relative h-6 w-11 rounded-full border transition",
-                  autoRefresh
-                    ? "bg-belims-blue border-belims-blue"
-                    : "bg-gray-200 border-gray-300",
-                ].join(" ")}
-              >
-                <span
-                  className={[
-                    "absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white shadow transition",
-                    autoRefresh ? "left-6" : "left-1",
-                  ].join(" ")}
-                />
-              </button>
-            </label>
-          </div>
-
-          {/* Progress line */}
-          <div className="relative mt-4">
-            <div className="h-[3px] bg-gray-200 rounded-full" />
-            <div
-              className="absolute top-0 left-0 h-[3px] bg-belims-blue rounded-full transition-[width] duration-700 ease-out"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-
-          {/* Steps */}
-          <div className="mt-6 grid grid-cols-5 gap-2 md:gap-4">
-            {TRACK_STEPS.map((step, idx) => {
-              const Icon = step.Icon;
-              const isDone = idx < activeIdx;
-              const isActive = idx === activeIdx;
-
-              return (
-                <div key={step.key} className="flex flex-col items-center">
-                  <div
-                    className={[
-                      "relative flex h-12 w-12 items-center justify-center rounded-full transition-all",
-                      isDone
-                        ? "bg-belims-blue text-white shadow-md"
-                        : isActive
-                          ? "bg-white border-2 border-belims-blue text-belims-blue shadow-sm"
-                          : "bg-gray-100 text-gray-400",
-                    ].join(" ")}
-                    style={
-                      isActive
-                        ? ({
-                            animation: "softPulse 2.3s ease-in-out infinite",
-                          } as React.CSSProperties)
-                        : undefined
-                    }
-                  >
-                    <Icon size={20} />
-                  </div>
-
-                  <div className="mt-3 text-[11px] md:text-xs font-bold uppercase tracking-wide text-gray-600 text-center">
-                    {step.label}
-                  </div>
-
-                  {/* Timestamp hints */}
-                  {idx === 0 && data.events?.length ? (
-                    <div className="mt-1 text-[11px] text-gray-500 tabular-nums text-center">
-                      {formatFriendlyDate(
-                        data.events[data.events.length - 1]?.timestamp,
-                      )}
-                    </div>
-                  ) : idx === activeIdx && data.events?.length ? (
-                    <div className="mt-1 text-[11px] text-gray-500 tabular-nums text-center">
-                      {formatFriendlyDate(data.events[0]?.timestamp)}
-                    </div>
-                  ) : (
-                    <div className="mt-1 h-[14px]" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Shipping details */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-lg font-extrabold text-gray-900 font-heading">
-              Shipping details
-            </div>
-            <div className="mt-1 text-sm text-gray-600">
-              Live updates from Bob Go
-            </div>
-          </div>
-
-          <div className="shrink-0">
-            <span
-              className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-bold ${badgeTone}`}
-            >
-              {data.statusBadge}
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="rounded-xl border border-gray-100 p-4">
-            <div className="text-gray-500">Shipment</div>
-            <div className="font-bold text-gray-900">{data.trackingRef}</div>
-
-            {data.details?.orderNo && (
-              <>
-                <div className="mt-3 text-gray-500">Order</div>
-                <div className="font-bold text-gray-900">
-                  {data.details.orderNo}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="rounded-xl border border-gray-100 p-4">
-            {data.details?.serviceLevel && (
-              <>
-                <div className="text-gray-500">Service level</div>
-                <div className="font-bold text-gray-900">
-                  {data.details.serviceLevel}
-                </div>
-              </>
-            )}
-
-            {data.details?.courier && (
-              <>
-                <div className="mt-3 text-gray-500">Courier</div>
-                <div className="font-bold text-gray-900">
-                  {data.details.courier}
-                </div>
-              </>
-            )}
-
-            {data.etaText ? (
-              <>
-                <div className="mt-3 text-gray-500">Estimated delivery</div>
-                <div className="font-bold text-gray-900 tabular-nums">
-                  {data.etaText}
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      {/* Events timeline */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 md:p-6">
-        <div className="flex items-center justify-between">
-          <div className="text-lg font-extrabold text-gray-900 font-heading">
-            Tracking events
-          </div>
-          <div className="text-xs text-gray-500">Latest first</div>
-        </div>
-
-        {Array.isArray(data.events) && data.events.length > 0 ? (
-          <div className="mt-5 relative">
-            <div className="absolute left-[11px] top-1 bottom-1 w-[2px] bg-gray-100" />
-
-            <div className="space-y-4">
-              {data.events.map((ev, idx) => (
-                <div
-                  key={idx}
-                  className="relative pl-10"
-                  style={{
-                    opacity: 1,
-                    transform: "translateY(0px)",
-                    transition: "all 250ms ease",
-                    transitionDelay: `${idx * 35}ms`,
-                  }}
-                >
-                  <div
-                    className={[
-                      "absolute left-[3px] top-[6px] h-5 w-5 rounded-full border-2 flex items-center justify-center",
-                      idx === 0
-                        ? "border-belims-blue bg-blue-50"
-                        : "border-gray-200 bg-white",
-                    ].join(" ")}
-                  >
-                    <div
-                      className={[
-                        "h-2.5 w-2.5 rounded-full",
-                        idx === 0 ? "bg-belims-blue" : "bg-gray-300",
-                      ].join(" ")}
-                    />
-                  </div>
-
-                  <div className="rounded-xl border border-gray-100 bg-white p-4 hover:border-gray-200 hover:shadow-sm transition">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="font-bold text-gray-900">{ev.label}</div>
-
-                      <div className="text-xs text-gray-500 tabular-nums">
-                        {formatFriendlyDate(ev.timestamp)}
-                      </div>
-                    </div>
-
-                    {ev.location ? (
-                      <div className="mt-1 text-sm text-gray-600">
-                        {ev.location}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="mt-4 rounded-xl border border-dashed border-gray-200 p-5 text-sm text-gray-600">
-            No tracking events yet. Your shipment will update once Bob Go
-            registers the first scan.
-          </div>
-        )}
-      </div>
-
-      {/* CSS keyframes (once) */}
-      <style>{`
-        @keyframes softPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(30, 64, 175, .18); }
-          50% { box-shadow: 0 0 0 12px rgba(30, 64, 175, 0); }
-        }
-      `}</style>
-    </div>
-  );
-};
-
-const TrackOrderPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const urlOrder = searchParams.get("order-number") || "";
-
-  const [orderNumber, setOrderNumber] = useState<string>(urlOrder);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [rawResult, setRawResult] = useState<any>(null);
-  const [normalized, setNormalized] = useState<NormalizedTracking | null>(null);
-
-  const [autoRefresh, setAutoRefresh] = useState(false);
-
-  useEffect(() => {
-    setOrderNumber(urlOrder);
-  }, [urlOrder]);
-
-  const track = async (value: string) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch(
-        "https://cms.belims.co.za/wp-json/belims/v1/track",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ trackingRef: value }),
-        },
-      );
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Tracking request failed (${res.status})`);
-      }
-
-      const data = await res.json();
-
-      setRawResult(data);
-      setNormalized(normalizeTrackingResult(data));
-    } catch (e: any) {
-      setError(e?.message || "Unable to fetch tracking right now.");
-      setRawResult(null);
-      setNormalized(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const value = orderNumber.trim().toUpperCase();
-    if (!value) return;
-
-    setSearchParams({ "order-number": value }, { replace: true });
-    track(value);
-  };
-
-  // Auto run when URL contains ?order-number=
-  useEffect(() => {
-    if (urlOrder.trim()) {
-      track(urlOrder.trim().toUpperCase());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlOrder]);
-
-  // Auto refresh poll (20s)
-  useEffect(() => {
-    if (!autoRefresh) return;
-    if (!normalized?.trackingRef) return;
-
-    const id = window.setInterval(() => {
-      track(normalized.trackingRef);
-    }, 20000);
-
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefresh, normalized?.trackingRef]);
-
-  return (
-    <div className="container mx-auto px-4 py-8 min-h-[60vh]">
-      <h1 className="text-2xl md:text-3xl font-bold text-belims-blue font-heading mb-2">
-        Track Your Order
-      </h1>
-      <p className="text-sm md:text-base text-gray-600 max-w-xl mb-4">
-        Enter your tracking reference to view live tracking updates.
-      </p>
-
-      <div className="bg-white rounded-xl shadow border border-gray-200 p-4 md:p-6">
-        <form onSubmit={onSubmit} className="flex flex-col md:flex-row gap-3">
-          <input
-            value={orderNumber}
-            onChange={(e) => setOrderNumber(e.target.value)}
-            placeholder="e.g. UASSBNJ9"
-            className="flex-1 border rounded-lg px-3 py-2 font-semibold tracking-wide uppercase"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-belims-blue text-white px-5 py-2 rounded-lg font-bold disabled:opacity-60 inline-flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <RefreshCcw className="animate-spin" size={16} />
-                Tracking...
-              </>
-            ) : (
-              "Track"
-            )}
-          </button>
-        </form>
-
-        {error && (
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {!error && !normalized && (
-          <div className="mt-6 rounded-xl border border-dashed border-gray-200 p-6 text-sm text-gray-600">
-            <div className="font-bold text-gray-900 mb-1">
-              Tip: Paste your tracking ref
-            </div>
-            Once you’ve placed an order, you’ll receive a tracking reference
-            like <span className="font-bold">UASS33KZ</span>.
-          </div>
-        )}
-
-        {normalized && (
-          <div className="mt-6">
-            <TrackingProgressCard
-              data={normalized}
-              loading={loading}
-              autoRefresh={autoRefresh}
-              onToggleAutoRefresh={setAutoRefresh}
-              onRefresh={() => {
-                const v = normalized.trackingRef.trim();
-                if (v) track(v);
-              }}
-            />
-          </div>
-        )}
-
-        {/* Debug (optional) */}
-        {false && rawResult ? (
-          <pre className="mt-6 text-xs bg-gray-50 border rounded p-4 overflow-auto">
-            {JSON.stringify(rawResult, null, 2)}
-          </pre>
-        ) : null}
-      </div>
-    </div>
-  );
-};
-
 // --- MAIN APP COMPONENT ---
 
 export default function App() {
@@ -1241,7 +432,6 @@ export default function App() {
   );
   const [categoryPills, setCategoryPills] = useState<string[]>(CATEGORY_PILLS);
 
-  // Slider State
   const [heroCategoryIndex, setHeroCategoryIndex] = useState(0);
   const [projectSlideIndex, setProjectSlideIndex] = useState(0);
   const [activeCategory, setActiveCategory] = useState(CATEGORY_PILLS[0]);
@@ -1253,7 +443,6 @@ export default function App() {
     const loadCategories = async () => {
       try {
         const apiBase = getApiBaseUrl();
-
         const response = await fetch(`${apiBase}/categories`);
         if (response.ok) {
           const categories = await response.json();
@@ -1443,7 +632,6 @@ export default function App() {
   );
 }
 
-// Separate component to allow using useNavigate hooks
 function InnerApp(props) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1470,7 +658,6 @@ function InnerApp(props) {
         products={props.products}
       />
 
-      {/* Personal / Business Toggle (Only visible on Home) */}
       {location.pathname === "/" && (
         <div className="bg-white border-b border-gray-200">
           <div className="container mx-auto px-4 flex gap-8">
@@ -1498,7 +685,6 @@ function InnerApp(props) {
               <HomePage {...props} handleProductClick={handleProductClick} />
             }
           />
-
           <Route
             path="/product/:id"
             element={
@@ -1511,7 +697,6 @@ function InnerApp(props) {
               />
             }
           />
-
           <Route
             path="/shop"
             element={
@@ -1523,7 +708,6 @@ function InnerApp(props) {
               />
             }
           />
-
           <Route
             path="/shop/:categorySlug"
             element={
@@ -1535,7 +719,6 @@ function InnerApp(props) {
               />
             }
           />
-
           <Route
             path="/checkout"
             element={
@@ -1546,9 +729,7 @@ function InnerApp(props) {
               />
             }
           />
-
           <Route path="/track-order" element={<TrackOrderPage />} />
-
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
         </Routes>
       </main>
