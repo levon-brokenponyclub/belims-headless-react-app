@@ -100,7 +100,7 @@ class PayFast_API {
             return new WP_Error('payfast_config_missing', 'PayFast not configured', array('status' => 500));
         }
 
-        // Build PayFast data
+        // Build PayFast data (without passphrase - only used for signature)
         $payfast_data = array(
             'merchant_id' => $payfast_settings['merchant_id'],
             'merchant_key' => $payfast_settings['merchant_key'],
@@ -123,12 +123,7 @@ class PayFast_API {
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
         );
 
-        // Add passphrase if set
-        if (!empty($payfast_settings['pass_phrase'])) {
-            $payfast_data['passphrase'] = $payfast_settings['pass_phrase'];
-        }
-
-        // Generate signature
+        // Generate signature (passphrase is added only for calculation, not sent)
         $signature = self::generate_payfast_signature($payfast_data);
         $payfast_data['signature'] = $signature;
 
@@ -138,7 +133,7 @@ class PayFast_API {
             ? 'https://sandbox.payfast.co.za/eng/process'
             : 'https://www.payfast.co.za/eng/process';
 
-        // Build query string
+        // Build query string (signature added but NOT passphrase)
         $redirect_url = $payfast_url . '?' . http_build_query($payfast_data);
 
         // Store payment pending state in order meta
@@ -163,6 +158,8 @@ class PayFast_API {
      * 3. URL encode values
      * 4. Append &passphrase=PASSPHRASE
      * 5. Take MD5 hash
+     * 
+     * NOTE: Passphrase is used for signature calculation only, NOT sent in URL
      */
     public static function generate_payfast_signature($data) {
         // Remove signature from data if present
@@ -183,7 +180,7 @@ class PayFast_API {
 
         $signature_string = implode('&', $signature_parts);
 
-        // Add passphrase if available
+        // Add passphrase if available (from settings, not from data array)
         $payfast_settings = get_option('woocommerce_payfast_settings', array());
         if (!empty($payfast_settings['pass_phrase'])) {
             $signature_string .= '&passphrase=' . rawurlencode($payfast_settings['pass_phrase']);
