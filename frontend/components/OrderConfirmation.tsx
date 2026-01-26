@@ -1,0 +1,293 @@
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { CheckCircle, XCircle, AlertCircle, Loader } from 'lucide-react';
+import { getApiBaseUrl } from '../services/wooCommerceService';
+
+interface OrderDetails {
+  id: number;
+  order_number: string;
+  status: string;
+  total: string;
+  currency: string;
+  payment_method: string;
+  date_created: string;
+  billing: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  line_items: Array<{
+    id: number;
+    name: string;
+    quantity: number;
+    total: string;
+  }>;
+}
+
+export const OrderConfirmation: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [order, setOrder] = useState<OrderDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const orderId = searchParams.get('order_id');
+  const paymentStatus = searchParams.get('payment_status');
+  const timestamp = searchParams.get('timestamp');
+
+  useEffect(() => {
+    if (!orderId) {
+      setError('No order ID provided');
+      setLoading(false);
+      return;
+    }
+
+    const fetchOrder = async () => {
+      try {
+        setLoading(true);
+        const apiUrl = getApiBaseUrl();
+        const response = await fetch(
+          `${apiUrl}/belims/v1/orders/${orderId}`,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch order: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        setOrder(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching order:', err);
+        setError(
+          err instanceof Error ? err.message : 'Failed to load order details'
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrder();
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <Loader className="animate-spin text-belims-blue mb-4" size={48} />
+        <p className="text-gray-600">Loading order details...</p>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <XCircle className="text-red-500 mb-4" size={48} />
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Unable to Load Order
+        </h2>
+        <p className="text-gray-600 mb-6 text-center max-w-md">
+          {error || 'Could not load the order details. Please try again later.'}
+        </p>
+        <button
+          onClick={() => navigate('/')}
+          className="bg-belims-blue text-white px-6 py-2 rounded hover:bg-belims-blue/90 transition-colors"
+        >
+          Return Home
+        </button>
+      </div>
+    );
+  }
+
+  const isSuccess =
+    paymentStatus === 'complete' ||
+    order.status === 'processing' ||
+    order.status === 'completed';
+
+  return (
+    <div className="py-12">
+      {/* Success/Failure Banner */}
+      <div
+        className={`mb-8 p-6 rounded-lg border-2 ${
+          isSuccess
+            ? 'bg-green-50 border-green-200'
+            : 'bg-yellow-50 border-yellow-200'
+        }`}
+      >
+        <div className="flex items-start gap-4">
+          {isSuccess ? (
+            <CheckCircle className="text-green-600 flex-shrink-0" size={32} />
+          ) : (
+            <AlertCircle className="text-yellow-600 flex-shrink-0" size={32} />
+          )}
+          <div>
+            <h1
+              className={`text-2xl font-bold mb-2 ${
+                isSuccess
+                  ? 'text-green-900'
+                  : 'text-yellow-900'
+              }`}
+            >
+              {isSuccess ? 'Payment Received!' : 'Order Pending'}
+            </h1>
+            <p
+              className={`text-lg ${
+                isSuccess
+                  ? 'text-green-700'
+                  : 'text-yellow-700'
+              }`}
+            >
+              {isSuccess
+                ? `Thank you for your order! Your payment has been confirmed.`
+                : `Your order has been created and is awaiting payment confirmation.`}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Order Details */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* Main Details */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Order Summary */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Order Summary
+            </h2>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Order Number:</span>
+                <span className="font-bold text-gray-900">
+                  #{order.order_number}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Order Date:</span>
+                <span className="text-gray-900">
+                  {new Date(order.date_created).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Status:</span>
+                <span
+                  className={`font-bold px-3 py-1 rounded-full text-xs uppercase ${
+                    isSuccess
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}
+                >
+                  {order.status === 'processing'
+                    ? 'Processing'
+                    : order.status === 'completed'
+                      ? 'Completed'
+                      : 'Pending'}
+                </span>
+              </div>
+              <div className="flex justify-between pt-3 border-t border-gray-200">
+                <span className="text-gray-600">Payment Method:</span>
+                <span className="text-gray-900">{order.payment_method}</span>
+              </div>
+              {timestamp && (
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Processed at:</span>
+                  <span>{new Date(parseInt(timestamp) * 1000).toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Items Ordered
+            </h2>
+            <div className="space-y-3">
+              {order.line_items.map((item) => (
+                <div key={item.id} className="flex justify-between py-3 border-b border-gray-100 last:border-b-0">
+                  <div>
+                    <p className="font-medium text-gray-900">{item.name}</p>
+                    <p className="text-sm text-gray-500">
+                      Quantity: {item.quantity}
+                    </p>
+                  </div>
+                  <p className="font-bold text-gray-900">{item.total}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Billing Info */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Billing Details
+            </h2>
+            <div className="space-y-2 text-sm">
+              <p className="text-gray-900">
+                <span className="font-medium">
+                  {order.billing.first_name} {order.billing.last_name}
+                </span>
+              </p>
+              <p className="text-gray-600">{order.billing.email}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Order Total Card */}
+        <div className="lg:col-span-1">
+          <div className="bg-belims-blue text-white rounded-lg p-6 sticky top-6">
+            <h3 className="font-bold mb-4 text-lg">Order Total</h3>
+            <div className="space-y-3">
+              <div className="text-2xl font-bold">{order.total}</div>
+              <div className="text-sm text-blue-100 opacity-75">
+                Currency: {order.currency.toUpperCase()}
+              </div>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-blue-300">
+              <p className="text-sm text-blue-100 mb-4">
+                {isSuccess
+                  ? 'Your payment has been successfully processed. You will receive an email confirmation shortly.'
+                  : 'Your order is pending payment. You will receive an update when payment is confirmed.'}
+              </p>
+              <button
+                onClick={() => navigate('/')}
+                className="w-full bg-white text-belims-blue font-bold py-2 px-4 rounded hover:bg-blue-50 transition-colors"
+              >
+                Continue Shopping
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Help Section */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+        <h3 className="font-bold text-gray-900 mb-3">Questions?</h3>
+        <p className="text-gray-600 mb-4">
+          If you have any questions about your order, please don't hesitate to
+          contact our customer support team.
+        </p>
+        <div className="flex gap-4">
+          <a
+            href="mailto:support@belims.com"
+            className="text-belims-blue font-bold hover:underline"
+          >
+            Email Support
+          </a>
+          <span className="text-gray-300">|</span>
+          <a
+            href="tel:+1-800-123-4567"
+            className="text-belims-blue font-bold hover:underline"
+          >
+            Call Us
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};

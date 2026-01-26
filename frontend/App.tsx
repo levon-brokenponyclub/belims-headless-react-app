@@ -19,6 +19,7 @@ import { OnboardingWizard } from "./components/OnboardingWizard";
 import { PriceMatchModal } from "./components/PriceMatchModal";
 import { ComparisonModal } from "./components/ComparisonModal";
 import { Checkout } from "./components/Checkout";
+import { OrderConfirmation } from "./components/OrderConfirmation";
 import { Archive } from "./components/Archive";
 import { RecentlyViewed } from "./components/RecentlyViewed";
 import { ShopByCategory } from "./components/ShopByCategory";
@@ -749,6 +750,11 @@ function InnerApp(props) {
                 }}
               />
             }
+          />
+
+          <Route
+            path="/order-confirmation"
+            element={<OrderConfirmation />}
           />
         </Routes>
       </main>
