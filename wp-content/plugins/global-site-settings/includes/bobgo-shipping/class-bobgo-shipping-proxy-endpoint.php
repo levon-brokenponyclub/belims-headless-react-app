@@ -74,6 +74,8 @@ class BobGo_Shipping_Proxy_Endpoint {
         }
         
         try {
+            $this->bootstrap_wc_context($destination);
+
             // Get WooCommerce package
             $package = $this->build_wc_package($destination, $items);
             
@@ -99,6 +101,55 @@ class BobGo_Shipping_Proxy_Endpoint {
                 'Could not calculate shipping rates: ' . $e->getMessage(),
                 array('status' => 500)
             );
+        }
+    }
+
+    /**
+     * Ensure WooCommerce has session, customer, cart, and shipping instances when called via REST.
+     * REST requests do not automatically start the WC session like front-end requests do.
+     */
+    private function bootstrap_wc_context($destination) {
+        if (!function_exists('WC')) {
+            throw new Exception('WooCommerce not loaded');
+        }
+
+        // Use WooCommerce helper to locate plugin path; avoids relying on WC_ABSPATH constant in some contexts
+        $wc_path = trailingslashit(WC()->plugin_path());
+
+        // Initialize session if missing (REST context normally has none)
+        if (!WC()->session) {
+            require_once $wc_path . 'includes/class-wc-session-handler.php';
+            WC()->session = new WC_Session_Handler();
+            WC()->session->init();
+        }
+
+        // Initialize customer for address context
+        if (!WC()->customer) {
+            require_once $wc_path . 'includes/class-wc-customer.php';
+            WC()->customer = new WC_Customer(0);
+        }
+
+        // Apply destination to customer so shipping zones resolve
+        WC()->customer->set_shipping_country('ZA');
+        WC()->customer->set_shipping_state($destination['province'] ?? '');
+        WC()->customer->set_shipping_postcode($destination['postal_code'] ?? '');
+        WC()->customer->set_shipping_city($destination['city'] ?? '');
+        WC()->customer->set_billing_country('ZA');
+        WC()->customer->set_billing_state($destination['province'] ?? '');
+        WC()->customer->set_billing_postcode($destination['postal_code'] ?? '');
+        WC()->customer->set_billing_city($destination['city'] ?? '');
+        WC()->customer->save();
+
+        // Ensure cart exists (some shipping methods expect it)
+        if (!WC()->cart) {
+            require_once $wc_path . 'includes/class-wc-cart.php';
+            WC()->cart = new WC_Cart();
+        }
+
+        // Ensure shipping instance exists
+        if (!WC()->shipping) {
+            require_once $wc_path . 'includes/class-wc-shipping.php';
+            WC()->shipping = new WC_Shipping();
         }
     }
     
