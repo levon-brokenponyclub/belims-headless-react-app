@@ -1645,6 +1645,9 @@ function global_site_settings_main_page() {
                         <a href="<?php echo admin_url('admin.php?page=wc-settings&tab=checkout'); ?>" class="bpc-btn-primary">
                             Go to Payment Settings
                         </a>
+                        <a href="#tab-payfast-testing" class="bpc-btn-secondary" style="margin-left: 10px;">
+                            Open PayFast Testing Tools
+                        </a>
                     </div>
                 </div>
             </div>

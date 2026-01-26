@@ -55,6 +55,11 @@ class PayFast_Admin_Page {
 
         ?>
         <div class="payfast-testing-container">
+            <div class="payfast-section" style="margin-bottom: 15px;">
+                <div style="background: #ecfeff; border: 1px solid #67e8f9; border-left: 4px solid #06b6d4; padding: 10px 14px; border-radius: 4px; font-size: 13px; color: #0f172a;">
+                    <strong>New headless return flow:</strong> Use the <em>Test Return Flow</em> link below with any WooCommerce order ID to simulate PayFast sending the customer back to the React app's <code>/order-confirmation</code> page.
+                </div>
+            </div>
             <!-- Quick Test Section -->
             <div class="payfast-section">
                     <h2>🔗 Quick Verification Links</h2>
