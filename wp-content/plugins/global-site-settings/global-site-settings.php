@@ -82,6 +82,7 @@ function global_site_settings_init() {
         // PayFast Payment Gateway integration
         'includes/payfast/class-payfast-api.php',
         'includes/payfast/class-payfast-return-handler.php', // PayFast return redirect
+        'includes/payfast/class-payfast-admin-page.php', // PayFast testing/admin page
     ];
     foreach ($files as $file) {
         $path = GLOBAL_SITE_SETTINGS_PLUGIN_DIR . $file;
