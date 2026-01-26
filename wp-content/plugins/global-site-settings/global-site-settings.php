@@ -841,7 +841,7 @@ function global_site_settings_main_page() {
                                     🔍 Inspect Product
                                 </button>
                                 <button type="button" id="ftg-test-sync" class="button button-secondary" style="margin-right: 10px;">
-                                    ✅ Test Sync (50 Ingco Products)
+                                    ✅ Test Sync (400 Ingco Products)
                                 </button>
                                 <button type="button" id="ftg-sync-products" class="button button-primary" style="margin-right: 10px;">
                                     🔄 Sync All Products
@@ -1041,13 +1041,13 @@ function global_site_settings_main_page() {
                                 });
                                 
                                 $('#ftg-test-sync').on('click', function() {
-                                    if (!confirm('Test sync 50 Ingco products from FTG?')) return;
+                                    if (!confirm('Test sync 400 Ingco products from FTG?')) return;
                                     
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
                                     
                                     btn.prop('disabled', true).text('Testing...');
-                                    status.html('<p>⏳ Syncing 50 Ingco products from FTG...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Starting sync...</p>');
+                                    status.html('<p>⏳ Syncing 400 Ingco products from FTG in batches of 50...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Starting sync...</p>');
                                     
                                     // Track totals across all batches
                                     var totalSynced = 0;
@@ -1057,8 +1057,8 @@ function global_site_settings_main_page() {
                                     var allSkippedItems = [];
                                     
                                     function syncBatch(offset) {
-                                        var limit = 50;
-                                        var batchSize = 10; // Process 10 products at a time
+                                        var limit = 400;
+                                        var batchSize = 50; // Process 50 products at a time
                                         
                                         $.ajax({
                                             url: '<?php echo rest_url('belims/v1/ftg/sync'); ?>',
@@ -1099,7 +1099,7 @@ function global_site_settings_main_page() {
                                                         syncBatch(response.next_offset);
                                                     } else {
                                                         // All done!
-                                                        btn.prop('disabled', false).text('✅ Test Sync (50 Ingco Products)');
+                                                        btn.prop('disabled', false).text('✅ Test Sync (400 Ingco Products)');
                                                         $('.ftg-progress-fill').css('width', '100%').text('100%');
                                                         $('.ftg-progress-text').html('Sync complete!');
                                                         
@@ -1186,13 +1186,13 @@ function global_site_settings_main_page() {
                                                         status.html(summaryHtml + detailsHtml);
                                                     }
                                                 } else {
-                                                    btn.prop('disabled', false).text('✅ Test Sync (50 Ingco Products)');
+                                                    btn.prop('disabled', false).text('✅ Test Sync (400 Ingco Products)');
                                                     var message = response.message || 'Unknown error';
                                                     status.html('<div class="notice notice-warning inline"><p>⚠️ ' + message + '</p></div>');
                                                 }
                                             },
                                             error: function(xhr) {
-                                                btn.prop('disabled', false).text('✅ Test Sync (50 Ingco Products)');
+                                                btn.prop('disabled', false).text('✅ Test Sync (400 Ingco Products)');
                                                 var errorMsg = xhr.responseJSON?.message || 'Sync failed';
                                                 status.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
                                             }

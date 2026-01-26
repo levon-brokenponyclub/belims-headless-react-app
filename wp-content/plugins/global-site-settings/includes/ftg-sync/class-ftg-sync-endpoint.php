@@ -222,8 +222,8 @@ class Belims_FTG_Sync_Endpoint {
         $collection_token = $params['collection_token'] ?? '';
         $limit = $params['limit'] ?? null; // null = all products
         $offset = $params['offset'] ?? 0;
-        // Default test sync chunking to 10 when a limit is provided, otherwise fall back to 50
-        $batch_size = $params['batch_size'] ?? ($limit !== null ? 10 : 50);
+        // Default test sync chunking to 50 when a limit is provided, otherwise fall back to 50
+        $batch_size = $params['batch_size'] ?? ($limit !== null ? 50 : 50);
         
         error_log('=== FTG Product Sync Started ===');
         error_log('Collection Token: ' . $collection_token);
@@ -235,31 +235,39 @@ class Belims_FTG_Sync_Endpoint {
             return new WP_Error('missing_token', 'Collection token required', array('status' => 400));
         }
         
-        // Get products from FTG (request a high limit to pull full catalog in one call)
-        $ftg_result = $this->ftg_api->get_products($collection_token, array(
-            'limit' => 1000, // fetch up to 1000 products to cover full Ingco set
-        ));
-        
-        error_log('FTG API Result Structure: ' . print_r(array_keys($ftg_result), true));
-        
-        if (isset($ftg_result['error'])) {
-            error_log('FTG Error: ' . $ftg_result['error']);
-            return new WP_Error('ftg_error', $ftg_result['error'], array('status' => 500));
-        }
-        
-        // FTG API returns products in $body['response'] array
-        // Our get_products() wraps this in ['data']
+        // Get products from FTG with pagination to avoid the 100-item cap seen in single calls
         $products = array();
-        if (isset($ftg_result['data']['response']) && is_array($ftg_result['data']['response'])) {
-            $products = $ftg_result['data']['response'];
-        } elseif (isset($ftg_result['data']['data'])) {
-            // Fallback for different API structure
-            $products = $ftg_result['data']['data'];
-        } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
-            $products = $ftg_result['data'];
-        }
+        $page = 1;
+        $per_page = 100; // FTG appears to cap at 100 per request; paginate to gather all
+        $max_pages = 50; // safety guard
+        do {
+            $ftg_result = $this->ftg_api->get_products($collection_token, array(
+                'limit' => $per_page,
+                'page'  => $page,
+            ));
+            
+            error_log('FTG API Result Structure (page ' . $page . '): ' . print_r(array_keys($ftg_result), true));
+            
+            if (isset($ftg_result['error'])) {
+                error_log('FTG Error: ' . $ftg_result['error']);
+                return new WP_Error('ftg_error', $ftg_result['error'], array('status' => 500));
+            }
+            
+            $page_products = array();
+            if (isset($ftg_result['data']['response']) && is_array($ftg_result['data']['response'])) {
+                $page_products = $ftg_result['data']['response'];
+            } elseif (isset($ftg_result['data']['data']) && is_array($ftg_result['data']['data'])) {
+                $page_products = $ftg_result['data']['data'];
+            } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
+                $page_products = $ftg_result['data'];
+            }
+            
+            $products = array_merge($products, $page_products);
+            error_log('Page ' . $page . ' returned ' . count($page_products) . ' products; cumulative total: ' . count($products));
+            $page++;
+        } while (!empty($page_products) && count($page_products) >= $per_page && $page <= $max_pages);
         
-        error_log('Total products retrieved from FTG: ' . count($products));
+        error_log('Total products retrieved from FTG (all pages): ' . count($products));
         
         if (empty($products)) {
             error_log('No products to sync - response structure: ' . print_r($ftg_result, true));
