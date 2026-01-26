@@ -101,11 +101,11 @@ class BobGo_Shipping_Rates_Endpoint {
      * @return array|WP_Error
      */
     private function get_shipping_options($destination, $parcels = array()) {
-        // Check if BobGo integration is enabled
-        $bobgo_enabled = get_option('options_bobgo_enabled', false);
+        // Check if BobGo is configured (single token setting, fallback to legacy ACF option)
+        $bobgo_token = get_option('bobgo_api_token', get_option('options_bobgo_api_key', ''));
         
-        if (!$bobgo_enabled) {
-            // BobGo disabled - return free shipping fallback
+        if (empty($bobgo_token)) {
+            // BobGo not configured - return free shipping fallback
             return array(
                 array(
                     'service_code' => 'free-shipping',
