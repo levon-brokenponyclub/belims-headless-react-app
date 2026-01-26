@@ -115,6 +115,7 @@ class BobGo_Shipping_Rates_Endpoint {
     private function get_shipping_options($destination, $parcels = array()) {
         // Check if BobGo is configured (env-aware; sandbox can come from env var)
         if (!$this->bobgo_api->has_token()) {
+            error_log('BobGo API: No token configured for environment ' . $this->bobgo_api->get_environment());
             // BobGo not configured - return free shipping fallback
             return array(
                 array(
@@ -126,8 +127,11 @@ class BobGo_Shipping_Rates_Endpoint {
             );
         }
         
+        error_log('BobGo API: Using environment ' . $this->bobgo_api->get_environment());
+        
         // Build request data for BobGo API
         $request_data = $this->build_bobgo_request($destination, $parcels);
+        error_log('BobGo API: Request payload: ' . json_encode($request_data));
         
         // Call BobGo API
         $bobgo_response = $this->bobgo_api->get_checkout_rates($request_data);

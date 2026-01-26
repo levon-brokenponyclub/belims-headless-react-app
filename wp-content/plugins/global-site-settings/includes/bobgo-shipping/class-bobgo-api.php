@@ -117,6 +117,9 @@ class BobGo_API {
         $body = wp_remote_retrieve_body($response);
         $decoded = json_decode($body, true);
         
+        // Log full response for debugging
+        error_log('BobGo API Response (' . $status_code . '): ' . $body);
+        
         if ($status_code >= 400) {
             $error_message = isset($decoded['message']) ? $decoded['message'] : 'API request failed';
             return new WP_Error('api_error', $error_message, array('status' => $status_code));
