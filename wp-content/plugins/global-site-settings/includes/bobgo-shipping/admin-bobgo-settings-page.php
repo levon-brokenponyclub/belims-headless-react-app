@@ -59,8 +59,65 @@ function render_bobgo_shipping_settings_tab() {
                     for BobGo to calculate accurate shipping rates.
                 </p>
             </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; display: grid; gap: 10px;">
+                <div style="font-weight: 600;">Connection Test</div>
+                <p style="margin: 0; color: #475569;">
+                    Tests the WooCommerce shipping calculator with BobGo integration.
+                </p>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" id="test-bobgo-proxy" class="button button-secondary">Test Connection</button>
+                    <span id="bobgo-proxy-status" style="font-size: 13px; color: #475569;"></span>
+                </div>
+            </div>
         </div>
     </div>
+    
+    <script>
+    jQuery(document).ready(function($) {
+        $('#test-bobgo-proxy').on('click', function() {
+            var btn = $(this);
+            var status = $('#bobgo-proxy-status');
+            
+            btn.prop('disabled', true).text('Testing...');
+            status.html('<span style="color: #64748b;">⏳ Testing BobGo via WooCommerce...</span>');
+            
+            // Test with a known South African address
+            $.ajax({
+                url: '<?php echo rest_url('belims/v1/shipping/rates'); ?>',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    destination_address: {
+                        city: 'Cape Town',
+                        postal_code: '8001',
+                        province: 'Western Cape',
+                        country: 'ZA'
+                    }
+                }),
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', '<?php echo wp_create_nonce('wp_rest'); ?>');
+                },
+                success: function(response) {
+                    if (response.success && response.rates && response.rates.length > 0) {
+                        var ratesText = response.rates.length + ' rate(s) found: ' + 
+                            response.rates.map(r => r.service_name + ' (R' + r.total_price + ')').join(', ');
+                        status.html('<span style="color: #059669;">✅ ' + ratesText + '</span>');
+                    } else {
+                        status.html('<span style="color: #dc2626;">⚠️ No rates returned. Check WooCommerce BobGo plugin settings.</span>');
+                    }
+                },
+                error: function(xhr) {
+                    var errorMsg = xhr.responseJSON?.message || 'Connection failed';
+                    status.html('<span style="color: #dc2626;">❌ ' + errorMsg + '</span>');
+                },
+                complete: function() {
+                    btn.prop('disabled', false).text('Test Connection');
+                }
+            });
+        });
+    });
+    </script>
     
     <?php
 }
