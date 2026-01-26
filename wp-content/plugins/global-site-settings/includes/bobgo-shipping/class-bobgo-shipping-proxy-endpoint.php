@@ -145,7 +145,6 @@ class BobGo_Shipping_Proxy_Endpoint {
         WC()->customer->set_billing_postcode($destination['postal_code'] ?? '');
         WC()->customer->set_billing_city($destination['city'] ?? '');
         WC()->customer->set_billing_email($email);
-        WC()->customer->set_shipping_email($email);
         WC()->customer->save();
 
         // Ensure cart exists (some shipping methods expect it)
