@@ -288,6 +288,13 @@ class Belims_FTG_Sync_Endpoint {
         } while (!empty($page_products) && count($page_products) >= $per_page && $page <= $max_pages);
         
         error_log('Total products retrieved from FTG (all pages): ' . count($products));
+
+        // Remove duplicate SKUs across paginated pages to avoid double-counting
+        $deduped_products = $this->deduplicate_products_by_sku($products);
+        if (count($deduped_products) !== count($products)) {
+            error_log('Deduplicated products by SKU: removed ' . (count($products) - count($deduped_products)) . ' duplicates; unique total: ' . count($deduped_products));
+        }
+        $products = $deduped_products;
         
         if (empty($products)) {
             error_log('No products to sync - response structure: ' . print_r($ftg_result, true));
@@ -440,6 +447,32 @@ class Belims_FTG_Sync_Endpoint {
             'synced_items' => $synced_items,
             'skipped_items' => $skipped_items,
         ));
+    }
+
+    /**
+     * Remove duplicate products by SKU to prevent repeated updates when pagination repeats results.
+     */
+    private function deduplicate_products_by_sku(array $products) {
+        $unique_products = array();
+        $seen_skus = array();
+
+        foreach ($products as $product) {
+            $product_data = $product['productData'] ?? $product;
+            $sku = $product_data['productCode'] ?? $product_data['mdrProductCode'] ?? $product_data['altProductCode'] ?? '';
+
+            if (empty($sku)) {
+                continue;
+            }
+
+            if (isset($seen_skus[$sku])) {
+                continue;
+            }
+
+            $seen_skus[$sku] = true;
+            $unique_products[] = $product;
+        }
+
+        return $unique_products;
     }
     
     /**
@@ -1182,7 +1215,7 @@ class Belims_FTG_Sync_Endpoint {
                 'message' => 'SKU is required',
             );
         }
-        
+
         try {
             // Get all products from FTG
             $ftg_result = $this->ftg_api->get_products($ftg_token, array('limit' => 10000));
