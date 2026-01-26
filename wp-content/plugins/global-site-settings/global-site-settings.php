@@ -313,6 +313,7 @@ function global_site_settings_register_endpoints() {
         'Belims_Categories_Endpoint',
         'Belims_Orders_Endpoint',
         'Belims_FTG_Sync_Endpoint',
+        'BobGo_Shipping_Proxy_Endpoint',
     ];
     foreach ($classes as $class) {
         if (class_exists($class)) {

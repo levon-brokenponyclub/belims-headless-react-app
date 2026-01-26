@@ -221,6 +221,3 @@ class BobGo_Shipping_Proxy_Endpoint {
         return '3-5 business days';
     }
 }
-
-// Instantiate
-new BobGo_Shipping_Proxy_Endpoint();
