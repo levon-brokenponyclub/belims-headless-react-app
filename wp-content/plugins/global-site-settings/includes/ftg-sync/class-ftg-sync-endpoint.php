@@ -226,7 +226,10 @@ class Belims_FTG_Sync_Endpoint {
      */
     public function sync_products($request) {
         // Increase execution time for large syncs (image downloads are slow)
-        set_time_limit(600); // 10 minutes should handle ~200 products with images
+        set_time_limit(900); // 15 minutes for full catalog (was 10, now 15 to handle all 332)
+        
+        // Disable image downloads during product creation - batch download after all products created
+        define('FTG_SKIP_IMAGE_DOWNLOAD', true);
         
         $params = $request->get_json_params();
         $collection_token = $params['collection_token'] ?? '';
@@ -444,6 +447,12 @@ class Belims_FTG_Sync_Endpoint {
         $progress = ($total_to_sync > 0) ? min(100, round(($next_offset / $total_to_sync) * 100)) : 100;
         
         error_log('Progress calculation: offset=' . $offset . ', batch_size=' . $batch_size . ', next_offset=' . $next_offset . ', total_requested=' . $total_requested . ', has_more=' . ($has_more ? 'yes' : 'no') . ', progress=' . $progress . '%');
+        
+        // BATCH IMAGE DOWNLOAD: If we skipped images during creation, download them now (async)
+        if (defined('FTG_SKIP_IMAGE_DOWNLOAD') && FTG_SKIP_IMAGE_DOWNLOAD) {
+            error_log('=== Starting batch image download ===');
+            $this->batch_download_pending_images();
+        }
         
         return rest_ensure_response(array(
             'success' => true,
@@ -676,22 +685,39 @@ class Belims_FTG_Sync_Endpoint {
             $product_id = $product->save();
             
             // Set product image from FTG (use medium quality for faster downloads)
-            $image_url = null;
-            if (!empty($product_data['imageUrlSizes']['medium'])) {
-                $image_url = $product_data['imageUrlSizes']['medium'];
-                error_log('Using medium image for product ' . $sku . ': ' . $image_url);
-            } elseif (!empty($product_data['imageUrlSizes']['large'])) {
-                $image_url = $product_data['imageUrlSizes']['large'];
-                error_log('Using large image for product ' . $sku . ': ' . $image_url);
-            } elseif (!empty($product_data['imageUrl'])) {
-                $image_url = $product_data['imageUrl'];
-                error_log('Using original image for product ' . $sku . ': ' . $image_url);
-            }
-            
-            if ($image_url) {
-                $this->set_product_image($product, $image_url);
+            // Unless we're batching images for later (FTG_SKIP_IMAGE_DOWNLOAD flag)
+            if (!defined('FTG_SKIP_IMAGE_DOWNLOAD') || !FTG_SKIP_IMAGE_DOWNLOAD) {
+                $image_url = null;
+                if (!empty($product_data['imageUrlSizes']['medium'])) {
+                    $image_url = $product_data['imageUrlSizes']['medium'];
+                    error_log('Using medium image for product ' . $sku . ': ' . $image_url);
+                } elseif (!empty($product_data['imageUrlSizes']['large'])) {
+                    $image_url = $product_data['imageUrlSizes']['large'];
+                    error_log('Using large image for product ' . $sku . ': ' . $image_url);
+                } elseif (!empty($product_data['imageUrl'])) {
+                    $image_url = $product_data['imageUrl'];
+                    error_log('Using original image for product ' . $sku . ': ' . $image_url);
+                }
+                
+                if ($image_url) {
+                    $this->set_product_image($product, $image_url);
+                } else {
+                    error_log('No image URL found for SKU: ' . $sku);
+                }
             } else {
-                error_log('No image URL found for SKU: ' . $sku);
+                // Batch image download for later - just store the image URL in meta
+                $image_url = null;
+                if (!empty($product_data['imageUrlSizes']['medium'])) {
+                    $image_url = $product_data['imageUrlSizes']['medium'];
+                } elseif (!empty($product_data['imageUrlSizes']['large'])) {
+                    $image_url = $product_data['imageUrlSizes']['large'];
+                } elseif (!empty($product_data['imageUrl'])) {
+                    $image_url = $product_data['imageUrl'];
+                }
+                if ($image_url) {
+                    update_post_meta($product_id, '_ftg_image_url_pending', $image_url);
+                    error_log('Queued image for batch download: ' . $sku);
+                }
             }
             
             // Set brand as product attribute AFTER saving (enables filtering & permalinks)
@@ -1375,4 +1401,67 @@ class Belims_FTG_Sync_Endpoint {
         }
     }
 
+    /**
+     * Batch download images for all products that have pending images
+     * This runs after all products are created to save time during sync
+     */
+    private function batch_download_pending_images() {
+        $start_time = microtime(true);
+        $downloaded = 0;
+        $failed = 0;
+        
+        error_log('Querying for products with pending images...');
+        
+        // Get all products with pending images
+        $args = array(
+            'post_type' => 'product',
+            'posts_per_page' => -1, // Get all
+            'meta_key' => '_ftg_image_url_pending',
+            'meta_compare' => 'EXISTS',
+        );
+        
+        $query = new WP_Query($args);
+        
+        error_log('Found ' . $query->found_posts . ' products with pending images');
+        
+        foreach ($query->posts as $post) {
+            $product = wc_get_product($post->ID);
+            if (!$product) {
+                continue;
+            }
+            
+            $image_url = get_post_meta($post->ID, '_ftg_image_url_pending', true);
+            if (!$image_url) {
+                continue;
+            }
+            
+            // Download the image
+            if ($this->set_product_image($product, $image_url)) {
+                $downloaded++;
+            } else {
+                $failed++;
+                error_log('Failed to download image for product ' . $product->get_sku());
+            }
+            
+            // Remove the pending meta
+            delete_post_meta($post->ID, '_ftg_image_url_pending');
+            
+            // Check timeout - if we're running low on time, stop
+            $elapsed = microtime(true) - $start_time;
+            if ($elapsed > 480) { // Stop if approaching 8 minute mark (leaving 2 min buffer)
+                error_log('Batch image download timeout approaching - pausing at ' . $downloaded . ' downloaded');
+                break;
+            }
+        }
+        
+        wp_reset_postdata();
+        
+        $elapsed = microtime(true) - $start_time;
+        error_log('=== Batch image download complete ===');
+        error_log('Downloaded: ' . $downloaded);
+        error_log('Failed: ' . $failed);
+        error_log('Time elapsed: ' . round($elapsed, 2) . 's');
     }
+
+    }
+
