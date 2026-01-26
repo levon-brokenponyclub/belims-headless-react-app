@@ -11,7 +11,16 @@ import {
   initializePayment,
   verifyPayment,
 } from "../services/paymentService";
-import { ArrowLeft, Check, Truck, CreditCard, Loader2 } from "lucide-react";
+import { registerUser } from "../services/authService";
+import {
+  ArrowLeft,
+  Check,
+  Truck,
+  CreditCard,
+  Loader2,
+  Zap,
+  Rocket,
+} from "lucide-react";
 
 interface CheckoutProps {
   cartItems: CartItem[];
@@ -20,6 +29,8 @@ interface CheckoutProps {
 }
 
 type CheckoutStep = "details" | "shipping" | "payment" | "success";
+type DeliveryType = "delivery" | "pickup";
+type ShippingTier = "Express" | "Standard" | "Economy";
 
 interface CustomerDetails {
   firstName: string;
@@ -30,6 +41,58 @@ interface CustomerDetails {
   city: string;
   province: string;
   postalCode: string;
+}
+
+interface ShippingRate {
+  service_name: string;
+  total_price: number;
+  expected_delivery_date?: string;
+  tier?: ShippingTier;
+}
+
+// Helper Functions
+function classifyRate(
+  rate: ShippingRate,
+  allRates: ShippingRate[],
+): ShippingTier {
+  if (rate.tier) return rate.tier;
+
+  const prices = allRates.map((r) => r.total_price).sort((a, b) => a - b);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+
+  if (rate.total_price === minPrice && minPrice < maxPrice) {
+    return "Economy";
+  } else if (rate.total_price === maxPrice) {
+    return "Express";
+  }
+  return "Standard";
+}
+
+function selectFastestRate(rates: ShippingRate[]): ShippingRate | null {
+  if (!rates.length) return null;
+  return rates.reduce((fastest, current) => {
+    const fastestTier = fastest.tier || classifyRate(fastest, rates);
+    const currentTier = current.tier || classifyRate(current, rates);
+
+    const tierOrder: Record<ShippingTier, number> = {
+      Express: 1,
+      Standard: 2,
+      Economy: 3,
+    };
+
+    return tierOrder[currentTier] < tierOrder[fastestTier] ? current : fastest;
+  });
+}
+
+function formatEta(dateStr?: string): string {
+  if (!dateStr) return "Estimated delivery";
+  try {
+    const date = new Date(dateStr);
+    return `Arrives ${date.toLocaleDateString("en-ZA", { month: "short", day: "numeric" })}`;
+  } catch {
+    return "Estimated delivery";
+  }
 }
 
 export const Checkout: React.FC<CheckoutProps> = ({
@@ -50,6 +113,13 @@ export const Checkout: React.FC<CheckoutProps> = ({
   const [verificationMessage, setVerificationMessage] = useState<string | null>(
     null,
   );
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>("delivery");
+  const [promoCode, setPromoCode] = useState("");
+
+  // Account Creation State
+  const [createAccount, setCreateAccount] = useState(false);
+  const [accountUsername, setAccountUsername] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
 
   // Form State
   const [customer, setCustomer] = useState<CustomerDetails>({
@@ -64,8 +134,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
   });
 
   // Shipping State
-  const [shippingRates, setShippingRates] = useState<any[]>([]);
-  const [selectedShipping, setSelectedShipping] = useState<any>(null);
+  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
+  const [selectedShipping, setSelectedShipping] = useState<ShippingRate | null>(
+    null,
+  );
 
   // Totals
   const subtotal = cartItems.reduce(
@@ -92,6 +164,31 @@ export const Checkout: React.FC<CheckoutProps> = ({
         if (cancelled) return;
 
         if (res.success) {
+          // Check if there's a pending account creation
+          const pendingAccountData = localStorage.getItem(
+            "pendingAccountCreation",
+          );
+          if (pendingAccountData) {
+            try {
+              const accountData = JSON.parse(pendingAccountData);
+              // Only create account if it matches this order
+              if (accountData.orderId === returnOrderId) {
+                await registerUser({
+                  email: accountData.email,
+                  password: accountData.password,
+                  first_name: accountData.firstName,
+                  last_name: accountData.lastName,
+                  phone: accountData.phone,
+                });
+                // Clear the pending account data
+                localStorage.removeItem("pendingAccountCreation");
+              }
+            } catch (accountError) {
+              // Don't block order confirmation if account creation fails
+              console.error("Account creation error:", accountError);
+            }
+          }
+
           const ts = Math.floor(Date.now() / 1000);
           onClearCart();
           navigate(
@@ -141,12 +238,68 @@ export const Checkout: React.FC<CheckoutProps> = ({
     ? returnSource.toUpperCase()
     : "PAYFAST";
 
+  const handleCreateAccount = async () => {
+    // Check if we have enough customer data to create an account
+    if (!customer.email || !customer.firstName || !customer.lastName) {
+      alert("Please fill in your details before creating an account.");
+      return;
+    }
+
+    // Generate a temporary password or ask user for one
+    const password = prompt(
+      "Create a password for your account (minimum 8 characters):",
+    );
+
+    if (!password || password.length < 8) {
+      alert("Password must be at least 8 characters long.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await registerUser({
+        email: customer.email,
+        password: password,
+        first_name: customer.firstName,
+        last_name: customer.lastName,
+        phone: customer.phone,
+      });
+
+      if (result.success) {
+        alert(
+          `Account created successfully! You can now login with ${customer.email}`,
+        );
+        // Optionally save the data to their profile
+      }
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to create account. The email may already be registered.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // STEP 1: Details Submit -> Fetch Shipping
   const handleDetailsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate API call to BobGo
+    if (deliveryType === "pickup") {
+      // Pickup mode: no shipping rates needed
+      setSelectedShipping({
+        service_name: "Pickup",
+        total_price: 0,
+        expected_delivery_date: "",
+      });
+      setStep("payment");
+      setLoading(false);
+      return;
+    }
+
+    // Delivery mode: fetch rates
     try {
       const rates = await getShippingRates({
         destination_address: {
@@ -156,12 +309,29 @@ export const Checkout: React.FC<CheckoutProps> = ({
           postal_code: customer.postalCode,
           country: "ZA",
         },
-        parcels: cartItems.map((item) => ({
-          weight: 1,
-          dimensions: { length: 10, width: 10, height: 10 },
-        })), // Mock weights
       });
-      setShippingRates(rates);
+
+      let finalRates = rates;
+
+      // Fallback to getFallbackShipping if BobGo returns empty or fails
+      if (!finalRates || finalRates.length === 0) {
+        finalRates = getFallbackShipping();
+      }
+
+      // Classify rates and add tier info
+      const classifiedRates = finalRates.map((rate: any) => ({
+        ...rate,
+        tier: classifyRate(rate, finalRates),
+      }));
+
+      setShippingRates(classifiedRates);
+
+      // Auto-select fastest rate
+      const fastest = selectFastestRate(classifiedRates);
+      if (fastest) {
+        setSelectedShipping(fastest);
+      }
+
       setStep("shipping");
     } catch (err) {
       alert("Failed to get shipping rates");
@@ -171,7 +341,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
   };
 
   // STEP 2: Shipping Selected -> Go to Payment
-  const handleShippingSelect = (rate: any) => {
+  const handleShippingSelect = (rate: ShippingRate) => {
     setSelectedShipping(rate);
     setStep("payment");
   };
@@ -190,7 +360,24 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
       if (!order) throw new Error("Order creation failed");
 
-      // 2. Initialize PayFast Payment - Redirect to PayFast
+      // 2. Store account creation data if user opted in
+      if (createAccount && accountUsername && accountPassword) {
+        const accountData = {
+          username: accountUsername,
+          password: accountPassword,
+          email: customer.email,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          phone: customer.phone,
+          orderId: order.id,
+        };
+        localStorage.setItem(
+          "pendingAccountCreation",
+          JSON.stringify(accountData),
+        );
+      }
+
+      // 3. Initialize PayFast Payment - Redirect to PayFast
       const paymentUrl = await initializePayment({
         orderId: order.id,
         amount: total,
@@ -225,292 +412,550 @@ export const Checkout: React.FC<CheckoutProps> = ({
     );
   }
 
+  const fastestRate = selectFastestRate(shippingRates);
+  const shippingTier =
+    selectedShipping?.tier ||
+    (selectedShipping ? classifyRate(selectedShipping, shippingRates) : null);
+
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white min-h-screen">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8 pb-4 border-b">
-        {step !== "success" && (
-          <button
-            onClick={handleBack}
-            className="p-2 hover:bg-gray-100 rounded-full"
-          >
-            <ArrowLeft />
-          </button>
-        )}
-        <h1 className="text-2xl font-bold font-heading">
-          {step === "details" && "Customer Details"}
-          {step === "shipping" && "Shipping Method"}
-          {step === "payment" &&
-            (isReturnFlow ? "Verifying Payment" : "Review & Payment")}
-          {step === "success" && "Order Confirmed"}
-        </h1>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* LEFT COLUMN: Main Form */}
-        <div className="md:col-span-2 space-y-6">
-          {step === "details" && (
-            <form onSubmit={handleDetailsSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  required
-                  placeholder="First Name"
-                  className="border p-3 rounded w-full"
-                  value={customer.firstName}
-                  onChange={(e) =>
-                    setCustomer({ ...customer, firstName: e.target.value })
-                  }
-                />
-                <input
-                  required
-                  placeholder="Last Name"
-                  className="border p-3 rounded w-full"
-                  value={customer.lastName}
-                  onChange={(e) =>
-                    setCustomer({ ...customer, lastName: e.target.value })
-                  }
-                />
-              </div>
-              <input
-                required
-                type="email"
-                placeholder="Email Address"
-                className="border p-3 rounded w-full"
-                value={customer.email}
-                onChange={(e) =>
-                  setCustomer({ ...customer, email: e.target.value })
-                }
-              />
-              <input
-                required
-                placeholder="Phone Number"
-                className="border p-3 rounded w-full"
-                value={customer.phone}
-                onChange={(e) =>
-                  setCustomer({ ...customer, phone: e.target.value })
-                }
-              />
-
-              <h3 className="font-bold pt-4">Shipping Address</h3>
-              <input
-                required
-                placeholder="Street Address"
-                className="border p-3 rounded w-full"
-                value={customer.address}
-                onChange={(e) =>
-                  setCustomer({ ...customer, address: e.target.value })
-                }
-              />
-              <div className="grid grid-cols-3 gap-4">
-                <input
-                  required
-                  placeholder="City"
-                  className="border p-3 rounded w-full"
-                  value={customer.city}
-                  onChange={(e) =>
-                    setCustomer({ ...customer, city: e.target.value })
-                  }
-                />
-                <select
-                  required
-                  className="border p-3 rounded w-full"
-                  value={customer.province}
-                  onChange={(e) =>
-                    setCustomer({ ...customer, province: e.target.value })
-                  }
-                >
-                  <option value="">Select Province</option>
-                  <option value="Eastern Cape">Eastern Cape</option>
-                  <option value="Free State">Free State</option>
-                  <option value="Gauteng">Gauteng</option>
-                  <option value="KwaZulu-Natal">KwaZulu-Natal</option>
-                  <option value="Limpopo">Limpopo</option>
-                  <option value="Mpumalanga">Mpumalanga</option>
-                  <option value="Northern Cape">Northern Cape</option>
-                  <option value="North West">North West</option>
-                  <option value="Western Cape">Western Cape</option>
-                </select>
-                <input
-                  required
-                  placeholder="Postal Code"
-                  className="border p-3 rounded w-full"
-                  value={customer.postalCode}
-                  onChange={(e) =>
-                    setCustomer({ ...customer, postalCode: e.target.value })
-                  }
-                />
-              </div>
-
-              <button
-                disabled={loading}
-                type="submit"
-                className="w-full bg-belims-blue text-white font-bold p-4 rounded hover:bg-blue-700 flex justify-center"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  "Continue to Shipping"
-                )}
-              </button>
-            </form>
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-8">
+          {step !== "success" && (
+            <button
+              onClick={handleBack}
+              className="p-2 hover:bg-gray-200 rounded-full transition"
+            >
+              <ArrowLeft size={24} />
+            </button>
           )}
+          <h1 className="text-3xl font-bold text-gray-900">
+            {step === "success" ? "Order Confirmed" : "Checkout"}
+          </h1>
+        </div>
 
-          {step === "shipping" && (
-            <div className="space-y-4">
-              <p className="text-gray-600">
-                Select a shipping method for delivery to{" "}
-                <strong>
-                  {customer.address}, {customer.city}
-                </strong>
-              </p>
-              {shippingRates.map((rate, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => handleShippingSelect(rate)}
-                  className="border p-4 rounded-lg cursor-pointer hover:border-belims-blue hover:bg-blue-50 flex justify-between items-center transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <Truck className="text-gray-500" />
-                    <div>
-                      <div className="font-bold text-gray-900">
-                        {rate.service_name}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {rate.expected_delivery_date}
-                      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* LEFT COLUMN: Checkout Form */}
+          <div className="lg:col-span-2 space-y-6">
+            {step === "details" && (
+              <>
+                {/* Delivery/Pickup Toggle Card */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-gray-900">
+                      Delivery Details
+                    </h2>
+                    <div className="flex gap-2 bg-gray-100 p-1 rounded-full">
+                      <button
+                        onClick={() => setDeliveryType("delivery")}
+                        className={`px-4 py-1.5 rounded-full font-semibold transition ${
+                          deliveryType === "delivery"
+                            ? "bg-belims-blue text-white"
+                            : "bg-transparent text-gray-700 hover:text-gray-900"
+                        }`}
+                      >
+                        Delivery
+                      </button>
+                      <button
+                        onClick={() => setDeliveryType("pickup")}
+                        className={`px-4 py-1.5 rounded-full font-semibold transition ${
+                          deliveryType === "pickup"
+                            ? "bg-belims-blue text-white"
+                            : "bg-transparent text-gray-700 hover:text-gray-900"
+                        }`}
+                      >
+                        Pickup
+                      </button>
                     </div>
                   </div>
-                  <div className="font-bold text-lg">
-                    {CURRENCY_SYMBOL}
-                    {rate.total_price.toFixed(2)}
-                  </div>
-                </div>
-              ))}
-              {shippingRates.length === 0 && (
-                <p>No shipping rates available.</p>
-              )}
-            </div>
-          )}
 
-          {step === "payment" &&
-            (isReturnFlow ? (
-              <div className="space-y-6">
-                <div className="bg-gray-50 p-4 rounded border">
-                  <h3 className="font-bold mb-2">Verifying Payment</h3>
+                  <form onSubmit={handleDetailsSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <input
+                        required
+                        placeholder="First Name"
+                        className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                        value={customer.firstName}
+                        onChange={(e) =>
+                          setCustomer({
+                            ...customer,
+                            firstName: e.target.value,
+                          })
+                        }
+                      />
+                      <input
+                        required
+                        placeholder="Last Name"
+                        className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                        value={customer.lastName}
+                        onChange={(e) =>
+                          setCustomer({
+                            ...customer,
+                            lastName: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <input
+                      required
+                      type="email"
+                      placeholder="Email Address"
+                      className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                      value={customer.email}
+                      onChange={(e) =>
+                        setCustomer({ ...customer, email: e.target.value })
+                      }
+                    />
+                    <input
+                      required
+                      placeholder="Phone Number"
+                      className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                      value={customer.phone}
+                      onChange={(e) =>
+                        setCustomer({ ...customer, phone: e.target.value })
+                      }
+                    />
+
+                    {/* Conditional shipping address field */}
+                    {deliveryType === "delivery" && (
+                      <>
+                        <div className="flex items-center justify-between pt-4">
+                          <h3 className="font-bold text-gray-900">
+                            Shipping Address
+                          </h3>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={createAccount}
+                              onChange={(e) =>
+                                setCreateAccount(e.target.checked)
+                              }
+                              className="w-4 h-4 text-belims-blue border-gray-300 rounded focus:ring-belims-blue"
+                            />
+                            <span className="text-sm font-semibold text-gray-700">
+                              Create an Account?
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* Account Creation Panel */}
+                        {createAccount && (
+                          <div className="bg-blue-50 border border-belims-blue rounded-lg p-4 space-y-3">
+                            <p className="text-sm text-gray-700">
+                              Create an account by entering the information
+                              below. If you are a returning customer please
+                              login at the top of the page.
+                            </p>
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                  Account username{" "}
+                                  <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  required={createAccount}
+                                  type="text"
+                                  placeholder="Choose a username"
+                                  className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                                  value={accountUsername}
+                                  onChange={(e) =>
+                                    setAccountUsername(e.target.value)
+                                  }
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                  Create account password{" "}
+                                  <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  required={createAccount}
+                                  type="password"
+                                  placeholder="Minimum 8 characters"
+                                  className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                                  value={accountPassword}
+                                  onChange={(e) =>
+                                    setAccountPassword(e.target.value)
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <input
+                          required
+                          placeholder="Street Address"
+                          className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                          value={customer.address}
+                          onChange={(e) =>
+                            setCustomer({
+                              ...customer,
+                              address: e.target.value,
+                            })
+                          }
+                        />
+                        <div className="grid grid-cols-3 gap-4">
+                          <input
+                            required
+                            placeholder="City"
+                            className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                            value={customer.city}
+                            onChange={(e) =>
+                              setCustomer({ ...customer, city: e.target.value })
+                            }
+                          />
+                          <select
+                            required
+                            className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                            value={customer.province}
+                            onChange={(e) =>
+                              setCustomer({
+                                ...customer,
+                                province: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="">Select Province</option>
+                            <option value="Eastern Cape">Eastern Cape</option>
+                            <option value="Free State">Free State</option>
+                            <option value="Gauteng">Gauteng</option>
+                            <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+                            <option value="Limpopo">Limpopo</option>
+                            <option value="Mpumalanga">Mpumalanga</option>
+                            <option value="Northern Cape">Northern Cape</option>
+                            <option value="North West">North West</option>
+                            <option value="Western Cape">Western Cape</option>
+                          </select>
+                          <input
+                            required
+                            placeholder="Postal Code"
+                            className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                            value={customer.postalCode}
+                            onChange={(e) =>
+                              setCustomer({
+                                ...customer,
+                                postalCode: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <button
+                      disabled={loading}
+                      type="submit"
+                      className="w-full bg-orange-500 text-white font-bold p-4 rounded-lg hover:bg-orange-600 transition flex justify-center items-center gap-2 mt-6"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 size={20} className="animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          {deliveryType === "delivery"
+                            ? "Choose Delivery Option"
+                            : "Proceed to Payment"}
+                          {deliveryType === "delivery" && <Truck size={20} />}
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
+
+            {step === "shipping" && (
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">
+                    Choose Delivery Option
+                  </h2>
                   <p className="text-sm text-gray-600">
-                    {loading
-                      ? `We're confirming your payment with ${paymentProviderLabel}.`
-                      : verificationMessage ||
-                        "Payment is still pending. Please check back in a few minutes."}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-2">
-                    Order ID: {returnOrderId}
+                    Delivering to{" "}
+                    <strong>
+                      {customer.city}, {customer.province}
+                    </strong>
                   </p>
                 </div>
 
-                {loading && (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Loader2 className="animate-spin" />
-                    Checking payment status...
+                {/* Selected Shipping Pill */}
+                {selectedShipping && (
+                  <div className="flex items-center gap-2 bg-blue-50 border border-belims-blue px-4 py-2 rounded-full w-fit">
+                    <Check size={18} className="text-belims-blue" />
+                    <span className="text-sm font-semibold text-belims-blue">
+                      {selectedShipping.service_name} ·{" "}
+                      {formatEta(selectedShipping.expected_delivery_date)}
+                    </span>
                   </div>
                 )}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="bg-gray-50 p-4 rounded border">
-                  <h3 className="font-bold mb-2">Order Summary</h3>
-                  <p className="text-sm">
-                    Ship to: {customer.firstName} {customer.lastName},{" "}
-                    {customer.address}
-                  </p>
-                  <p className="text-sm">
-                    Method: {selectedShipping.service_name}
-                  </p>
+
+                {/* Shipping Cards */}
+                <div className="space-y-3">
+                  {shippingRates.map((rate, idx) => {
+                    const tier = rate.tier || classifyRate(rate, shippingRates);
+                    const isSelected =
+                      selectedShipping?.service_name === rate.service_name;
+                    const isFastest =
+                      fastestRate?.service_name === rate.service_name;
+
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => handleShippingSelect(rate)}
+                        className={`border-2 p-4 rounded-lg cursor-pointer transition-all flex justify-between items-center ${
+                          isSelected
+                            ? "border-belims-blue bg-blue-50"
+                            : isFastest
+                              ? "border-orange-300 bg-orange-50"
+                              : "border-gray-200 hover:border-belims-blue hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <Truck
+                            size={24}
+                            className={
+                              isSelected ? "text-belims-blue" : "text-gray-400"
+                            }
+                          />
+                          <div>
+                            <div className="font-bold text-gray-900 flex items-center gap-2">
+                              {rate.service_name}
+                              {tier === "Express" && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                                  <Zap size={12} /> Faster
+                                </span>
+                              )}
+                              {tier === "Economy" && (
+                                <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                  Budget
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatEta(rate.expected_delivery_date)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-lg text-gray-900">
+                            {CURRENCY_SYMBOL}
+                            {rate.total_price.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {shippingRates.length === 0 && (
+                    <p className="text-gray-500 text-center py-8">
+                      No shipping options available.
+                    </p>
+                  )}
                 </div>
 
                 <button
-                  onClick={handlePlaceOrder}
-                  disabled={loading}
-                  className="w-full bg-green-600 text-white text-xl font-bold p-5 rounded hover:bg-green-700 flex justify-center items-center gap-2"
+                  disabled={!selectedShipping || loading}
+                  onClick={() => setStep("payment")}
+                  className="w-full bg-orange-500 text-white font-bold p-4 rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex justify-center items-center gap-2"
                 >
                   {loading ? (
-                    <Loader2 className="animate-spin" />
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      Loading...
+                    </>
                   ) : (
                     <>
-                      <CreditCard /> Pay {CURRENCY_SYMBOL}
-                      {total.toFixed(2)}
+                      Continue to Payment <CreditCard size={20} />
                     </>
                   )}
                 </button>
-                <p className="text-center text-xs text-gray-400">
-                  Secure Payment via PayFast/Yoco
-                </p>
               </div>
-            ))}
+            )}
 
-          {step === "success" && (
-            <div className="text-center py-12">
-              <div className="bg-green-100 text-green-600 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check size={40} />
-              </div>
-              <h2 className="text-3xl font-bold mb-4">
-                Order Placed Successfully!
-              </h2>
-              <p className="text-gray-600 mb-8">
-                Thank you for your purchase. A confirmation email has been sent
-                to {customer.email}.
-              </p>
-              <button
-                onClick={onBack}
-                className="bg-belims-blue text-white px-8 py-3 rounded font-bold"
-              >
-                Return to Store
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT COLUMN: Cart Summary */}
-        <div className="hidden md:block bg-gray-50 p-6 rounded-xl h-fit sticky top-10">
-          <h3 className="font-bold mb-4 text-gray-700">Your Cart</h3>
-          <div className="space-y-3 mb-6 max-h-[300px] overflow-y-auto">
-            {cartItems.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <div className="flex gap-2">
-                  <div className="w-6 h-6 bg-white border rounded text-xs flex items-center justify-center font-bold text-gray-500">
-                    {item.quantity}
+            {step === "payment" &&
+              (isReturnFlow ? (
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Verifying Payment
+                  </h2>
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                    <p className="text-sm text-gray-700 mb-2">
+                      {loading
+                        ? `We're confirming your payment with ${paymentProviderLabel}.`
+                        : verificationMessage ||
+                          "Payment is still pending. Please check back in a few minutes."}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Order ID: {returnOrderId}
+                    </p>
                   </div>
-                  <span className="truncate max-w-[150px]">{item.name}</span>
+                  {loading && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Loader2 className="animate-spin" size={18} />
+                      Checking payment status...
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Review & Payment
+                  </h2>
+
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h3 className="font-bold text-gray-900 mb-3">
+                      Order Summary
+                    </h3>
+                    <div className="space-y-2 text-sm text-gray-600">
+                      <p>
+                        <strong>Ship to:</strong> {customer.firstName}{" "}
+                        {customer.lastName}
+                      </p>
+                      {deliveryType === "delivery" && (
+                        <>
+                          <p>
+                            <strong>Address:</strong> {customer.address}
+                          </p>
+                          <p>
+                            <strong>Method:</strong>{" "}
+                            {selectedShipping?.service_name} (
+                            {formatEta(
+                              selectedShipping?.expected_delivery_date,
+                            )}
+                            )
+                          </p>
+                        </>
+                      )}
+                      {deliveryType === "pickup" && (
+                        <p>
+                          <strong>Method:</strong> Pickup (No delivery fee)
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handlePlaceOrder}
+                    disabled={loading || !selectedShipping}
+                    className="w-full bg-green-600 text-white text-lg font-bold p-4 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex justify-center items-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="animate-spin" size={20} />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard size={20} /> Pay {CURRENCY_SYMBOL}
+                        {total.toFixed(2)}
+                      </>
+                    )}
+                  </button>
+                  <p className="text-center text-xs text-gray-500">
+                    Secure Payment via PayFast/Yoco
+                  </p>
+                </div>
+              ))}
+
+            {step === "success" && (
+              <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center space-y-6">
+                <div className="bg-green-100 text-green-600 w-24 h-24 rounded-full flex items-center justify-center mx-auto">
+                  <Check size={48} />
                 </div>
                 <div>
-                  {CURRENCY_SYMBOL}
-                  {(item.price * item.quantity).toFixed(2)}
+                  <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                    Order Placed Successfully!
+                  </h2>
+                  <p className="text-gray-600">
+                    Thank you for your purchase. A confirmation email has been
+                    sent to <strong>{customer.email}</strong>.
+                  </p>
+                </div>
+                <button
+                  onClick={onBack}
+                  className="bg-belims-blue text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 transition inline-block"
+                >
+                  Return to Store
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT COLUMN: Cart Summary */}
+          <div className="lg:col-span-1">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 sticky top-6 space-y-6">
+              <h3 className="text-xl font-bold text-gray-900">Order Summary</h3>
+
+              {/* Cart Items */}
+              <div className="space-y-3 max-h-[250px] overflow-y-auto border-b border-gray-200 pb-4">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <div className="flex gap-2 flex-1">
+                      <div className="w-6 h-6 bg-gray-100 border border-gray-300 rounded text-xs flex items-center justify-center font-bold text-gray-700">
+                        {item.quantity}
+                      </div>
+                      <span className="truncate max-w-[150px] text-gray-700">
+                        {item.name}
+                      </span>
+                    </div>
+                    <div className="font-semibold text-gray-900">
+                      {CURRENCY_SYMBOL}
+                      {(item.price * item.quantity).toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Promo Code */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-700">
+                  Promo Code
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter code"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    className="flex-1 border border-gray-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                  />
+                  <button className="bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 transition text-sm">
+                    Apply
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-          <div className="border-t pt-4 space-y-2 text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>Subtotal</span>
-              <span>
-                {CURRENCY_SYMBOL}
-                {subtotal.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between text-gray-600">
-              <span>Shipping</span>
-              <span>
-                {selectedShipping
-                  ? `${CURRENCY_SYMBOL}${shippingCost.toFixed(2)}`
-                  : "--"}
-              </span>
-            </div>
-            <div className="flex justify-between font-bold text-lg text-gray-900 border-t pt-2 mt-2">
-              <span>Total</span>
-              <span>
-                {CURRENCY_SYMBOL}
-                {total.toFixed(2)}
-              </span>
+
+              {/* Totals */}
+              <div className="space-y-3 border-t border-gray-200 pt-4">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Subtotal</span>
+                  <span>
+                    {CURRENCY_SYMBOL}
+                    {subtotal.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>
+                    {deliveryType === "delivery" ? "Delivery" : "Pickup"}
+                  </span>
+                  <span>
+                    {shippingCost > 0 || deliveryType === "delivery"
+                      ? `${CURRENCY_SYMBOL}${shippingCost.toFixed(2)}`
+                      : `${CURRENCY_SYMBOL}0.00`}
+                  </span>
+                </div>
+                <div className="flex justify-between font-bold text-lg text-gray-900 border-t border-gray-200 pt-3 mt-3">
+                  <span>Total</span>
+                  <span>
+                    {CURRENCY_SYMBOL}
+                    {total.toFixed(2)}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

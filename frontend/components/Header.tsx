@@ -18,6 +18,7 @@ import {
 import { Store, CategoryNode, CartItem, Product } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { initializeCategoryTree } from "../categoryTree";
+import { useScrollHide } from "../hooks/useScrollHide";
 
 interface SearchCategoryResult {
   id: string;
@@ -69,6 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
   products = [],
 }) => {
   const navigate = useNavigate();
+  const isNavbarVisible = useScrollHide({ threshold: 100 }); // Hide navbar after scrolling 100px down
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -160,9 +162,9 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-[300] font-sans shadow-md">
+    <header className="sticky top-0 z-[300] font-sans">
       {/* Primary Blue Bar (Walmart Style) */}
-      <div className="bg-belims-blue text-white py-3">
+      <div className="bg-belims-blue text-white py-3 relative z-20">
         <div className="container mx-auto px-4 flex items-center gap-4 md:gap-6">
           {/* Mobile Menu Trigger */}
           <button className="md:hidden text-white" onClick={toggleMobileMenu}>
@@ -356,7 +358,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Secondary Light Blue Bar (Departments / Services) */}
       <div
-        className="bg-blue-50 border-b border-gray-200 py-2 hidden md:block shadow-inner relative"
+        className={`bg-blue-50 border-b border-gray-200 py-2 hidden md:block shadow-inner relative transition-transform duration-300 ease-out z-10 ${isNavbarVisible ? "translate-y-0" : "-translate-y-full"}`}
         onMouseLeave={() => setIsMegaMenuOpen(false)}
       >
         <div className="container mx-auto px-4 flex items-center gap-3">

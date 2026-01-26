@@ -8,6 +8,7 @@ import {
   useSearchParams,
   useLocation,
 } from "react-router-dom";
+
 import { Header } from "./components/Header";
 import { ProductCard } from "./components/ProductCard";
 import { CartDrawer } from "./components/CartDrawer";
@@ -23,7 +24,9 @@ import { OrderConfirmation } from "./components/OrderConfirmation";
 import { Archive } from "./components/Archive";
 import { RecentlyViewed } from "./components/RecentlyViewed";
 import { ShopByCategory } from "./components/ShopByCategory";
-import { TrackOrderPage } from "./components/TrackOrderPage"; // New Import
+import { TrackOrderPage } from "./components/TrackOrderPage";
+import Hero from "./components/Hero";
+
 import { Product, CartItem, Store } from "./types";
 import {
   fetchProducts,
@@ -37,6 +40,7 @@ import {
   PROJECT_IDEAS,
   CATEGORY_SLIDER_DATA,
 } from "./constants";
+
 import {
   ArrowLeft,
   ArrowRight,
@@ -47,7 +51,7 @@ import {
   X,
 } from "lucide-react";
 
-// --- WRAPPER COMPONENTS FOR ROUTING ---
+// ========== ROUTE WRAPPER COMPONENTS ==========
 
 const ProductPage = ({
   products,
@@ -105,201 +109,15 @@ const ArchivePage = ({ products, addToCart, onBuyNow, onCompare }) => {
 const HomePage = ({
   products,
   featuredProducts,
-  heroCategorySlides,
-  heroCategoryIndex,
-  setHeroCategoryIndex,
-  projectSlides,
-  projectSlideIndex,
-  setProjectSlideIndex,
-  nextHeroCategory,
-  prevHeroCategory,
-  nextProjectSlide,
-  prevProjectSlide,
-  activeCategory,
-  setActiveCategory,
-  currentSliderContent,
   addToCart,
   handleBuyNow,
   handleProductClick,
   addToCompare,
   categoryPills,
 }) => {
-  const navigate = useNavigate();
-  const activeHero = heroCategorySlides[heroCategoryIndex];
-  const activeProject = projectSlides[projectSlideIndex];
-
   return (
     <>
-      {/* Hero Section Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[45%_30%_25%] gap-6 mb-12 items-stretch overflow-hidden">
-        {/* Left: Category Hero Carousel */}
-        <div className="lg:col-span-1 relative rounded-lg overflow-hidden shadow-lg min-h-[420px] h-full">
-          <img
-            src={activeHero.image}
-            alt={activeHero.title}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent" />
-          <div className="absolute inset-0 p-8 flex flex-col justify-between text-white">
-            <div className="max-w-lg space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="bg-belims-accent text-white px-2 py-1 text-xs font-bold uppercase tracking-wider rounded-sm font-heading">
-                  {activeHero.tag}
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wide text-gray-200 font-heading">
-                  {activeHero.category}
-                </span>
-              </div>
-              <div className="space-y-3">
-                <h2 className="text-4xl font-bold leading-tight font-heading">
-                  {activeHero.title}
-                </h2>
-                <p className="text-lg text-gray-100 font-medium">
-                  {activeHero.subtitle}
-                </p>
-              </div>
-              <button
-                onClick={() =>
-                  navigate(`/shop/${encodeURIComponent(activeHero.category)}`)
-                }
-                className="bg-white text-belims-blue font-bold py-3 px-6 rounded hover:bg-belims-accent hover:text-white transition-colors font-heading w-fit"
-              >
-                {activeHero.cta}
-              </button>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex gap-2">
-                {heroCategorySlides.map((slide, idx) => (
-                  <button
-                    key={slide.category}
-                    className={`h-1.5 w-8 rounded-full transition-colors ${idx === heroCategoryIndex ? "bg-belims-accent" : "bg-white/40"}`}
-                    onClick={() => setHeroCategoryIndex(idx)}
-                  />
-                ))}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={prevHeroCategory}
-                  className="h-10 w-10 rounded-full bg-white/15 border border-white/30 backdrop-blur flex items-center justify-center hover:bg-white/25 transition"
-                >
-                  <ArrowLeft className="text-white" size={18} />
-                </button>
-                <button
-                  onClick={nextHeroCategory}
-                  className="h-10 w-10 rounded-full bg-white/15 border border-white/30 backdrop-blur flex items-center justify-center hover:bg-white/25 transition"
-                >
-                  <ArrowRight className="text-white" size={18} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Middle: DIY Projects Slider + Tips */}
-        <div className="lg:col-span-1 flex flex-col gap-4 min-h-[420px] h-full">
-          <div
-            className="relative border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col justify-between text-white flex-[3]"
-            style={{
-              backgroundImage: `url(${activeProject.image})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/45 to-black/25" />
-            <div className="relative flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-belims-accent font-heading">
-                  DIY Project Ideas
-                </p>
-                <h3 className="text-lg font-bold font-heading">
-                  {activeProject.title}
-                </h3>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={prevProjectSlide}
-                  className="h-9 w-9 rounded-full border border-white/40 bg-black/30 flex items-center justify-center hover:bg-white/20 transition"
-                >
-                  <ArrowLeft size={16} />
-                </button>
-                <button
-                  onClick={nextProjectSlide}
-                  className="h-9 w-9 rounded-full border border-white/40 bg-black/30 flex items-center justify-center hover:bg-white/20 transition"
-                >
-                  <ArrowRight size={16} />
-                </button>
-              </div>
-            </div>
-            <div className="relative p-4 space-y-3">
-              <p className="text-sm leading-relaxed text-white/90 max-w-md">
-                {activeProject.description}
-              </p>
-              <span className="text-belims-accent font-bold text-sm underline font-heading cursor-pointer">
-                {activeProject.linkText}
-              </span>
-            </div>
-          </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 shadow-sm flex-1 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-belims-blue font-heading">
-                  DIY Tips & Tricks
-                </p>
-                <h4 className="text-lg font-bold text-gray-900 font-heading">
-                  Pro how-tos for this weekend
-                </h4>
-              </div>
-              <ChevronRight className="text-belims-blue" size={18} />
-            </div>
-            <p className="text-sm text-gray-600">
-              From laying bricks to wiring a plug, get expert advice for your
-              next project.
-            </p>
-          </div>
-        </div>
-
-        {/* Right: Pro Rewards */}
-        <div className="lg:col-span-1 bg-belims-blue rounded-lg p-5 text-white flex flex-col relative overflow-hidden shadow-lg min-h-[420px] h-full">
-          <div className="relative z-10">
-            <div className="border-b-4 border-belims-accent w-12 mb-4"></div>
-            <h2 className="text-xl font-extrabold mb-1 font-heading tracking-tight">
-              MyBelims
-            </h2>
-            <h3 className="text-2xl font-extrabold mb-5 text-white font-heading tracking-tight">
-              Pro Rewards
-            </h3>
-            <div className="mb-6">
-              <p className="text-lg font-bold mb-2 font-heading">
-                Build. Earn. Save.
-              </p>
-              <p className="text-sm text-blue-100">
-                Contractor benefits include:
-              </p>
-            </div>
-            <ul className="space-y-3 text-sm font-medium text-blue-50 mb-8">
-              <li className="flex gap-2 items-center">
-                <div className="bg-white text-belims-blue rounded text-[10px] p-0.5 font-bold">
-                  %
-                </div>{" "}
-                Bulk Pricing.
-              </li>
-              <li className="flex gap-2 items-center">
-                <div className="bg-white text-belims-blue rounded text-[10px] p-0.5 font-bold">
-                  Job
-                </div>{" "}
-                Site Delivery.
-              </li>
-              <li className="flex gap-2 items-center">
-                <Truck size={14} /> Dedicated Support.
-              </li>
-            </ul>
-            <button className="w-full bg-white text-belims-blue py-2.5 rounded font-bold hover:bg-gray-100 transition-colors font-heading">
-              Register as Pro
-            </button>
-          </div>
-          <div className="absolute -right-10 -bottom-20 w-64 h-64 bg-indigo-900 rounded-full opacity-50"></div>
-        </div>
-      </div>
+      <Hero />
 
       <ShopByCategory
         products={products}
@@ -308,7 +126,7 @@ const HomePage = ({
         onCompare={addToCompare}
       />
 
-      {/* Featured Products Grid */}
+      {/* Featured Products */}
       <section className="mb-16">
         <div className="flex justify-between items-end mb-6 border-b border-gray-200 pb-4">
           <div>
@@ -348,73 +166,15 @@ const HomePage = ({
         onProductClick={handleProductClick}
         onCompare={addToCompare}
       />
-
-      <div className="bg-belims-gray rounded-xl p-8 mb-16 flex flex-col md:flex-row items-center justify-between gap-8 border border-gray-200">
-        <div>
-          <h2 className="text-3xl font-bold text-belims-blue mb-2 font-heading">
-            Get More Done with Pro
-          </h2>
-          <p className="text-gray-600 max-w-lg text-lg">
-            Exclusive volume savings, dedicated support, and job site delivery
-            for professionals.
-          </p>
-        </div>
-        <button className="bg-belims-blue text-white px-8 py-4 rounded-full font-bold hover:bg-belims-accent transition-colors shadow-lg whitespace-nowrap text-lg font-heading">
-          Join Pro Program
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 border-t pt-12 pb-12">
-        <div className="flex items-start gap-4">
-          <div className="bg-blue-50 p-3 rounded-full text-belims-blue">
-            <Truck size={24} />
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-900 mb-1 font-heading">
-              Free Delivery
-            </h3>
-            <p className="text-sm text-gray-500">
-              On orders over R1,000. Fast reliable shipping nationwide.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start gap-4">
-          <div className="bg-blue-50 p-3 rounded-full text-belims-blue">
-            <ShieldCheck size={24} />
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-900 mb-1 font-heading">
-              Extended Warranty
-            </h3>
-            <p className="text-sm text-gray-500">
-              Free 1-year extended warranty on all power tools.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start gap-4">
-          <div className="bg-blue-50 p-3 rounded-full text-belims-blue">
-            <CreditCard size={24} />
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-900 mb-1 font-heading">
-              Secure Payment
-            </h3>
-            <p className="text-sm text-gray-500">
-              100% secure payment processing with top SA gateways.
-            </p>
-          </div>
-        </div>
-      </div>
     </>
   );
 };
 
-// --- MAIN APP COMPONENT ---
+// ========== MAIN APP COMPONENT ==========
 
 export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
@@ -432,13 +192,6 @@ export default function App() {
   );
   const [categoryPills, setCategoryPills] = useState<string[]>(CATEGORY_PILLS);
 
-  const [heroCategoryIndex, setHeroCategoryIndex] = useState(0);
-  const [projectSlideIndex, setProjectSlideIndex] = useState(0);
-  const [activeCategory, setActiveCategory] = useState(CATEGORY_PILLS[0]);
-
-  const currentSliderContent =
-    CATEGORY_SLIDER_DATA[activeCategory] || CATEGORY_SLIDER_DATA["default"];
-
   useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -450,10 +203,8 @@ export default function App() {
             .filter((cat: any) => cat.parent !== null)
             .map((cat: any) => cat.name)
             .sort();
-
           if (childCategories.length > 0) {
             setCategoryPills(["Top Deals", ...childCategories]);
-            setActiveCategory("Top Deals");
           }
         }
       } catch (error) {
@@ -465,18 +216,14 @@ export default function App() {
 
   useEffect(() => {
     const loadProducts = async () => {
-      setLoading(true);
       try {
         const apiProducts = await fetchProducts();
-        if (apiProducts && apiProducts.length > 0) setProducts(apiProducts);
+        if (apiProducts?.length) setProducts(apiProducts);
 
-        const apiFeaturedProducts = await fetchFeaturedProducts();
-        if (apiFeaturedProducts && apiFeaturedProducts.length > 0)
-          setFeaturedProducts(apiFeaturedProducts);
+        const apiFeatured = await fetchFeaturedProducts();
+        if (apiFeatured?.length) setFeaturedProducts(apiFeatured);
       } catch (error) {
         console.error("Failed to load products:", error);
-      } finally {
-        setLoading(false);
       }
     };
     loadProducts();
@@ -484,8 +231,8 @@ export default function App() {
 
   const addToCart = (product: Product) => {
     setCartItems((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      if (existing) {
+      const exists = prev.find((item) => item.id === product.id);
+      if (exists) {
         return prev.map((item) =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
@@ -537,55 +284,9 @@ export default function App() {
     if (comparisonList.length <= 1) setIsCompareOpen(false);
   };
 
-  const heroCategorySlides = useMemo(
-    () => [
-      {
-        tag: "Power Tool Sale",
-        title: "Build It Better",
-        subtitle: "Exclusive power deals plus seasonal savings.",
-        category: "Christmas",
-        image: HERO_SLIDES[0].image,
-        cta: "Shop Christmas",
-      },
-      {
-        tag: "Paint & Prep",
-        title: "Refresh every room",
-        subtitle: "Primers, rollers, and color-matched finishes.",
-        category: "Paint",
-        image: HERO_SLIDES[1]?.image || HERO_SLIDES[0].image,
-        cta: "Shop Paint",
-      },
-      {
-        tag: "Pro Power",
-        title: "Tools that work harder",
-        subtitle: "Top drills, grinders, and saws for every job.",
-        category: "Power Tools",
-        image: HERO_SLIDES[2]?.image || HERO_SLIDES[0].image,
-        cta: "Shop Power Tools",
-      },
-    ],
-    [],
-  );
-
-  const projectSlides = useMemo(() => PROJECT_IDEAS.slice(0, 4), []);
-
-  const nextHeroCategory = () =>
-    setHeroCategoryIndex((prev) => (prev + 1) % heroCategorySlides.length);
-  const prevHeroCategory = () =>
-    setHeroCategoryIndex(
-      (prev) =>
-        (prev - 1 + heroCategorySlides.length) % heroCategorySlides.length,
-    );
-  const nextProjectSlide = () =>
-    setProjectSlideIndex((prev) => (prev + 1) % projectSlides.length);
-  const prevProjectSlide = () =>
-    setProjectSlideIndex(
-      (prev) => (prev - 1 + projectSlides.length) % projectSlides.length,
-    );
-
   return (
     <Router>
-      <InnerApp
+      <MainApp
         products={products}
         featuredProducts={featuredProducts}
         cartItems={cartItems}
@@ -613,26 +314,13 @@ export default function App() {
         setIsCompareOpen={setIsCompareOpen}
         priceMatchProduct={priceMatchProduct}
         setPriceMatchProduct={setPriceMatchProduct}
-        heroCategorySlides={heroCategorySlides}
-        projectSlides={projectSlides}
-        heroCategoryIndex={heroCategoryIndex}
-        setHeroCategoryIndex={setHeroCategoryIndex}
-        projectSlideIndex={projectSlideIndex}
-        setProjectSlideIndex={setProjectSlideIndex}
-        activeCategory={activeCategory}
-        setActiveCategory={setActiveCategory}
-        nextHeroCategory={nextHeroCategory}
-        prevHeroCategory={prevHeroCategory}
-        nextProjectSlide={nextProjectSlide}
-        prevProjectSlide={prevProjectSlide}
-        currentSliderContent={currentSliderContent}
         categoryPills={categoryPills}
       />
     </Router>
   );
 }
 
-function InnerApp(props) {
+function MainApp(props) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -657,25 +345,6 @@ function InnerApp(props) {
         onCompare={props.addToCompare}
         products={props.products}
       />
-
-      {location.pathname === "/" && (
-        <div className="bg-white border-b border-gray-200">
-          <div className="container mx-auto px-4 flex gap-8">
-            <button
-              className={`py-3 text-sm font-bold border-b-4 transition-colors font-heading ${props.userType === "personal" ? "border-belims-blue text-belims-blue" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-              onClick={() => props.setUserType("personal")}
-            >
-              Personal
-            </button>
-            <button
-              className={`py-3 text-sm font-bold border-b-4 transition-colors font-heading ${props.userType === "business" ? "border-belims-blue text-belims-blue" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-              onClick={() => props.setUserType("business")}
-            >
-              Business
-            </button>
-          </div>
-        </div>
-      )}
 
       <main className="flex-1 container mx-auto px-4 py-6 relative">
         <Routes>
@@ -752,6 +421,12 @@ function InnerApp(props) {
           props.setIsCartOpen(false);
           navigate("/checkout");
         }}
+        recommendedProducts={
+          props.featuredProducts.length > 0
+            ? props.featuredProducts.slice(0, 8)
+            : props.products.filter((p) => p.onSale).slice(0, 8)
+        }
+        addToCart={props.addToCart}
       />
 
       {props.isLocatorOpen && (

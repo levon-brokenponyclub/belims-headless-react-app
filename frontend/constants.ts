@@ -56,8 +56,7 @@ export const CATEGORIES: Category[] = [
   {
     id: "safety",
     name: "Safety Gear",
-    image:
-      "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80",
+    image: "photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80",
     subcategories: ["Helmets", "Gloves", "Boots", "Goggles"],
   },
 ];
@@ -136,7 +135,6 @@ export const PROJECT_IDEAS = [
   },
 ];
 
-
 export const CATEGORY_PILLS = [
   "Top Deals",
   "Power Tools",
@@ -158,37 +156,37 @@ export const CATEGORY_SLIDER_DATA: Record<
   "Top Deals": {
     title: "Pro-Grade Gear. Amateur Prices.",
     image:
-      "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80",
+      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     products: [],
   },
   "Power Tools": {
     title: "Drill, Cut, Sand. Done.",
     image:
-      "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80",
+      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     products: [],
   },
   "Hand Tools": {
     title: "Essential Tools for Every Toolbox.",
     image:
-      "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80",
+      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     products: [],
   },
   "Building Materials": {
     title: "Foundation to Finish.",
     image:
-      "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80",
+      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     products: [],
   },
   "Safety Gear": {
     title: "Protect Yourself on Site.",
     image:
-      "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80",
+      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     products: [],
   },
   default: {
     title: "Hardware for Hard Work.",
     image:
-      "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80",
+      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     products: [],
   },
 };

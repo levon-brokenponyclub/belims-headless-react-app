@@ -70,6 +70,8 @@ function global_site_settings_init() {
         'includes/class-products-endpoint.php',
         'includes/class-categories-endpoint.php',
         'includes/class-orders-endpoint.php',
+        'includes/class-user-endpoint.php', // User registration & management
+        'includes/class-user-admin-page.php', // User management admin UI
         // FTG Sync integration
         'includes/ftg-sync/class-ftg-api.php',
         'includes/ftg-sync/class-ftg-sync-endpoint.php',
@@ -336,6 +338,7 @@ function global_site_settings_register_endpoints() {
         'Belims_Products_Endpoint',
         'Belims_Categories_Endpoint',
         'Belims_Orders_Endpoint',
+        'User_Endpoint', // User registration & management
         'Belims_FTG_Sync_Endpoint',
         'BobGo_Shipping_Proxy_Endpoint',
     ];
@@ -343,6 +346,9 @@ function global_site_settings_register_endpoints() {
         if (class_exists($class)) {
             $instance = new $class();
             if (method_exists($instance, 'register_routes')) $instance->register_routes();
+        } elseif (class_exists($class) && method_exists($class, 'register_routes')) {
+            // Static method support
+            call_user_func([$class, 'register_routes']);
         }
     }
 }
