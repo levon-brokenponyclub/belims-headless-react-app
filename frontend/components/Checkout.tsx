@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { CartItem, Product } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
-import { getShippingRates } from "../services/bobGoService";
+import {
+  getShippingRates,
+  getFallbackShipping,
+} from "../services/bobGoService";
 import { createWooOrder, initializePayment } from "../services/paymentService";
 import { ArrowLeft, Check, Truck, CreditCard, Loader2 } from "lucide-react";
 

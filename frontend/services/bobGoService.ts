@@ -30,6 +30,16 @@ const BOBGO_CHANNEL_ID = import.meta.env.VITE_BOBGO_CHANNEL_ID;
 // Use Netlify proxy for REST API calls
 const API_BASE_URL = "/api/belims/v1";
 
+// Development/fallback free shipping option
+const DEV_FREE_SHIPPING: ShippingRate = {
+  service_code: "dev_free",
+  service_name: "Free Shipping (Development)",
+  total_price: 0,
+  expected_delivery_date: new Date(
+    Date.now() + 3 * 24 * 60 * 60 * 1000,
+  ).toLocaleDateString("en-ZA"),
+};
+
 export const getShippingRates = async (
   params: ShippingQuoteParams,
 ): Promise<ShippingRate[]> => {
@@ -59,6 +69,32 @@ export const getShippingRates = async (
     return data.rates;
   } catch (error) {
     console.error("Error fetching shipping rates:", error);
+
+    // Fallback: Check if we're in development/localhost
+    if (isLocalhost()) {
+      console.warn("Using fallback free shipping for development environment");
+      return [DEV_FREE_SHIPPING];
+    }
+
     throw error;
   }
+};
+
+/**
+ * Check if running on localhost
+ */
+function isLocalhost(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.endsWith(".local"))
+  );
+}
+
+/**
+ * Get fallback shipping (for testing without BobGo)
+ */
+export const getFallbackShipping = (): ShippingRate[] => {
+  return [DEV_FREE_SHIPPING];
 };
