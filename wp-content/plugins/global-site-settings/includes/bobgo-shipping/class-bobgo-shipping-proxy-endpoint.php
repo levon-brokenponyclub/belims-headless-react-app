@@ -129,6 +129,12 @@ class BobGo_Shipping_Proxy_Endpoint {
             WC()->customer = new WC_Customer(0);
         }
 
+        // Derive a usable email; BobGo/WC may require a valid address to calculate rates
+        $email = isset($destination['email']) ? sanitize_email($destination['email']) : '';
+        if (!$email || !is_email($email)) {
+            $email = 'no-reply@belims.co.za';
+        }
+
         // Apply destination to customer so shipping zones resolve
         WC()->customer->set_shipping_country('ZA');
         WC()->customer->set_shipping_state($destination['province'] ?? '');
@@ -138,6 +144,8 @@ class BobGo_Shipping_Proxy_Endpoint {
         WC()->customer->set_billing_state($destination['province'] ?? '');
         WC()->customer->set_billing_postcode($destination['postal_code'] ?? '');
         WC()->customer->set_billing_city($destination['city'] ?? '');
+        WC()->customer->set_billing_email($email);
+        WC()->customer->set_shipping_email($email);
         WC()->customer->save();
 
         // Ensure cart exists (some shipping methods expect it)
