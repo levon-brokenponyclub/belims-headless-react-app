@@ -13,6 +13,7 @@ import {
   Sparkles,
   ArrowRight,
   Scale,
+  Truck,
 } from "lucide-react";
 import { Store, CategoryNode, CartItem, Product } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
