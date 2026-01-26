@@ -4,6 +4,7 @@ import { Product } from "../types";
 import { ProductCard } from "./ProductCard";
 import { ArrowRight } from "lucide-react";
 import { CATEGORY_SLIDER_DATA } from "../constants";
+import { getApiBaseUrl } from "../services/wooCommerceService";
 
 interface ShopByCategoryProps {
   products: Product[];
@@ -45,7 +46,6 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
   const [activeCategory, setActiveCategory] = useState("Top Deals");
 
   console.log("ShopByCategory rendered, products count:", products.length);
-  console.log("VITE_API_URL:", import.meta.env.VITE_API_URL);
 
   // Fetch child categories from WooCommerce
   useEffect(() => {

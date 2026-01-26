@@ -26,6 +26,7 @@ import { Product, CartItem, Store } from "./types";
 import {
   fetchProducts,
   fetchFeaturedProducts,
+  getApiBaseUrl,
 } from "./services/wooCommerceService";
 import {
   STORES,
@@ -449,10 +450,9 @@ export default function App() {
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-        if (!apiBase) return;
+        const apiBase = getApiBaseUrl();
 
-        const response = await fetch(`${apiBase}/wp-json/belims/v1/categories`);
+        const response = await fetch(`${apiBase}/categories`);
         if (response.ok) {
           const categories = await response.json();
           // Filter for child categories only (those with a parent)

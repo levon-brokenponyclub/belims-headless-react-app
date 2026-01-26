@@ -3,6 +3,7 @@ import { Product, CategoryNode } from "../types";
 import { ProductCard } from "./ProductCard";
 import { Filter, ChevronDown, ChevronRight, Search, X } from "lucide-react";
 import { CATEGORY_TREE } from "../categoryTree";
+import { getApiBaseUrl } from "../services/wooCommerceService";
 
 interface FilterOption {
   id: number;
@@ -49,17 +50,9 @@ export const Archive: React.FC<ArchiveProps> = ({
   // Fetch filters from API
   useEffect(() => {
     const fetchFilters = async () => {
-      const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-      if (!apiBase) {
-        console.error(
-          "Failed to fetch product filters: VITE_API_URL is not set",
-        );
-        return;
-      }
+      const apiBase = getApiBaseUrl();
       try {
-        const response = await fetch(
-          `${apiBase}/wp-json/belims/v1/products/filters`,
-        );
+        const response = await fetch(`${apiBase}/products/filters`);
         if (!response.ok) {
           const body = await response.text();
           throw new Error(

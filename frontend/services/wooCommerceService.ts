@@ -19,7 +19,7 @@ import { Product, Category } from "../types";
  */
 
 // Detect environment and set appropriate API base URL
-function getApiBaseUrl(): string {
+export function getApiBaseUrl(): string {
   // In development (localhost:3000)
   if (
     typeof window !== "undefined" &&
