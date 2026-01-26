@@ -498,15 +498,18 @@ class Belims_FTG_Sync_Endpoint {
 
         $products = array();
         $page = 1;
+        $page_sizes = array();
+        $offset = 0;
 
         do {
+            error_log("brand-count: fetching offset $offset (page $page) for brand $brand");
             $ftg_result = $this->ftg_api->get_products($collection_token, array(
                 'limit' => $per_page,
-                'p'     => $page, // FTG UI uses "p"
-                'page'  => $page, // belt-and-braces: some endpoints may look for "page"
+                'offset' => $offset, // try offset-based pagination
             ));
 
             if (isset($ftg_result['error'])) {
+                error_log("brand-count: FTG error on page $page: " . $ftg_result['error']);
                 return new WP_Error('ftg_error', $ftg_result['error'], array('status' => 500));
             }
 
@@ -518,6 +521,8 @@ class Belims_FTG_Sync_Endpoint {
             } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
                 $page_products = $ftg_result['data'];
             }
+            
+            error_log("brand-count: page $page returned " . count($page_products) . " total products before filtering");
 
             if (!empty($brand)) {
                 $page_products = array_filter($page_products, function($product) use ($brand) {
@@ -526,8 +531,11 @@ class Belims_FTG_Sync_Endpoint {
                 });
             }
 
+            $page_sizes[] = count($page_products);
+            error_log("brand-count: offset $offset has " . count($page_products) . " $brand products; cumulative: " . count($products));
             $products = array_merge($products, $page_products);
             $page++;
+            $offset += $per_page;
         } while (!empty($page_products) && $page <= $max_pages);
 
         $products = $this->deduplicate_products_by_sku($products);
@@ -537,6 +545,7 @@ class Belims_FTG_Sync_Endpoint {
             'brand' => $brand,
             'total_unique' => count($products),
             'pages_fetched' => $page - 1,
+            'page_sizes' => $page_sizes,
         ));
     }
     
