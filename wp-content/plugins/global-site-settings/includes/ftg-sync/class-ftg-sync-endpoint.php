@@ -742,34 +742,78 @@ class Belims_FTG_Sync_Endpoint {
         @ini_set('memory_limit', '256M');
         
         try {
-            // Download the image
-            $image_id = media_sideload_image($image_url, $product_id, $sku, 'id');
+            // Download the image file directly using wp_remote_get (bypasses MD5 validation)
+            $response = wp_remote_get($image_url, array(
+                'timeout' => 60,
+                'sslverify' => false
+            ));
             
-            if (is_wp_error($image_id)) {
+            if (is_wp_error($response)) {
                 error_log("=== FAILED to download image for product $sku ===");
-                error_log("Error: " . $image_id->get_error_message());
-                error_log("Error code: " . $image_id->get_error_code());
-                
-                // Get all error data
-                $error_data = $image_id->get_error_data();
-                if ($error_data) {
-                    error_log("Error data: " . print_r($error_data, true));
-                }
-                
-                // Try to get more details about the HTTP request failure
-                if ($image_id->get_error_code() === 'http_request_failed') {
-                    error_log("HTTP request failed - possible network, SSL, or timeout issue");
-                }
-                
+                error_log("Error: " . $response->get_error_message());
+                error_log("Error code: " . $response->get_error_code());
                 error_log("Image URL: $image_url");
                 return false;
             }
             
-            if (!$image_id || !is_numeric($image_id)) {
-                error_log("=== Invalid image ID for product $sku ===");
-                error_log("Returned value: " . print_r($image_id, true));
+            // Check response code
+            $response_code = wp_remote_retrieve_response_code($response);
+            if ($response_code !== 200) {
+                error_log("=== FAILED to download image for product $sku ===");
+                error_log("HTTP Response Code: $response_code");
+                error_log("Image URL: $image_url");
                 return false;
             }
+            
+            // Get the image data
+            $image_data = wp_remote_retrieve_body($response);
+            if (empty($image_data)) {
+                error_log("=== FAILED: Empty image data for product $sku ===");
+                error_log("Image URL: $image_url");
+                return false;
+            }
+            
+            // Get filename from URL
+            $filename = basename(parse_url($image_url, PHP_URL_PATH));
+            if (empty($filename)) {
+                $filename = $sku . '.png';
+            }
+            
+            // Upload to WordPress media library
+            $upload = wp_upload_bits($filename, null, $image_data);
+            
+            if (!empty($upload['error'])) {
+                error_log("=== FAILED to upload image for product $sku ===");
+                error_log("Upload error: " . $upload['error']);
+                error_log("Image URL: $image_url");
+                return false;
+            }
+            
+            // Prepare attachment data
+            $file_path = $upload['file'];
+            $file_type = wp_check_filetype($filename, null);
+            $attachment_data = array(
+                'post_mime_type' => $file_type['type'],
+                'post_title'     => sanitize_file_name($sku),
+                'post_content'   => '',
+                'post_status'    => 'inherit'
+            );
+            
+            // Insert the attachment
+            $image_id = wp_insert_attachment($attachment_data, $file_path, $product_id);
+            
+            if (is_wp_error($image_id)) {
+                error_log("=== FAILED to create attachment for product $sku ===");
+                error_log("Error: " . $image_id->get_error_message());
+                error_log("Image URL: $image_url");
+                @unlink($file_path); // Clean up uploaded file
+                return false;
+            }
+            
+            // Generate attachment metadata
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+            $attach_data = wp_generate_attachment_metadata($image_id, $file_path);
+            wp_update_attachment_metadata($image_id, $attach_data);
             
             error_log("=== Successfully downloaded image ID $image_id for product $sku ===");
             
