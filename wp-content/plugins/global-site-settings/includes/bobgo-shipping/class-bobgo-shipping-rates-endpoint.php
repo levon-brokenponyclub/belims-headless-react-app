@@ -193,6 +193,7 @@ class BobGo_Shipping_Rates_Endpoint {
             'delivery_address' => array(
                 'type' => 'residential',
                 'street_address' => $destination['street'] ?? '',
+                'local_area' => $destination['city'] ?? '',
                 'city' => $destination['city'] ?? '',
                 'zone' => $destination['province'] ?? '',
                 'country' => 'ZA',
@@ -223,6 +224,7 @@ class BobGo_Shipping_Rates_Endpoint {
             'type' => 'business',
             'company' => get_bloginfo('name'),
             'street_address' => $store_address,
+            'local_area' => $store_city,
             'city' => $store_city,
             'zone' => $store_state,
             'country' => $country_code,
