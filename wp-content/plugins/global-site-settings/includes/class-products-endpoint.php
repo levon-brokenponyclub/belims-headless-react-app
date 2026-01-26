@@ -34,7 +34,7 @@ class Belims_Products_Endpoint {
         
         $args = array(
             'post_type' => 'product',
-            'posts_per_page' => isset($params['per_page']) ? intval($params['per_page']) : 100,
+            'posts_per_page' => isset($params['per_page']) ? intval($params['per_page']) : -1, // -1 = all products
             'post_status' => 'publish',
         );
 
