@@ -59,10 +59,10 @@ function render_bobgo_shipping_settings_tab() {
                         <th scope="row"><label for="bobgo-environment">Environment</label></th>
                         <td>
                             <select name="bobgo_environment" id="bobgo-environment">
-                                <option value="sandbox" <?php selected($current_environment, 'sandbox'); ?>>Sandbox</option>
                                 <option value="production" <?php selected($current_environment, 'production'); ?>>Production</option>
+                                <option value="sandbox" <?php selected($current_environment, 'sandbox'); ?>>Sandbox (Testing Only)</option>
                             </select>
-                            <p class="description" style="margin-top: 6px;">Sandbox is recommended for testing via the headless rates endpoint.</p>
+                            <p class="description" style="margin-top: 6px;">Production is live mode. Sandbox is for testing only.</p>
                         </td>
                     </tr>
                     <tr>

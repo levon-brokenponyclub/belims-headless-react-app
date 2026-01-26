@@ -52,10 +52,7 @@ export const getShippingRates = async (
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        ...params,
-        environment: "sandbox", // force sandbox on headless checkout
-      }),
+      body: JSON.stringify(params),
     });
 
     if (!response.ok) {

@@ -38,7 +38,7 @@ class BobGo_API {
      */
     public function __construct($environment_override = null) {
         // Unified settings (fallback to legacy ACF option names for backward compatibility)
-        $this->environment = $environment_override ?: get_option('bobgo_environment', get_option('options_bobgo_environment', 'sandbox'));
+        $this->environment = $environment_override ?: get_option('bobgo_environment', get_option('options_bobgo_environment', 'production'));
         // Sandbox can use an env var to avoid storing keys in the DB or UI
         $sandbox_env_token = getenv('BOBGO_SANDBOX_API_KEY');
         if ($this->environment === 'sandbox' && !empty($sandbox_env_token)) {
