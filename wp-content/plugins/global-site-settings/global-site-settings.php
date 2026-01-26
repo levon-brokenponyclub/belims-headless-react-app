@@ -1435,10 +1435,16 @@ function global_site_settings_main_page() {
                     
                     <?php 
                     if (function_exists('acf_form')) {
+                        // Show only CORS + Woo REST credentials here (exclude BobGo fields)
                         acf_form(array(
-                            'post_id'    => 'options',
-                            'field_groups' => array('group_belims_apis'),
-                            'return'     => '',
+                            'post_id'      => 'options',
+                            'fields'       => array(
+                                'field_belims_headless_url',
+                                'field_belims_suppress_logs',
+                                'field_belims_woo_consumer_key',
+                                'field_belims_woo_consumer_secret',
+                            ),
+                            'return'       => '',
                             'submit_value' => 'Save CORS Settings',
                         ));
                     } else {
