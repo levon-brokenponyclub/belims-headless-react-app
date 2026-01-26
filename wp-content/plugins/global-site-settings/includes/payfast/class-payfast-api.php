@@ -73,7 +73,7 @@ class PayFast_API {
             'merchantKey' => $payfast_settings['merchant_key'] ?? '',
             'passPhrase' => $payfast_settings['pass_phrase'] ?? '',
             'testMode' => !empty($payfast_settings['testmode']) && $payfast_settings['testmode'] === 'yes',
-            'returnUrl' => home_url('/payfast-return'),
+            'returnUrl' => home_url('/?payfast_return=1'),
             'cancelUrl' => 'https://belims-headless-react-app.netlify.app/checkout',
             'notifyUrl' => rest_url('belims/v1/payfast/itn'),
         ));
@@ -113,10 +113,18 @@ class PayFast_API {
         // Passphrase is used only for signature calculation, NOT sent in URL
         // user_agent is NOT used in signature for redirect URL method
         $name_parts = explode(' ', $customer_name);
+        $return_url = add_query_arg(
+            array(
+                'payfast_return' => '1',
+                'm_payment_id' => $order_id,
+            ),
+            home_url('/')
+        );
+
         $payfast_data = array(
             'merchant_id' => $payfast_settings['merchant_id'],
             'merchant_key' => $payfast_settings['merchant_key'],
-            'return_url' => home_url('/payfast-return'),
+            'return_url' => $return_url,
             'cancel_url' => home_url('/payfast-cancel'),
             'notify_url' => rest_url('belims/v1/payfast/itn'),
             'name_first' => sanitize_text_field($name_parts[0] ?? ''),

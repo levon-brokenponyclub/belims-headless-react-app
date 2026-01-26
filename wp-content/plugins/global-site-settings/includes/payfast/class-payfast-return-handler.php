@@ -39,7 +39,7 @@ class PayFast_Return_Handler {
      * Handle PayFast return redirect
      */
     public static function handle_return() {
-        if (!get_query_var('payfast_return')) {
+        if (!get_query_var('payfast_return') && empty($_GET['payfast_return'])) {
             return;
         }
 
@@ -50,6 +50,14 @@ class PayFast_Return_Handler {
         $pf_payment_id = isset($_GET['pf_payment_id']) ? sanitize_text_field($_GET['pf_payment_id']) : null;
 
         error_log('PayFast Return - Order ID: ' . $m_payment_id . ', Payment ID: ' . $pf_payment_id);
+
+        if (!$m_payment_id && !empty($_GET['custom_str2'])) {
+            $custom_payload = json_decode(stripslashes($_GET['custom_str2']), true);
+            if (is_array($custom_payload) && !empty($custom_payload['order_id'])) {
+                $m_payment_id = intval($custom_payload['order_id']);
+                error_log('PayFast Return - Order ID recovered from custom_str2: ' . $m_payment_id);
+            }
+        }
 
         if (!$m_payment_id) {
             error_log('PayFast Return - No order ID, redirecting to home');
