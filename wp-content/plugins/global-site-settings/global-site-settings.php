@@ -841,7 +841,7 @@ function global_site_settings_main_page() {
                                     🔍 Inspect Product
                                 </button>
                                 <button type="button" id="ftg-test-sync" class="button button-secondary" style="margin-right: 10px;">
-                                    ✅ Test Sync (400 Ingco Products)
+                                    ✅ Test Sync - Optimised
                                 </button>
                                 <button type="button" id="ftg-sync-products" class="button button-primary" style="margin-right: 10px;">
                                     🔄 Sync All Products
@@ -1099,7 +1099,7 @@ function global_site_settings_main_page() {
                                                         syncBatch(response.next_offset);
                                                     } else {
                                                         // All done!
-                                                        btn.prop('disabled', false).text('✅ Test Sync (400 Ingco Products)');
+                                                        btn.prop('disabled', false).text('✅ Test Sync - Optimised');
                                                         $('.ftg-progress-fill').css('width', '100%').text('100%');
                                                         $('.ftg-progress-text').html('Sync complete!');
                                                         
@@ -1186,13 +1186,13 @@ function global_site_settings_main_page() {
                                                         status.html(summaryHtml + detailsHtml);
                                                     }
                                                 } else {
-                                                    btn.prop('disabled', false).text('✅ Test Sync (400 Ingco Products)');
+                                                    btn.prop('disabled', false).text('✅ Test Sync - Optimised');
                                                     var message = response.message || 'Unknown error';
                                                     status.html('<div class="notice notice-warning inline"><p>⚠️ ' + message + '</p></div>');
                                                 }
                                             },
                                             error: function(xhr) {
-                                                btn.prop('disabled', false).text('✅ Test Sync (400 Ingco Products)');
+                                                btn.prop('disabled', false).text('✅ Test Sync - Optimised');
                                                 var errorMsg = xhr.responseJSON?.message || 'Sync failed';
                                                 status.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
                                             }

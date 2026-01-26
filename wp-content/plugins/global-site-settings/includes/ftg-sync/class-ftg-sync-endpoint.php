@@ -235,6 +235,12 @@ class Belims_FTG_Sync_Endpoint {
             return new WP_Error('missing_token', 'Collection token required', array('status' => 400));
         }
         
+        // Determine if we should filter for Ingco during pagination (test sync)
+        $brand_filter = null;
+        if ($limit !== null && $limit <= 400) {
+            $brand_filter = 'Ingco';
+            error_log('Filtering for brand during fetch: ' . $brand_filter);
+        }
         // Get products from FTG with pagination to avoid the 100-item cap seen in single calls
         $products = array();
         $page = 1;
@@ -262,8 +268,22 @@ class Belims_FTG_Sync_Endpoint {
                 $page_products = $ftg_result['data'];
             }
             
+            // Apply brand filter while paginating to avoid over-fetching
+            if ($brand_filter !== null) {
+                $page_products = array_filter($page_products, function($product) use ($brand_filter) {
+                    $product_data = $product['productData'] ?? $product;
+                    $brand = $product_data['brand'] ?? '';
+                    return strcasecmp($brand, $brand_filter) === 0;
+                });
+            }
+            
             $products = array_merge($products, $page_products);
             error_log('Page ' . $page . ' returned ' . count($page_products) . ' products; cumulative total: ' . count($products));
+            
+            // Stop early when we've collected enough for the requested limit
+            if ($limit !== null && $limit > 0 && count($products) >= $limit) {
+                break;
+            }
             $page++;
         } while (!empty($page_products) && count($page_products) >= $per_page && $page <= $max_pages);
         
@@ -278,34 +298,17 @@ class Belims_FTG_Sync_Endpoint {
             ));
         }
         
-        // Filter for Ingco brand products only (if limit is small, assume test sync)
-        $brand_filter = null;
-        $total_available = 0;
-        // Treat up to 400 products as "test sync" and filter to Ingco brand (332 products)
-        if ($limit !== null && $limit <= 400) {
-            $brand_filter = 'Ingco';
-            error_log('Filtering for brand: ' . $brand_filter);
-            $filtered_products = array();
-            foreach ($products as $product) {
-                $product_data = $product['productData'] ?? $product;
-                $brand = $product_data['brand'] ?? '';
-                if (strcasecmp($brand, $brand_filter) === 0) {
-                    $filtered_products[] = $product;
-                }
-            }
-            $products = $filtered_products;
-            $total_available = count($products);
-            error_log('Filtered to ' . $total_available . ' Ingco products total');
-            
-            // Apply offset and batch_size for chunked processing
-            $products = array_slice($products, $offset, $batch_size);
-            error_log('Processing chunk: offset=' . $offset . ', batch_size=' . $batch_size . ', count=' . count($products));
-        } elseif ($limit !== null && $limit > 0) {
-            // Apply limit for non-brand-filtered syncs
-            $total_available = count($products);
+        $total_available = count($products);
+        // Apply limit for non-brand-filtered syncs (brand filter already enforced during fetch)
+        if ($brand_filter === null && $limit !== null && $limit > 0) {
             $products = array_slice($products, 0, $limit);
+            $total_available = count($products);
             error_log('Limited to ' . $limit . ' products for processing');
         }
+        
+        // Apply offset and batch_size for chunked processing
+        $products = array_slice($products, $offset, $batch_size);
+        error_log('Processing chunk: offset=' . $offset . ', batch_size=' . $batch_size . ', count=' . count($products));
         
         $synced_count = 0;
         $skipped_count = 0;
