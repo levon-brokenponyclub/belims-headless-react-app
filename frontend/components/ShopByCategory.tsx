@@ -21,20 +21,6 @@ interface Category {
   count: number;
 }
 
-// Detect environment and set appropriate API base URL
-function getApiBaseUrl(): string {
-  // In development (localhost:3000)
-  if (
-    typeof window !== "undefined" &&
-    window.location.hostname === "localhost"
-  ) {
-    return "http://belims-headless.local/wp-json/belims/v1";
-  }
-
-  // In production (Netlify) - use relative proxy path
-  return "/api/belims/v1";
-}
-
 export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
   products,
   addToCart,
