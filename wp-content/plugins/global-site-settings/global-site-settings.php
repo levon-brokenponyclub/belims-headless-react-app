@@ -572,6 +572,12 @@ function global_site_settings_main_page() {
                     <span class="dashicons dashicons-superhero"></span>
                     AI Services
                 </a>
+                
+                <div class="bpc-nav-group-title">Tools</div>
+                <a class="bpc-nav-item" data-tab="payfast-testing">
+                    <span class="dashicons dashicons-admin-tools"></span>
+                    PayFast Testing
+                </a>
             </nav>
             
             <div style="padding: 20px; border-top: 1px solid var(--bpc-border); margin-top: auto; color: var(--bpc-text-muted); font-size: 12px;">
@@ -1709,6 +1715,25 @@ function global_site_settings_main_page() {
                     <p style="color: #64748b; font-style: italic; margin-top: 30px;">
                         AI integrations will be available in future updates. Stay tuned!
                     </p>
+                </div>
+            </div>
+
+            <!-- PayFast Testing Tab -->
+            <div id="tab-payfast-testing" class="bpc-tab-content">
+                <div class="bpc-card">
+                    <div class="bpc-card-header">
+                        <h2 class="bpc-card-title">PayFast Payment Testing</h2>
+                        <p class="bpc-card-description">Test PayFast payment flows without placing real orders.</p>
+                    </div>
+                    
+                    <?php
+                    // Render PayFast testing content
+                    if (class_exists('PayFast_Admin_Page')) {
+                        PayFast_Admin_Page::render_page();
+                    } else {
+                        echo '<p>PayFast testing module not available.</p>';
+                    }
+                    ?>
                 </div>
             </div>
         </div>
