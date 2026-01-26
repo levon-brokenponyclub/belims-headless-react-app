@@ -9,10 +9,6 @@ interface ShippingQuoteParams {
     postal_code: string;
     country?: string;
   };
-  items?: Array<{
-    product_id: number;
-    quantity: number;
-  }>;
 }
 
 interface ShippingRate {
@@ -21,9 +17,8 @@ interface ShippingRate {
   total_price: number;
   expected_delivery_date?: string;
 }
-
-// Use Netlify proxy for REST API calls (proxies to WooCommerce)
-const API_BASE_URL = "/api/belims/v1";
+// Directly call the CMS WordPress REST API (BobGo/uAfrica plugin)
+const API_BASE_URL = "https://cms.belims.co.za/wp-json/belims/v1";
 
 // Development/fallback free shipping option
 const DEV_FREE_SHIPPING: ShippingRate = {
@@ -41,12 +36,21 @@ export const getShippingRates = async (
   console.log("Fetching shipping rates for:", params);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/shipping/rates`, {
+    const response = await fetch(`${API_BASE_URL}/shipping/calculate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(params),
+      body: JSON.stringify({
+        destination: {
+          country: params.destination_address.country || "ZA",
+          state: params.destination_address.province || "",
+          city: params.destination_address.city,
+          postcode: params.destination_address.postal_code,
+          address1: params.destination_address.street || "",
+          address2: "",
+        },
+      }),
     });
 
     if (!response.ok) {
@@ -56,12 +60,34 @@ export const getShippingRates = async (
 
     const data = await response.json();
 
-    if (!data.success || !data.rates || data.rates.length === 0) {
+    if (
+      !data.success ||
+      !Array.isArray(data.rates) ||
+      data.rates.length === 0
+    ) {
       throw new Error("No shipping rates available for this address");
     }
 
-    console.log("Received shipping rates:", data.rates);
-    return data.rates;
+    // Map backend rates (label/cost) to frontend ShippingRate shape
+    const mappedRates: ShippingRate[] = data.rates.map((rate: any) => {
+      const min = rate.min_delivery_date;
+      const max = rate.max_delivery_date;
+
+      let expected: string | undefined;
+      if (min && max) {
+        expected = min === max ? min : `${min} - ${max}`;
+      }
+
+      return {
+        service_code: rate.service_code || rate.id,
+        service_name: rate.label,
+        total_price: Number(rate.cost),
+        expected_delivery_date: expected,
+      };
+    });
+
+    console.log("Received shipping rates:", mappedRates);
+    return mappedRates;
   } catch (error) {
     console.error("Error fetching shipping rates:", error);
 
