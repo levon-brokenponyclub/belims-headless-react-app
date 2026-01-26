@@ -3,7 +3,8 @@
  * BobGo Tracking REST API Endpoint
  *
  * Exposes a simple JSON tracking endpoint for the headless frontend,
- * backed by the existing BobGo_API wrapper and environment settings.
+ * backed by the public BobGo tracking API and current environment
+ * (sandbox vs production).
  *
  * Endpoint: POST /wp-json/belims/v1/track
  *
@@ -50,42 +51,65 @@ class BobGo_Tracking_Endpoint {
 			);
 		}
 
-		// Ensure BobGo_API is available
-		if ( ! class_exists( '\\BobGo_API' ) ) {
+		// Determine environment (sandbox vs production) from BobGo settings.
+		$env = get_option( 'bobgo_environment', get_option( 'options_bobgo_environment', 'production' ) );
+		$env = $env === 'sandbox' ? 'sandbox' : 'production';
+
+		$host = ( 'sandbox' === $env )
+			? 'https://api.sandbox.bobgo.co.za'
+			: 'https://api.bobgo.co.za';
+
+		// Determine the channel/domain, mirroring uAfrica_Shipping Admin logic
+		// when available, otherwise fall back to the site's domain.
+		$domain = null;
+		if ( class_exists( '\\uAfrica_Shipping\\app\\Admin' ) ) {
+			$domain = \uAfrica_Shipping\app\Admin::get_api_domain();
+		}
+		if ( empty( $domain ) ) {
+			$home_url = home_url();
+			$domain   = wp_parse_url( $home_url, PHP_URL_HOST );
+			$path     = wp_parse_url( $home_url, PHP_URL_PATH );
+			if ( $path ) {
+				$domain .= $path;
+			}
+		}
+
+		$url = $host . '/tracking?channel=' . rawurlencode( (string) $domain ) . '&tracking_reference=' . rawurlencode( $tracking_ref );
+
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout' => 30,
+				'headers' => array(
+					'Accept' => 'application/json',
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
 			return new \WP_REST_Response(
 				array(
 					'success' => false,
-					'error'   => 'BobGo_API class is not available',
+					'error'   => $response->get_error_message(),
 				),
 				500
 			);
 		}
 
-		$api = new \BobGo_API();
+		$body = wp_remote_retrieve_body( $response );
+		$data = json_decode( $body, true );
 
-		if ( ! $api->has_token() ) {
+		if ( null === $data && JSON_ERROR_NONE !== json_last_error() ) {
 			return new \WP_REST_Response(
 				array(
 					'success' => false,
-					'error'   => 'BobGo API token not configured for current environment',
+					'error'   => 'Unable to decode tracking response from BobGo',
 				),
 				500
 			);
 		}
 
-		$result = $api->get_tracking_events( $tracking_ref );
-
-		if ( \is_wp_error( $result ) ) {
-			return new \WP_REST_Response(
-				array(
-					'success' => false,
-					'error'   => $result->get_error_message(),
-				),
-				500
-			);
-		}
-
-		$normalized = $this->normalize_tracking_response( $tracking_ref, $result );
+		$normalized = $this->normalize_tracking_response( $tracking_ref, is_array( $data ) ? $data : array() );
 
 		return new \WP_REST_Response(
 			array_merge(
@@ -101,7 +125,7 @@ class BobGo_Tracking_Endpoint {
 	 * shape expected by the headless TrackOrderPage.
 	 *
 	 * @param string $tracking_ref
-	 * @param array  $payload Raw response from BobGo_API::get_tracking_events()
+	 * @param array  $payload Raw response from BobGo tracking endpoint
 	 * @return array
 	 */
 	private function normalize_tracking_response( $tracking_ref, $payload ) {
@@ -113,12 +137,18 @@ class BobGo_Tracking_Endpoint {
 		// common patterns while always exposing the raw payload.
 		$raw_events = array();
 
-		if ( isset( $payload['tracking_events'] ) && is_array( $payload['tracking_events'] ) ) {
+		// Direct top-level events array.
+		if ( isset( $payload['events'] ) && is_array( $payload['events'] ) ) {
+			$raw_events = $payload['events'];
+		} elseif ( isset( $payload['tracking_events'] ) && is_array( $payload['tracking_events'] ) ) {
 			$raw_events = $payload['tracking_events'];
 		} elseif ( isset( $payload['data'] ) && is_array( $payload['data'] ) && isset( $payload['data'][0] ) ) {
 			$first = $payload['data'][0];
 			if ( isset( $first['tracking_events'] ) && is_array( $first['tracking_events'] ) ) {
 				$raw_events = $first['tracking_events'];
+			}
+			if ( isset( $first['events'] ) && is_array( $first['events'] ) ) {
+				$raw_events = $first['events'];
 			}
 			if ( isset( $first['eta'] ) ) {
 				$eta = $first['eta'];
@@ -128,7 +158,20 @@ class BobGo_Tracking_Endpoint {
 			}
 			if ( isset( $first['tracking_number'] ) ) {
 				$tracking_ref = $first['tracking_number'];
+			} elseif ( isset( $first['tracking_reference'] ) ) {
+				$tracking_ref = $first['tracking_reference'];
 			}
+		}
+
+		// Top-level helpers
+		if ( isset( $payload['eta'] ) && ! $eta ) {
+			$eta = $payload['eta'];
+		}
+		if ( isset( $payload['status'] ) && ! $status ) {
+			$status = $payload['status'];
+		}
+		if ( isset( $payload['tracking_reference'] ) ) {
+			$tracking_ref = $payload['tracking_reference'];
 		}
 
 		foreach ( $raw_events as $event ) {
