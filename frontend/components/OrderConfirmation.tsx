@@ -120,15 +120,47 @@ export const OrderConfirmation: React.FC = () => {
   }
 
   if (error || !order) {
+    // Fallback: show a basic confirmation using URL params even if
+    // the detailed order API call fails.
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <XCircle className="text-red-500 mb-4" size={48} />
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Unable to Load Order
-        </h2>
-        <p className="text-gray-600 mb-6 text-center max-w-md">
-          {error || "Could not load the order details. Please try again later."}
-        </p>
+      <div className="py-12 flex flex-col items-center">
+        <div className="mb-8 p-6 rounded-lg border-2 bg-yellow-50 border-yellow-200 max-w-xl w-full">
+          <div className="flex items-start gap-4">
+            <AlertCircle className="text-yellow-600 flex-shrink-0" size={32} />
+            <div>
+              <h1 className="text-2xl font-bold mb-2 text-yellow-900">
+                Order Received
+              </h1>
+              <p className="text-yellow-700 mb-2">
+                Thank you for your order. We couldn't load full order details
+                right now, but your order has been recorded.
+              </p>
+              {orderId && (
+                <p className="text-sm text-yellow-800">
+                  <span className="font-semibold">Reference:</span> #{orderId}
+                </p>
+              )}
+              {paymentStatus && (
+                <p className="text-sm text-yellow-800">
+                  <span className="font-semibold">Payment status:</span>{" "}
+                  {paymentStatus}
+                </p>
+              )}
+              {timestamp && (
+                <p className="text-xs text-yellow-800 mt-1">
+                  <span className="font-semibold">Time:</span>{" "}
+                  {new Date(parseInt(timestamp) * 1000).toLocaleString()}
+                </p>
+              )}
+              {error && (
+                <p className="text-xs text-yellow-800 mt-3">
+                  <span className="font-semibold">Note:</span> {error}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
         <button
           onClick={() => navigate("/")}
           className="bg-belims-blue text-white px-6 py-2 rounded hover:bg-belims-blue/90 transition-colors"
