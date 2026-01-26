@@ -199,7 +199,8 @@ class Belims_FTG_Sync_Endpoint {
     public function get_ftg_products($request) {
         $token = $request->get_param('token');
         $page = $request->get_param('page') ?: 1;
-        $limit = $request->get_param('limit') ?: 50;
+        // Default test fetch to 400 products so we cover the Ingco catalog
+        $limit = $request->get_param('limit') ?: 400;
         
         $result = $this->ftg_api->get_products($token, array(
             'page' => $page,
@@ -221,7 +222,8 @@ class Belims_FTG_Sync_Endpoint {
         $collection_token = $params['collection_token'] ?? '';
         $limit = $params['limit'] ?? null; // null = all products
         $offset = $params['offset'] ?? 0;
-        $batch_size = $params['batch_size'] ?? ($limit ?? 50);
+        // Default test sync chunking to 10 when a limit is provided, otherwise fall back to 50
+        $batch_size = $params['batch_size'] ?? ($limit !== null ? 10 : 50);
         
         error_log('=== FTG Product Sync Started ===');
         error_log('Collection Token: ' . $collection_token);
@@ -269,7 +271,8 @@ class Belims_FTG_Sync_Endpoint {
         // Filter for Ingco brand products only (if limit is small, assume test sync)
         $brand_filter = null;
         $total_available = 0;
-        if ($limit !== null && $limit <= 250) {
+        // Treat up to 400 products as "test sync" and filter to Ingco brand (332 products)
+        if ($limit !== null && $limit <= 400) {
             $brand_filter = 'Ingco';
             error_log('Filtering for brand: ' . $brand_filter);
             $filtered_products = array();
