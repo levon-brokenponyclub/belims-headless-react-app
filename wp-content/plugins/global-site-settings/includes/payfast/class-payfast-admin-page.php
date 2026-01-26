@@ -223,21 +223,27 @@ class PayFast_Admin_Page {
                     </div>
 
                     <div class="payfast-buttons">
-                        <a href="#" id="verify-link" class="payfast-button success" style="pointer-events: none; opacity: 0.5;">
-                            Verify Payment
+                        <button id="mark-paid-btn" class="payfast-button success" style="pointer-events: none; opacity: 0.5;">
+                            💰 Mark as Paid (Test)
+                        </button>
+                        <a href="#" id="verify-link" class="payfast-button secondary" style="pointer-events: none; opacity: 0.5;">
+                            ✓ Verify Payment
                         </a>
                         <a href="#" id="return-link" class="payfast-button" style="pointer-events: none; opacity: 0.5;">
-                            Test Return Flow
+                            🔄 Test Return Flow
                         </a>
                     </div>
 
                     <div class="payfast-info">
                         <strong>📌 Usage:</strong>
                         <ul style="margin: 8px 0; padding-left: 20px;">
+                            <li><code>Mark as Paid</code> - Simulate successful payment (sets order to processing)</li>
                             <li><code>Verify Payment</code> - Check if order payment is marked as processing/complete</li>
-                            <li><code>Test Return Flow</code> - Simulate PayFast redirect (requires valid order ID)</li>
+                            <li><code>Test Return Flow</code> - Simulate PayFast redirect (will redirect to frontend)</li>
                         </ul>
                     </div>
+
+                    <div id="test-result" style="display: none; margin-top: 15px;"></div>
 
                     <div id="link-display" style="display: none;">
                         <h3>Generated Links:</h3>
@@ -349,6 +355,8 @@ class PayFast_Admin_Page {
                     document.getElementById('verify-link').style.opacity = '0.5';
                     document.getElementById('return-link').style.pointerEvents = 'none';
                     document.getElementById('return-link').style.opacity = '0.5';
+                    document.getElementById('mark-paid-btn').style.pointerEvents = 'none';
+                    document.getElementById('mark-paid-btn').style.opacity = '0.5';
                     return;
                 }
 
@@ -367,8 +375,64 @@ class PayFast_Admin_Page {
                 document.getElementById('return-link').style.pointerEvents = 'auto';
                 document.getElementById('return-link').style.opacity = '1';
 
+                document.getElementById('mark-paid-btn').style.pointerEvents = 'auto';
+                document.getElementById('mark-paid-btn').style.opacity = '1';
+
                 document.getElementById('link-display').style.display = 'block';
             }
+
+            // Mark order as paid (test mode)
+            document.getElementById('mark-paid-btn').addEventListener('click', function() {
+                const orderId = document.getElementById('order_id').value;
+                if (!orderId || orderId < 1) {
+                    alert('Please enter a valid order ID');
+                    return;
+                }
+
+                if (!confirm(`Mark order #${orderId} as PAID (test mode)?`)) {
+                    return;
+                }
+
+                const baseUrl = '<?php echo home_url(); ?>';
+                const markPaidUrl = `${baseUrl}/wp-json/belims/v1/payfast/test/mark-paid/${orderId}`;
+
+                const resultDiv = document.getElementById('test-result');
+                resultDiv.innerHTML = '<p>Processing...</p>';
+                resultDiv.style.display = 'block';
+
+                fetch(markPaidUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        resultDiv.innerHTML = `
+                            <div style="background: #d1e7dd; border: 1px solid #badbcc; padding: 12px; border-radius: 4px; color: #0f5132;">
+                                <strong>✓ Success!</strong> Order #${orderId} marked as PAID<br/>
+                                <small>Status: ${data.status} | Payment ID: ${data.payment_id}</small><br/><br/>
+                                <strong>Next:</strong> Click "Test Return Flow" to see the redirect to frontend
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <div style="background: #f8d7da; border: 1px solid #f5c2c7; padding: 12px; border-radius: 4px; color: #842029;">
+                                <strong>✗ Error:</strong> ${data.message || 'Failed to mark order as paid'}
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = `
+                        <div style="background: #f8d7da; border: 1px solid #f5c2c7; padding: 12px; border-radius: 4px; color: #842029;">
+                            <strong>✗ Error:</strong> ${error.message}
+                        </div>
+                    `;
+                });
+            });
 
             // Generate links on input change
             document.getElementById('order_id').addEventListener('input', generateLinks);

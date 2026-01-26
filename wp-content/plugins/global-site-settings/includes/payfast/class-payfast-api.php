@@ -50,6 +50,15 @@ class PayFast_API {
             'callback' => array(__CLASS__, 'handle_itn'),
             'permission_callback' => '__return_true',
         ));
+
+        // Testing endpoint: Mark order as paid (admin only)
+        register_rest_route('belims/v1', '/payfast/test/mark-paid/(?P<order_id>\d+)', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'test_mark_paid'),
+            'permission_callback' => function() {
+                return current_user_can('manage_options');
+            },
+        ));
     }
 
     /**
@@ -386,6 +395,42 @@ class PayFast_API {
                 'data' => $data,
             ));
         }
+    }
+
+    /**
+     * Testing endpoint: Mark order as paid (simulates successful payment)
+     * For testing the return flow without actually processing payments
+     */
+    public static function test_mark_paid($request) {
+        $order_id = $request->get_param('order_id');
+
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            return new WP_Error('order_not_found', 'Order not found', array('status' => 404));
+        }
+
+        // Simulate PayFast ITN by updating order meta and status
+        $test_payment_id = 'test-' . $order_id . '-' . time();
+        
+        $order->update_meta_data('_payfast_payment_id', $test_payment_id);
+        $order->update_meta_data('_payfast_payment_status', 'COMPLETE');
+        $order->update_meta_data('_payfast_itn_received', current_time('mysql'));
+        $order->update_meta_data('_payfast_test_payment', 'yes'); // Mark as test
+        $order->save();
+
+        // Mark as paid
+        $order->payment_complete($test_payment_id);
+        $order->update_status('processing', 'Test payment marked as complete');
+        
+        error_log('PayFast TEST: Order ' . $order_id . ' marked as paid (test mode)');
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'order_id' => $order_id,
+            'status' => 'processing',
+            'payment_id' => $test_payment_id,
+            'message' => 'Order marked as paid (test mode)',
+        ));
     }
 }
 
