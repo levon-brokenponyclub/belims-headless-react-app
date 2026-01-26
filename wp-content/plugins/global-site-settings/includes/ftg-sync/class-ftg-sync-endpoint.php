@@ -255,9 +255,8 @@ class Belims_FTG_Sync_Endpoint {
         $max_pages = 50; // safety guard
         do {
             $ftg_result = $this->ftg_api->get_products($collection_token, array(
-                'limit' => $per_page,
-                'p'     => $page, // FTG UI uses "p"
-                'page'  => $page, // belt-and-braces: some endpoints may look for "page"
+                'PageSize' => $per_page,
+                'PageNumber' => $page, // FTG API uses PageNumber/PageSize (capital P) per swagger docs
             ));
             
             error_log('FTG API Result Structure (page ' . $page . '): ' . print_r(array_keys($ftg_result), true));
@@ -502,10 +501,10 @@ class Belims_FTG_Sync_Endpoint {
         $offset = 0;
 
         do {
-            error_log("brand-count: fetching offset $offset (page $page) for brand $brand");
+            error_log("brand-count: fetching PageNumber $page for brand $brand");
             $ftg_result = $this->ftg_api->get_products($collection_token, array(
-                'limit' => $per_page,
-                'offset' => $offset, // try offset-based pagination
+                'PageSize' => $per_page,
+                'PageNumber' => $page, // FTG API uses PageNumber/PageSize (capital P)
             ));
 
             if (isset($ftg_result['error'])) {
@@ -540,10 +539,9 @@ class Belims_FTG_Sync_Endpoint {
             }, array_slice($page_products, 0, 3));
             error_log("brand-count: offset $offset first 3 SKUs: " . implode(', ', $skus));
             
-            error_log("brand-count: offset $offset has " . count($page_products) . " $brand products; cumulative: " . count($products));
+            error_log("brand-count: PageNumber $page has " . count($page_products) . " $brand products; cumulative: " . count($products));
             $products = array_merge($products, $page_products);
             $page++;
-            $offset += $per_page;
         } while (!empty($page_products) && $page <= $max_pages);
 
         $products = $this->deduplicate_products_by_sku($products);
@@ -1042,7 +1040,7 @@ class Belims_FTG_Sync_Endpoint {
         }
         
         // Get all products from FTG (request large limit to get all products)
-        $ftg_result = $this->ftg_api->get_products($collection_token, array('limit' => 10000));
+        $ftg_result = $this->ftg_api->get_products($collection_token, array('PageSize' => 10000));
         
         if (isset($ftg_result['error'])) {
             return new WP_Error('ftg_error', $ftg_result['error'], array('status' => 500));
