@@ -752,10 +752,7 @@ function InnerApp(props) {
             }
           />
 
-          <Route
-            path="/order-confirmation"
-            element={<OrderConfirmation />}
-          />
+          <Route path="/order-confirmation" element={<OrderConfirmation />} />
         </Routes>
       </main>
 
