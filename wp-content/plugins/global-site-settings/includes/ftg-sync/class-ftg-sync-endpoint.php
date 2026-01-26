@@ -70,6 +70,13 @@ class Belims_FTG_Sync_Endpoint {
             'callback' => array($this, 'cleanup_duplicate_attributes'),
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
+
+        // Get brand-filtered product count from FTG
+        register_rest_route('belims/v1', '/ftg/brand-count', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_brand_count'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
         
         // Get product filters (Range, Color, Brand)
         register_rest_route('belims/v1', '/products/filters', array(
@@ -473,6 +480,62 @@ class Belims_FTG_Sync_Endpoint {
         }
 
         return $unique_products;
+    }
+
+    /**
+     * Return total unique products for a brand from FTG.
+     */
+    public function get_brand_count($request) {
+        $collection_token = $request->get_param('collection_token') ?: get_field('ftg_collection_token', 'option');
+        $brand = $request->get_param('brand') ?: 'Ingco';
+        $per_page = 100;
+        $max_pages = 50;
+
+        if (empty($collection_token)) {
+            return new WP_Error('missing_token', 'Collection token required', array('status' => 400));
+        }
+
+        $products = array();
+        $page = 1;
+
+        do {
+            $ftg_result = $this->ftg_api->get_products($collection_token, array(
+                'limit' => $per_page,
+                'page'  => $page,
+            ));
+
+            if (isset($ftg_result['error'])) {
+                return new WP_Error('ftg_error', $ftg_result['error'], array('status' => 500));
+            }
+
+            $page_products = array();
+            if (isset($ftg_result['data']['response']) && is_array($ftg_result['data']['response'])) {
+                $page_products = $ftg_result['data']['response'];
+            } elseif (isset($ftg_result['data']['data']) && is_array($ftg_result['data']['data'])) {
+                $page_products = $ftg_result['data']['data'];
+            } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
+                $page_products = $ftg_result['data'];
+            }
+
+            if (!empty($brand)) {
+                $page_products = array_filter($page_products, function($product) use ($brand) {
+                    $product_data = $product['productData'] ?? $product;
+                    return strcasecmp($product_data['brand'] ?? '', $brand) === 0;
+                });
+            }
+
+            $products = array_merge($products, $page_products);
+            $page++;
+        } while (!empty($page_products) && $page <= $max_pages);
+
+        $products = $this->deduplicate_products_by_sku($products);
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'brand' => $brand,
+            'total_unique' => count($products),
+            'pages_fetched' => $page - 1,
+        ));
     }
     
     /**
