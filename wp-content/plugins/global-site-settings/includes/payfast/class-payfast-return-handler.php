@@ -69,6 +69,28 @@ class PayFast_Return_Handler {
 
         $order_status = $order->get_status();
         error_log('PayFast Return - Order status: ' . $order_status);
+
+        // If the order is still pending but we have a PayFast payment ID,
+        // mark the order as paid as a fallback when ITN hasn't been processed yet.
+        if (in_array($order_status, array('pending', 'on-hold'), true) && !empty($pf_payment_id)) {
+            $itn_received = $order->get_meta('_payfast_itn_received');
+
+            if (empty($itn_received)) {
+                error_log('PayFast Return - No ITN received yet, marking order as paid from return handler');
+
+                $order->update_meta_data('_payfast_payment_id', $pf_payment_id);
+                $order->update_meta_data('_payfast_payment_status', 'COMPLETE');
+                $order->update_meta_data('_payfast_return_marked_complete', current_time('mysql'));
+
+                // Mark payment complete and set status to processing
+                $order->payment_complete($pf_payment_id);
+                $order->update_status('processing', 'PayFast return: marked as paid based on user redirect');
+                $order->save();
+
+                $order_status = $order->get_status();
+                error_log('PayFast Return - Order status updated to: ' . $order_status);
+            }
+        }
         
         // Check multiple success conditions:
         // 1. Order status is processing/completed (ITN already processed)
