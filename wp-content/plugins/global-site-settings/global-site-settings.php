@@ -218,6 +218,7 @@ add_action('admin_init', 'global_site_settings_register_system_settings');
 function global_site_settings_register_bobgo_settings() {
     register_setting('global_site_settings_bobgo', 'bobgo_environment');
     register_setting('global_site_settings_bobgo', 'bobgo_api_token');
+    register_setting('global_site_settings_bobgo', 'bobgo_sandbox_api_token');
     register_setting('global_site_settings_bobgo', 'bobgo_auto_create_shipments');
 }
 add_action('admin_init', 'global_site_settings_register_bobgo_settings');
