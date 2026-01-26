@@ -235,8 +235,10 @@ class Belims_FTG_Sync_Endpoint {
             return new WP_Error('missing_token', 'Collection token required', array('status' => 400));
         }
         
-        // Get products from FTG (FTG API doesn't support limit/offset, returns all products)
-        $ftg_result = $this->ftg_api->get_products($collection_token);
+        // Get products from FTG (request a high limit to pull full catalog in one call)
+        $ftg_result = $this->ftg_api->get_products($collection_token, array(
+            'limit' => 1000, // fetch up to 1000 products to cover full Ingco set
+        ));
         
         error_log('FTG API Result Structure: ' . print_r(array_keys($ftg_result), true));
         
