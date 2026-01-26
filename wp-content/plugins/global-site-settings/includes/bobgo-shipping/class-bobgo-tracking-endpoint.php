@@ -136,14 +136,30 @@ class BobGo_Tracking_Endpoint {
 		// BobGo may return different envelope structures; handle a few
 		// common patterns while always exposing the raw payload.
 		$raw_events = array();
+		$shipment   = null;
+
+		// Some BobGo tracking responses return a list of shipment records
+		// at the root level (indexed array). Normalise that to a single
+		// shipment record for downstream handling.
+		if ( isset( $payload[0] ) && is_array( $payload[0] ) && ! isset( $payload['events'] ) && ! isset( $payload['tracking_events'] ) && ! isset( $payload['data'] ) ) {
+			$shipment = $payload[0];
+		}
 
 		// Direct top-level events array.
 		if ( isset( $payload['events'] ) && is_array( $payload['events'] ) ) {
 			$raw_events = $payload['events'];
 		} elseif ( isset( $payload['tracking_events'] ) && is_array( $payload['tracking_events'] ) ) {
 			$raw_events = $payload['tracking_events'];
-		} elseif ( isset( $payload['data'] ) && is_array( $payload['data'] ) && isset( $payload['data'][0] ) ) {
-			$first = $payload['data'][0];
+		} elseif ( isset( $payload['data'] ) && is_array( $payload['data'] ) ) {
+			// BobGo might return `data` as either an array of records
+			// or a single associative array. Normalise to a single record.
+			$first = null;
+			if ( isset( $payload['data'][0] ) && is_array( $payload['data'][0] ) ) {
+				$first = $payload['data'][0];
+			} else {
+				$first = $payload['data'];
+			}
+
 			if ( isset( $first['tracking_events'] ) && is_array( $first['tracking_events'] ) ) {
 				$raw_events = $first['tracking_events'];
 			}
@@ -160,6 +176,31 @@ class BobGo_Tracking_Endpoint {
 				$tracking_ref = $first['tracking_number'];
 			} elseif ( isset( $first['tracking_reference'] ) ) {
 				$tracking_ref = $first['tracking_reference'];
+			}
+		}
+
+		// Root-level shipment list handling (when detected above).
+		if ( null !== $shipment ) {
+			if ( isset( $shipment['status_friendly'] ) && ! $status ) {
+				$status = $shipment['status_friendly'];
+			} elseif ( isset( $shipment['status'] ) && ! $status ) {
+				$status = $shipment['status'];
+			}
+			if ( isset( $shipment['shipment_estimated_delivery_date_to'] ) && ! $eta ) {
+				$eta = $shipment['shipment_estimated_delivery_date_to'];
+			}
+			if ( isset( $shipment['shipment_tracking_reference'] ) ) {
+				$tracking_ref = $shipment['shipment_tracking_reference'];
+			}
+			// If no raw events were found yet, fall back to tracking_steps
+			// as a coarse-grained event timeline.
+			if ( empty( $raw_events ) && isset( $shipment['tracking_steps'] ) && is_array( $shipment['tracking_steps'] ) ) {
+				foreach ( $shipment['tracking_steps'] as $step_key => $step ) {
+					if ( is_array( $step ) ) {
+						$step['_step_key'] = $step_key;
+						$raw_events[]      = $step;
+					}
+				}
 			}
 		}
 
