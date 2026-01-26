@@ -101,7 +101,8 @@ class PayFast_API {
         }
 
         // Build PayFast data (without passphrase and user_agent)
-        // user_agent is used only for signature calculation, NOT sent in URL
+        // Passphrase is used only for signature calculation, NOT sent in URL
+        // user_agent is NOT used in signature for redirect URL method
         $payfast_data = array(
             'merchant_id' => $payfast_settings['merchant_id'],
             'merchant_key' => $payfast_settings['merchant_key'],
@@ -123,11 +124,11 @@ class PayFast_API {
             )),
         );
 
-        // Generate signature (with user_agent for calculation but NOT included in URL)
-        $signature = self::generate_payfast_signature($payfast_data, $_SERVER['HTTP_USER_AGENT'] ?? '');
+        // Generate signature (passphrase added internally, user_agent NOT used)
+        $signature = self::generate_payfast_signature($payfast_data);
         $payfast_data['signature'] = $signature;
 
-        // Build redirect URL (user_agent NOT included in query string)
+        // Build redirect URL
         $is_test_mode = !empty($payfast_settings['testmode']) && $payfast_settings['testmode'] === 'yes';
         $payfast_url = $is_test_mode
             ? 'https://sandbox.payfast.co.za/eng/process'
@@ -160,15 +161,13 @@ class PayFast_API {
      * 3. Build string: key=urlencode(value)&key=urlencode(value)&...
      * 4. Remove trailing &
      * 5. MD5 hash
+     * 
+     * Note: user_agent is NOT included in signature for redirect URL method
      */
     public static function generate_payfast_signature($data, $user_agent = '') {
-        // Remove signature from data if present
+        // Remove signature and user_agent from data
         unset($data['signature']);
-
-        // Add user_agent for signature calculation (not sent in URL)
-        if (!empty($user_agent)) {
-            $data['user_agent'] = $user_agent;
-        }
+        unset($data['user_agent']);
 
         // Get passphrase from settings
         $payfast_settings = get_option('woocommerce_payfast_settings', array());
