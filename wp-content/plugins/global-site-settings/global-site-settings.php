@@ -258,6 +258,30 @@ function test_bobgo_connection_handler() {
 }
 
 /**
+ * Render a tiny BobGo environment badge in the bottom-right corner
+ * for administrators (frontend and admin).
+ */
+function global_site_settings_render_bobgo_env_badge() {
+    if (!is_user_logged_in() || !current_user_can('manage_options')) {
+        return;
+    }
+
+    $env = get_option('bobgo_environment', 'production');
+    $label = $env === 'sandbox' ? 'Sandbox' : 'Production';
+
+    // Slightly different accent colors for clarity
+    $bg_color = $env === 'sandbox' ? 'rgba(5, 150, 105, 0.95)' : 'rgba(37, 99, 235, 0.95)';
+
+    echo '<div style="position:fixed; right:12px; bottom:12px; z-index:99999; font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;">'
+        . '<div style="padding:6px 10px; font-size:11px; border-radius:999px; background:' . esc_attr($bg_color) . '; color:#ffffff; box-shadow:0 4px 10px rgba(15, 23, 42, 0.35);">'
+        . '<strong>BobGo</strong>: ' . esc_html($label)
+        . '</div>'
+        . '</div>';
+}
+add_action('wp_footer', 'global_site_settings_render_bobgo_env_badge');
+add_action('admin_footer', 'global_site_settings_render_bobgo_env_badge');
+
+/**
  * Redirect homepage to login for headless CMS
  * DISABLED: This was causing login session issues
  */
