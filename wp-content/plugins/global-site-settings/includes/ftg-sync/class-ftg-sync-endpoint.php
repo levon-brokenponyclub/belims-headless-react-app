@@ -532,6 +532,14 @@ class Belims_FTG_Sync_Endpoint {
             }
 
             $page_sizes[] = count($page_products);
+            
+            // log first 3 SKUs to see if they're different
+            $skus = array_map(function($p) {
+                $data = $p['productData'] ?? $p;
+                return $data['productCode'] ?? 'no-sku';
+            }, array_slice($page_products, 0, 3));
+            error_log("brand-count: offset $offset first 3 SKUs: " . implode(', ', $skus));
+            
             error_log("brand-count: offset $offset has " . count($page_products) . " $brand products; cumulative: " . count($products));
             $products = array_merge($products, $page_products);
             $page++;
