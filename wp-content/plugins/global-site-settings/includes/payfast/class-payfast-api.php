@@ -100,7 +100,8 @@ class PayFast_API {
             return new WP_Error('payfast_config_missing', 'PayFast not configured', array('status' => 500));
         }
 
-        // Build PayFast data (without passphrase - only used for signature)
+        // Build PayFast data (without passphrase and user_agent)
+        // user_agent is used only for signature calculation, NOT sent in URL
         $payfast_data = array(
             'merchant_id' => $payfast_settings['merchant_id'],
             'merchant_key' => $payfast_settings['merchant_key'],
@@ -120,14 +121,13 @@ class PayFast_API {
                 'order_id' => $order_id,
                 'store_url' => home_url(),
             )),
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
         );
 
-        // Generate signature (passphrase is added only for calculation, not sent)
-        $signature = self::generate_payfast_signature($payfast_data);
+        // Generate signature (with user_agent for calculation but NOT included in URL)
+        $signature = self::generate_payfast_signature($payfast_data, $_SERVER['HTTP_USER_AGENT'] ?? '');
         $payfast_data['signature'] = $signature;
 
-        // Build redirect URL
+        // Build redirect URL (user_agent NOT included in query string)
         $is_test_mode = !empty($payfast_settings['testmode']) && $payfast_settings['testmode'] === 'yes';
         $payfast_url = $is_test_mode
             ? 'https://sandbox.payfast.co.za/eng/process'
@@ -153,20 +153,22 @@ class PayFast_API {
      * Generate PayFast Signature
      * 
      * PayFast requires specific signature format:
-     * 1. Sort parameters alphabetically
+     * 1. Sort parameters alphabetically (including user_agent)
      * 2. Build string as key=value&key=value...
      * 3. URL encode values
      * 4. Append &passphrase=PASSPHRASE
      * 5. Take MD5 hash
      * 
-     * NOTE: Passphrase is used for signature calculation only, NOT sent in URL
+     * NOTE: user_agent and passphrase are used ONLY for signature calculation, NOT sent in URL
      */
-    public static function generate_payfast_signature($data) {
+    public static function generate_payfast_signature($data, $user_agent = '') {
         // Remove signature from data if present
         unset($data['signature']);
 
-        // Exclude user_agent from signature calculation
-        unset($data['user_agent']);
+        // Add user_agent for signature calculation (not sent in URL)
+        if (!empty($user_agent)) {
+            $data['user_agent'] = $user_agent;
+        }
 
         // Sort keys alphabetically (PayFast requirement)
         ksort($data);
