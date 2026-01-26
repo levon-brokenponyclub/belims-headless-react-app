@@ -79,6 +79,8 @@ function global_site_settings_init() {
         'includes/bobgo-shipping/class-bobgo-order-handler.php',
         'includes/bobgo-shipping/class-bobgo-webhook-endpoint.php',
         'includes/bobgo-shipping/class-bobgo-shipping-rates-endpoint.php', // REST endpoint for headless frontend
+        // PayFast Payment Gateway integration
+        'includes/payfast/class-payfast-api.php',
     ];
     foreach ($files as $file) {
         $path = GLOBAL_SITE_SETTINGS_PLUGIN_DIR . $file;
@@ -516,6 +518,10 @@ function global_site_settings_main_page() {
     if (file_exists($bobgo_file)) {
         require_once $bobgo_file;
     }
+
+    // Integration statuses for dashboard summary
+    $ftg_enabled = (bool) get_field('ftg_enabled', 'option');
+    $bobgo_enabled = !empty(get_option('bobgo_api_token', ''));
     ?>
     <div id="bpc-admin-root">
         <!-- Sidebar Navigation -->
@@ -603,13 +609,65 @@ function global_site_settings_main_page() {
                         </div>
                     </div>
                     
-                    <h3>Active Integrations</h3>
-                    <ul>
-                        <li><strong>Find The Gap (FTG):</strong> Product sync integration</li>
-                        <li><strong>WooCommerce:</strong> E-commerce platform</li>
-                        <li><strong>REST API:</strong> Headless content delivery</li>
-                        <li><strong>AI Services:</strong> Coming soon</li>
-                    </ul>
+                    <style>
+                    .bpc-status-pill {
+                        display: inline-flex;
+                        align-items: center;
+                        padding: 4px 10px;
+                        border-radius: 999px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        line-height: 1;
+                        border: 1px solid transparent;
+                        gap: 6px;
+                    }
+                    .bpc-status-pill.enabled {
+                        background: #ecfdf3;
+                        color: #166534;
+                        border-color: #bbf7d0;
+                    }
+                    .bpc-status-pill.disabled {
+                        background: #fef2f2;
+                        color: #991b1f;
+                        border-color: #fecdd3;
+                    }
+                    .bpc-status-list {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                        gap: 12px;
+                        margin: 0 0 24px;
+                    }
+                    .bpc-status-row {
+                        border: 1px solid var(--bpc-border);
+                        border-radius: 10px;
+                        padding: 12px 14px;
+                        background: #fff;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        gap: 12px;
+                    }
+                    .bpc-status-title {
+                        font-weight: 600;
+                        color: var(--bpc-text-primary);
+                    }
+                    </style>
+
+                    <h3>Integration Status</h3>
+                    <div class="bpc-status-list">
+                        <div class="bpc-status-row">
+                            <span class="bpc-status-title">Find The Gap Integration</span>
+                            <span class="bpc-status-pill <?php echo $ftg_enabled ? 'enabled' : 'disabled'; ?>">
+                                <?php echo $ftg_enabled ? 'Enabled' : 'Disabled'; ?>
+                            </span>
+                        </div>
+                        <div class="bpc-status-row">
+                            <span class="bpc-status-title">BobGo Shipping</span>
+                            <span class="bpc-status-pill <?php echo $bobgo_enabled ? 'enabled' : 'disabled'; ?>">
+                                <?php echo $bobgo_enabled ? 'Enabled' : 'Disabled'; ?>
+                            </span>
+                        </div>
+                    </div>
                     
                     <h3>Quick Actions</h3>
                     <p>

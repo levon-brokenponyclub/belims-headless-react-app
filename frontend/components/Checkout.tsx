@@ -105,17 +105,25 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
       if (!order) throw new Error("Order creation failed");
 
-      // 2. Init Payment (Mock)
-      // window.location.href = await initializePayment({ ... });
+      // 2. Initialize PayFast Payment - Redirect to PayFast
+      const paymentUrl = await initializePayment({
+        orderId: order.id,
+        amount: total,
+        currency: "ZAR",
+        customerEmail: customer.email,
+        customerName: `${customer.firstName} ${customer.lastName}`,
+        customerPhone: customer.phone,
+      });
 
-      // For soft launch mock:
-      setTimeout(() => {
-        setStep("success");
-        onClearCart();
-        setLoading(false);
-      }, 1500);
+      // Redirect to PayFast payment gateway
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
+      } else {
+        throw new Error("Failed to initialize payment");
+      }
     } catch (error) {
-      alert("Order processing failed");
+      console.error("Order processing error:", error);
+      alert(error instanceof Error ? error.message : "Order processing failed");
       setLoading(false);
     }
   };
