@@ -103,14 +103,15 @@ class PayFast_API {
         // Build PayFast data (without passphrase and user_agent)
         // Passphrase is used only for signature calculation, NOT sent in URL
         // user_agent is NOT used in signature for redirect URL method
+        $name_parts = explode(' ', $customer_name);
         $payfast_data = array(
             'merchant_id' => $payfast_settings['merchant_id'],
             'merchant_key' => $payfast_settings['merchant_key'],
             'return_url' => home_url('/payfast-return'),
             'cancel_url' => home_url('/payfast-cancel'),
             'notify_url' => rest_url('belims/v1/payfast/itn'),
-            'name_first' => sanitize_text_field($customer_name ? explode(' ', $customer_name)[0] : ''),
-            'name_last' => sanitize_text_field($customer_name ? end(explode(' ', $customer_name)) : ''),
+            'name_first' => sanitize_text_field($name_parts[0] ?? ''),
+            'name_last' => sanitize_text_field($name_parts[1] ?? ''),
             'email_address' => sanitize_email($customer_email),
             'cell_number' => sanitize_text_field($customer_phone),
             'm_payment_id' => $order_id,
@@ -260,21 +261,23 @@ class PayFast_API {
      * Handle PayFast ITN (Instant Transaction Notification)
      *
      * PayFast sends POST data to confirm payment
+     * ITN can be form-encoded or JSON
      */
     public static function handle_itn($request) {
-        // Get POST data
+        // Get POST data - try JSON first, then form data
         $post_data = $request->get_json_params();
 
-        if (empty($post_data)) {
-            // Try form data
+        if (empty($post_data) || !is_array($post_data)) {
+            // Try to get form data from $_POST
             $post_data = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing
         }
 
-        // Log ITN
+        // Log ITN for debugging
         self::log_itn($post_data);
 
         // Verify signature
         if (!self::verify_itn_signature($post_data)) {
+            error_log('PayFast ITN Signature verification failed: ' . json_encode($post_data));
             do_action('payfast_itn_signature_failed', $post_data);
             return new WP_Error('invalid_signature', 'Invalid signature', array('status' => 403));
         }
@@ -282,15 +285,17 @@ class PayFast_API {
         // Get order ID from m_payment_id
         $order_id = isset($post_data['m_payment_id']) ? intval($post_data['m_payment_id']) : null;
         $payfast_payment_id = isset($post_data['pf_payment_id']) ? $post_data['pf_payment_id'] : null;
-        $payment_status = isset($post_data['payment_status']) ? $post_data['payment_status'] : null;
+        $payment_status = isset($post_data['payment_status']) ? strtoupper($post_data['payment_status']) : null;
 
         if (!$order_id) {
+            error_log('PayFast ITN: No order ID found in post data');
             do_action('payfast_itn_invalid_order', $post_data);
             return new WP_Error('invalid_order', 'Invalid order', array('status' => 400));
         }
 
         $order = wc_get_order($order_id);
         if (!$order) {
+            error_log('PayFast ITN: Order ' . $order_id . ' not found');
             do_action('payfast_itn_order_not_found', $order_id, $post_data);
             return new WP_Error('order_not_found', 'Order not found', array('status' => 404));
         }
@@ -299,24 +304,26 @@ class PayFast_API {
         $order->update_meta_data('_payfast_payment_id', $payfast_payment_id);
         $order->update_meta_data('_payfast_payment_status', $payment_status);
         $order->update_meta_data('_payfast_itn_received', current_time('mysql'));
+        $order->save();
 
         // Handle payment status
         if ($payment_status === 'COMPLETE') {
             // Payment successful
             $order->payment_complete($payfast_payment_id);
             $order->update_status('processing', 'PayFast payment completed');
+            error_log('PayFast ITN: Order ' . $order_id . ' marked as complete');
             do_action('payfast_payment_complete', $order, $post_data);
         } elseif ($payment_status === 'FAILED' || $payment_status === 'CANCELLED') {
             // Payment failed
             $order->update_status('failed', 'PayFast payment failed or cancelled');
+            error_log('PayFast ITN: Order ' . $order_id . ' marked as failed');
             do_action('payfast_payment_failed', $order, $post_data);
         } else {
             // Pending
             $order->update_status('pending', 'PayFast payment pending: ' . $payment_status);
+            error_log('PayFast ITN: Order ' . $order_id . ' still pending, status: ' . $payment_status);
             do_action('payfast_payment_pending', $order, $post_data);
         }
-
-        $order->save();
 
         return rest_ensure_response(array(
             'success' => true,
