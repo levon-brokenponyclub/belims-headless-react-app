@@ -111,33 +111,30 @@ class PayFast_Return_Handler {
      * Get frontend URL
      *
      * In development: http://localhost:3000
-     * In production: https://your-domain.com
+     * In production: https://belims-headless-react-app.netlify.app/
      *
      * @return string Frontend URL
      */
     private static function get_frontend_url() {
-        // Check if we're in development
+        // Production frontend URL
+        $frontend_url = 'https://belims-headless-react-app.netlify.app';
+        
+        // Check if we're in development/local environment
         if (defined('WP_DEBUG') && WP_DEBUG) {
             // Get frontend URL from environment or use default
-            $frontend_url = getenv('FRONTEND_URL');
-            if ($frontend_url) {
-                return rtrim($frontend_url, '/');
+            $env_frontend_url = getenv('FRONTEND_URL');
+            if ($env_frontend_url) {
+                return rtrim($env_frontend_url, '/');
             }
 
             // Default development URL
             if (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || 
                 strpos($_SERVER['HTTP_HOST'], '.local') !== false) {
-                return 'http://localhost:3000';
+                $frontend_url = 'http://localhost:3000';
             }
         }
 
-        // Production: use home URL domain but frontend path
-        // Adjust this based on your actual frontend domain
-        $home_url = home_url();
-        $parsed = parse_url($home_url);
-        $domain = $parsed['scheme'] . '://' . $parsed['host'];
-
-        return $domain;
+        return rtrim($frontend_url, '/');
     }
 }
 

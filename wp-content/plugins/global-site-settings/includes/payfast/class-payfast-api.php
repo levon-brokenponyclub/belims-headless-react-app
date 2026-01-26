@@ -65,7 +65,7 @@ class PayFast_API {
             'passPhrase' => $payfast_settings['pass_phrase'] ?? '',
             'testMode' => !empty($payfast_settings['testmode']) && $payfast_settings['testmode'] === 'yes',
             'returnUrl' => home_url('/payfast-return'),
-            'cancelUrl' => home_url('/payfast-cancel'),
+            'cancelUrl' => 'https://belims-headless-react-app.netlify.app/checkout',
             'notifyUrl' => rest_url('belims/v1/payfast/itn'),
         ));
     }
