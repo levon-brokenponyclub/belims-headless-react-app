@@ -44,6 +44,11 @@ import {
   CreditCard,
   ChevronRight,
   X,
+  Package,
+  Route,
+  MapPin,
+  CheckCircle2,
+  RefreshCcw,
 } from "lucide-react";
 
 // --- WRAPPER COMPONENTS FOR ROUTING ---
@@ -415,6 +420,331 @@ const HomePage = ({
   );
 };
 
+type StepKey =
+  | "created"
+  | "collected"
+  | "in_transit"
+  | "out_for_delivery"
+  | "delivered";
+
+const TRACK_STEPS: {
+  key: StepKey;
+  label: string;
+  Icon: any;
+  match: (s: string) => boolean;
+}[] = [
+  {
+    key: "created",
+    label: "Created",
+    Icon: Package,
+    match: (s) =>
+      s.includes("created") || s.includes("submitted") || s.includes("booked"),
+  },
+  {
+    key: "collected",
+    label: "Collected",
+    Icon: Truck,
+    match: (s) => s.includes("collected") || s.includes("collection"),
+  },
+  {
+    key: "in_transit",
+    label: "In transit",
+    Icon: Route,
+    match: (s) =>
+      s.includes("in transit") ||
+      s.includes("transit") ||
+      s.includes("linehaul"),
+  },
+  {
+    key: "out_for_delivery",
+    label: "Out for delivery",
+    Icon: MapPin,
+    match: (s) => s.includes("out for delivery") || s.includes("delivery run"),
+  },
+  {
+    key: "delivered",
+    label: "Delivered",
+    Icon: CheckCircle2,
+    match: (s) => s.includes("delivered") || s.includes("complete"),
+  },
+];
+
+function normalizeStatus(status?: string): string {
+  return (status || "").toLowerCase().trim();
+}
+
+function activeStepIndexFromStatus(status?: string): number {
+  const s = normalizeStatus(status);
+  if (!s) return 0;
+
+  // Most common BobGo UI status:
+  if (s.includes("pending collection")) return 0;
+
+  // Otherwise match steps
+  const idx = TRACK_STEPS.findIndex((st) => st.match(s));
+  return idx >= 0 ? idx : 0;
+}
+
+function formatEta(eta?: string) {
+  if (!eta) return null;
+  // If it’s already a range string, keep it
+  if (eta.includes("–") || eta.includes("-")) return eta;
+
+  // Otherwise try to render a nicer date
+  const d = new Date(eta);
+  if (Number.isNaN(d.getTime())) return eta;
+
+  return d.toLocaleString(undefined, {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function pickEventLabel(ev: any) {
+  return (
+    ev?.label ||
+    ev?.status ||
+    ev?.event ||
+    ev?.description ||
+    ev?.message ||
+    "Update"
+  );
+}
+
+function pickEventTime(ev: any) {
+  return ev?.time || ev?.timestamp || ev?.created_at || ev?.created || "";
+}
+
+function pickEventLocation(ev: any) {
+  return ev?.location || ev?.hub || ev?.facility || ev?.city || "";
+}
+
+const TrackingProgressCard = ({
+  trackingRef,
+  status,
+  eta,
+  details,
+  events,
+  onRefresh,
+  loading,
+}: {
+  trackingRef: string;
+  status?: string;
+  eta?: string;
+  details?: {
+    orderNo?: string | number;
+    serviceLevel?: string;
+    courier?: string;
+    customer?: string;
+  };
+  events?: any[];
+  onRefresh: () => void;
+  loading: boolean;
+}) => {
+  const activeIdx = activeStepIndexFromStatus(status);
+  const progressPct =
+    TRACK_STEPS.length === 1 ? 0 : (activeIdx / (TRACK_STEPS.length - 1)) * 100;
+
+  return (
+    <div className="space-y-5">
+      {/* Progress Card */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 md:px-6 md:py-5 flex items-center justify-between">
+          <div>
+            <div className="text-sm text-gray-500">Tracking reference</div>
+            <div className="text-lg font-extrabold tracking-tight text-gray-900 font-heading">
+              {trackingRef}
+            </div>
+          </div>
+
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 transition disabled:opacity-60"
+            title="Refresh tracking"
+          >
+            <RefreshCcw
+              size={16}
+              className={`${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </button>
+        </div>
+
+        <div className="px-5 pb-5 md:px-6 md:pb-6">
+          {/* Progress line */}
+          <div className="relative mt-2">
+            <div className="h-[2px] bg-gray-200 rounded-full" />
+            <div
+              className="absolute top-0 left-0 h-[2px] bg-belims-blue rounded-full transition-[width] duration-500 ease-out"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+
+          {/* Steps */}
+          <div className="mt-6 grid grid-cols-5 gap-2 md:gap-4">
+            {TRACK_STEPS.map((step, idx) => {
+              const Icon = step.Icon;
+              const isDone = idx < activeIdx;
+              const isActive = idx === activeIdx;
+
+              return (
+                <div key={step.key} className="flex flex-col items-center">
+                  <div
+                    className={[
+                      "relative flex h-12 w-12 items-center justify-center rounded-full transition-all",
+                      isDone
+                        ? "bg-belims-blue text-white shadow-sm"
+                        : isActive
+                          ? "bg-white border-2 border-belims-blue text-belims-blue shadow-sm"
+                          : "bg-gray-100 text-gray-400",
+                    ].join(" ")}
+                    style={
+                      isActive
+                        ? ({
+                            animation: "softPulse 2.6s ease-in-out infinite",
+                          } as React.CSSProperties)
+                        : undefined
+                    }
+                  >
+                    <Icon size={20} />
+                  </div>
+
+                  <div className="mt-3 text-[11px] md:text-xs font-bold uppercase tracking-wide text-gray-600 text-center">
+                    {step.label}
+                  </div>
+
+                  {/* Optional: show created timestamp under first step if we have it */}
+                  {idx === 0 && events?.length ? (
+                    <div className="mt-1 text-[11px] text-gray-500 tabular-nums text-center">
+                      {pickEventTime(events[0])}
+                    </div>
+                  ) : (
+                    <div className="mt-1 h-[14px]" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Shipping details */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 md:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-lg font-extrabold text-gray-900 font-heading">
+              Shipping details
+            </div>
+            <div className="mt-1 text-sm text-gray-600">
+              Live updates from Bob Go
+            </div>
+          </div>
+
+          <div className="shrink-0">
+            <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-belims-blue">
+              {status || "—"}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="rounded-xl border border-gray-100 p-4">
+            <div className="text-gray-500">Shipment</div>
+            <div className="font-bold text-gray-900">{trackingRef}</div>
+
+            {details?.orderNo && (
+              <>
+                <div className="mt-3 text-gray-500">Order</div>
+                <div className="font-bold text-gray-900">{details.orderNo}</div>
+              </>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-gray-100 p-4">
+            {details?.serviceLevel && (
+              <>
+                <div className="text-gray-500">Service level</div>
+                <div className="font-bold text-gray-900">
+                  {details.serviceLevel}
+                </div>
+              </>
+            )}
+
+            {details?.courier && (
+              <>
+                <div className="mt-3 text-gray-500">Courier</div>
+                <div className="font-bold text-gray-900">{details.courier}</div>
+              </>
+            )}
+
+            {eta && (
+              <>
+                <div className="mt-3 text-gray-500">Estimated delivery</div>
+                <div className="font-bold text-gray-900 tabular-nums">
+                  {formatEta(eta)}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Events list (optional but looks pro) */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 md:p-6">
+        <div className="text-lg font-extrabold text-gray-900 font-heading">
+          Tracking events
+        </div>
+
+        {Array.isArray(events) && events.length > 0 ? (
+          <div className="mt-4 space-y-3">
+            {events.map((ev, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border border-gray-100 p-4 transition-all duration-200"
+                style={{
+                  opacity: 1,
+                  transform: "translateY(0px)",
+                  transitionDelay: `${idx * 60}ms`,
+                }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="font-bold text-gray-900">
+                    {pickEventLabel(ev)}
+                  </div>
+                  <div className="text-xs text-gray-500 tabular-nums">
+                    {pickEventTime(ev)}
+                  </div>
+                </div>
+
+                {pickEventLocation(ev) ? (
+                  <div className="mt-1 text-sm text-gray-600">
+                    {pickEventLocation(ev)}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-gray-500">No tracking events yet.</p>
+        )}
+      </div>
+
+      {/* CSS keyframes (once) */}
+      <style>{`
+        @keyframes softPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(30, 64, 175, .18); }
+          50% { box-shadow: 0 0 0 10px rgba(30, 64, 175, 0); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 const TrackOrderPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -473,7 +803,7 @@ const TrackOrderPage = () => {
       track(urlOrder.trim());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [urlOrder]);
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-[60vh]">
@@ -505,41 +835,36 @@ const TrackOrderPage = () => {
 
         {result && (
           <div className="mt-6">
-            <div className="text-sm text-gray-700">
-              <div>
-                <span className="font-bold">Status:</span>{" "}
-                {result.status || "—"}
-              </div>
-              <div>
-                <span className="font-bold">Tracking ref:</span>{" "}
-                {result.trackingRef || urlOrder}
-              </div>
-              {result.eta && (
-                <div>
-                  <span className="font-bold">ETA:</span> {result.eta}
-                </div>
-              )}
-            </div>
-
-            {Array.isArray(result.events) && result.events.length > 0 ? (
-              <div className="mt-4 space-y-2">
-                {result.events.map((ev: any, idx: number) => (
-                  <div key={idx} className="border rounded-lg p-3">
-                    <div className="text-sm font-bold">
-                      {ev.label || ev.status}
-                    </div>
-                    <div className="text-xs text-gray-500">{ev.time}</div>
-                    {ev.location && (
-                      <div className="text-xs text-gray-600">{ev.location}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-4 text-sm text-gray-500">
-                No tracking events yet.
-              </p>
-            )}
+            <TrackingProgressCard
+              trackingRef={result.trackingRef || urlOrder || orderNumber}
+              status={result.status}
+              eta={result.eta}
+              details={{
+                // If your WP endpoint returns these later, plug them in.
+                // For now you can keep them undefined or derive them from result.raw if present.
+                orderNo:
+                  result.raw?.order_number || result.raw?.order || undefined,
+                serviceLevel:
+                  result.raw?.service_level ||
+                  result.raw?.serviceLevel ||
+                  result.raw?.service ||
+                  undefined,
+                courier:
+                  result.raw?.courier || result.raw?.provider || undefined,
+                customer: result.raw?.customer || undefined,
+              }}
+              events={result.events || []}
+              loading={loading}
+              onRefresh={() => {
+                const v = (
+                  result.trackingRef ||
+                  urlOrder ||
+                  orderNumber ||
+                  ""
+                ).trim();
+                if (v) track(v);
+              }}
+            />
           </div>
         )}
       </div>
