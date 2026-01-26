@@ -416,21 +416,54 @@ const HomePage = ({
 };
 
 const TrackOrderPage = () => {
+  const [html, setHtml] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(
+          "https://cms.belims.co.za/wp-json/wp/v2/pages?slug=shipping-details",
+        );
+
+        if (!res.ok) {
+          throw new Error(`Failed to load tracking page (${res.status})`);
+        }
+
+        const data = await res.json();
+        const content = data?.[0]?.content?.rendered || "";
+        setHtml(content);
+      } catch (err: any) {
+        console.error("Failed to load tracking page", err);
+        setError("Unable to load tracking form. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-start pt-4 pb-10">
-      <h1 className="text-2xl md:text-3xl font-bold text-belims-blue font-heading mb-2 text-center">
+    <div className="container mx-auto px-4 py-8 min-h-[60vh]">
+      <h1 className="text-2xl md:text-3xl font-bold text-belims-blue font-heading mb-2">
         Track Your Order
       </h1>
-      <p className="text-sm md:text-base text-gray-600 max-w-xl text-center mb-4">
+      <p className="text-sm md:text-base text-gray-600 max-w-xl mb-4">
         Use the form below to view live tracking updates from Bob Go for your
         Belims order.
       </p>
-      <div className="w-full max-w-3xl h-[480px] md:h-[560px] rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
-        <iframe
-          title="BobGo Order Tracking"
-          src="https://cms.belims.co.za/shipping-details/"
-          className="w-full h-full border-0"
-        />
+
+      <div className="bg-white rounded-xl shadow border border-gray-200 p-4 md:p-6">
+        {loading && (
+          <p className="text-sm text-gray-500">Loading tracking form hellip;</p>
+        )}
+        {error && !loading && <p className="text-sm text-red-600">{error}</p>}
+        {!loading && !error && html && (
+          <div
+            className="prose max-w-none"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        )}
       </div>
     </div>
   );
