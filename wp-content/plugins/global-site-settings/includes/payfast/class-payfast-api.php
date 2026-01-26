@@ -152,14 +152,14 @@ class PayFast_API {
     /**
      * Generate PayFast Signature
      * 
-     * PayFast requires specific signature format:
-     * 1. Sort parameters alphabetically (including user_agent)
-     * 2. Build string as key=value&key=value...
-     * 3. URL encode values
-     * 4. Append &passphrase=PASSPHRASE
-     * 5. Take MD5 hash
+     * Based on the official WooCommerce PayFast plugin implementation
      * 
-     * NOTE: user_agent and passphrase are used ONLY for signature calculation, NOT sent in URL
+     * Steps:
+     * 1. Add passphrase to data before sorting
+     * 2. Sort keys alphabetically
+     * 3. Build string: key=urlencode(value)&key=urlencode(value)&...
+     * 4. Remove trailing &
+     * 5. MD5 hash
      */
     public static function generate_payfast_signature($data, $user_agent = '') {
         // Remove signature from data if present
@@ -170,25 +170,30 @@ class PayFast_API {
             $data['user_agent'] = $user_agent;
         }
 
-        // Sort keys alphabetically (PayFast requirement)
+        // Get passphrase from settings
+        $payfast_settings = get_option('woocommerce_payfast_settings', array());
+        
+        // Add passphrase BEFORE sorting (per official plugin)
+        if (!empty($payfast_settings['pass_phrase'])) {
+            $data['passphrase'] = $payfast_settings['pass_phrase'];
+        }
+
+        // Sort keys alphabetically
         ksort($data);
 
-        // Build signature string with proper URL encoding
-        $signature_parts = array();
+        // Build signature string using urlencode (per official plugin)
+        $parameter_string = '';
         foreach ($data as $key => $value) {
-            // Use rawurlencode for proper encoding
-            $signature_parts[] = $key . '=' . rawurlencode((string)$value);
+            // Skip empty values and signature field
+            if (!empty($value) && $key !== 'signature') {
+                $parameter_string .= $key . '=' . urlencode((string)$value) . '&';
+            }
         }
 
-        $signature_string = implode('&', $signature_parts);
+        // Remove trailing ampersand
+        $parameter_string = rtrim($parameter_string, '&');
 
-        // Add passphrase if available (from settings, not from data array)
-        $payfast_settings = get_option('woocommerce_payfast_settings', array());
-        if (!empty($payfast_settings['pass_phrase'])) {
-            $signature_string .= '&passphrase=' . rawurlencode($payfast_settings['pass_phrase']);
-        }
-
-        return md5($signature_string);
+        return md5($parameter_string);
     }
 
     /**
@@ -324,7 +329,7 @@ class PayFast_API {
     /**
      * Verify ITN Signature
      * 
-     * PayFast sends signature verification in same format as we generate it
+     * Matches the official WooCommerce PayFast plugin implementation
      */
     public static function verify_itn_signature($data) {
         $payfast_settings = get_option('woocommerce_payfast_settings', array());
@@ -338,26 +343,28 @@ class PayFast_API {
 
         // Remove signature from data
         unset($data['signature']);
-        unset($data['user_agent']);
+
+        // Add passphrase BEFORE sorting (per official plugin)
+        if (!empty($payfast_settings['pass_phrase'])) {
+            $data['passphrase'] = $payfast_settings['pass_phrase'];
+        }
 
         // Sort keys alphabetically
         ksort($data);
 
-        // Build signature string with proper URL encoding
-        $signature_parts = array();
+        // Build parameter string using urlencode
+        $parameter_string = '';
         foreach ($data as $key => $value) {
-            // Use rawurlencode for proper encoding
-            $signature_parts[] = $key . '=' . rawurlencode((string)$value);
+            // Skip empty values
+            if (!empty($value)) {
+                $parameter_string .= $key . '=' . urlencode((string)$value) . '&';
+            }
         }
 
-        $signature_string = implode('&', $signature_parts);
+        // Remove trailing ampersand
+        $parameter_string = rtrim($parameter_string, '&');
 
-        // Add passphrase
-        if (!empty($payfast_settings['pass_phrase'])) {
-            $signature_string .= '&passphrase=' . rawurlencode($payfast_settings['pass_phrase']);
-        }
-
-        $expected_signature = md5($signature_string);
+        $expected_signature = md5($parameter_string);
 
         return hash_equals($signature, $expected_signature);
     }
