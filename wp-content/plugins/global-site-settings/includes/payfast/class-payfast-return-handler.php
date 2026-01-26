@@ -123,19 +123,18 @@ class PayFast_Return_Handler {
         // Detect frontend URL
         $frontend_url = self::get_frontend_url();
 
+        $pf_payment_id = isset($_GET['pf_payment_id']) ? sanitize_text_field($_GET['pf_payment_id']) : '';
+
         // Build return parameters
         $params = array(
             'order_id' => $order_id,
             'payment_status' => $success ? 'complete' : $status,
+            'pf_payment_id' => $pf_payment_id,
             'timestamp' => current_time('timestamp'),
+            'return_source' => 'payfast',
         );
 
-        // Add success/error path
-        if ($success) {
-            return $frontend_url . '/order-confirmation?' . http_build_query($params);
-        } else {
-            return $frontend_url . '/checkout?' . http_build_query($params) . '&error=payment_failed';
-        }
+        return $frontend_url . '/checkout?' . http_build_query($params);
     }
 
     /**

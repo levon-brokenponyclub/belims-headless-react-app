@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -985,6 +985,11 @@ export default function App() {
   const removeItem = (id: string) =>
     setCartItems((prev) => prev.filter((item) => item.id !== id));
 
+  const clearCart = useCallback(() => {
+    setCartItems([]);
+    setIsCartOpen(false);
+  }, []);
+
   const addToCompare = (product: Product) => {
     setComparisonList((prev) => {
       if (prev.find((p) => p.id === product.id)) return prev;
@@ -1072,6 +1077,7 @@ export default function App() {
         handleBuyNow={handleBuyNow}
         updateQuantity={updateQuantity}
         removeItem={removeItem}
+        clearCart={clearCart}
         comparisonList={comparisonList}
         addToCompare={addToCompare}
         removeFromCompare={removeFromCompare}
@@ -1199,13 +1205,7 @@ function InnerApp(props) {
               <Checkout
                 cartItems={props.cartItems}
                 onBack={() => navigate(-1)}
-                onClearCart={() => {
-                  // You might need to expose clearCart from App or just empty items
-                  // For now, assuming direct prop passed down if Checkout used it,
-                  // but App.tsx original didn't pass clearCart directly, it did inline.
-                  // Ideally pass a clearCart handler from App state.
-                  navigate("/");
-                }}
+                onClearCart={props.clearCart}
               />
             }
           />

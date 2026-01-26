@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { CartItem, Product } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import {
   getShippingRates,
   getFallbackShipping,
 } from "../services/bobGoService";
-import { createWooOrder, initializePayment } from "../services/paymentService";
+import {
+  createWooOrder,
+  initializePayment,
+  verifyPayment,
+} from "../services/paymentService";
 import { ArrowLeft, Check, Truck, CreditCard, Loader2 } from "lucide-react";
 
 interface CheckoutProps {
@@ -32,8 +37,19 @@ export const Checkout: React.FC<CheckoutProps> = ({
   onBack,
   onClearCart,
 }) => {
-  const [step, setStep] = useState<CheckoutStep>("details");
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnOrderId = searchParams.get("order_id");
+  const returnSource = searchParams.get("return_source");
+  const isReturnFlow = Boolean(returnOrderId);
+
+  const [step, setStep] = useState<CheckoutStep>(
+    returnOrderId ? "payment" : "details",
+  );
   const [loading, setLoading] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(
+    null,
+  );
 
   // Form State
   const [customer, setCustomer] = useState<CustomerDetails>({
@@ -58,6 +74,72 @@ export const Checkout: React.FC<CheckoutProps> = ({
   );
   const shippingCost = selectedShipping ? selectedShipping.total_price : 0;
   const total = subtotal + shippingCost;
+
+  useEffect(() => {
+    if (!returnOrderId) return;
+
+    let cancelled = false;
+    let timeoutId: number | undefined;
+    let attempts = 0;
+    const maxAttempts = 8;
+    const delayMs = 2500;
+
+    const verify = async () => {
+      attempts += 1;
+      try {
+        const res = await verifyPayment(returnOrderId);
+
+        if (cancelled) return;
+
+        if (res.success) {
+          const ts = Math.floor(Date.now() / 1000);
+          onClearCart();
+          navigate(
+            `/order-confirmation?order_id=${encodeURIComponent(returnOrderId)}&payment_status=complete&timestamp=${ts}`,
+            { replace: true },
+          );
+          return;
+        }
+
+        if (attempts >= maxAttempts) {
+          setLoading(false);
+          setVerificationMessage(
+            "Payment is still pending. We'll update your order as soon as PayFast confirms it.",
+          );
+          return;
+        }
+      } catch (error) {
+        if (cancelled) return;
+
+        if (attempts >= maxAttempts) {
+          setLoading(false);
+          setVerificationMessage(
+            "We couldn't confirm your payment yet. Please try again in a few minutes.",
+          );
+          return;
+        }
+      }
+
+      timeoutId = window.setTimeout(verify, delayMs);
+    };
+
+    setStep("payment");
+    setLoading(true);
+    setVerificationMessage(null);
+    verify();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [returnOrderId, navigate, onClearCart]);
+
+  const handleBack = isReturnFlow ? () => navigate("/") : onBack;
+  const paymentProviderLabel = returnSource
+    ? returnSource.toUpperCase()
+    : "PAYFAST";
 
   // STEP 1: Details Submit -> Fetch Shipping
   const handleDetailsSubmit = async (e: React.FormEvent) => {
@@ -132,11 +214,11 @@ export const Checkout: React.FC<CheckoutProps> = ({
   };
 
   // RENDER HELPERS
-  if (cartItems.length === 0 && step !== "success") {
+  if (cartItems.length === 0 && step !== "success" && !isReturnFlow) {
     return (
       <div className="p-10 text-center">
         Your cart is empty.{" "}
-        <button onClick={onBack} className="text-blue-600 underline">
+        <button onClick={handleBack} className="text-blue-600 underline">
           Go Back
         </button>
       </div>
@@ -149,7 +231,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
       <div className="flex items-center gap-4 mb-8 pb-4 border-b">
         {step !== "success" && (
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="p-2 hover:bg-gray-100 rounded-full"
           >
             <ArrowLeft />
@@ -158,7 +240,8 @@ export const Checkout: React.FC<CheckoutProps> = ({
         <h1 className="text-2xl font-bold font-heading">
           {step === "details" && "Customer Details"}
           {step === "shipping" && "Shipping Method"}
-          {step === "payment" && "Review & Payment"}
+          {step === "payment" &&
+            (isReturnFlow ? "Verifying Payment" : "Review & Payment")}
           {step === "success" && "Order Confirmed"}
         </h1>
       </div>
@@ -309,38 +392,61 @@ export const Checkout: React.FC<CheckoutProps> = ({
             </div>
           )}
 
-          {step === "payment" && (
-            <div className="space-y-6">
-              <div className="bg-gray-50 p-4 rounded border">
-                <h3 className="font-bold mb-2">Order Summary</h3>
-                <p className="text-sm">
-                  Ship to: {customer.firstName} {customer.lastName},{" "}
-                  {customer.address}
-                </p>
-                <p className="text-sm">
-                  Method: {selectedShipping.service_name}
+          {step === "payment" &&
+            (isReturnFlow ? (
+              <div className="space-y-6">
+                <div className="bg-gray-50 p-4 rounded border">
+                  <h3 className="font-bold mb-2">Verifying Payment</h3>
+                  <p className="text-sm text-gray-600">
+                    {loading
+                      ? `We're confirming your payment with ${paymentProviderLabel}.`
+                      : verificationMessage ||
+                        "Payment is still pending. Please check back in a few minutes."}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Order ID: {returnOrderId}
+                  </p>
+                </div>
+
+                {loading && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Loader2 className="animate-spin" />
+                    Checking payment status...
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="bg-gray-50 p-4 rounded border">
+                  <h3 className="font-bold mb-2">Order Summary</h3>
+                  <p className="text-sm">
+                    Ship to: {customer.firstName} {customer.lastName},{" "}
+                    {customer.address}
+                  </p>
+                  <p className="text-sm">
+                    Method: {selectedShipping.service_name}
+                  </p>
+                </div>
+
+                <button
+                  onClick={handlePlaceOrder}
+                  disabled={loading}
+                  className="w-full bg-green-600 text-white text-xl font-bold p-5 rounded hover:bg-green-700 flex justify-center items-center gap-2"
+                >
+                  {loading ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <>
+                      <CreditCard /> Pay {CURRENCY_SYMBOL}
+                      {total.toFixed(2)}
+                    </>
+                  )}
+                </button>
+                <p className="text-center text-xs text-gray-400">
+                  Secure Payment via PayFast/Yoco
                 </p>
               </div>
-
-              <button
-                onClick={handlePlaceOrder}
-                disabled={loading}
-                className="w-full bg-green-600 text-white text-xl font-bold p-5 rounded hover:bg-green-700 flex justify-center items-center gap-2"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <>
-                    <CreditCard /> Pay {CURRENCY_SYMBOL}
-                    {total.toFixed(2)}
-                  </>
-                )}
-              </button>
-              <p className="text-center text-xs text-gray-400">
-                Secure Payment via PayFast/Yoco
-              </p>
-            </div>
-          )}
+            ))}
 
           {step === "success" && (
             <div className="text-center py-12">

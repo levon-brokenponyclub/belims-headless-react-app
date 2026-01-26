@@ -5,18 +5,19 @@ import { getApiBaseUrl } from "../services/wooCommerceService";
 
 interface OrderDetails {
   id: number;
-  order_number: string;
+  order_number?: string;
+  order_key?: string;
   status: string;
   total: string;
-  currency: string;
-  payment_method: string;
-  date_created: string;
-  billing: {
-    first_name: string;
-    last_name: string;
-    email: string;
+  currency?: string;
+  payment_method?: string;
+  date_created?: string;
+  billing?: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
   };
-  line_items: Array<{
+  line_items?: Array<{
     id: number;
     name: string;
     quantity: number;
@@ -35,10 +36,11 @@ export const OrderConfirmation: React.FC = () => {
   const orderId = searchParams.get("order_id");
   const paymentStatus = searchParams.get("payment_status");
   const timestamp = searchParams.get("timestamp");
+  const returnSource = searchParams.get("return_source");
 
-  const fetchOrder = async () => {
+  const fetchOrder = async (id: string) => {
     const apiUrl = getApiBaseUrl();
-    const response = await fetch(`${apiUrl}/belims/v1/orders/${orderId}`, {
+    const response = await fetch(`${apiUrl}/belims/v1/orders/${id}`, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -61,7 +63,7 @@ export const OrderConfirmation: React.FC = () => {
     }
 
     setLoading(true);
-    fetchOrder()
+    fetchOrder(orderId)
       .then((data) => {
         setOrder(data);
         setError(null);
@@ -89,12 +91,12 @@ export const OrderConfirmation: React.FC = () => {
 
     // Poll every 3 seconds, max 20 times (60 seconds total)
     if (pollCount >= 20) {
-      return; // Stop polling after 60 seconds
+        return; // Stop polling after 60 seconds
     }
 
     const timer = setTimeout(async () => {
       try {
-        const data = await fetchOrder();
+        const data = await fetchOrder(orderId);
         setOrder(data);
         // If status changed to processing/completed, stop polling
         if (data.status !== "processing" && data.status !== "completed") {
@@ -175,6 +177,20 @@ export const OrderConfirmation: React.FC = () => {
     paymentStatus === "complete" ||
     order.status === "processing" ||
     order.status === "completed";
+  const orderNumber = order.order_number || order.id;
+  const orderDate = order.date_created
+    ? new Date(order.date_created)
+    : timestamp
+      ? new Date(parseInt(timestamp) * 1000)
+      : null;
+  const lineItems = order.line_items || [];
+  const hasBilling =
+    Boolean(order.billing?.first_name) ||
+    Boolean(order.billing?.last_name) ||
+    Boolean(order.billing?.email);
+  const paymentMethodLabel =
+    order.payment_method ||
+    (returnSource ? returnSource.toUpperCase() : "Online Payment");
 
   return (
     <div className="py-12">
@@ -226,15 +242,17 @@ export const OrderConfirmation: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-gray-600">Order Number:</span>
                 <span className="font-bold text-gray-900">
-                  #{order.order_number}
+                  #{orderNumber}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Order Date:</span>
-                <span className="text-gray-900">
-                  {new Date(order.date_created).toLocaleDateString()}
-                </span>
-              </div>
+              {orderDate && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Order Date:</span>
+                  <span className="text-gray-900">
+                    {orderDate.toLocaleDateString()}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
                 <span
@@ -253,7 +271,7 @@ export const OrderConfirmation: React.FC = () => {
               </div>
               <div className="flex justify-between pt-3 border-t border-gray-200">
                 <span className="text-gray-600">Payment Method:</span>
-                <span className="text-gray-900">{order.payment_method}</span>
+                <span className="text-gray-900">{paymentMethodLabel}</span>
               </div>
               {timestamp && (
                 <div className="flex justify-between text-xs text-gray-500">
@@ -271,22 +289,28 @@ export const OrderConfirmation: React.FC = () => {
             <h2 className="text-xl font-bold text-gray-900 mb-4">
               Items Ordered
             </h2>
-            <div className="space-y-3">
-              {order.line_items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex justify-between py-3 border-b border-gray-100 last:border-b-0"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{item.name}</p>
-                    <p className="text-sm text-gray-500">
-                      Quantity: {item.quantity}
-                    </p>
+            {lineItems.length > 0 ? (
+              <div className="space-y-3">
+                {lineItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex justify-between py-3 border-b border-gray-100 last:border-b-0"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900">{item.name}</p>
+                      <p className="text-sm text-gray-500">
+                        Quantity: {item.quantity}
+                      </p>
+                    </div>
+                    <p className="font-bold text-gray-900">{item.total}</p>
                   </div>
-                  <p className="font-bold text-gray-900">{item.total}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Item details will appear once your order is fully confirmed.
+              </p>
+            )}
           </div>
 
           {/* Billing Info */}
@@ -294,14 +318,22 @@ export const OrderConfirmation: React.FC = () => {
             <h2 className="text-xl font-bold text-gray-900 mb-4">
               Billing Details
             </h2>
-            <div className="space-y-2 text-sm">
-              <p className="text-gray-900">
-                <span className="font-medium">
-                  {order.billing.first_name} {order.billing.last_name}
-                </span>
+            {hasBilling ? (
+              <div className="space-y-2 text-sm">
+                <p className="text-gray-900">
+                  <span className="font-medium">
+                    {order.billing?.first_name} {order.billing?.last_name}
+                  </span>
+                </p>
+                {order.billing?.email && (
+                  <p className="text-gray-600">{order.billing.email}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Billing details will appear once your order is confirmed.
               </p>
-              <p className="text-gray-600">{order.billing.email}</p>
-            </div>
+            )}
           </div>
         </div>
 
@@ -311,9 +343,11 @@ export const OrderConfirmation: React.FC = () => {
             <h3 className="font-bold mb-4 text-lg">Order Total</h3>
             <div className="space-y-3">
               <div className="text-2xl font-bold">{order.total}</div>
-              <div className="text-sm text-blue-100 opacity-75">
-                Currency: {order.currency.toUpperCase()}
-              </div>
+              {order.currency && (
+                <div className="text-sm text-blue-100 opacity-75">
+                  Currency: {order.currency.toUpperCase()}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 pt-6 border-t border-blue-300">
