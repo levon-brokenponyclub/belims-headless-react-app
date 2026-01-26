@@ -1,5 +1,5 @@
-// Basic BobGo Integration Skeleton
-// Docs: https://docs.bobgo.co.za/ (Hypothetical, usually REST based)
+// BobGo Integration via WooCommerce Proxy
+// Uses the WooCommerce shipping calculator with configured BobGo plugin
 
 interface ShippingQuoteParams {
   destination_address: {
@@ -22,12 +22,7 @@ interface ShippingRate {
   expected_delivery_date?: string;
 }
 
-const BOBGO_API_URL =
-  import.meta.env.VITE_BOBGO_API_URL || "https://api.bobgo.co.za/v2";
-const BOBGO_API_KEY = import.meta.env.VITE_BOBGO_API_KEY;
-const BOBGO_CHANNEL_ID = import.meta.env.VITE_BOBGO_CHANNEL_ID;
-
-// Use Netlify proxy for REST API calls
+// Use Netlify proxy for REST API calls (proxies to WooCommerce)
 const API_BASE_URL = "/api/belims/v1";
 
 // Development/fallback free shipping option
