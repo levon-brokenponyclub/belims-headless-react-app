@@ -15,10 +15,25 @@ if (!defined('ABSPATH')) {
  * Render BobGo shipping settings tab content
  */
 function render_bobgo_shipping_settings_tab() {
-    // Get current settings
-    $bobgo_environment = get_option('bobgo_environment', 'sandbox');
-    $bobgo_api_token = get_option('bobgo_api_token', '');
-    $bobgo_auto_create = get_option('bobgo_auto_create_shipments', false);
+    $current_environment = get_option('bobgo_environment', 'sandbox');
+    $saved_token = get_option('bobgo_api_token', '');
+    $env_token = getenv('BOBGO_SANDBOX_API_KEY');
+
+    if (isset($_POST['save_bobgo_settings']) && check_admin_referer('save_bobgo_settings_action', 'bobgo_settings_nonce')) {
+        $environment = sanitize_text_field($_POST['bobgo_environment'] ?? 'sandbox');
+        $environment = in_array($environment, array('sandbox', 'production'), true) ? $environment : 'sandbox';
+        $api_token = sanitize_text_field($_POST['bobgo_api_token'] ?? '');
+
+        update_option('bobgo_environment', $environment);
+        update_option('bobgo_api_token', $api_token);
+
+        $current_environment = $environment;
+        $saved_token = $api_token;
+
+        echo '<div class="notice notice-success inline" style="margin-bottom: 20px;"><p>✅ BobGo settings saved.</p></div>';
+    }
+
+    $using_env_var = ($current_environment === 'sandbox' && !empty($env_token));
     ?>
     
     <div class="bpc-card">
@@ -26,94 +41,63 @@ function render_bobgo_shipping_settings_tab() {
             <h2 class="bpc-card-title">BobGo Shipping Integration</h2>
             <p class="bpc-card-description">Configure BobGo shipping for real-time rates and shipment management.</p>
         </div>
-        <div style="padding: 30px;">
-            <form method="post" action="options.php">
-                <?php settings_fields('global_site_settings_bobgo'); ?>
-                
-                <table class="bpc-modern-table">
+        <div style="padding: 30px; display: grid; gap: 20px;">
+            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; border-left: 4px solid var(--belims-blue);">
+                <p style="margin: 0; line-height: 1.7;">
+                    The official BobGo WooCommerce plugin is active and handles checkout rates and shipping on production.
+                    <br>Use this form to choose Sandbox vs Production for the custom API wrapper and, if needed, store a Sandbox API token locally.
+                    <br><br><strong>Notes:</strong>
+                    <br>- If the environment variable <code>BOBGO_SANDBOX_API_KEY</code> is set, it will be used for Sandbox instead of the saved token.
+                    <br>- Production remains served via the official plugin; do not store production keys here.
+                </p>
+            </div>
+
+            <form method="post" action="" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px;">
+                <?php wp_nonce_field('save_bobgo_settings_action', 'bobgo_settings_nonce'); ?>
+                <table class="form-table" role="presentation">
                     <tr>
-                        <th><label>Environment</label></th>
+                        <th scope="row"><label for="bobgo-environment">Environment</label></th>
                         <td>
-                            <label style="margin-right: 20px;">
-                                <input type="radio" name="bobgo_environment" value="sandbox" <?php checked($bobgo_environment, 'sandbox'); ?>>
-                                Sandbox (Testing)
-                            </label>
-                            <label>
-                                <input type="radio" name="bobgo_environment" value="production" <?php checked($bobgo_environment, 'production'); ?>>
-                                Production (Live)
-                            </label>
-                            <p class="description">
-                                Use sandbox for testing. Register at 
-                                <a href="https://sandbox.bobgo.co.za/" target="_blank">sandbox.bobgo.co.za</a>
-                            </p>
+                            <select name="bobgo_environment" id="bobgo-environment">
+                                <option value="sandbox" <?php selected($current_environment, 'sandbox'); ?>>Sandbox</option>
+                                <option value="production" <?php selected($current_environment, 'production'); ?>>Production</option>
+                            </select>
+                            <p class="description" style="margin-top: 6px;">Sandbox is recommended for testing via the headless rates endpoint.</p>
                         </td>
                     </tr>
                     <tr>
-                        <th><label for="bobgo_api_token">API Bearer Token</label></th>
+                        <th scope="row"><label for="bobgo-api-token">Sandbox API Key</label></th>
                         <td>
-                            <input type="password" 
-                                   id="bobgo_api_token" 
-                                   name="bobgo_api_token" 
-                                   value="<?php echo esc_attr($bobgo_api_token); ?>" 
-                                   class="regular-text"
-                                   placeholder="Enter your BobGo API token">
-                            <p class="description">
-                                Get your token from BobGo Settings → API Keys
-                            </p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label>Connection Status</label></th>
-                        <td>
-                            <button type="button" id="test-bobgo-connection" class="button button-secondary">
-                                Test Connection
-                            </button>
-                            <span id="bobgo-connection-status" style="margin-left: 10px;"></span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="bobgo_auto_create">Auto-Create Shipments</label></th>
-                        <td>
-                            <label class="bpc-switch">
-                                <input type="checkbox" 
-                                       id="bobgo_auto_create" 
-                                       name="bobgo_auto_create_shipments" 
-                                       value="1" 
-                                       <?php checked($bobgo_auto_create, true); ?>>
-                                <span class="bpc-slider"></span>
-                            </label>
-                            <p class="description">
-                                Automatically create shipments when orders are marked as processing
+                            <input type="password" name="bobgo_api_token" id="bobgo-api-token" class="regular-text" autocomplete="new-password" value="<?php echo esc_attr($saved_token); ?>" />
+                            <p class="description" style="margin-top: 6px;">
+                                Stored in the WordPress options table. <?php echo $using_env_var ? 'Currently using the environment variable value.' : 'Used when no environment variable is present.'; ?>
                             </p>
                         </td>
                     </tr>
                 </table>
-                
-                <div class="bpc-submit-bar">
-                    <input type="submit" name="submit" class="button-primary" value="Save BobGo Settings" />
-                </div>
+
+                <p class="submit" style="margin-top: 10px;">
+                    <input type="submit" name="save_bobgo_settings" id="save-bobgo-settings" class="button button-primary" value="Save BobGo Settings" />
+                </p>
             </form>
-            
-            <div style="margin-top: 40px; padding-top: 40px; border-top: 2px solid #e5e7eb;">
-                <h3 style="margin-bottom: 20px;">📚 Quick Setup Guide</h3>
-                <div style="background: #f9fafb; padding: 20px; border-radius: 8px; border-left: 4px solid var(--belims-blue);">
-                    <ol style="margin: 0; padding-left: 20px; line-height: 1.8;">
-                        <li><strong>Register:</strong> Create account at <a href="https://sandbox.bobgo.co.za/" target="_blank">sandbox.bobgo.co.za</a></li>
-                        <li><strong>Get Token:</strong> Go to Settings → API Keys and copy your bearer token</li>
-                        <li><strong>Configure:</strong> Paste token above and test connection</li>
-                        <li><strong>Set Collection Address:</strong> Add your warehouse/store address in BobGo dashboard</li>
-                        <li><strong>Enable Shipping Method:</strong> Go to WooCommerce → Settings → Shipping and enable BobGo</li>
-                        <li><strong>Test:</strong> Process a test order to verify end-to-end flow</li>
-                    </ol>
-                </div>
-                
-                <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <a href="https://api-docs.bob.co.za/bobgo" target="_blank" class="button button-secondary" style="text-align: center;">
-                        📖 API Documentation
-                    </a>
-                    <a href="<?php echo admin_url('admin.php?page=wc-settings&tab=shipping'); ?>" class="button button-secondary" style="text-align: center;">
-                        ⚙️ Shipping Settings
-                    </a>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <a href="<?php echo admin_url('admin.php?page=wc-settings&tab=shipping'); ?>" class="button button-secondary" style="text-align: center;">
+                    ⚙️ WooCommerce Shipping Settings
+                </a>
+                <a href="https://api-docs.bob.co.za/bobgo" target="_blank" class="button button-secondary" style="text-align: center;">
+                    📖 BobGo Docs
+                </a>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; display: grid; gap: 10px;">
+                <div style="font-weight: 600;">Connection Test</div>
+                <p style="margin: 0; color: #475569;">
+                    Runs the built-in AJAX test using the selected environment and the resolved token (env var wins for sandbox).
+                </p>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" id="test-bobgo-connection" class="button button-secondary">Test Connection</button>
+                    <span id="bobgo-connection-status" style="font-size: 13px; color: #475569;"></span>
                 </div>
             </div>
         </div>

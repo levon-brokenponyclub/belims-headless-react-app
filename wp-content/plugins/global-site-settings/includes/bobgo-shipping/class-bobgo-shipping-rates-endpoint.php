@@ -57,6 +57,10 @@ class BobGo_Shipping_Rates_Endpoint {
                     'required' => false,
                     'type' => 'array',
                 ),
+                'environment' => array(
+                    'required' => false,
+                    'type' => 'string',
+                ),
             ),
         ));
     }
@@ -70,6 +74,14 @@ class BobGo_Shipping_Rates_Endpoint {
     public function get_shipping_rates($request) {
         $destination = $request->get_param('destination_address');
         $parcels = $request->get_param('parcels');
+        $requested_env = $request->get_param('environment');
+
+        // Allow caller to force sandbox/production; defaults to saved option
+        $env_override = null;
+        if (in_array($requested_env, array('sandbox', 'production'), true)) {
+            $env_override = $requested_env;
+            $this->bobgo_api = new BobGo_API($env_override);
+        }
         
         // Validate destination address
         if (empty($destination['street']) || empty($destination['city']) || empty($destination['postal_code'])) {
@@ -101,10 +113,8 @@ class BobGo_Shipping_Rates_Endpoint {
      * @return array|WP_Error
      */
     private function get_shipping_options($destination, $parcels = array()) {
-        // Check if BobGo is configured (single token setting, fallback to legacy ACF option)
-        $bobgo_token = get_option('bobgo_api_token', get_option('options_bobgo_api_key', ''));
-        
-        if (empty($bobgo_token)) {
+        // Check if BobGo is configured (env-aware; sandbox can come from env var)
+        if (!$this->bobgo_api->has_token()) {
             // BobGo not configured - return free shipping fallback
             return array(
                 array(
@@ -126,15 +136,12 @@ class BobGo_Shipping_Rates_Endpoint {
             // Log the error for debugging
             error_log('BobGo API error: ' . $bobgo_response->get_error_message());
             error_log('BobGo API request data: ' . json_encode($request_data));
-            
-            // BobGo is enabled but errored - return error (no fallback)
-            return array(
-                array(
-                    'service_code' => 'error',
-                    'service_name' => 'Shipping unavailable',
-                    'total_price' => 0,
-                    'expected_delivery_date' => 'Please contact support',
-                ),
+
+            // Propagate the error so the frontend can display a meaningful message
+            return new WP_Error(
+                'bobgo_api_error',
+                'BobGo error: ' . $bobgo_response->get_error_message(),
+                array('status' => 502)
             );
         }
         

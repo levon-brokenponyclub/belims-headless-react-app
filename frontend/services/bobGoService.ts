@@ -2,6 +2,7 @@
 // Docs: https://docs.bobgo.co.za/ (Hypothetical, usually REST based)
 
 interface ShippingQuoteParams {
+  environment?: "sandbox" | "production";
   destination_address: {
     street: string;
     city: string;
@@ -51,7 +52,10 @@ export const getShippingRates = async (
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(params),
+      body: JSON.stringify({
+        ...params,
+        environment: "sandbox", // force sandbox on headless checkout
+      }),
     });
 
     if (!response.ok) {

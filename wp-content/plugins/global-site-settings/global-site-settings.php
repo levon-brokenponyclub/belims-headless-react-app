@@ -191,7 +191,7 @@ function clear_ftg_credentials_handler() {
         wp_send_json_error('Unauthorized');
         return;
     }
-    
+
     // Clear all FTG-related ACF options
     update_field('ftg_email', '', 'option');
     update_field('ftg_password', '', 'option');
@@ -203,33 +203,6 @@ function clear_ftg_credentials_handler() {
     delete_option('belims_ftg_token_expiry');
     
     wp_send_json_success('FTG credentials cleared');
-}
-
-/**
- * AJAX handler to switch frontend environment
- */
-add_action('wp_ajax_switch_frontend_environment', 'switch_frontend_environment_handler');
-function switch_frontend_environment_handler() {
-    check_ajax_referer('switch_env_nonce', 'nonce');
-    
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Unauthorized');
-        return;
-    }
-    
-    $environment = sanitize_text_field($_POST['environment'] ?? 'production');
-    
-    if (!in_array($environment, ['production', 'development'])) {
-        wp_send_json_error('Invalid environment');
-        return;
-    }
-    
-    update_option('belims_frontend_environment', $environment);
-    
-    wp_send_json_success([
-        'message' => 'Environment switched to ' . $environment,
-        'cors_origin' => get_cors_origin()
-    ]);
 }
 
 /**
@@ -262,44 +235,26 @@ function test_bobgo_connection_handler() {
         return;
     }
     
-    $environment = get_option('bobgo_environment', 'sandbox');
-    $api_token = get_option('bobgo_api_token', '');
-    
-    if (empty($api_token)) {
+    if (!class_exists('BobGo_API')) {
+        wp_send_json_error('BobGo API not available');
+        return;
+    }
+
+    $api = new BobGo_API();
+
+    if (!$api->has_token()) {
         wp_send_json_error('API token is not configured');
         return;
     }
-    
-    $base_url = ($environment === 'production') 
-        ? 'https://api.bobgo.co.za/v2/' 
-        : 'https://api.sandbox.bobgo.co.za/v2/';
-    
-    // Test connection by fetching webhooks (simple endpoint that doesn't require data)
-    $response = wp_remote_get($base_url . 'webhooks', array(
-        'headers' => array(
-            'Authorization' => 'Bearer ' . $api_token,
-            'Accept' => 'application/json',
-        ),
-        'timeout' => 15,
-    ));
-    
-    if (is_wp_error($response)) {
-        wp_send_json_error('Connection failed: ' . $response->get_error_message());
+
+    $result = $api->test_connection();
+
+    if (is_wp_error($result)) {
+        wp_send_json_error('Connection failed: ' . $result->get_error_message());
         return;
     }
-    
-    $status_code = wp_remote_retrieve_response_code($response);
-    
-    if ($status_code === 200 || $status_code === 401) {
-        // 200 = authenticated success, 401 = connection works but auth failed
-        if ($status_code === 401) {
-            wp_send_json_error('Invalid API token');
-        } else {
-            wp_send_json_success('Connected to BobGo ' . ucfirst($environment) . ' successfully!');
-        }
-    } else {
-        wp_send_json_error('Unexpected response code: ' . $status_code);
-    }
+
+    wp_send_json_success('Connected to BobGo ' . ucfirst($api->get_environment()) . ' successfully!');
 }
 
 /**

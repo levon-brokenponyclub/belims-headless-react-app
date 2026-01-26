@@ -280,6 +280,16 @@ export const Checkout: React.FC<CheckoutProps> = ({
                   {customer.address}, {customer.city}
                 </strong>
               </p>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 text-amber-700 border border-amber-200 font-semibold">
+                  <span
+                    className="w-2 h-2 rounded-full bg-amber-500"
+                    aria-hidden
+                  />
+                  BobGo Sandbox
+                </span>
+                <span>Using sandbox rates for checkout testing.</span>
+              </div>
               {shippingRates.map((rate, idx) => (
                 <div
                   key={idx}

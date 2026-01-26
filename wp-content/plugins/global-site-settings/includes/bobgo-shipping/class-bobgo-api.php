@@ -36,11 +36,35 @@ class BobGo_API {
     /**
      * Constructor
      */
-    public function __construct() {
+    public function __construct($environment_override = null) {
         // Unified settings (fallback to legacy ACF option names for backward compatibility)
-        $this->environment = get_option('bobgo_environment', get_option('options_bobgo_environment', 'sandbox'));
-        $this->api_token = get_option('bobgo_api_token', get_option('options_bobgo_api_key', ''));
+        $this->environment = $environment_override ?: get_option('bobgo_environment', get_option('options_bobgo_environment', 'sandbox'));
+        // Sandbox can use an env var to avoid storing keys in the DB or UI
+        $sandbox_env_token = getenv('BOBGO_SANDBOX_API_KEY');
+        if ($this->environment === 'sandbox' && !empty($sandbox_env_token)) {
+            $this->api_token = $sandbox_env_token;
+        } else {
+            $this->api_token = get_option('bobgo_api_token', get_option('options_bobgo_api_key', ''));
+        }
         $this->base_url = $this->get_base_url();
+    }
+
+    /**
+     * Check if a token is available for the current environment
+     *
+     * @return bool
+     */
+    public function has_token() {
+        return !empty($this->api_token);
+    }
+
+    /**
+     * Get current environment
+     *
+     * @return string
+     */
+    public function get_environment() {
+        return $this->environment;
     }
     
     /**
