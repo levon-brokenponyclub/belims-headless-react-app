@@ -425,6 +425,7 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
   const [isPaintOpen, setIsPaintOpen] = useState(false);
+  const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => {
     const hasSeen = localStorage.getItem("hasSeenOnboarding");
     return !hasSeen;
@@ -605,6 +606,8 @@ export default function App() {
         setIsLocatorOpen={setIsLocatorOpen}
         isPaintOpen={isPaintOpen}
         setIsPaintOpen={setIsPaintOpen}
+        isTrackingOpen={isTrackingOpen}
+        setIsTrackingOpen={setIsTrackingOpen}
         isOnboardingOpen={isOnboardingOpen}
         setIsOnboardingOpen={setIsOnboardingOpen}
         selectedStore={selectedStore}
@@ -663,6 +666,7 @@ function InnerApp(props) {
         toggleCart={() => props.setIsCartOpen(true)}
         toggleStoreLocator={() => props.setIsLocatorOpen(true)}
         onOpenPaintAssistant={() => props.setIsPaintOpen(true)}
+        onOpenTrackOrder={() => props.setIsTrackingOpen(true)}
         onOpenOnboarding={() => props.setIsOnboardingOpen(true)}
         onCompare={props.addToCompare}
         products={props.products}
@@ -830,6 +834,34 @@ function InnerApp(props) {
                 Belims AI Paint Assistant
               </h2>
               <PaintAssistant />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {props.isTrackingOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
+            <button
+              onClick={() => props.setIsTrackingOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
+            >
+              <X size={24} />
+            </button>
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-2xl font-bold text-belims-blue font-heading">
+                Track Your Order
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Enter your details below to see live tracking from Bob Go.
+              </p>
+            </div>
+            <div className="flex-1 min-h-[400px]">
+              <iframe
+                title="BobGo Order Tracking"
+                src="https://cms.belims.co.za/shipping-details/"
+                className="w-full h-full border-0"
+              />
             </div>
           </div>
         </div>

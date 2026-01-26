@@ -50,6 +50,7 @@ interface HeaderProps {
   toggleCart: () => void;
   toggleStoreLocator: () => void;
   onOpenPaintAssistant: () => void;
+  onOpenTrackOrder: () => void;
   onOpenOnboarding: () => void;
   onCompare?: (product: Product) => void;
   products?: Product[];
@@ -61,6 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   toggleCart,
   toggleStoreLocator,
   onOpenPaintAssistant,
+  onOpenTrackOrder,
   onOpenOnboarding,
   onCompare,
   products = [],
@@ -377,6 +379,15 @@ export const Header: React.FC<HeaderProps> = ({
             <ChevronDown size={14} />
           </div>
 
+          {/* Track Your Order Button */}
+          <button
+            onClick={onOpenTrackOrder}
+            className="flex items-center gap-2 bg-white border border-belims-blue/40 text-belims-blue hover:bg-belims-blue hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading"
+          >
+            <Truck size={16} />
+            Track Your Order
+          </button>
+
           {/* Spacer pushes CTAs to the right */}
           <div className="flex-1" />
 
@@ -598,6 +609,19 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <div className="flex items-center gap-2 text-belims-accent font-bold font-heading">
                   <Sparkles size={18} /> Paint Assistant
+                </div>
+              </div>
+
+              {/* Mobile Track Your Order */}
+              <div
+                className="bg-white p-4 mb-2 border-b border-gray-100"
+                onClick={() => {
+                  onOpenTrackOrder();
+                  closeMobileMenu();
+                }}
+              >
+                <div className="flex items-center gap-2 text-belims-blue font-bold font-heading">
+                  <Truck size={18} /> Track Your Order
                 </div>
               </div>
 
