@@ -81,6 +81,7 @@ function global_site_settings_init() {
         'includes/bobgo-shipping/class-bobgo-shipping-rates-endpoint.php', // REST endpoint for headless frontend
         // PayFast Payment Gateway integration
         'includes/payfast/class-payfast-api.php',
+        'includes/payfast/class-payfast-return-handler.php', // PayFast return redirect
     ];
     foreach ($files as $file) {
         $path = GLOBAL_SITE_SETTINGS_PLUGIN_DIR . $file;
