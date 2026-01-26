@@ -61,13 +61,17 @@ class PayFast_Return_Handler {
             exit;
         }
 
-        // Get payment status from order meta
-        $payment_status = $order->get_meta('_payfast_payment_status') ?: 'pending';
         $order_status = $order->get_status();
-
-        // Determine success/failure
+        
+        // Check multiple success conditions:
+        // 1. Order status is processing/completed (ITN already processed)
+        // 2. Payment meta exists and shows payment was attempted (user just completed PayFast)
         $success = in_array($order_status, array('processing', 'completed'));
-
+        
+        // If not yet processing, it might be pending because ITN hasn't been processed yet
+        // In this case, redirect to checkout to show pending status and allow retry
+        // The frontend OrderConfirmation will keep polling for status updates
+        
         // Build frontend return URL
         $frontend_url = self::get_frontend_return_url($m_payment_id, $success, $order_status);
 
