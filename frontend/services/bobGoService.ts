@@ -2,17 +2,16 @@
 // Docs: https://docs.bobgo.co.za/ (Hypothetical, usually REST based)
 
 interface ShippingQuoteParams {
-  environment?: "sandbox" | "production";
   destination_address: {
-    street: string;
+    street?: string;
     city: string;
-    province: string;
+    province?: string;
     postal_code: string;
-    country: string;
+    country?: string;
   };
-  parcels: Array<{
-    weight: number; // in kg
-    dimensions: { length: number; width: number; height: number }; // in cm
+  items?: Array<{
+    product_id: number;
+    quantity: number;
   }>;
 }
 

@@ -78,7 +78,7 @@ function global_site_settings_init() {
         // 'includes/bobgo-shipping/class-bobgo-shipping-method.php', // Disabled - using official BobGo plugin for rates
         'includes/bobgo-shipping/class-bobgo-order-handler.php',
         'includes/bobgo-shipping/class-bobgo-webhook-endpoint.php',
-        'includes/bobgo-shipping/class-bobgo-shipping-rates-endpoint.php', // REST endpoint for headless frontend
+        'includes/bobgo-shipping/class-bobgo-shipping-proxy-endpoint.php', // Proxy endpoint using WC shipping calculator
         // PayFast Payment Gateway integration
         'includes/payfast/class-payfast-api.php',
         'includes/payfast/class-payfast-return-handler.php', // PayFast return redirect
