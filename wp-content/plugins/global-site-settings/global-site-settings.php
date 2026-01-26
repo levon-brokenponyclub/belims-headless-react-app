@@ -681,7 +681,36 @@ function global_site_settings_main_page() {
                         <button class="bpc-btn-primary" onclick="jQuery('.bpc-nav-item[data-tab=\'api-logs\']').click()">
                             View API Endpoints
                         </button>
+                        <button type="button" id="ftg-brand-count" class="bpc-btn-secondary">
+                            Check Ingco Count
+                        </button>
                     </p>
+                    <div id="ftg-brand-count-status" style="margin-top: 10px;"></div>
+
+                    <script>
+                    jQuery(document).ready(function($) {
+                        $('#ftg-brand-count').on('click', function() {
+                            var btn = $(this);
+                            var status = $('#ftg-brand-count-status');
+                            btn.prop('disabled', true).text('Checking...');
+                            status.text('Fetching Ingco total from FTG...');
+                            fetch('<?php echo rest_url('belims/v1/ftg/brand-count'); ?>?brand=Ingco')
+                                .then(function(r) { return r.json(); })
+                                .then(function(data) {
+                                    btn.prop('disabled', false).text('Check Ingco Count');
+                                    if (data && data.success) {
+                                        status.html('Ingco products available in FTG: <strong>' + data.total_unique + '</strong> (pages fetched: ' + (data.pages_fetched || 0) + ')');
+                                    } else {
+                                        status.text('Unable to fetch count: ' + (data && data.message ? data.message : 'Unknown error'));
+                                    }
+                                })
+                                .catch(function(err) {
+                                    btn.prop('disabled', false).text('Check Ingco Count');
+                                    status.text('Request failed: ' + err);
+                                });
+                        });
+                    });
+                    </script>
                 </div>
             </div>
 
