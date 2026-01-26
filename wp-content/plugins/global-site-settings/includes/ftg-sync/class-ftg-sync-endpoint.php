@@ -285,7 +285,7 @@ class Belims_FTG_Sync_Endpoint {
                 break;
             }
             $page++;
-        } while (!empty($page_products) && count($page_products) >= $per_page && $page <= $max_pages);
+        } while (!empty($page_products) && $page <= $max_pages && ($limit === null || count($products) < $limit));
         
         error_log('Total products retrieved from FTG (all pages): ' . count($products));
 
