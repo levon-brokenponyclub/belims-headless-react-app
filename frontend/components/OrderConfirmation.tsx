@@ -40,7 +40,7 @@ export const OrderConfirmation: React.FC = () => {
 
   const fetchOrder = async (id: string) => {
     const apiUrl = getApiBaseUrl();
-    const response = await fetch(`${apiUrl}/belims/v1/orders/${id}`, {
+    const response = await fetch(`${apiUrl}/orders/${id}`, {
       headers: {
         "Content-Type": "application/json",
       },
