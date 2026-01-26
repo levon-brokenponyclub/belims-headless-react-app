@@ -225,6 +225,9 @@ class Belims_FTG_Sync_Endpoint {
      * Sync products from FTG to WooCommerce
      */
     public function sync_products($request) {
+        // Increase execution time for large syncs (image downloads are slow)
+        set_time_limit(600); // 10 minutes should handle ~200 products with images
+        
         $params = $request->get_json_params();
         $collection_token = $params['collection_token'] ?? '';
         $limit = $params['limit'] ?? null; // null = all products
@@ -672,14 +675,14 @@ class Belims_FTG_Sync_Endpoint {
             // Save product FIRST (required before setting taxonomy terms)
             $product_id = $product->save();
             
-            // Set product image from FTG (prefer larger sizes, saves internally)
+            // Set product image from FTG (use medium quality for faster downloads)
             $image_url = null;
-            if (!empty($product_data['imageUrlSizes']['large'])) {
-                $image_url = $product_data['imageUrlSizes']['large'];
-                error_log('Using large image for product ' . $sku . ': ' . $image_url);
-            } elseif (!empty($product_data['imageUrlSizes']['medium'])) {
+            if (!empty($product_data['imageUrlSizes']['medium'])) {
                 $image_url = $product_data['imageUrlSizes']['medium'];
                 error_log('Using medium image for product ' . $sku . ': ' . $image_url);
+            } elseif (!empty($product_data['imageUrlSizes']['large'])) {
+                $image_url = $product_data['imageUrlSizes']['large'];
+                error_log('Using large image for product ' . $sku . ': ' . $image_url);
             } elseif (!empty($product_data['imageUrl'])) {
                 $image_url = $product_data['imageUrl'];
                 error_log('Using original image for product ' . $sku . ': ' . $image_url);
