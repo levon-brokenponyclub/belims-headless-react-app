@@ -543,11 +543,21 @@ class Belims_FTG_Sync_Endpoint {
             // Save product FIRST (required before setting taxonomy terms)
             $product_id = $product->save();
             
-            // Set product image from FTG
-            if (!empty($product_data['imageUrl'])) {
-                error_log('Setting image for product ' . $sku . ': ' . $product_data['imageUrl']);
-                $this->set_product_image($product, $product_data['imageUrl']);
-                $product->save(); // Save again after image is set
+            // Set product image from FTG (prefer larger sizes, saves internally)
+            $image_url = null;
+            if (!empty($product_data['imageUrlSizes']['large'])) {
+                $image_url = $product_data['imageUrlSizes']['large'];
+                error_log('Using large image for product ' . $sku . ': ' . $image_url);
+            } elseif (!empty($product_data['imageUrlSizes']['medium'])) {
+                $image_url = $product_data['imageUrlSizes']['medium'];
+                error_log('Using medium image for product ' . $sku . ': ' . $image_url);
+            } elseif (!empty($product_data['imageUrl'])) {
+                $image_url = $product_data['imageUrl'];
+                error_log('Using original image for product ' . $sku . ': ' . $image_url);
+            }
+            
+            if ($image_url) {
+                $this->set_product_image($product, $image_url);
             } else {
                 error_log('No image URL found for SKU: ' . $sku);
             }
@@ -707,10 +717,84 @@ class Belims_FTG_Sync_Endpoint {
         require_once(ABSPATH . 'wp-admin/includes/file.php');
         require_once(ABSPATH . 'wp-admin/includes/media.php');
         
-        $image_id = media_sideload_image($image_url, $product->get_id(), $product->get_name(), 'id');
+        $product_id = $product->get_id();
+        $sku = $product->get_sku();
         
-        if (!is_wp_error($image_id)) {
+        // Check if product already has an image
+        $existing_image_id = $product->get_image_id();
+        if ($existing_image_id) {
+            error_log("Product $sku already has image ID: $existing_image_id - skipping image download");
+            return true;
+        }
+        
+        error_log("=== Starting image download for product $sku ===");
+        error_log("Image URL: $image_url");
+        error_log("Product ID: $product_id");
+        
+        // Custom timeout callback
+        $timeout_filter = function() { return 60; };
+        
+        // Temporarily adjust settings for external image downloads
+        add_filter('https_ssl_verify', '__return_false');
+        add_filter('http_request_timeout', $timeout_filter);
+        
+        // Allow higher memory for image processing
+        @ini_set('memory_limit', '256M');
+        
+        try {
+            // Download the image
+            $image_id = media_sideload_image($image_url, $product_id, $sku, 'id');
+            
+            if (is_wp_error($image_id)) {
+                error_log("=== FAILED to download image for product $sku ===");
+                error_log("Error: " . $image_id->get_error_message());
+                error_log("Error code: " . $image_id->get_error_code());
+                
+                // Get all error data
+                $error_data = $image_id->get_error_data();
+                if ($error_data) {
+                    error_log("Error data: " . print_r($error_data, true));
+                }
+                
+                // Try to get more details about the HTTP request failure
+                if ($image_id->get_error_code() === 'http_request_failed') {
+                    error_log("HTTP request failed - possible network, SSL, or timeout issue");
+                }
+                
+                error_log("Image URL: $image_url");
+                return false;
+            }
+            
+            if (!$image_id || !is_numeric($image_id)) {
+                error_log("=== Invalid image ID for product $sku ===");
+                error_log("Returned value: " . print_r($image_id, true));
+                return false;
+            }
+            
+            error_log("=== Successfully downloaded image ID $image_id for product $sku ===");
+            
+            // Set as product image and save immediately
             $product->set_image_id($image_id);
+            $product->save();
+            
+            // Verify it was set
+            $verify_image_id = get_post_thumbnail_id($product_id);
+            if ($verify_image_id == $image_id) {
+                error_log("=== Image verified and saved for product $sku (Image ID: $image_id) ===");
+            } else {
+                error_log("=== WARNING: Image may not have saved correctly for product $sku ===");
+            }
+            
+            return true;
+            
+        } catch (Exception $e) {
+            error_log("=== EXCEPTION downloading image for product $sku ===");
+            error_log("Exception: " . $e->getMessage());
+            return false;
+        } finally {
+            // Always restore settings
+            remove_filter('https_ssl_verify', '__return_false');
+            remove_filter('http_request_timeout', $timeout_filter);
         }
     }
     
