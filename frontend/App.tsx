@@ -415,6 +415,27 @@ const HomePage = ({
   );
 };
 
+const TrackOrderPage = () => {
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-start pt-4 pb-10">
+      <h1 className="text-2xl md:text-3xl font-bold text-belims-blue font-heading mb-2 text-center">
+        Track Your Order
+      </h1>
+      <p className="text-sm md:text-base text-gray-600 max-w-xl text-center mb-4">
+        Use the form below to view live tracking updates from Bob Go for your
+        Belims order.
+      </p>
+      <div className="w-full max-w-3xl h-[480px] md:h-[560px] rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+        <iframe
+          title="BobGo Order Tracking"
+          src="https://cms.belims.co.za/shipping-details/"
+          className="w-full h-full border-0"
+        />
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN APP COMPONENT ---
 
 export default function App() {
@@ -425,7 +446,6 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
   const [isPaintOpen, setIsPaintOpen] = useState(false);
-  const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => {
     const hasSeen = localStorage.getItem("hasSeenOnboarding");
     return !hasSeen;
@@ -606,8 +626,6 @@ export default function App() {
         setIsLocatorOpen={setIsLocatorOpen}
         isPaintOpen={isPaintOpen}
         setIsPaintOpen={setIsPaintOpen}
-        isTrackingOpen={isTrackingOpen}
-        setIsTrackingOpen={setIsTrackingOpen}
         isOnboardingOpen={isOnboardingOpen}
         setIsOnboardingOpen={setIsOnboardingOpen}
         selectedStore={selectedStore}
@@ -666,7 +684,7 @@ function InnerApp(props) {
         toggleCart={() => props.setIsCartOpen(true)}
         toggleStoreLocator={() => props.setIsLocatorOpen(true)}
         onOpenPaintAssistant={() => props.setIsPaintOpen(true)}
-        onOpenTrackOrder={() => props.setIsTrackingOpen(true)}
+        onOpenTrackOrder={() => navigate("/track-order")}
         onOpenOnboarding={() => props.setIsOnboardingOpen(true)}
         onCompare={props.addToCompare}
         products={props.products}
@@ -756,6 +774,8 @@ function InnerApp(props) {
             }
           />
 
+          <Route path="/track-order" element={<TrackOrderPage />} />
+
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
         </Routes>
       </main>
@@ -834,34 +854,6 @@ function InnerApp(props) {
                 Belims AI Paint Assistant
               </h2>
               <PaintAssistant />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {props.isTrackingOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
-            <button
-              onClick={() => props.setIsTrackingOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
-            >
-              <X size={24} />
-            </button>
-            <div className="p-6 border-b border-gray-100">
-              <h2 className="text-2xl font-bold text-belims-blue font-heading">
-                Track Your Order
-              </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Enter your details below to see live tracking from Bob Go.
-              </p>
-            </div>
-            <div className="flex-1 min-h-[400px]">
-              <iframe
-                title="BobGo Order Tracking"
-                src="https://cms.belims.co.za/shipping-details/"
-                className="w-full h-full border-0"
-              />
             </div>
           </div>
         </div>
