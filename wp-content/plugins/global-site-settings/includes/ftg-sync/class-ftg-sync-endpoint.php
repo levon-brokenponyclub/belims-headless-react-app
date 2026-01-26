@@ -75,7 +75,7 @@ class Belims_FTG_Sync_Endpoint {
         register_rest_route('belims/v1', '/ftg/brand-count', array(
             'methods' => 'GET',
             'callback' => array($this, 'get_brand_count'),
-            'permission_callback' => array($this, 'check_admin_permission'),
+            'permission_callback' => '__return_true', // read-only; safe to expose
         ));
         
         // Get product filters (Range, Color, Brand)
