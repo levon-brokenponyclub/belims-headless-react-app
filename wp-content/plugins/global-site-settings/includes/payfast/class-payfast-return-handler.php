@@ -48,7 +48,7 @@ class PayFast_Return_Handler {
         $pf_payment_id = isset($_GET['pf_payment_id']) ? sanitize_text_field($_GET['pf_payment_id']) : null;
 
         if (!$m_payment_id) {
-            wp_safe_remote_get(home_url('/'));
+            wp_redirect(home_url('/'));
             exit;
         }
 
@@ -57,7 +57,7 @@ class PayFast_Return_Handler {
 
         if (!$order) {
             // Invalid order, redirect to frontend home
-            wp_safe_remote_get(home_url('/'));
+            wp_redirect(home_url('/'));
             exit;
         }
 
@@ -72,7 +72,7 @@ class PayFast_Return_Handler {
         $frontend_url = self::get_frontend_return_url($m_payment_id, $success, $order_status);
 
         // Redirect to frontend
-        wp_safe_remote_get($frontend_url);
+        wp_redirect($frontend_url);
         exit;
     }
 
