@@ -256,7 +256,8 @@ class Belims_FTG_Sync_Endpoint {
         do {
             $ftg_result = $this->ftg_api->get_products($collection_token, array(
                 'limit' => $per_page,
-                'p'     => $page, // FTG pagination parameter is "p", not "page"
+                'p'     => $page, // FTG UI uses "p"
+                'page'  => $page, // belt-and-braces: some endpoints may look for "page"
             ));
             
             error_log('FTG API Result Structure (page ' . $page . '): ' . print_r(array_keys($ftg_result), true));
@@ -501,7 +502,8 @@ class Belims_FTG_Sync_Endpoint {
         do {
             $ftg_result = $this->ftg_api->get_products($collection_token, array(
                 'limit' => $per_page,
-                'p'     => $page, // FTG pagination parameter is "p", not "page"
+                'p'     => $page, // FTG UI uses "p"
+                'page'  => $page, // belt-and-braces: some endpoints may look for "page"
             ));
 
             if (isset($ftg_result['error'])) {
