@@ -29,7 +29,9 @@ function belims_ftg_sync_page() {
             $response = wp_remote_post(rest_url('belims/v1/ftg/sync'), array(
                 'body'    => json_encode(array(
                     'collection_token' => $collection_token,
-                    'limit' => 500,
+                    // Test sync: pull up to 400 Ingco products in chunks of 10
+                    'limit' => 400,
+                    'batch_size' => 10,
                 )),
                 'headers' => array('Content-Type' => 'application/json'),
             ));
@@ -66,7 +68,7 @@ function belims_ftg_sync_page() {
         <form method="post">
             <?php wp_nonce_field('belims_ftg_sync_action', 'belims_ftg_sync_nonce'); ?>
             <p>
-                <input type="submit" name="belims_ftg_sync_submit" id="belims_ftg_sync_submit" class="button button-primary" value="Run FTG Sync Now">
+                <input type="submit" name="belims_ftg_sync_submit" id="belims_ftg_sync_submit" class="button button-primary" value="Run FTG Sync (400 Ingco products in batches of 10)">
             </p>
         </form>
     </div>
