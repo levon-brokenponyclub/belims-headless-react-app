@@ -45,7 +45,7 @@ import {
   ChevronRight,
   X,
   Package,
-  Route,
+  Route as RouteIcon,
   MapPin,
   CheckCircle2,
   RefreshCcw,
@@ -449,7 +449,7 @@ const TRACK_STEPS: {
   {
     key: "in_transit",
     label: "In transit",
-    Icon: Route,
+    Icon: RouteIcon,
     match: (s) =>
       s.includes("in transit") ||
       s.includes("transit") ||
