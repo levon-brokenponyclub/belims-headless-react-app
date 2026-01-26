@@ -43,11 +43,16 @@ class PayFast_Return_Handler {
             return;
         }
 
+        error_log('=== PayFast Return Handler Triggered ===');
+
         // Get PayFast data from query string
         $m_payment_id = isset($_GET['m_payment_id']) ? intval($_GET['m_payment_id']) : null;
         $pf_payment_id = isset($_GET['pf_payment_id']) ? sanitize_text_field($_GET['pf_payment_id']) : null;
 
+        error_log('PayFast Return - Order ID: ' . $m_payment_id . ', Payment ID: ' . $pf_payment_id);
+
         if (!$m_payment_id) {
+            error_log('PayFast Return - No order ID, redirecting to home');
             wp_redirect(home_url('/'));
             exit;
         }
@@ -56,12 +61,14 @@ class PayFast_Return_Handler {
         $order = wc_get_order($m_payment_id);
 
         if (!$order) {
+            error_log('PayFast Return - Order not found: ' . $m_payment_id);
             // Invalid order, redirect to frontend home
             wp_redirect(home_url('/'));
             exit;
         }
 
         $order_status = $order->get_status();
+        error_log('PayFast Return - Order status: ' . $order_status);
         
         // Check multiple success conditions:
         // 1. Order status is processing/completed (ITN already processed)
@@ -74,6 +81,8 @@ class PayFast_Return_Handler {
         
         // Build frontend return URL
         $frontend_url = self::get_frontend_return_url($m_payment_id, $success, $order_status);
+
+        error_log('PayFast Return - Redirecting to: ' . $frontend_url);
 
         // Redirect to frontend
         wp_redirect($frontend_url);
