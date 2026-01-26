@@ -58,27 +58,34 @@ class BobGo_Rates_Endpoint {
 			// Build shipping package
 			$package = $this->build_shipping_package( $params );
 
-			// Get WooCommerce shipping instance
-			$shipping = \WC()->shipping();
+			// Ensure the official BobGo/uAfrica shipping method is available.
+			if ( ! class_exists( '\\uAfrica_Shipping\\app\\Shipping' ) ) {
+				return new \WP_REST_Response( array(
+					'success' => false,
+					'error'   => 'BobGo (uAfrica) shipping plugin is not available',
+				), 500 );
+			}
 
-			// Calculate shipping rates using WooCommerce (this will trigger uAfrica plugin)
-			$shipping->calculate_shipping( array( $package ) );
+			// Instantiate the BobGo/uAfrica shipping method directly.
+			$bobgo_method = new \uAfrica_Shipping\app\Shipping();
 
-			// Get the calculated packages
-			$packages = $shipping->get_packages();
+			// Ask the method for rates for this package. This internally calls
+			// calculate_shipping() and returns WC_Shipping_Rate objects without
+			// relying on the WooCommerce session.
+			$wc_rates = $bobgo_method->get_rates_for_package( $package );
 
-			// Extract rates from the first package
 			$rates = array();
-			if ( ! empty( $packages[0]['rates'] ) ) {
-				foreach ( $packages[0]['rates'] as $rate ) {
+			if ( ! empty( $wc_rates ) && is_array( $wc_rates ) ) {
+				foreach ( $wc_rates as $rate ) {
+					$meta = $rate->get_meta_data();
 					$rates[] = array(
-						'id'               => $rate->get_id(),
-						'label'            => $rate->get_label(),
-						'cost'             => (float) $rate->get_cost(),
-						'service_code'     => $rate->get_meta_data()['uafrica_service_code'] ?? null,
-						'description'      => $rate->get_meta_data()['method_description'] ?? null,
-						'min_delivery_date' => $rate->get_meta_data()['min_delivery_date'] ?? null,
-						'max_delivery_date' => $rate->get_meta_data()['max_delivery_date'] ?? null,
+						'id'                => $rate->get_id(),
+						'label'             => $rate->get_label(),
+						'cost'              => (float) $rate->get_cost(),
+						'service_code'      => $meta['uafrica_service_code'] ?? null,
+						'description'       => $meta['method_description'] ?? null,
+						'min_delivery_date'  => $meta['min_delivery_date'] ?? null,
+						'max_delivery_date'  => $meta['max_delivery_date'] ?? null,
 					);
 				}
 			}
