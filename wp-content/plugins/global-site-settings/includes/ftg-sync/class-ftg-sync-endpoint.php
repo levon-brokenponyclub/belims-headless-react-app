@@ -448,12 +448,6 @@ class Belims_FTG_Sync_Endpoint {
         
         error_log('Progress calculation: offset=' . $offset . ', batch_size=' . $batch_size . ', next_offset=' . $next_offset . ', total_requested=' . $total_requested . ', has_more=' . ($has_more ? 'yes' : 'no') . ', progress=' . $progress . '%');
         
-        // BATCH IMAGE DOWNLOAD: If we skipped images during creation, download them now (async)
-        if (defined('FTG_SKIP_IMAGE_DOWNLOAD') && FTG_SKIP_IMAGE_DOWNLOAD) {
-            error_log('=== Starting batch image download ===');
-            $this->batch_download_pending_images();
-        }
-        
         return rest_ensure_response(array(
             'success' => true,
             'synced' => $synced_count,
@@ -1401,67 +1395,4 @@ class Belims_FTG_Sync_Endpoint {
         }
     }
 
-    /**
-     * Batch download images for all products that have pending images
-     * This runs after all products are created to save time during sync
-     */
-    private function batch_download_pending_images() {
-        $start_time = microtime(true);
-        $downloaded = 0;
-        $failed = 0;
-        
-        error_log('Querying for products with pending images...');
-        
-        // Get all products with pending images
-        $args = array(
-            'post_type' => 'product',
-            'posts_per_page' => -1, // Get all
-            'meta_key' => '_ftg_image_url_pending',
-            'meta_compare' => 'EXISTS',
-        );
-        
-        $query = new WP_Query($args);
-        
-        error_log('Found ' . $query->found_posts . ' products with pending images');
-        
-        foreach ($query->posts as $post) {
-            $product = wc_get_product($post->ID);
-            if (!$product) {
-                continue;
-            }
-            
-            $image_url = get_post_meta($post->ID, '_ftg_image_url_pending', true);
-            if (!$image_url) {
-                continue;
-            }
-            
-            // Download the image
-            if ($this->set_product_image($product, $image_url)) {
-                $downloaded++;
-            } else {
-                $failed++;
-                error_log('Failed to download image for product ' . $product->get_sku());
-            }
-            
-            // Remove the pending meta
-            delete_post_meta($post->ID, '_ftg_image_url_pending');
-            
-            // Check timeout - if we're running low on time, stop
-            $elapsed = microtime(true) - $start_time;
-            if ($elapsed > 480) { // Stop if approaching 8 minute mark (leaving 2 min buffer)
-                error_log('Batch image download timeout approaching - pausing at ' . $downloaded . ' downloaded');
-                break;
-            }
-        }
-        
-        wp_reset_postdata();
-        
-        $elapsed = microtime(true) - $start_time;
-        error_log('=== Batch image download complete ===');
-        error_log('Downloaded: ' . $downloaded);
-        error_log('Failed: ' . $failed);
-        error_log('Time elapsed: ' . round($elapsed, 2) . 's');
     }
-
-    }
-
