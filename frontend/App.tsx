@@ -416,31 +416,63 @@ const HomePage = ({
 };
 
 const TrackOrderPage = () => {
-  const [html, setHtml] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const urlOrder = searchParams.get("order-number") || "";
+
+  const [orderNumber, setOrderNumber] = useState<string>(urlOrder);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<any>(null);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(
-          "https://cms.belims.co.za/wp-json/wp/v2/pages?slug=shipping-details",
-        );
+    setOrderNumber(urlOrder);
+  }, [urlOrder]);
 
-        if (!res.ok) {
-          throw new Error(`Failed to load tracking page (${res.status})`);
-        }
+  const track = async (value: string) => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
 
-        const data = await res.json();
-        const content = data?.[0]?.content?.rendered || "";
-        setHtml(content);
-      } catch (err: any) {
-        console.error("Failed to load tracking page", err);
-        setError("Unable to load tracking form. Please try again later.");
-      } finally {
-        setLoading(false);
+    try {
+      const res = await fetch(
+        "https://cms.belims.co.za/wp-json/belims/v1/track",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ trackingRef: value }),
+        },
+      );
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Tracking request failed (${res.status})`);
       }
-    })();
+
+      const data = await res.json();
+      setResult(data);
+    } catch (e: any) {
+      setError(e?.message || "Unable to fetch tracking right now.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = orderNumber.trim();
+    if (!value) return;
+
+    setSearchParams({ "order-number": value }, { replace: true });
+
+    track(value);
+  };
+
+  useEffect(() => {
+    if (urlOrder.trim()) {
+      track(urlOrder.trim());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -449,20 +481,66 @@ const TrackOrderPage = () => {
         Track Your Order
       </h1>
       <p className="text-sm md:text-base text-gray-600 max-w-xl mb-4">
-        Use the form below to view live tracking updates from Bob Go for your
-        Belims order.
+        Enter your tracking reference to view live tracking updates.
       </p>
 
       <div className="bg-white rounded-xl shadow border border-gray-200 p-4 md:p-6">
-        {loading && (
-          <p className="text-sm text-gray-500">Loading tracking form hellip;</p>
-        )}
-        {error && !loading && <p className="text-sm text-red-600">{error}</p>}
-        {!loading && !error && html && (
-          <div
-            className="prose max-w-none"
-            dangerouslySetInnerHTML={{ __html: html }}
+        <form onSubmit={onSubmit} className="flex flex-col md:flex-row gap-3">
+          <input
+            value={orderNumber}
+            onChange={(e) => setOrderNumber(e.target.value)}
+            placeholder="e.g. UASSBNJ9"
+            className="flex-1 border rounded-lg px-3 py-2"
           />
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-belims-blue text-white px-5 py-2 rounded-lg font-bold disabled:opacity-60"
+          >
+            {loading ? "Tracking..." : "Track"}
+          </button>
+        </form>
+
+        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+
+        {result && (
+          <div className="mt-6">
+            <div className="text-sm text-gray-700">
+              <div>
+                <span className="font-bold">Status:</span>{" "}
+                {result.status || "—"}
+              </div>
+              <div>
+                <span className="font-bold">Tracking ref:</span>{" "}
+                {result.trackingRef || urlOrder}
+              </div>
+              {result.eta && (
+                <div>
+                  <span className="font-bold">ETA:</span> {result.eta}
+                </div>
+              )}
+            </div>
+
+            {Array.isArray(result.events) && result.events.length > 0 ? (
+              <div className="mt-4 space-y-2">
+                {result.events.map((ev: any, idx: number) => (
+                  <div key={idx} className="border rounded-lg p-3">
+                    <div className="text-sm font-bold">
+                      {ev.label || ev.status}
+                    </div>
+                    <div className="text-xs text-gray-500">{ev.time}</div>
+                    {ev.location && (
+                      <div className="text-xs text-gray-600">{ev.location}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-gray-500">
+                No tracking events yet.
+              </p>
+            )}
+          </div>
         )}
       </div>
     </div>
