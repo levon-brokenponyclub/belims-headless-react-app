@@ -3,21 +3,49 @@
 @tailwind utilities;
 
 .container {
-	max-width: 1440px;
+  max-width: 1380px;
 }
 
 /* Ensure Belims accent utilities use construction orange */
 .bg-belims-accent {
-	--tw-bg-opacity: 1;
-	background-color: rgb(249 115 22 / var(--tw-bg-opacity));
+  --tw-bg-opacity: 1;
+  background-color: rgb(249 115 22 / var(--tw-bg-opacity));
 }
 
 .text-belims-accent {
-	--tw-text-opacity: 1;
-	color: rgb(249 115 22 / var(--tw-text-opacity));
+  --tw-text-opacity: 1;
+  color: rgb(249 115 22 / var(--tw-text-opacity));
 }
 
 .border-belims-accent {
-	--tw-border-opacity: 1;
-	border-color: rgb(249 115 22 / var(--tw-border-opacity));
+  --tw-border-opacity: 1;
+  border-color: rgb(249 115 22 / var(--tw-border-opacity));
+}
+/* Product Fulfillment Section */
+.product-fulfillment {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 0;
+}
+
+.pill {
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: var(--text-muted);
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+.pill.pickup {
+  color: #065f46;
+  background: #ecfdf5;
+  border: 1px solid rgba(6, 95, 70, 0.4);
+}
+
+.pill.delivery {
+  color: #1e40af;
+  background: #eff6ff;
+  border: 1px solid rgba(30, 64, 175, 0.4);
 }

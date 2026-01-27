@@ -1,16 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import {
-  AlertTriangle,
-  Bell,
-  CheckCircle,
-  Star,
-  ShoppingCart,
-  Scale,
-  Zap,
-} from "lucide-react";
+import { AlertTriangle, Bell, CheckCircle, Scale } from "lucide-react";
 import { Product } from "../types";
-import { StockBar } from "./StockBar";
 import { CURRENCY_SYMBOL } from "../constants";
 
 interface ProductCardProps {
@@ -52,7 +43,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group overflow-hidden relative ${className}`}
+      className={`bg-white border border-gray-200 rounded shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group overflow-hidden relative min-w-[320px] max-w-[320px] ${className}`}
     >
       {/* Bundle Badge */}
       {product.isBundle && (
@@ -77,7 +68,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
       <Link
         to={`/product/${product.id}`}
-        className="relative h-48 overflow-hidden p-4 flex items-center justify-center bg-gray-50 group-hover:bg-white transition-colors cursor-pointer"
+        className="relative h-48 overflow-hidden p-4 flex items-center justify-center transition-colors cursor-pointer"
       >
         <img
           src={product.image}
@@ -87,36 +78,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </Link>
 
       <div className="p-4 flex-1 flex flex-col">
-        <div className="text-xs text-gray-500 mb-1 font-medium">
+        <div className="text-xs mb-1 font-medium" style={{ color: "#64748b" }}>
           {product.category}
         </div>
-        <Link
-          to={`/product/${product.id}`}
-          className="font-bold text-gray-900 text-sm md:text-base leading-5 line-clamp-2 mb-2 flex-1 font-heading group-hover:text-belims-blue transition-colors cursor-pointer block"
-        >
-          {product.name}
-        </Link>
-
-        {/* Ratings */}
-        <div className="flex items-center mb-2">
-          <div className="flex text-yellow-400 text-xs">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                size={14}
-                fill={i < Math.round(product.rating) ? "currentColor" : "none"}
-              />
-            ))}
+        <div className="flex-1 mb-[1.5625rem]">
+          <Link
+            to={`/product/${product.id}`}
+            className="font-heading text-gray-900 text-[0.9375rem] font-semibold leading-5 line-clamp-2 mb-1 group-hover:text-belims-blue transition-colors cursor-pointer block"
+          >
+            {product.name}
+          </Link>
+          <div
+            className="text-[0.70rem] mt-1 font-medium"
+            style={{ color: "#64748b" }}
+          >
+            {product.sku || product.id}
           </div>
-          <span className="text-xs text-gray-400 ml-1 font-medium">
-            ({product.reviews})
-          </span>
         </div>
 
         {/* Price */}
         <div className="mb-3">
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-gray-900 font-heading">
+            <span
+              className="text-[1.1rem] font-bold text-gray-900 font-heading"
+              style={{ fontWeight: 800 }}
+            >
               {CURRENCY_SYMBOL}
               {product.price.toFixed(2)}
             </span>
@@ -129,49 +115,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        {/* Stock Bar (hide when out of stock) */}
-        {product.stock > 0 && (
-          <StockBar current={product.stock} max={product.maxStock} />
+        {product.stock > 0 ? (
+          <div className="product-fulfillment">
+            <span className="pill pickup">Pickup</span>
+            <span className="pill delivery">Delivery</span>
+          </div>
+        ) : (
+          <div className="text-xs font-semibold text-red-700">Out of stock</div>
         )}
 
-        {/* Actions: Add to Cart & Buy Now */}
+        {/* Actions: Add to Cart */}
         {product.stock > 0 ? (
-          <div
-            className={`mt-4 grid ${onBuyNow ? "grid-cols-2" : "grid-cols-1"} gap-2`}
-          >
+          <div className="mt-4 grid grid-cols-1 gap-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 addToCart(product);
               }}
-              className="py-2.5 rounded font-bold text-sm leading-5 flex items-center justify-center gap-1 transition-all font-heading bg-[#322783] text-white hover:bg-[#e40613]"
+              className="py-2.5 rounded font-bold text-[0.8125rem] leading-5 transition-all font-heading bg-[#322783] text-white hover:bg-[#e40613]"
             >
-              <ShoppingCart size={14} />
-              Add
+              Add to cart
             </button>
-            {onBuyNow && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onBuyNow(product);
-                }}
-                className="py-2.5 rounded font-bold text-sm leading-5 flex items-center justify-center gap-1 transition-all font-heading shadow-sm bg-belims-accent text-white hover:brightness-110"
-              >
-                <Zap size={14} fill="currentColor" />
-                Buy Now
-              </button>
-            )}
           </div>
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-2">
-            <div className="flex items-center gap-2 py-2.5 px-3 text-sm leading-5 font-semibold text-red-700 bg-red-50 border border-red-200 rounded">
-              <AlertTriangle size={14} />
-              Currently out of stock
-            </div>
             <button
               onClick={handleNotify}
               disabled={notifyStatus === "pending" || notifyStatus === "sent"}
-              className={`py-2.5 rounded font-bold text-sm leading-5 flex items-center justify-center gap-1 transition-all font-heading shadow-sm ${notifyStatus === "sent" ? "bg-green-100 text-green-800 border border-green-200" : notifyStatus === "error" ? "bg-red-100 text-red-700 border border-red-200" : "bg-belims-accent text-white hover:brightness-110"} ${notifyStatus === "pending" ? "opacity-70 cursor-wait" : ""}`}
+              className={`py-2.5 rounded font-bold text-[0.8125rem] leading-5 flex items-center justify-center gap-1 transition-all font-heading shadow-sm ${notifyStatus === "sent" ? "bg-green-100 text-green-800 border border-green-200" : notifyStatus === "error" ? "bg-red-100 text-red-700 border border-red-200" : "bg-belims-accent text-white hover:brightness-110"} ${notifyStatus === "pending" ? "opacity-70 cursor-wait" : ""}`}
             >
               {notifyStatus === "sent" ? (
                 <CheckCircle size={14} />
@@ -184,7 +155,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   ? "Setting reminder..."
                   : notifyStatus === "error"
                     ? "Try again"
-                    : "Notify Me"}
+                    : "Notify me"}
             </button>
           </div>
         )}
