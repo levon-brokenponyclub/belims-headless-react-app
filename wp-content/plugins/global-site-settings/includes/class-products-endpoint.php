@@ -143,19 +143,55 @@ class Belims_Products_Endpoint {
             array_unshift($images, $main_image);
         }
 
-        // Get categories
+        // Get categories and build breadcrumb hierarchy
         $categories = wp_get_post_terms($product->get_id(), 'product_cat');
         $category_name = !empty($categories) ? $categories[0]->name : 'Uncategorized';
+        
+        // Build breadcrumb trail with category hierarchy
+        $breadcrumbs = array(
+            array('label' => 'Shop', 'slug' => 'shop')
+        );
+        
+        if (!empty($categories)) {
+            $main_category = $categories[0];
+            // Get all ancestors (parent categories)
+            $ancestors = get_ancestors($main_category->term_id, 'product_cat');
+            // Reverse to show from root to leaf
+            $ancestors = array_reverse($ancestors);
+            
+            // Add ancestor categories to breadcrumbs
+            foreach ($ancestors as $ancestor_id) {
+                $ancestor = get_term($ancestor_id, 'product_cat');
+                if ($ancestor && !is_wp_error($ancestor)) {
+                    $breadcrumbs[] = array(
+                        'label' => $ancestor->name,
+                        'slug' => $ancestor->slug
+                    );
+                }
+            }
+            
+            // Add main category
+            $breadcrumbs[] = array(
+                'label' => $main_category->name,
+                'slug' => $main_category->slug
+            );
+        }
 
         // Get brand from product_brand taxonomy
         $brand_terms = wp_get_post_terms($product->get_id(), 'product_brand');
         $brand = !empty($brand_terms) ? $brand_terms[0]->name : '';
 
-        // Get features (from short description or custom field)
+        // Get features from ACF repeater field
         $features = array();
-        $features_raw = get_post_meta($product->get_id(), '_product_features', true);
-        if (!empty($features_raw)) {
-            $features = is_array($features_raw) ? $features_raw : explode("\n", $features_raw);
+        if (function_exists('get_field')) {
+            $features_acf = get_field('features', $product->get_id());
+            if (!empty($features_acf) && is_array($features_acf)) {
+                foreach ($features_acf as $feature) {
+                    if (!empty($feature['feature_text'])) {
+                        $features[] = $feature['feature_text'];
+                    }
+                }
+            }
         }
 
         // Get specifications
@@ -170,22 +206,33 @@ class Belims_Products_Endpoint {
         // Check if product is featured
         $is_featured = $this->is_product_featured($product);
 
+        // Get ACF deals
+        $acf_data = array();
+        if (function_exists('get_field')) {
+            $deals = get_field('deals', $product->get_id());
+            if (!empty($deals)) {
+                $acf_data['deals'] = $deals;
+            }
+        }
+
         return array(
             'id' => (string) $product->get_id(),
             'name' => $product->get_name(),
             'category' => $category_name,
+            'breadcrumbs' => $breadcrumbs,
             'price' => $final_price,
             'regular_price' => $regular_price_incl_vat,
             'sale_price' => $sale_price_incl_vat,
             'price_excl_vat' => $regular_price_excl_vat,
             'image' => $main_image ?: '',
             'images' => $images,
+            'acf' => $acf_data,
             'rating' => floatval($product->get_average_rating()),
             'reviews' => intval($product->get_review_count()),
             'stock' => intval($product->get_stock_quantity()),
             'maxStock' => 100, // UI reference
             'weight' => $weight,
-            'description' => wp_strip_all_tags($product->get_description()),
+            'description' => apply_filters('the_content', $product->get_description()),
             'short_description' => wp_strip_all_tags($product->get_short_description()),
             'isBundle' => $product->is_type('grouped') || $product->is_type('bundle'),
             'isFeatured' => $is_featured,
@@ -195,6 +242,7 @@ class Belims_Products_Endpoint {
             'specifications' => $specifications,
             'tags' => $this->get_product_tags($product),
             'bundleCandidates' => $bundle_candidates,
+            'cross_sell_ids' => array_map('strval', $product->get_cross_sells()),
             'in_stock' => $product->is_in_stock(),
         );
     }

@@ -1,0 +1,498 @@
+/**
+ * Belims AI Product Descriptions - Bulk Admin Styles
+ */
+
+.belims-bulk-generator-page {
+  max-width: 1400px;
+}
+
+.belims-bulk-intro {
+  background: #fff;
+  border-left: 4px solid #2271b1;
+  padding: 15px 20px;
+  margin: 20px 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.belims-bulk-intro p {
+  margin: 0;
+  font-size: 14px;
+  color: #50575e;
+}
+
+/* Stats Boxes */
+.belims-bulk-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin: 30px 0;
+}
+
+.stat-box {
+  background: #fff;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  border-top: 4px solid #2271b1;
+  transition: transform 0.2s ease;
+}
+
+.stat-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.stat-box:nth-child(2) {
+  border-top-color: #d63638;
+}
+
+.stat-box:nth-child(3) {
+  border-top-color: #dba617;
+}
+
+.stat-box:nth-child(4) {
+  border-top-color: #00a32a;
+}
+
+.stat-number {
+  display: block;
+  font-size: 36px;
+  font-weight: 700;
+  color: #1d2327;
+  line-height: 1.2;
+}
+
+.stat-label {
+  display: block;
+  font-size: 13px;
+  color: #646970;
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Controls */
+.belims-bulk-controls {
+  background: #f9f9f9;
+  padding: 25px;
+  border-radius: 8px;
+  margin: 20px 0;
+  text-align: center;
+  border: 2px dashed #c3c4c7;
+}
+
+.belims-bulk-controls button {
+  margin: 5px 10px;
+  font-size: 16px;
+  padding: 12px 30px;
+  height: auto;
+}
+
+#belims-dry-run-btn {
+  background: #dba617;
+  border-color: #c08c0f;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(219, 166, 23, 0.3);
+}
+
+#belims-dry-run-btn:hover {
+  background: #c08c0f;
+  border-color: #a77b0c;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(219, 166, 23, 0.4);
+}
+
+#belims-start-bulk-btn {
+  background: linear-gradient(135deg, #00a32a 0%, #008a24 100%);
+  border-color: #008a24;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 3px 6px rgba(0, 163, 42, 0.3);
+}
+
+#belims-start-bulk-btn:hover {
+  background: linear-gradient(135deg, #008a24 0%, #006b1d 100%);
+  border-color: #006b1d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 163, 42, 0.4);
+}
+
+#belims-stop-bulk-btn {
+  background: #d63638;
+  border-color: #d63638;
+  color: #fff;
+}
+
+#belims-stop-bulk-btn:hover {
+  background: #b32d2e;
+  border-color: #b32d2e;
+  color: #fff;
+}
+
+/* Progress Section */
+#belims-bulk-progress {
+  background: #fff;
+  padding: 25px;
+  margin: 20px 0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#belims-bulk-progress h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  color: #1d2327;
+}
+
+.progress-bar-container {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  background: #f0f0f1;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 15px;
+}
+
+.progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00a32a 0%, #46b450 100%);
+  border-radius: 20px;
+  transition: width 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 163, 42, 0.3);
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: 600;
+  font-size: 16px;
+  color: #1d2327;
+  z-index: 10;
+}
+
+.current-product {
+  margin: 10px 0 0 0;
+  font-size: 14px;
+  color: #50575e;
+}
+
+/* Products Table */
+#belims-products-table-container {
+  background: #fff;
+  padding: 25px;
+  margin: 20px 0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+#belims-products-table-container h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  color: #1d2327;
+}
+
+#belims-products-table {
+  width: 100%;
+}
+
+#belims-products-table thead th {
+  background: #f6f7f7;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+#belims-products-table tbody tr:hover {
+  background: #f6f7f7;
+}
+
+/* Description Preview Row */
+.description-preview-row {
+  background: #f0f6fc !important;
+  border-left: 4px solid #2271b1;
+}
+
+.description-preview-row:hover {
+  background: #e7f2fa !important;
+}
+
+.description-preview-container {
+  padding: 15px;
+  margin: 5px 0;
+}
+
+.description-preview-header {
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #2271b1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.description-preview-header:before {
+  content: "👁️";
+  font-size: 18px;
+}
+
+.description-preview-content {
+  background: #fff;
+  padding: 15px;
+  border-radius: 4px;
+  border: 1px solid #c3c4c7;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #1d2327;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.description-preview-content strong {
+  color: #2271b1;
+  font-weight: 600;
+}
+
+.description-preview-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.description-preview-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.description-preview-content::-webkit-scrollbar-thumb {
+  background: #c3c4c7;
+  border-radius: 4px;
+}
+
+.description-preview-content::-webkit-scrollbar-thumb:hover {
+  background: #a7aaad;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-pending {
+  background: #f0f0f1;
+  color: #646970;
+}
+
+.status-processing {
+  background: #fef8e7;
+  color: #826200;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-success {
+  background: #d5f0dd;
+  color: #00551b;
+}
+
+.status-error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Activity Log */
+#belims-bulk-log {
+  background: #fff;
+  padding: 25px;
+  margin: 20px 0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#belims-bulk-log h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  color: #1d2327;
+}
+
+#belims-log-content {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #dcdcde;
+  border-radius: 4px;
+  padding: 15px;
+  background: #f6f7f7;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+}
+
+.log-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+  background: #fff;
+  border-left: 3px solid #c3c4c7;
+}
+
+.log-entry.log-success {
+  border-left-color: #00a32a;
+  background: #f0f9f1;
+}
+
+.log-entry.log-error {
+  border-left-color: #d63638;
+  background: #fcf0f1;
+}
+
+.log-entry.log-warning {
+  border-left-color: #dba617;
+  background: #fcf9e8;
+}
+
+.log-entry.log-info {
+  border-left-color: #2271b1;
+  background: #f0f6fc;
+}
+
+.log-time {
+  font-size: 11px;
+  color: #646970;
+  min-width: 80px;
+}
+
+.log-icon {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.log-success .log-icon {
+  color: #00a32a;
+}
+
+.log-error .log-icon {
+  color: #d63638;
+}
+
+.log-warning .log-icon {
+  color: #dba617;
+}
+
+.log-info .log-icon {
+  color: #2271b1;
+}
+
+.log-message {
+  flex: 1;
+  color: #1d2327;
+}
+
+/* Scrollbar Styles */
+#belims-products-table-container::-webkit-scrollbar,
+#belims-log-content::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+#belims-products-table-container::-webkit-scrollbar-track,
+#belims-log-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 5px;
+}
+
+#belims-products-table-container::-webkit-scrollbar-thumb,
+#belims-log-content::-webkit-scrollbar-thumb {
+  background: #c3c4c7;
+  border-radius: 5px;
+}
+
+#belims-products-table-container::-webkit-scrollbar-thumb:hover,
+#belims-log-content::-webkit-scrollbar-thumb:hover {
+  background: #a7aaad;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-processing {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+  .belims-bulk-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .belims-bulk-controls button {
+    display: block;
+    width: 100%;
+    margin: 10px 0;
+  }
+
+  #belims-products-table {
+    font-size: 12px;
+  }
+
+  .log-entry {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Loading State */
+.belims-bulk-generator-page .spinner {
+  float: none;
+  margin: 0;
+}
+
+/* Empty State */
+.belims-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #646970;
+}
+
+.belims-empty-state .dashicons {
+  font-size: 80px;
+  width: 80px;
+  height: 80px;
+  opacity: 0.3;
+}
+
+.belims-empty-state h3 {
+  margin: 20px 0 10px;
+  font-size: 20px;
+}
+
+.belims-empty-state p {
+  font-size: 14px;
+}

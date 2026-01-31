@@ -138,6 +138,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
   const [selectedShipping, setSelectedShipping] = useState<ShippingRate | null>(
     null,
   );
+  const [savedLocationRates, setSavedLocationRates] = useState<ShippingRate[]>(
+    [],
+  );
+  const [loadingSavedRates, setLoadingSavedRates] = useState(false);
 
   // Totals
   const subtotal = cartItems.reduce(
@@ -146,6 +150,59 @@ export const Checkout: React.FC<CheckoutProps> = ({
   );
   const shippingCost = selectedShipping ? selectedShipping.total_price : 0;
   const total = subtotal + shippingCost;
+
+  // Load and fetch shipping rates for saved delivery location
+  useEffect(() => {
+    const fetchSavedLocationRates = async () => {
+      const savedAddress = localStorage.getItem("deliveryAddress");
+      if (!savedAddress || savedLocationRates.length > 0) return;
+
+      setLoadingSavedRates(true);
+      try {
+        // Parse the saved address to extract city and province
+        // Format is usually: "Suburb, City, Province"
+        const parts = savedAddress.split(",").map((s) => s.trim());
+        const city = parts.length >= 2 ? parts[parts.length - 2] : "";
+        const province = parts.length >= 3 ? parts[parts.length - 1] : "";
+
+        if (city && province) {
+          const rates = await getShippingRates({
+            destination_address: {
+              street: savedAddress,
+              city: city,
+              province: province,
+              postal_code: "",
+              country: "ZA",
+            },
+          });
+
+          let finalRates = rates;
+          if (!finalRates || finalRates.length === 0) {
+            finalRates = getFallbackShipping();
+          }
+
+          const classifiedRates = finalRates.map((rate: any) => ({
+            ...rate,
+            tier: classifyRate(rate, finalRates),
+          }));
+
+          setSavedLocationRates(classifiedRates);
+        }
+      } catch (error) {
+        console.error("Failed to fetch saved location rates:", error);
+        setSavedLocationRates(
+          getFallbackShipping().map((rate: any) => ({
+            ...rate,
+            tier: classifyRate(rate, getFallbackShipping()),
+          })),
+        );
+      } finally {
+        setLoadingSavedRates(false);
+      }
+    };
+
+    fetchSavedLocationRates();
+  }, []);
 
   useEffect(() => {
     if (!returnOrderId) return;
@@ -928,6 +985,64 @@ export const Checkout: React.FC<CheckoutProps> = ({
                   </button>
                 </div>
               </div>
+
+              {/* Saved Location Delivery Options */}
+              {savedLocationRates.length > 0 && step === "details" && (
+                <div className="space-y-3 border-t border-gray-200 pt-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-gray-900">
+                      Available Delivery
+                    </h4>
+                    <span className="text-xs text-gray-500">
+                      {localStorage.getItem("deliveryAddress")?.split(",")[0]}
+                    </span>
+                  </div>
+
+                  {loadingSavedRates ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2
+                        className="animate-spin text-belims-blue"
+                        size={20}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {savedLocationRates.slice(0, 3).map((rate, idx) => {
+                        const tier =
+                          rate.tier || classifyRate(rate, savedLocationRates);
+                        return (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Truck size={14} className="text-gray-400" />
+                              <div>
+                                <div className="text-xs font-semibold text-gray-900 flex items-center gap-1">
+                                  {tier === "Express" && (
+                                    <Zap
+                                      size={10}
+                                      className="text-orange-600"
+                                    />
+                                  )}
+                                  {rate.service_name}
+                                </div>
+                                <div className="text-[10px] text-gray-500">
+                                  {formatEta(rate.expected_delivery_date)}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-xs font-bold text-gray-900">
+                              {CURRENCY_SYMBOL}
+                              {rate.total_price.toFixed(2)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Totals */}
               <div className="space-y-3 border-t border-gray-200 pt-4">

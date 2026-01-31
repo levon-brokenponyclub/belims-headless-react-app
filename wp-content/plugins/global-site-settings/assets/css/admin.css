@@ -2389,7 +2389,7 @@ body.login::before {
 #wpadminbar.nojs .quicklinks .menupop:hover ul li a:hover,
 #wpadminbar.nojs .quicklinks .menupop:hover ul li a:focus {
   background: #322783 !important;
-  color: #e40613 !important;
+  color: #fff !important;
 }
 
 #wpadminbar .menupop .ab-sub-wrapper,
@@ -2503,11 +2503,12 @@ body.login::before {
 }
 
 /* Accent Colors Throughout Dashboard */
-.wp-core-ui .button-primary {
+.wp-core-ui .button-primary,
+.acf-repeater > .acf-actions .acf-button {
   background: #e40613 !important;
   border-color: #c20510 !important;
   box-shadow: 0 1px 0 #c20510 !important;
-  color: #fff !important;
+  color: #ffffff !important;
   text-decoration: none !important;
   text-shadow: none !important;
 }

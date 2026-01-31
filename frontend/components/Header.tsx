@@ -19,6 +19,7 @@ import { Store, CategoryNode, CartItem, Product } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { initializeCategoryTree } from "../categoryTree";
 import { useScrollHide } from "../hooks/useScrollHide";
+import "../global.tailwind.css";
 
 interface SearchCategoryResult {
   id: string;
@@ -73,6 +74,11 @@ export const Header: React.FC<HeaderProps> = ({
   const isNavbarVisible = useScrollHide({ threshold: 100 }); // Hide navbar after scrolling 100px down
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isServicesPanelOpen, setIsServicesPanelOpen] = useState(false);
+  const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
+  const [isDeliveryLocationOpen, setIsDeliveryLocationOpen] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState<string>("");
+  const [deliveryAddressInput, setDeliveryAddressInput] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{
     categories: SearchCategoryResult[];
@@ -84,6 +90,82 @@ export const Header: React.FC<HeaderProps> = ({
   const [expandedMobileCategory, setExpandedMobileCategory] = useState<
     string | null
   >(null);
+
+  // Load saved delivery address from localStorage
+  useEffect(() => {
+    const savedAddress = localStorage.getItem("deliveryAddress");
+    if (savedAddress) {
+      setDeliveryAddress(savedAddress);
+    }
+  }, []);
+
+  const handleSaveAddress = () => {
+    if (deliveryAddressInput.trim()) {
+      setDeliveryAddress(deliveryAddressInput);
+      localStorage.setItem("deliveryAddress", deliveryAddressInput);
+      setIsDeliveryLocationOpen(false);
+      setDeliveryAddressInput("");
+    }
+  };
+
+  const handleDetectAddress = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+
+          try {
+            // Use OpenStreetMap Nominatim for reverse geocoding
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+              {
+                headers: {
+                  "User-Agent": "Belims-Store", // Nominatim requires a user agent
+                },
+              },
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              const address =
+                data.display_name ||
+                `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+
+              // Format address more cleanly (e.g., suburb, city, province)
+              const formattedAddress = data.address
+                ? `${data.address.suburb || data.address.neighbourhood || ""}, ${data.address.city || data.address.town || data.address.village || ""}, ${data.address.state || data.address.province || ""}`
+                    .replace(/^,\s*/, "")
+                    .replace(/,\s*,/g, ",")
+                    .trim()
+                : address;
+
+              setDeliveryAddress(formattedAddress || address);
+              localStorage.setItem(
+                "deliveryAddress",
+                formattedAddress || address,
+              );
+              setIsDeliveryLocationOpen(false);
+            } else {
+              throw new Error("Geocoding failed");
+            }
+          } catch (error) {
+            console.error("Reverse geocoding error:", error);
+            // Fallback to coordinates if geocoding fails
+            const fallbackAddress = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+            setDeliveryAddress(fallbackAddress);
+            localStorage.setItem("deliveryAddress", fallbackAddress);
+            setIsDeliveryLocationOpen(false);
+          }
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          alert("Unable to detect your location. Please enter it manually.");
+        },
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  };
 
   // Initialize category tree from API
   useEffect(() => {
@@ -164,7 +246,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-[300] font-sans">
       {/* Primary Blue Bar (Walmart Style) */}
-      <div className="bg-belims-blue text-white py-3 relative z-20">
+      <div className="bg-belims-blue text-white py-4 relative z-20">
         <div className="container mx-auto px-4 flex items-center gap-4 md:gap-6">
           {/* Mobile Menu Trigger */}
           <button className="md:hidden text-white" onClick={toggleMobileMenu}>
@@ -182,27 +264,6 @@ export const Header: React.FC<HeaderProps> = ({
               className="h-8 md:h-10 object-contain"
             />
           </Link>
-
-          {/* Pickup/Delivery Button */}
-          <div
-            className="hidden lg:flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-full py-2 px-4 cursor-pointer transition-colors border border-transparent hover:border-white/20"
-            onClick={toggleStoreLocator}
-          >
-            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center flex-shrink-0 text-belims-blue">
-              <MapPin size={18} />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-xs font-semibold text-white font-heading">
-                Pickup or delivery
-              </span>
-              <span className="text-sm font-bold text-white truncate max-w-[140px] font-heading">
-                {selectedStore
-                  ? selectedStore.address.split(",")[0]
-                  : "Select Store"}
-              </span>
-            </div>
-            <ChevronDown size={14} className="text-white" />
-          </div>
 
           {/* Search Bar (Pill Shape) with Predictive Dropdown */}
           <div className="flex-1 relative group">
@@ -312,27 +373,18 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Side Icons */}
           <div className="flex items-center gap-6 text-white">
-            {/* Reorder / My Items */}
-            <div className="hidden md:flex flex-col items-center cursor-pointer hover:text-gray-200 group">
-              <Heart size={20} className="mb-0.5" />
-              <div className="text-[11px] leading-tight font-medium">
-                Reorder
-              </div>
-              <div className="text-sm font-bold leading-tight font-heading">
-                My Items
-              </div>
-            </div>
-
-            {/* Sign In / Account */}
-            <div className="hidden md:flex flex-col items-center cursor-pointer hover:text-gray-200 group">
-              <User size={20} className="mb-0.5" />
+            {/* Sign In / Account (icon hidden) */}
+            <button
+              onClick={() => setIsAccountPanelOpen(true)}
+              className="hidden md:flex flex-col cursor-pointer hover:text-gray-200 group header-signin"
+            >
               <div className="text-[11px] leading-tight font-medium">
                 Sign In
               </div>
               <div className="text-sm font-bold leading-tight font-heading">
                 Account
               </div>
-            </div>
+            </button>
 
             {/* Cart */}
             <div
@@ -358,13 +410,13 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Secondary Light Blue Bar (Departments / Services) */}
       <div
-        className={`bg-blue-50 border-b border-gray-200 py-2 hidden md:block shadow-inner relative transition-transform duration-300 ease-out z-10 ${isNavbarVisible ? "translate-y-0" : "-translate-y-full"}`}
+        className={`bg-custom-grey border-b border-gray-200 py-2 hidden md:block shadow-inner relative transition-transform duration-300 ease-out z-10 ${isNavbarVisible ? "translate-y-0" : "-translate-y-full"}`}
         onMouseLeave={() => setIsMegaMenuOpen(false)}
       >
         <div className="container mx-auto px-4 flex items-center gap-3">
           {/* Departments Button - MEGA MENU TRIGGER */}
           <div
-            className={`flex items-center gap-2 border border-transparent px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading ${isMegaMenuOpen ? "bg-belims-blue text-white" : "bg-white text-belims-blue hover:border-belims-blue"}`}
+            className={`flex items-center gap-2 border px-4 py-1.5 rounded cursor-pointer font-bold text-sm transition-all font-heading ${isMegaMenuOpen ? "bg-belims-blue text-white border-gray-200" : "bg-white text-belims-blue border-gray-200"}`}
             onMouseEnter={() => setIsMegaMenuOpen(true)}
           >
             <LayoutGrid size={16} />
@@ -376,41 +428,109 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Services Button */}
-          <div className="flex items-center gap-2 bg-white border border-transparent hover:border-belims-blue text-belims-blue px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading">
+          <button
+            onClick={() => {
+              setIsServicesPanelOpen(true);
+              setIsDeliveryLocationOpen(false);
+            }}
+            className="flex items-center gap-2 bg-white border border-gray-200 text-belims-blue px-4 py-1.5 rounded cursor-pointer font-bold text-sm transition-all font-heading hover:bg-gray-50"
+          >
             <LayoutGrid size={16} />
             Services
             <ChevronDown size={14} />
-          </div>
+          </button>
 
           {/* Track Your Order Button */}
           <button
             onClick={onOpenTrackOrder}
-            className="flex items-center gap-2 bg-white border border-belims-blue/40 text-belims-blue hover:bg-belims-blue hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading"
+            className="flex items-center gap-2 bg-white border border-gray-200 text-belims-blue hover:bg-belims-blue hover:text-white px-4 py-1.5 rounded cursor-pointer font-bold text-sm transition-all font-heading"
           >
             <Truck size={16} />
             Track Your Order
           </button>
 
+          {/* Delivery Location Button */}
+          <div className="relative group">
+            <button
+              onClick={() => setIsDeliveryLocationOpen(!isDeliveryLocationOpen)}
+              className="flex items-center gap-2 bg-white border border-gray-200 text-belims-blue hover:bg-gray-50 px-4 py-1.5 rounded cursor-pointer font-bold text-sm transition-all font-heading max-w-xs"
+            >
+              <MapPin size={16} />
+              <span className="truncate">{deliveryAddress || "Delivery"}</span>
+              <ChevronDown
+                size={14}
+                className={`transition-transform flex-shrink-0 ${isDeliveryLocationOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {/* Delivery Location Dropdown */}
+            {isDeliveryLocationOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg p-4 w-72 z-50">
+                <h4 className="font-bold text-sm text-gray-900 mb-1 font-heading">
+                  Delivery location
+                </h4>
+                <p className="text-xs text-gray-600 mb-4">
+                  Let us know so that we can show you available shipping rates.
+                </p>
+
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    placeholder="Enter your location"
+                    value={deliveryAddressInput}
+                    onChange={(e) => setDeliveryAddressInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSaveAddress()}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue"
+                  />
+                  <button
+                    onClick={handleSaveAddress}
+                    disabled={!deliveryAddressInput.trim()}
+                    className="bg-belims-blue text-white px-4 py-2 rounded text-sm font-bold transition-colors hover:bg-belims-light font-heading disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Save
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex-1 h-px bg-gray-300" />
+                  <span className="text-xs text-gray-500 font-medium">or</span>
+                  <div className="flex-1 h-px bg-gray-300" />
+                </div>
+
+                <button
+                  onClick={handleDetectAddress}
+                  className="w-full bg-belims-blue text-white px-3 py-2 rounded text-sm font-bold transition-colors hover:bg-belims-light font-heading"
+                >
+                  Detect my address
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Spacer pushes CTAs to the right */}
           <div className="flex-1" />
 
-          {/* PAINT ASSISTANT BUTTON */}
-          <button
-            onClick={onOpenPaintAssistant}
-            className="flex items-center gap-2 bg-belims-accent/10 border border-belims-accent/20 text-belims-accent hover:bg-belims-accent hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading"
-          >
-            <Sparkles size={16} />
-            Paint Assistant
-          </button>
+          {/* PAINT ASSISTANT BUTTON (temporarily disabled) */}
+          {false && (
+            <button
+              onClick={onOpenPaintAssistant}
+              className="flex items-center gap-2 bg-belims-accent/10 border border-belims-accent/20 text-belims-accent hover:bg-belims-accent hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading"
+            >
+              <Sparkles size={16} />
+              Paint Assistant
+            </button>
+          )}
 
-          {/* ONBOARDING WIZARD BUTTON */}
-          <button
-            onClick={onOpenOnboarding}
-            className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-600 hover:bg-blue-500 hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading"
-          >
-            <ArrowRight size={16} />
-            Get Started
-          </button>
+          {/* ONBOARDING WIZARD BUTTON (temporarily disabled) */}
+          {false && (
+            <button
+              onClick={onOpenOnboarding}
+              className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-600 hover:bg-blue-500 hover:text-white px-4 py-1.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-sm hover:shadow font-heading"
+            >
+              <ArrowRight size={16} />
+              Get Started
+            </button>
+          )}
         </div>
 
         {/* Full Width Mega Menu Dropdown */}
@@ -695,6 +815,447 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
           <div className="flex-1" onClick={closeMobileMenu}></div>
+        </div>
+      )}
+
+      {/* Services Side Panel */}
+      {isServicesPanelOpen && (
+        <div className="fixed inset-0 z-[9999] overflow-hidden">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsServicesPanelOpen(false)}
+          ></div>
+
+          <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col">
+            {/* Header */}
+            <div className="p-5 border-b flex justify-between items-center bg-white">
+              <h3 className="text-lg font-bold text-gray-900 font-heading">
+                Services
+              </h3>
+              <button
+                onClick={() => setIsServicesPanelOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto">
+              <Link
+                to="/services/installation"
+                onClick={() => setIsServicesPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🏠
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Installation & Services
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+
+              <Link
+                to="/services/tool-rental"
+                onClick={() => setIsServicesPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🧰
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Tool Rental
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+
+              <Link
+                to="/services/truck-rental"
+                onClick={() => setIsServicesPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🚚
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Truck Rental
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+
+              <Link
+                to="/services/equipment-rental"
+                onClick={() => setIsServicesPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🏗️
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Large Equipment Rental
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+
+              <Link
+                to="/credit-cards"
+                onClick={() => setIsServicesPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    💳
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Belims Credit Cards
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+
+              <Link
+                to="/protection-plans"
+                onClick={() => setIsServicesPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🛡️
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Protection Plans
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+
+              <div
+                className="h-px bg-gray-200 my-4 mx-4"
+                role="separator"
+                aria-hidden="true"
+              ></div>
+
+              <button
+                onClick={() => {
+                  setIsServicesPanelOpen(false);
+                  onOpenPaintAssistant();
+                }}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group w-full text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🎨
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Paint Assistant
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </button>
+
+              <Link
+                to="/ai-helper"
+                onClick={() => setIsServicesPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🤖
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    AI Helper
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Account Side Panel */}
+      {isAccountPanelOpen && (
+        <div className="fixed inset-0 z-[9999] overflow-hidden">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsAccountPanelOpen(false)}
+          ></div>
+
+          <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col">
+            {/* Header */}
+            <div className="p-5 border-b flex justify-between items-center bg-white">
+              <h3 className="text-lg font-bold text-gray-900 font-heading">
+                Sign in or Create an Account
+              </h3>
+              <button
+                onClick={() => setIsAccountPanelOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Top CTA Buttons */}
+              <div className="p-5 border-b">
+                <div className="grid grid-cols-2 gap-3">
+                  <Link
+                    to="/account/sign-in"
+                    onClick={() => setIsAccountPanelOpen(false)}
+                    className="bg-belims-accent text-white py-3 px-4 rounded-lg font-bold text-center hover:bg-orange-600 transition-colors"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    to="/account/create"
+                    onClick={() => setIsAccountPanelOpen(false)}
+                    className="bg-white border-2 border-belims-blue text-belims-blue py-3 px-4 rounded-lg font-bold text-center hover:bg-blue-50 transition-colors"
+                  >
+                    Create an Account
+                  </Link>
+                </div>
+              </div>
+
+              {/* Pro Block */}
+              <div className="p-5 bg-blue-50 border-b">
+                <div className="flex gap-3">
+                  <div className="bg-belims-blue text-white px-3 py-1 rounded font-bold text-sm h-fit">
+                    PRO
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-gray-900 mb-1">
+                      Are You a Pro?
+                    </div>
+                    <div className="text-sm text-gray-700 mb-2">
+                      Get online tools to manage and grow your business — plus,
+                      Pro Xtra Members unlock more benefits and savings.
+                    </div>
+                    <Link
+                      to="/pro"
+                      onClick={() => setIsAccountPanelOpen(false)}
+                      className="text-belims-blue font-semibold text-sm hover:underline"
+                    >
+                      Learn more
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="h-px bg-gray-200"
+                role="separator"
+                aria-hidden="true"
+              ></div>
+
+              {/* Account Links */}
+              <button
+                onClick={() => {
+                  setIsAccountPanelOpen(false);
+                  onOpenTrackOrder();
+                }}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group w-full text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    📦
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Track Order
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </button>
+
+              <Link
+                to="/account/cards"
+                onClick={() => setIsAccountPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    💳
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Cards & Accounts
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+
+              <Link
+                to="/account/pay"
+                onClick={() => setIsAccountPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🧾
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Pay Credit Card Bill
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+
+              <Link
+                to="/account/discounts"
+                onClick={() => setIsAccountPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🏷️
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Discount Benefits
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+
+              <Link
+                to="/account/profile"
+                onClick={() => setIsAccountPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    👤
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Profile
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+
+              <div
+                className="h-px bg-gray-200 my-4 mx-4"
+                role="separator"
+                aria-hidden="true"
+              ></div>
+
+              <button
+                onClick={() => {
+                  setIsAccountPanelOpen(false);
+                  onOpenPaintAssistant();
+                }}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group w-full text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🎨
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    Paint Assistant
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </button>
+
+              <Link
+                to="/ai-helper"
+                onClick={() => setIsAccountPanelOpen(false)}
+                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    🤖
+                  </span>
+                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                    AI Helper
+                  </span>
+                </div>
+                <span
+                  className="text-gray-400 group-hover:text-belims-blue"
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
+              </Link>
+            </div>
+          </div>
         </div>
       )}
     </header>

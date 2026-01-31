@@ -34,26 +34,22 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
   if (displayProducts.length === 0) return null;
 
   return (
-    <section className="py-8 bg-white border-t border-gray-100 mb-8">
-      <div className="flex items-center gap-2 mb-6 px-1">
-        <History className="text-belims-blue" size={20} />
-        <h3 className="text-xl font-bold text-gray-900 font-heading">
-          Recently Viewed
-        </h3>
-      </div>
+    <section className="py-12 bg-white border-t border-gray-100 mb-8">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center gap-2 mb-8">
+          <History className="text-belims-blue" size={20} />
+          <h3 className="text-2xl font-bold text-gray-900 font-heading">
+            Recently Viewed
+          </h3>
+        </div>
 
-      <div className="overflow-x-auto no-scrollbar pb-4 -mx-1 px-1">
-        <div className="flex gap-4 min-w-max">
-          {displayProducts.map((product) => (
-            <div
-              key={product.id}
-              className="w-[240px] md:w-[260px] lg:w-[300px]"
-            >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {displayProducts.slice(0, 4).map((product) => (
+            <div key={product.id}>
               <ProductCard
                 product={product}
                 addToCart={addToCart}
                 onBuyNow={onBuyNow}
-                onClick={onProductClick}
                 onCompare={onCompare}
               />
             </div>

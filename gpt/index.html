@@ -1,0 +1,1134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Belims Hardware</title>
+    <link rel="stylesheet" href="css/homepage-base.css" />
+  </head>
+
+  <body>
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+    <header class="site-header" role="banner">
+      <div class="topbar">
+        <div class="container topbar-grid">
+          <a class="logo" href="/" aria-label="Belims Home">
+            <img src="images/belims-logo-white.png" alt="Belims Hardware" />
+          </a>
+
+          <form class="search" action="/shop" method="get" role="search">
+            <label class="sr-only" for="q">Search</label>
+            <input
+              id="q"
+              name="search"
+              type="search"
+              placeholder="Search tools, paint, plumbing, electrical..."
+              autocomplete="off"
+            />
+            <button type="submit" aria-label="Search">🔍</button>
+          </form>
+
+          <nav class="actions" aria-label="User actions">
+            <a
+              class="action"
+              href="/account"
+              id="accountBtn"
+              aria-haspopup="dialog"
+              aria-controls="accountPanel"
+              aria-expanded="false"
+            > <span class="kicker">Sign in</span>
+              <span class="label">Account</span>
+            </a>
+            <!-- <a class="action" href="/my-items">
+              <span class="kicker">Reorder</span>
+              <span class="label">My Items</span>
+            </a> -->
+
+            <button class="cart" type="button" aria-label="Open cart">
+              <span class="cart-icon" aria-hidden="true">🛒</span>
+              <!-- <span class="cart-total">R90.00</span> -->
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <div class="navrow">
+        <div class="container navrow-grid">
+          <nav class="primary" aria-label="Primary navigation">
+            <button class="nav-pill" type="button">Departments ▾</button>
+            <button
+              class="nav-pill"
+              type="button"
+              id="servicesBtn"
+              aria-haspopup="dialog"
+              aria-controls="servicesPanel"
+              aria-expanded="false"
+            >
+              Services ▾
+            </button>
+            <a class="nav-pill" href="/track-order">Track Order</a>
+            <a class="nav-pill nav-pill--accent" href="/deals">Deals</a>
+            <a class="nav-pill" href="/guides">How-To &amp; Guides</a>
+          </nav>
+
+          <div class="fulfillment" aria-label="Fulfillment options">
+            <a class="fulfillment-pill" href="/shipping"
+              >Pickup: Free ship-to-store</a
+            >
+            <a class="fulfillment-pill" href="/shipping"
+              >Delivery: Fast nationwide</a
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================
+     SERVICES SIDE PANEL (HD-inspired)
+      ================================== -->
+      <div class="sidepanel-overlay" data-overlay hidden></div>
+
+      <aside
+        class="sidepanel"
+        id="servicesPanel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Services"
+        hidden
+      >
+        <div class="sidepanel-head">
+          <h3 class="sidepanel-title">Services</h3>
+          <button class="sidepanel-close" type="button" aria-label="Close">
+            ✕
+          </button>
+        </div>
+
+        <div class="sidepanel-body">
+          <a class="sidepanel-row" href="/services/installation">
+            <span class="sp-ic" aria-hidden="true">🏠</span>
+            <span class="sp-txt">Installation &amp; Services</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/services/tool-rental">
+            <span class="sp-ic" aria-hidden="true">🧰</span>
+            <span class="sp-txt">Tool Rental</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/services/truck-rental">
+            <span class="sp-ic" aria-hidden="true">🚚</span>
+            <span class="sp-txt">Truck Rental</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/services/equipment-rental">
+            <span class="sp-ic" aria-hidden="true">🏗️</span>
+            <span class="sp-txt">Large Equipment Rental</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/credit-cards">
+            <span class="sp-ic" aria-hidden="true">💳</span>
+            <span class="sp-txt">Belims Credit Cards</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/protection-plans">
+            <span class="sp-ic" aria-hidden="true">🛡️</span>
+            <span class="sp-txt">Protection Plans</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <div class="sidepanel-divider" role="separator" aria-hidden="true"></div>
+
+          <!-- AI links (requested) -->
+          <a class="sidepanel-row" href="/paint-assistant">
+            <span class="sp-ic" aria-hidden="true">🎨</span>
+            <span class="sp-txt">Paint Assistant</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/ai-helper">
+            <span class="sp-ic" aria-hidden="true">🤖</span>
+            <span class="sp-txt">AI Helper</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+        </div>
+      </aside>
+
+      <!-- ================================
+     ACCOUNT / SIGN-IN SIDE PANEL
+      ================================== -->
+      <div class="sidepanel-overlay" data-overlay-account hidden></div>
+
+      <aside
+        class="sidepanel"
+        id="accountPanel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Sign in or create an account"
+        hidden
+      >
+        <div class="sidepanel-head">
+          <h3 class="sidepanel-title">Sign in or Create an Account</h3>
+          <button class="sidepanel-close" type="button" aria-label="Close">
+            ✕
+          </button>
+        </div>
+
+        <div class="sidepanel-body">
+          <!-- Top buttons -->
+          <div class="account-cta-row">
+            <a class="account-cta account-cta--primary" href="/account/sign-in"
+              >Sign in</a
+            >
+            <a class="account-cta" href="/account/create">Create an Account</a>
+          </div>
+
+          <!-- Pro block -->
+          <div class="account-pro">
+            <div class="account-pro-ic" aria-hidden="true">PRO</div>
+            <div class="account-pro-txt">
+              <div class="account-pro-title">Are You a Pro?</div>
+              <div class="account-pro-desc">
+                Get online tools to manage and grow your business — plus, Pro Xtra
+                Members unlock more benefits and savings.
+                <a class="account-pro-link" href="/pro">Learn more</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sidepanel-divider" role="separator" aria-hidden="true"></div>
+
+          <!-- Rows -->
+          <a class="sidepanel-row" href="/track-order">
+            <span class="sp-ic" aria-hidden="true">📦</span>
+            <span class="sp-txt">Track Order</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/account/cards">
+            <span class="sp-ic" aria-hidden="true">💳</span>
+            <span class="sp-txt">Cards &amp; Accounts</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/account/pay">
+            <span class="sp-ic" aria-hidden="true">🧾</span>
+            <span class="sp-txt">Pay Credit Card Bill</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/account/discounts">
+            <span class="sp-ic" aria-hidden="true">🏷️</span>
+            <span class="sp-txt">Discount Benefits</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/account/profile">
+            <span class="sp-ic" aria-hidden="true">👤</span>
+            <span class="sp-txt">Profile</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <div class="sidepanel-divider" role="separator" aria-hidden="true"></div>
+
+          <!-- AI links (requested) -->
+          <a class="sidepanel-row" href="/paint-assistant">
+            <span class="sp-ic" aria-hidden="true">🎨</span>
+            <span class="sp-txt">Paint Assistant</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+
+          <a class="sidepanel-row" href="/ai-helper">
+            <span class="sp-ic" aria-hidden="true">🤖</span>
+            <span class="sp-txt">AI Helper</span>
+            <span class="sp-arrow" aria-hidden="true">›</span>
+          </a>
+        </div>
+      </aside>
+    </header>
+
+    <main>
+      <!-- =====================================================
+           HERO – SPLIT ENTRY
+      ====================================================== -->
+      <section class="hero hero--split" aria-label="Primary entry">
+        <div class="container">
+          <div class="hero-grid">
+            <!-- DIY -->
+            <a
+              href="/shop"
+              class="hero-card hero-card--diy"
+              aria-label="Shop DIY"
+              style="--hero-image: url('/images/hero/diy.jpg')"
+            >
+              <div class="hero-bg" aria-hidden="true"></div>
+              <div class="hero-overlay" aria-hidden="true"></div>
+
+              <div class="hero-content">
+                <span class="hero-kicker">Home Improvement</span>
+                <h2 class="hero-title">Build. Fix. Upgrade.</h2>
+                <p class="hero-sub">
+                  Tools, materials &amp; supplies for every job — big or small.
+                </p>
+
+                <ul class="hero-list">
+                  <li>DIY Essentials</li>
+                  <li>Bathroom Makeovers</li>
+                  <li>Interior &amp; Exterior Paint</li>
+                </ul>
+
+                <div class="hero-actions">
+                  <span class="btn btn--primary">Shop DIY</span>
+                  <span class="btn btn--ghost">Browse categories</span>
+                </div>
+              </div>
+            </a>
+
+            <!-- TRADE -->
+            <a
+              href="/pro"
+              class="hero-card hero-card--trade"
+              aria-label="Shop Trade"
+              style="--hero-image: url('/images/hero/trade.jpg')"
+            >
+              <div class="hero-bg" aria-hidden="true"></div>
+              <div class="hero-overlay" aria-hidden="true"></div>
+
+              <div class="hero-content">
+                <span class="hero-kicker">Pro &amp; Trade Deals</span>
+                <h2 class="hero-title">Built for Contractors</h2>
+                <p class="hero-sub">
+                  Bulk pricing, site delivery &amp; exclusive trade-only deals.
+                </p>
+
+                <ul class="hero-list">
+                  <li>Tools &amp; Machinery</li>
+                  <li>Fasteners &amp; Adhesives</li>
+                  <li>Building Supplies</li>
+                </ul>
+
+                <div class="hero-actions">
+                  <span class="btn btn--primary btn--primary-red"
+                    >Shop Trade</span
+                  >
+                  <span class="btn btn--ghost">See contractor benefits</span>
+                </div>
+
+                <div class="hero-trade-cta" aria-label="Trade registration">
+                  <span class="hero-trade-note">
+                    Trade pricing available after registration.
+                  </span>
+                  <span class="hero-trade-links">
+                    <span class="link-cta">Register for Trade Deals →</span>
+                    <span class="link-muted">Already trade? Shop Trade →</span>
+                  </span>
+                </div>
+              </div>
+            </a>
+          </div>
+
+          <!-- Trust row -->
+          <div class="hero-trust" aria-label="Belims benefits">
+            <div class="trust-item">
+              <span class="trust-ic" aria-hidden="true">🚚</span>
+              <span class="trust-txt">Fast Delivery</span>
+            </div>
+            <div class="trust-item">
+              <span class="trust-ic" aria-hidden="true">📦</span>
+              <span class="trust-txt">Bulk Pricing</span>
+            </div>
+            <div class="trust-item">
+              <span class="trust-ic" aria-hidden="true">✔️</span>
+              <span class="trust-txt">Trusted Brands</span>
+            </div>
+            <div class="trust-item">
+              <span class="trust-ic" aria-hidden="true">🎧</span>
+              <span class="trust-txt">Dedicated Support</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           CATEGORY DISCOVERY STRIP
+      ====================================================== -->
+      <section class="category-strip" aria-label="Shop by category">
+        <div class="container">
+          <ul class="category-grid">
+            <li>
+              <a href="/shop/tools" class="category-tile">
+                <span class="category-icon">🛠️</span>
+                <span class="category-label">Tools</span>
+              </a>
+            </li>
+            <li>
+              <a href="/shop/paint" class="category-tile">
+                <span class="category-icon">🎨</span>
+                <span class="category-label">Paint</span>
+              </a>
+            </li>
+            <li>
+              <a href="/shop/fasteners" class="category-tile">
+                <span class="category-icon">🔩</span>
+                <span class="category-label">Fasteners</span>
+              </a>
+            </li>
+            <li>
+              <a href="/shop/plumbing" class="category-tile">
+                <span class="category-icon">🚰</span>
+                <span class="category-label">Plumbing</span>
+              </a>
+            </li>
+            <li>
+              <a href="/shop/electrical" class="category-tile">
+                <span class="category-icon">⚡</span>
+                <span class="category-label">Electrical</span>
+              </a>
+            </li>
+            <li>
+              <a href="/shop/safety" class="category-tile">
+                <span class="category-icon">🦺</span>
+                <span class="category-label">Safety</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           CATEGORY PRODUCT SLIDER
+      ====================================================== -->
+      <section class="category-slider" aria-label="What's popular">
+        <div class="container">
+          <div class="section-head">
+            <h2 class="section-title">What’s Popular</h2>
+            <a class="section-link" href="/shop">View all</a>
+          </div>
+
+          <div class="category-tabs" role="tablist" aria-label="Popular categories">
+            <button class="category-tab active" type="button" role="tab" aria-selected="true">
+              What’s Popular
+            </button>
+            <button class="category-tab" type="button" role="tab" aria-selected="false">
+              Deals of the Day
+            </button>
+            <button class="category-tab" type="button" role="tab" aria-selected="false">
+              Bathroom
+            </button>
+            <button class="category-tab" type="button" role="tab" aria-selected="false">
+              Tools
+            </button>
+            <button class="category-tab" type="button" role="tab" aria-selected="false">
+              Electrical
+            </button>
+          </div>
+
+          <div class="category-product-row">
+            <!-- Standard -->
+            <article class="product-card">
+              <div class="product-image" aria-hidden="true"></div>
+
+              <div class="product-meta">
+                <span class="product-category">Fasteners</span>
+                <h3 class="product-name">Coach Screw Hex Head</h3>
+                <p class="product-spec">8mm × 50mm · Zinc Plated</p>
+              </div>
+
+              <div class="product-purchase">
+                <div class="price-row">
+                  <div class="product-price">R12.95</div>
+                  <div class="price-note">Incl. VAT</div>
+                </div>
+
+                <div class="product-fulfillment">
+                  <span class="pill pickup">Pickup</span>
+                  <span class="pill delivery">Delivery</span>
+                </div>
+
+                <button class="add-to-cart" type="button">Add to cart</button>
+              </div>
+            </article>
+
+            <!-- Standard -->
+            <article class="product-card">
+              <div class="product-image" aria-hidden="true"></div>
+
+              <div class="product-meta">
+                <span class="product-category">Tools</span>
+                <h3 class="product-name">Angle Grinder 230mm</h3>
+                <p class="product-spec">Heavy duty · 2200W</p>
+              </div>
+
+              <div class="product-purchase">
+                <div class="price-row">
+                  <div class="product-price">R1,799.00</div>
+                  <div class="price-note">Incl. VAT</div>
+                </div>
+
+                <div class="product-fulfillment">
+                  <span class="pill pickup">Pickup</span>
+                  <span class="pill delivery">Delivery</span>
+                </div>
+
+                <button class="add-to-cart" type="button">Add to cart</button>
+              </div>
+            </article>
+
+            <!-- Deal -->
+            <article class="product-card product-card--deal">
+              <div class="product-image" aria-hidden="true"></div>
+
+              <div class="product-meta">
+                <span class="deal-badge">Weekly Deal</span>
+                <h3 class="product-name">Tile Adhesive 20kg</h3>
+                <p class="product-spec">Interior / Exterior</p>
+              </div>
+
+              <div class="product-purchase">
+                <div class="deal-price">
+                  <span class="price-was">R199</span>
+                  <span class="price-now">R149</span>
+                </div>
+
+                <div class="deal-meta-row">
+                  <span class="deal-meta">MOQ: 10</span>
+                  <span class="deal-meta">R14.90 / unit</span>
+                </div>
+
+                <div class="product-fulfillment">
+                  <span class="pill pickup">Pickup</span>
+                  <span class="pill delivery">Delivery</span>
+                </div>
+
+                <button class="add-to-cart" type="button">Add to cart</button>
+              </div>
+            </article>
+
+            <!-- Standard -->
+            <article class="product-card">
+              <div class="product-image" aria-hidden="true"></div>
+
+              <div class="product-meta">
+                <span class="product-category">Electrical</span>
+                <h3 class="product-name">LED Floodlight 50W</h3>
+                <p class="product-spec">Outdoor · IP65</p>
+              </div>
+
+              <div class="product-purchase">
+                <div class="price-row">
+                  <div class="product-price">R299.00</div>
+                  <div class="price-note">Incl. VAT</div>
+                </div>
+
+                <div class="product-fulfillment">
+                  <span class="pill delivery">Delivery</span>
+                </div>
+
+                <button class="add-to-cart" type="button">Add to cart</button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           DEALS OF THE DAY – HERO RAIL
+      ====================================================== -->
+      <section class="deals-hero" aria-label="Deals of the Day">
+        <div class="container">
+          <div class="section-head">
+            <h2 class="section-title">Deals of the Day</h2>
+            <a class="section-link" href="/deals">View all deals</a>
+          </div>
+
+          <div class="deals-hero-row">
+            <article class="deal-hero-card">
+              <span class="deal-flag">SAVE 25%</span>
+              <h3>Angle Grinder 115mm</h3>
+              <p>Trade-grade • Limited stock</p>
+              <div class="deal-hero-price">
+                <span class="was">R1,199</span>
+                <span class="now">R899</span>
+              </div>
+              <button class="deal-cta" type="button">Add to cart</button>
+            </article>
+
+            <article class="deal-hero-card">
+              <span class="deal-flag">BULK SAVE</span>
+              <h3>Tile Adhesive 20kg</h3>
+              <p>MOQ 10 • Interior / Exterior</p>
+              <div class="deal-hero-price">
+                <span class="was">R169</span>
+                <span class="now">R139</span>
+              </div>
+              <button class="deal-cta" type="button">Add to cart</button>
+            </article>
+
+            <article class="deal-hero-card">
+              <span class="deal-flag">CLEARANCE</span>
+              <h3>LED Floodlight 50W</h3>
+              <p>Outdoor • IP65</p>
+              <div class="deal-hero-price">
+                <span class="was">R349</span>
+                <span class="now">R249</span>
+              </div>
+              <button class="deal-cta" type="button">Add to cart</button>
+            </article>
+          </div>
+        </div>
+      </section>
+
+     <!-- =====================================================
+           WEEKLY DEALS & BULK SAVINGS
+      ====================================================== -->
+      <section class="deals" aria-label="Weekly deals and bulk savings">
+        <div class="container">
+          <div class="section-head">
+            <h2 class="section-title">Weekly deals &amp; bulk savings</h2>
+            <a class="section-link" href="/deals">View all deals</a>
+          </div>
+
+          <div class="deal-paths">
+            <a class="deal-path" href="/deals/weekly">
+              <span class="deal-path-title">Weekly Trade Deals</span>
+              <span class="deal-path-sub">Price drops on essentials</span>
+            </a>
+            <a class="deal-path" href="/deals/bulk">
+              <span class="deal-path-title">Bulk Buy &amp; Save</span>
+              <span class="deal-path-sub">Per-unit pricing &amp; MOQ</span>
+            </a>
+            <a class="deal-path" href="/deals/clearance">
+              <span class="deal-path-title">Clearance &amp; Overstock</span>
+              <span class="deal-path-sub">Limited stock, fast-moving</span>
+            </a>
+          </div>
+
+          <div class="product-grid">
+            <article class="product-card product-card--deal">
+              <div class="product-image" aria-hidden="true"></div>
+              <div class="product-meta">
+                <span class="deal-badge">Weekly Deal</span>
+                <h3 class="product-name">Makita Angle Grinder</h3>
+                <p class="product-spec">720W • 115mm</p>
+              </div>
+              <div class="product-purchase">
+                <div class="deal-price">
+                  <span class="price-was">R1,299</span>
+                  <span class="price-now">R999</span>
+                </div>
+                <div class="product-fulfillment">
+                  <span class="pill pickup">Pickup</span>
+                  <span class="pill delivery">Delivery</span>
+                </div>
+                <button class="add-to-cart" type="button">Add to cart</button>
+              </div>
+            </article>
+
+            <article class="product-card product-card--deal">
+              <div class="product-image" aria-hidden="true"></div>
+              <div class="product-meta">
+                <span class="deal-badge">Bulk Save</span>
+                <h3 class="product-name">Tile Adhesive 20kg</h3>
+                <p class="product-spec">Interior/Exterior • Grey</p>
+              </div>
+              <div class="product-purchase">
+                <div class="deal-price">
+                  <span class="price-was">R169</span>
+                  <span class="price-now">R149</span>
+                </div>
+                <div class="deal-meta-row">
+                  <span class="deal-meta">MOQ: 10</span>
+                  <span class="deal-meta">R14.90 / unit</span>
+                </div>
+                <button class="add-to-cart" type="button">Add to cart</button>
+              </div>
+            </article>
+
+            <article class="product-card product-card--deal">
+              <div class="product-image" aria-hidden="true"></div>
+              <div class="product-meta">
+                <span class="deal-badge">Clearance</span>
+                <h3 class="product-name">Safety Gloves (Pack)</h3>
+                <p class="product-spec">Size L • Reinforced</p>
+              </div>
+              <div class="product-purchase">
+                <div class="deal-price">
+                  <span class="price-was">R89</span>
+                  <span class="price-now">R59</span>
+                </div>
+                <div class="product-fulfillment">
+                  <span class="pill pickup">Pickup</span>
+                  <span class="pill delivery">Delivery</span>
+                </div>
+                <button class="add-to-cart" type="button">Add to cart</button>
+              </div>
+            </article>
+
+            <article class="product-card product-card--deal">
+              <div class="product-image" aria-hidden="true"></div>
+              <div class="product-meta">
+                <span class="deal-badge">Weekly Deal</span>
+                <h3 class="product-name">Coach Screws (Box)</h3>
+                <p class="product-spec">8mm × 50mm • Zinc</p>
+              </div>
+              <div class="product-purchase">
+                <div class="deal-price">
+                  <span class="price-was">R299</span>
+                  <span class="price-now">R229</span>
+                </div>
+                <button class="add-to-cart" type="button">Add to cart</button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           TRADE ESSENTIALS
+      ====================================================== -->
+      <section class="trade-essentials" aria-label="Trade essentials">
+        <div class="container">
+          <div class="section-head">
+            <h2 class="section-title">Trade essentials</h2>
+            <span class="section-note">Quick access for everyday jobs</span>
+          </div>
+
+          <ul class="trade-grid">
+            <li>
+              <a href="/shop/ladders-trestles" class="trade-card">
+                <span class="trade-title">Ladders &amp; Trestles</span>
+                <span class="trade-cta">Shop now →</span>
+              </a>
+            </li>
+            <li>
+              <a href="/shop/power-tools" class="trade-card">
+                <span class="trade-title">Power Tools</span>
+                <span class="trade-cta">Shop now →</span>
+              </a>
+            </li>
+            <li>
+              <a href="/shop/fasteners" class="trade-card">
+                <span class="trade-title">Fasteners</span>
+                <span class="trade-cta">Shop now →</span>
+              </a>
+            </li>
+            <li>
+              <a href="/shop/sealants-adhesives" class="trade-card">
+                <span class="trade-title">Sealants</span>
+                <span class="trade-cta">Shop now →</span>
+              </a>
+            </li>
+            <li>
+              <a href="/shop/safety-wear" class="trade-card">
+                <span class="trade-title">Safety Wear</span>
+                <span class="trade-cta">Shop now →</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           BRAND STRIP
+      ====================================================== -->
+       <section class="brand-strip" aria-label="Trusted brands">
+        <div class="container">
+          <ul class="brand-grid">
+            <li><img src="/brands/bosch.svg" alt="Bosch" /></li>
+            <li><img src="/brands/makita.svg" alt="Makita" /></li>
+            <li><img src="/brands/dewalt.svg" alt="DeWalt" /></li>
+            <li><img src="/brands/stanley.svg" alt="Stanley" /></li>
+            <li><img src="/brands/ingco.svg" alt="Ingco" /></li>
+            <li><img src="/brands/ryobi.svg" alt="Ryobi" /></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           FEATURED CATEGORY SPOTLIGHTS
+      ====================================================== -->
+      <section class="spotlights" aria-label="Featured categories">
+        <div class="container">
+          <div class="section-head">
+            <h2 class="section-title">Featured categories</h2>
+            <span class="section-note">
+              Top departments and their most-used subcategories
+            </span>
+          </div>
+
+          <div class="spotlights-grid">
+            <article class="spotlight-card" data-spotlight="paint">
+              <div class="spotlight-media" aria-hidden="true"></div>
+              <div class="spotlight-body">
+                <h3 class="spotlight-title">Paint &amp; Coatings</h3>
+                <p class="spotlight-desc">
+                  Interior, exterior and prep — everything for a clean finish.
+                </p>
+                <ul class="spotlight-links">
+                  <li><a href="/shop/paint/interior">Interior Paint</a></li>
+                  <li><a href="/shop/paint/exterior">Exterior Paint</a></li>
+                  <li>
+                    <a href="/shop/paint/primers-sealers"
+                      >Primers &amp; Sealers</a
+                    >
+                  </li>
+                </ul>
+                <a class="spotlight-cta" href="/shop/paint">Shop Paint →</a>
+              </div>
+            </article>
+
+            <article class="spotlight-card" data-spotlight="plumbing">
+              <div class="spotlight-media" aria-hidden="true"></div>
+              <div class="spotlight-body">
+                <h3 class="spotlight-title">Plumbing &amp; Sanitaryware</h3>
+                <p class="spotlight-desc">
+                  Pipes, fittings and fixtures for bathrooms and kitchens.
+                </p>
+                <ul class="spotlight-links">
+                  <li>
+                    <a href="/shop/plumbing/pipes-fittings"
+                      >Pipes &amp; Fittings</a
+                    >
+                  </li>
+                  <li>
+                    <a href="/shop/plumbing/bathroom-accessories"
+                      >Bathroom Accessories</a
+                    >
+                  </li>
+                  <li>
+                    <a href="/shop/plumbing/kitchen-fixtures"
+                      >Kitchen Fixtures</a
+                    >
+                  </li>
+                </ul>
+                <a class="spotlight-cta" href="/shop/plumbing-bathroom-kitchen"
+                  >Shop Plumbing →</a
+                >
+              </div>
+            </article>
+
+            <article class="spotlight-card" data-spotlight="doors">
+              <div class="spotlight-media" aria-hidden="true"></div>
+              <div class="spotlight-body">
+                <h3 class="spotlight-title">Doors &amp; Windows</h3>
+                <p class="spotlight-desc">
+                  Frames, hardware and security fittings for every opening.
+                </p>
+                <ul class="spotlight-links">
+                  <li><a href="/shop/doors-windows/frames">Frames</a></li>
+                  <li><a href="/shop/doors-windows/hardware">Hardware</a></li>
+                  <li>
+                    <a href="/shop/doors-windows/security">Security Fittings</a>
+                  </li>
+                </ul>
+                <a class="spotlight-cta" href="/shop/doors-windows"
+                  >Shop Doors &amp; Windows →</a
+                >
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           PROJECT INSPIRATION
+      ====================================================== -->
+      <section class="projects" aria-label="Project inspiration">
+        <div class="container">
+          <div class="section-head">
+            <h2 class="section-title">Get the job done</h2>
+            <span class="section-note">
+              Curated essentials for common home and trade projects
+            </span>
+          </div>
+
+          <div class="projects-grid">
+            <article class="project-card">
+              <div class="project-media" aria-hidden="true"></div>
+              <div class="project-body">
+                <h3 class="project-title">Bathroom Renovation Essentials</h3>
+                <p class="project-desc">
+                  Fixtures, fittings and finishes for bathroom upgrades.
+                </p>
+                <a class="project-cta" href="/projects/bathroom-renovation"
+                  >View checklist →</a
+                >
+              </div>
+            </article>
+
+            <article class="project-card">
+              <div class="project-media" aria-hidden="true"></div>
+              <div class="project-body">
+                <h3 class="project-title">Interior Painting Checklist</h3>
+                <p class="project-desc">
+                  Paint, prep tools and accessories for a clean interior finish.
+                </p>
+                <a class="project-cta" href="/projects/interior-painting"
+                  >View checklist →</a
+                >
+              </div>
+            </article>
+
+            <article class="project-card">
+              <div class="project-media" aria-hidden="true"></div>
+              <div class="project-body">
+                <h3 class="project-title">Outdoor Patio Setup</h3>
+                <p class="project-desc">
+                  Sealants, coatings and materials for outdoor living spaces.
+                </p>
+                <a class="project-cta" href="/projects/outdoor-patio"
+                  >View checklist →</a
+                >
+              </div>
+            </article>
+
+            <article class="project-card">
+              <div class="project-media" aria-hidden="true"></div>
+              <div class="project-body">
+                <h3 class="project-title">Basic Home Security Upgrade</h3>
+                <p class="project-desc">
+                  Locks, fittings and accessories for added security.
+                </p>
+                <a class="project-cta" href="/projects/home-security"
+                  >View checklist →</a
+                >
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           LIFESTYLE / USE-CASE
+      ====================================================== -->
+      <section class="lifestyle" aria-label="Built for real projects">
+        <div class="container">
+          <div class="lifestyle-grid">
+            <div class="lifestyle-content">
+              <h2 class="lifestyle-title">
+                Built for real projects — at home and on site
+              </h2>
+              <p class="lifestyle-desc">
+                From quick DIY fixes to full-scale renovations, Belims supplies
+                trusted tools, materials and finishes used by professionals and
+                homeowners across South Africa.
+              </p>
+
+              <ul class="lifestyle-points">
+                <li>Trade-grade products</li>
+                <li>Reliable stock &amp; delivery</li>
+                <li>Clear pricing, no guesswork</li>
+              </ul>
+
+              <a href="/shop" class="lifestyle-cta">Start your project →</a>
+            </div>
+
+            <div class="lifestyle-media" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
+
+       <!-- =====================================================
+           SEASONAL
+      ====================================================== -->
+      <section class="seasonal-block" aria-label="Seasonal essentials">
+      <div class="container">
+        <div class="seasonal-grid">
+
+          <article class="seasonal-card">
+            <h3>Load Shedding Essentials</h3>
+            <p>Lighting, power backup & safety solutions.</p>
+            <a href="/shop/load-shedding">Shop essentials →</a>
+          </article>
+
+          <article class="seasonal-card">
+            <h3>Rainy Season Prep</h3>
+            <p>Sealants, waterproofing & drainage.</p>
+            <a href="/shop/waterproofing">Prepare now →</a>
+          </article>
+
+          <article class="seasonal-card">
+            <h3>Outdoor Maintenance</h3>
+            <p>Garden tools, coatings & repairs.</p>
+            <a href="/shop/outdoor">Shop outdoor →</a>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+     <!-- =====================================================
+           SEO
+      ====================================================== -->
+    <section class="seo-categories" aria-label="Popular categories">
+        <div class="container">
+          <h2 class="section-title">Popular Categories</h2>
+          <ul class="seo-category-grid">
+          <li><a href="/shop/boards-sheeting">Boards & Sheeting</a></li>
+          <li><a href="/shop/ceiling-accessories">Ceiling Accessories</a></li>
+          <li><a href="/shop/tiles-adhesives">Tiles & Adhesives</a></li>
+          <li><a href="/shop/window-film">Window Film</a></li>
+          <li><a href="/shop/fasteners">Fasteners</a></li>
+          <li><a href="/shop/power-tool-accessories">Power Tool Accessories</a></li>
+          <li><a href="/shop/sealants">Sealants</a></li>
+          <li><a href="/shop/safety-wear">Safety Wear</a></li>
+          <li><a href="/shop/electrical-components">Electrical Components</a></li>
+          <li><a href="/shop/plumbing-fittings">Plumbing Fittings</a></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- =====================================================
+         FOOTER
+    ====================================================== -->
+   <footer class="site-footer" aria-label="Footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-col">
+            <h4>Shop</h4>
+            <ul>
+              <li><a href="/shop/tools-machinery">Tools &amp; Machinery</a></li>
+              <li><a href="/shop/paint">Paint</a></li>
+              <li><a href="/shop/building-materials">Building Materials</a></li>
+              <li><a href="/shop/plumbing-bathroom-kitchen">Plumbing</a></li>
+              <li><a href="/deals">Deals &amp; Clearance</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h4>Trade</h4>
+            <ul>
+              <li><a href="/trade">Trade Accounts</a></li>
+              <li><a href="/bulk-orders">Bulk Orders</a></li>
+              <li><a href="/delivery">Delivery Areas</a></li>
+              <li><a href="/returns">Returns &amp; Warranty</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h4>Support</h4>
+            <ul>
+              <li><a href="/contact">Contact Us</a></li>
+              <li><a href="/help">Help Centre</a></li>
+              <li><a href="/account">My Account</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h4>Belims</h4>
+            <ul>
+              <li><a href="/about">About Belims</a></li>
+              <li><a href="/brands">Brands</a></li>
+              <li><a href="/terms">Terms &amp; Conditions</a></li>
+              <li><a href="/privacy">Privacy Policy</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <span>© Belims Hardware</span>
+          <span>Trusted tools &amp; materials for every build</span>
+        </div>
+      </div>
+    </footer>
+    <script>
+  (function () {
+    const servicesBtn = document.getElementById("servicesBtn");
+    const servicesPanel = document.getElementById("servicesPanel");
+    const servicesOverlay = document.querySelector("[data-overlay]");
+
+    const accountBtn = document.getElementById("accountBtn");
+    const accountPanel = document.getElementById("accountPanel");
+    const accountOverlay = document.querySelector("[data-overlay-account]");
+
+    function wireDrawer(btn, panel, overlay) {
+      if (!btn || !panel || !overlay) return null;
+      const closeBtn = panel.querySelector(".sidepanel-close");
+      if (!closeBtn) return null;
+
+      function open() {
+        // close any other open drawer first
+        closeAll();
+
+        panel.hidden = false;
+        overlay.hidden = false;
+
+        requestAnimationFrame(() => {
+          panel.classList.add("is-open");
+          document.body.classList.add("panel-open");
+          btn.setAttribute("aria-expanded", "true");
+        });
+      }
+
+      function close() {
+        panel.classList.remove("is-open");
+        btn.setAttribute("aria-expanded", "false");
+
+        setTimeout(() => {
+          panel.hidden = true;
+          overlay.hidden = true;
+
+          // if nothing else open, allow scroll
+          if (
+            !document.querySelector(".sidepanel.is-open")
+          ) {
+            document.body.classList.remove("panel-open");
+          }
+        }, 200);
+      }
+
+      function toggle() {
+        const expanded = btn.getAttribute("aria-expanded") === "true";
+        expanded ? close() : open();
+      }
+
+      btn.addEventListener("click", (e) => {
+        // account button is an <a>, prevent navigation
+        if (btn.tagName.toLowerCase() === "a") e.preventDefault();
+        toggle();
+      });
+
+      closeBtn.addEventListener("click", close);
+      overlay.addEventListener("click", close);
+
+      return { open, close };
+    }
+
+    function closeAll() {
+      document.querySelectorAll(".sidepanel.is-open").forEach((p) => {
+        p.classList.remove("is-open");
+      });
+
+      document.querySelectorAll("[data-overlay], [data-overlay-account]").forEach(
+        (o) => (o.hidden = true)
+      );
+
+      // reset aria-expanded
+      if (servicesBtn) servicesBtn.setAttribute("aria-expanded", "false");
+      if (accountBtn) accountBtn.setAttribute("aria-expanded", "false");
+
+      // hide panels after transition
+      setTimeout(() => {
+        if (servicesPanel) servicesPanel.hidden = true;
+        if (accountPanel) accountPanel.hidden = true;
+        document.body.classList.remove("panel-open");
+      }, 200);
+    }
+
+    const services = wireDrawer(servicesBtn, servicesPanel, servicesOverlay);
+    const account = wireDrawer(accountBtn, accountPanel, accountOverlay);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const anyOpen = document.querySelector(".sidepanel.is-open");
+        if (anyOpen) closeAll();
+      }
+    });
+  })();
+</script>
+  </body>
+</html>

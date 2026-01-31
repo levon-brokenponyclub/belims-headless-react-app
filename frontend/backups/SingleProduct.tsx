@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Star,
@@ -34,14 +34,10 @@ import { getApiBaseUrl } from "../services/wooCommerceService";
 import { RecentlyViewed } from "./RecentlyViewed";
 import { StoreLocator } from "./StoreLocator";
 import { BundlePanel } from "./BundlePanel";
-import { ProductCard } from "./ProductCard";
-import { ProductPriceDisplay } from "./ProductPriceDisplay";
-import { DealBadge } from "./DealBadge";
 import ReactMarkdown from "react-markdown";
 
 interface SingleProductProps {
   product: Product;
-  allProducts?: Product[];
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
   onCompare: (product: Product) => void;
@@ -51,7 +47,6 @@ interface SingleProductProps {
 
 export const SingleProduct: React.FC<SingleProductProps> = ({
   product,
-  allProducts = [],
   addToCart,
   onBuyNow,
   onCompare,
@@ -73,10 +68,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   // Mobile detection
   const [isMobile, setIsMobile] = useState(false);
   const [showBottomCta, setShowBottomCta] = useState(false);
-  const [secondaryNavVisible, setSecondaryNavVisible] = useState(true);
   const lastScrollYRef = useRef(0);
-  // Breadcrumb positions: 124px when secondary nav visible (desktop), 73px when hidden (scrolled)
-  const breadcrumbTop = secondaryNavVisible ? (isMobile ? 73 : 124) : 73;
+  const breadcrumbTop = isMobile ? 64 : 130;
   const contentPaddingTop = isMobile ? "12px" : "50px";
 
   // Sticky Bar Logic
@@ -103,34 +96,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const [isBundleSectionExpanded, setIsBundleSectionExpanded] = useState(false); // Accordion state
   const [showBundleTrigger, setShowBundleTrigger] = useState(false);
 
-  // Trade Price Toggle
-  const [useTradePrice, setUseTradePrice] = useState(false);
-
-  // Compute pricing info
-  const pricingInfo = useMemo(() => {
-    const tradeDealsInfo = product.deals_resolved?.trade;
-    const tradePrice = tradeDealsInfo?.price;
-    const retailPrice = product.regular_price || product.price;
-    const savings =
-      tradePrice && tradePrice > 0 ? Math.max(0, retailPrice - tradePrice) : 0;
-    const hasTradePrice = !!tradePrice && tradePrice > 0;
-
-    return {
-      retailPrice,
-      tradePrice: tradePrice || 0,
-      savings,
-      hasTradePrice,
-      tradeDealsInfo,
-    };
-  }, [product]);
-
   useEffect(() => {
     addToRecentlyViewed(product);
     setMainImage(product.image);
     setQty(1);
     setAiDescription(null);
     setIsBundleSectionExpanded(false); // Reset accordion on product change
-    setUseTradePrice(false); // Reset trade price toggle on product change
     window.scrollTo({ top: 0, behavior: "smooth" });
     setShowBottomCta(false);
 
@@ -153,7 +124,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       mql.removeEventListener("change", handleChange as EventListener);
   }, []);
 
-  // Scroll listener for progressive buy box reveal and secondary nav visibility
+  // Scroll listener for progressive buy box reveal
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -161,9 +132,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
       // Show minimal buy box after 200px scroll
       setShowBuyBoxMinimal(currentScrollY > 200);
-
-      // Secondary nav hides after scrolling past ~50px
-      setSecondaryNavVisible(currentScrollY < 50);
 
       // Mobile bottom CTA: reveal on scroll down, hide on scroll up
       if (isMobile) {
@@ -211,14 +179,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   const handleAddToCart = () => {
     for (let i = 0; i < qty; i++) {
-      const productToAdd = { ...product };
-      if (useTradePrice && pricingInfo.tradeDealsInfo?.bestDeal) {
-        productToAdd.cartMetadata = {
-          priceMode: "trade",
-          dealId: pricingInfo.tradeDealsInfo.bestDeal.deal_id,
-        };
-      }
-      addToCart(productToAdd);
+      addToCart(product);
     }
   };
 
@@ -349,42 +310,30 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         </button>
       )}
 
-      {/* Fixed Breadcrumbs - Positioned below secondary nav */}
-      <div
-        className="fixed left-0 right-0 bg-white/98 backdrop-blur-md border-b border-gray-200 z-40 px-6 py-3 shadow-sm"
+      {/* Fixed Breadcrumbs */}
+      {/* <div
+        className="fixed left-0 right-0 bg-white/98 backdrop-blur-md border-b border-gray-200 z-50 px-6 py-4 shadow-sm"
         style={{ top: `${breadcrumbTop}px` }}
       >
-        <div className="container mx-auto px-4 flex items-center gap-2 overflow-x-auto no-scrollbar">
-          <div className="text-sm text-gray-600 flex items-center gap-2 whitespace-nowrap">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-sm text-gray-600 flex items-center gap-2">
             <span
               className="cursor-pointer hover:text-belims-blue transition-colors"
               onClick={() => navigate(-1)}
             >
               Home
             </span>
-            {product.breadcrumbs && product.breadcrumbs.length > 0 && (
-              <>
-                {product.breadcrumbs.map((breadcrumb, idx) => (
-                  <React.Fragment key={idx}>
-                    <ChevronRight
-                      size={14}
-                      className="text-gray-400 flex-shrink-0"
-                    />
-                    <span className="text-gray-600">{breadcrumb.label}</span>
-                  </React.Fragment>
-                ))}
-                <ChevronRight
-                  size={14}
-                  className="text-gray-400 flex-shrink-0"
-                />
-              </>
-            )}
-            <span className="font-bold text-gray-900 flex-shrink-0">
+            <ChevronRight size={14} className="text-gray-400" />
+            <span className="cursor-pointer hover:text-belims-blue transition-colors">
+              {product.category}
+            </span>
+            <ChevronRight size={14} className="text-gray-400" />
+            <span className="font-bold text-gray-900 line-clamp-1">
               {product.name}
             </span>
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div className="container mx-auto px-4 mb-16">
         {/* Main Grid Layout */}
@@ -399,16 +348,14 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           >
             {/* Image Container */}
             <div className="flex-1 bg-white border border-gray-200 rounded relative group cursor-zoom-in shadow-sm overflow-hidden flex flex-col">
-              {/* Deal Badge (Top Left) */}
-              <DealBadge deal={product.deals_resolved?.consumer} />
-
-              {/* Trade Special Label (Top Right) */}
-              {product.deals_resolved?.trade?.bestDeal?.type ===
-                "trade_special" && (
-                <div className="absolute top-4 right-4 z-20 text-white text-xs font-bold px-3 py-1.5 rounded shadow-sm uppercase tracking-wide font-heading bg-green-600">
-                  TRADE SPECIAL
-                </div>
-              )}
+              {/* Gallery Trigger (Top Left) */}
+              <button
+                onClick={() => setIsGalleryOpen(true)}
+                className="absolute top-4 left-4 bg-white/90 backdrop-blur text-gray-800 px-4 py-2 rounded-full shadow-md hover:bg-belims-blue hover:text-white transition-all z-20 flex items-center gap-2 text-sm font-bold font-heading hover:scale-105"
+              >
+                <Images size={16} /> View Gallery{" "}
+                {gallery.length > 1 ? `(+${gallery.length - 1})` : ""}
+              </button>
 
               {/* Main Image */}
               <div className="w-full h-full flex items-center justify-center p-6">
@@ -462,14 +409,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         </h3>
                       </div>
                       <div className="text-right">
-                        <div
-                          className={`text-2xl font-extrabold font-heading ${product.deals_resolved?.consumer ? "text-red-600" : "text-belims-blue"}`}
-                        >
+                        <div className="text-2xl font-extrabold text-belims-blue font-heading">
                           {CURRENCY_SYMBOL}
-                          {(
-                            product.deals_resolved?.consumer?.price ??
-                            product.price
-                          ).toFixed(2)}
+                          {product.price.toFixed(2)}
                         </div>
                       </div>
                     </div>
@@ -672,121 +614,34 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               ref={rightBuyBoxRef}
               className="bg-gray-50 p-6 rounded border border-gray-200 shadow-sm"
             >
-              <div className="flex justify-between items-start mb-4 border-b border-gray-200 pb-4">
-                <div className="flex-1">
-                  <ProductPriceDisplay
-                    product={product}
-                    deal={product.deals_resolved?.consumer}
-                    overridePrice={
-                      useTradePrice &&
-                      pricingInfo.tradeDealsInfo?.bestDeal?.type ===
-                        "trade_special"
-                        ? pricingInfo.tradePrice
-                        : undefined
-                    }
-                  />
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  {product.sale_price &&
+                  product.sale_price > 0 &&
+                  product.sale_price < product.regular_price ? (
+                    <div className="flex items-baseline gap-3">
+                      <div className="text-3xl font-extrabold text-red-600 font-heading">
+                        {CURRENCY_SYMBOL}
+                        {product.sale_price.toFixed(2)}
+                      </div>
+                      <div className="text-xl text-gray-400 line-through font-heading">
+                        {CURRENCY_SYMBOL}
+                        {product.regular_price.toFixed(2)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-3xl font-extrabold text-belims-blue font-heading">
+                      {CURRENCY_SYMBOL}
+                      {product.price.toFixed(2)}
+                    </div>
+                  )}
                 </div>
                 {product.isBundle && (
-                  <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded ml-4 flex-shrink-0">
+                  <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">
                     Bundle Savings
                   </span>
                 )}
               </div>
-
-              {/* Trade Price Toggle Block */}
-              {pricingInfo.hasTradePrice &&
-                pricingInfo.tradeDealsInfo?.bestDeal?.type ===
-                  "trade_special" && (
-                  <div className="mb-4 border-b border-gray-200 pb-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <h3 className="text-sm font-bold text-gray-700">
-                        Trade price
-                      </h3>
-                      <div className="flex-1 h-px bg-gray-300" />
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setUseTradePrice(!useTradePrice)}
-                      onKeyDown={(e) => {
-                        if (e.key === " " || e.key === "Enter") {
-                          e.preventDefault();
-                          setUseTradePrice(!useTradePrice);
-                        }
-                      }}
-                      role="switch"
-                      aria-checked={useTradePrice}
-                      className={`w-full rounded border-2 transition-all p-4 mb-3 relative ${
-                        useTradePrice
-                          ? "border-belims-blue bg-blue-50 ring-2 ring-belims-blue ring-opacity-30"
-                          : "border-gray-300 bg-white hover:border-gray-400"
-                      }`}
-                    >
-                      {/* 3-Column Grid */}
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        {/* Retail Column */}
-                        <div>
-                          <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-                            Retail
-                          </div>
-                          <div className="text-sm font-bold text-gray-700">
-                            {CURRENCY_SYMBOL}
-                            {pricingInfo.retailPrice.toFixed(2)}
-                          </div>
-                        </div>
-
-                        {/* Trade Column */}
-                        <div>
-                          <div className="text-xs font-semibold text-belims-blue mb-1 uppercase tracking-wide">
-                            Trade
-                          </div>
-                          <div className="text-lg font-extrabold text-belims-blue">
-                            {CURRENCY_SYMBOL}
-                            {pricingInfo.tradePrice.toFixed(2)}
-                          </div>
-                        </div>
-
-                        {/* Save Column */}
-                        <div>
-                          <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-                            Save
-                          </div>
-                          <div className="inline-block bg-green-100 text-green-700 text-sm font-bold px-2.5 py-1 rounded-full">
-                            {CURRENCY_SYMBOL}
-                            {pricingInfo.savings.toFixed(2)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Radio Indicator (Top Right) */}
-                      <div className="absolute top-3 right-3">
-                        {useTradePrice ? (
-                          <div className="w-5 h-5 rounded-full border-2 border-belims-blue bg-belims-blue flex items-center justify-center">
-                            <Check
-                              size={14}
-                              className="text-white"
-                              strokeWidth={3}
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-5 h-5 rounded-full border-2 border-gray-300" />
-                        )}
-                      </div>
-                    </button>
-
-                    {/* Helper Text */}
-                    {pricingInfo.tradeDealsInfo?.eligibilityCopy && (
-                      <p className="text-xs text-gray-500 italic">
-                        {pricingInfo.tradeDealsInfo.eligibilityCopy}
-                      </p>
-                    )}
-                    {!pricingInfo.tradeDealsInfo?.eligibilityCopy && (
-                      <p className="text-xs text-gray-500 italic">
-                        Available to approved contractor accounts.
-                      </p>
-                    )}
-                  </div>
-                )}
 
               <StockBar current={product.stock} max={product.maxStock} />
 
@@ -1104,6 +959,258 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           </div>
         </div>
 
+        {/* DETAILED PRODUCT SECTIONS */}
+        <div className="border-t border-gray-200 bg-white">
+          <div className="max-w-7xl mx-auto px-6 py-16">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+              {/* Left: Main Description & AI */}
+              <div className="lg:col-span-8 space-y-12">
+                {/* AI Summary (Moved here) */}
+                <div className="bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded p-8 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100 rounded-full -mr-16 -mt-16 opacity-50"></div>
+                  <div className="flex items-center justify-between mb-6 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded shadow-sm text-purple-600">
+                        <Sparkles size={24} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg text-purple-900 font-heading leading-none">
+                          AI Product Insights
+                        </h3>
+                        <p className="text-xs text-purple-500 mt-1">
+                          Powered by Google Gemini
+                        </p>
+                      </div>
+                    </div>
+                    {(aiDescription || !generatingDesc) && (
+                      <button
+                        onClick={handleGenerateDescription}
+                        className="text-xs font-bold bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 px-4 py-2 rounded-full transition-all shadow-sm flex items-center gap-2"
+                      >
+                        <RefreshCw
+                          size={14}
+                          className={generatingDesc ? "animate-spin" : ""}
+                        />
+                        {aiDescription
+                          ? "Regenerate Analysis"
+                          : "Analyze Product"}
+                      </button>
+                    )}
+                  </div>
+
+                  {generatingDesc ? (
+                    <div className="space-y-4 animate-pulse">
+                      <div className="h-4 bg-purple-200 rounded w-full"></div>
+                      <div className="h-4 bg-purple-200 rounded w-5/6"></div>
+                      <div className="h-4 bg-purple-200 rounded w-4/6"></div>
+                    </div>
+                  ) : aiDescription ? (
+                    <div className="prose prose-purple max-w-none relative z-10">
+                      <ReactMarkdown>{aiDescription}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 bg-white/50 rounded border border-purple-100 border-dashed">
+                      <p className="text-purple-800 font-medium mb-2">
+                        Want a quick expert summary?
+                      </p>
+                      <p className="text-sm text-purple-600 mb-4">
+                        Let our AI analyze the specs and reviews for you.
+                      </p>
+                      <button
+                        onClick={handleGenerateDescription}
+                        className="bg-purple-600 text-white font-bold py-2 px-6 rounded shadow hover:bg-purple-700 transition-colors"
+                      >
+                        Generate Summary
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Main Description */}
+                <div>
+                  <h2 className="text-2xl font-extrabold text-gray-900 font-heading mb-6">
+                    Product Description
+                  </h2>
+                  <div className="prose prose-lg text-gray-600 max-w-none leading-relaxed">
+                    <p>{product.description}</p>
+                    {/* Placeholder for more rich text content if we had html description */}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Accordion Sections */}
+              <div className="lg:col-span-4 space-y-4">
+                {/* Specs Accordion */}
+                <div className="border border-gray-200 rounded overflow-hidden">
+                  <button
+                    onClick={() =>
+                      setSelectedTab(selectedTab === "specs" ? "desc" : "specs")
+                    } // Reusing state for toggle
+                    className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                  >
+                    <span className="font-bold text-gray-900 font-heading">
+                      Technical Specifications
+                    </span>
+                    <ChevronDown
+                      size={20}
+                      className={`text-gray-500 transition-transform ${selectedTab === "specs" ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {selectedTab === "specs" && (
+                    <div className="p-4 bg-white border-t border-gray-200 animate-fadeIn">
+                      {product.specifications ? (
+                        <table className="w-full text-sm">
+                          <tbody>
+                            {product.specifications.map((spec, idx) => (
+                              <tr
+                                key={idx}
+                                className="border-b border-gray-100 last:border-0"
+                              >
+                                <td className="py-2 text-gray-500 w-1/3">
+                                  {spec.label}
+                                </td>
+                                <td className="py-2 text-gray-900 font-medium text-right">
+                                  {spec.value}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <p className="text-gray-500 text-sm">
+                          No specifications available.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 15-Days Return Policy */}
+                <div className="border border-gray-200 rounded overflow-hidden">
+                  <button
+                    onClick={() =>
+                      setExpandedPolicy(
+                        expandedPolicy === "return" ? null : "return",
+                      )
+                    }
+                    className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors text-left group"
+                  >
+                    <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
+                      15-Days Return Policy
+                    </span>
+                    <ChevronDown
+                      size={20}
+                      className={`text-gray-500 transition-transform ${expandedPolicy === "return" ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {expandedPolicy === "return" && (
+                    <div className="p-4 bg-white border-t border-gray-200 animate-fadeIn">
+                      <div
+                        className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            ecommercePolicies?.return_policy || "Loading...",
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Change of Mind Return */}
+                <div className="border border-gray-200 rounded overflow-hidden">
+                  <button
+                    onClick={() =>
+                      setExpandedPolicy(
+                        expandedPolicy === "change_mind" ? null : "change_mind",
+                      )
+                    }
+                    className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors text-left group"
+                  >
+                    <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
+                      Change of Mind Return
+                    </span>
+                    <ChevronDown
+                      size={20}
+                      className={`text-gray-500 transition-transform ${expandedPolicy === "change_mind" ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {expandedPolicy === "change_mind" && (
+                    <div className="p-4 bg-white border-t border-gray-200 animate-fadeIn">
+                      <div
+                        className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            ecommercePolicies?.change_of_mind || "Loading...",
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Warranty */}
+                <div className="border border-gray-200 rounded overflow-hidden">
+                  <button
+                    onClick={() =>
+                      setExpandedPolicy(
+                        expandedPolicy === "warranty" ? null : "warranty",
+                      )
+                    }
+                    className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors text-left group"
+                  >
+                    <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
+                      Warranty
+                    </span>
+                    <ChevronDown
+                      size={20}
+                      className={`text-gray-500 transition-transform ${expandedPolicy === "warranty" ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {expandedPolicy === "warranty" && (
+                    <div className="p-4 bg-white border-t border-gray-200 animate-fadeIn">
+                      <div
+                        className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: ecommercePolicies?.warranty || "Loading...",
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Delivery and Shipping */}
+                <div className="border border-gray-200 rounded overflow-hidden">
+                  <button
+                    onClick={() =>
+                      setExpandedPolicy(
+                        expandedPolicy === "shipping" ? null : "shipping",
+                      )
+                    }
+                    className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors text-left group"
+                  >
+                    <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
+                      Delivery and Shipping
+                    </span>
+                    <ChevronDown
+                      size={20}
+                      className={`text-gray-500 transition-transform ${expandedPolicy === "shipping" ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {expandedPolicy === "shipping" && (
+                    <div className="p-4 bg-white border-t border-gray-200 animate-fadeIn">
+                      <div
+                        className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: ecommercePolicies?.shipping || "Loading...",
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Mobile Bottom CTA (reveals on scroll down, hides on scroll up) */}
         {isMobile && (
           <div
@@ -1143,109 +1250,19 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             </div>
           </div>
         )}
+
+        {/* Recently Viewed Section */}
+        <RecentlyViewed
+          addToCart={addToCart}
+          onBuyNow={onBuyNow}
+          onProductClick={(p) => {
+            navigate(`/product/${p.id}`);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          onCompare={onCompare}
+          currentProductId={product.id}
+        />
       </div>
-      {/* How About These Section */}
-      {allProducts.length > 0 && (
-        <section className="py-12 bg-gray-50 border-t border-gray-100 mb-8">
-          <div className="container mx-auto px-4">
-            <h3 className="text-2xl font-bold text-gray-900 font-heading mb-8">
-              How about these
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {allProducts
-                .filter(
-                  (p) => p.id !== product.id && p.category === product.category,
-                )
-                .slice(0, 4)
-                .map((p) => (
-                  <div key={p.id}>
-                    <ProductCard
-                      product={p}
-                      addToCart={addToCart}
-                      onBuyNow={onBuyNow}
-                      onCompare={onCompare}
-                    />
-                  </div>
-                ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Frequently Bought Together Section */}
-      {(() => {
-        // Get the main category from breadcrumbs (first category after "Shop")
-        const mainCategory =
-          product.breadcrumbs?.find((b) => b.label !== "Shop")?.label ||
-          product.category;
-
-        // Calculate recommended products
-        let recommendedProducts = [];
-        if (product.cross_sell_ids && product.cross_sell_ids.length > 0) {
-          const crossSellIds = product.cross_sell_ids;
-          recommendedProducts = allProducts
-            .filter((p) => crossSellIds.includes(p.id))
-            .slice(0, 4);
-        }
-
-        // If fewer than 4 cross-sells, fill with main category products
-        if (recommendedProducts.length < 4) {
-          const mainCategoryProducts = allProducts
-            .filter((p) => {
-              if (p.id === product.id) return false;
-              if (recommendedProducts.some((rp) => rp.id === p.id))
-                return false;
-
-              // Check if product belongs to main category via breadcrumbs
-              return (p.breadcrumbs || []).some(
-                (b) => b.label === mainCategory,
-              );
-            })
-            .slice(0, 4 - recommendedProducts.length);
-
-          recommendedProducts = [
-            ...recommendedProducts,
-            ...mainCategoryProducts,
-          ];
-        }
-
-        // Only render if we have products to show
-        if (recommendedProducts.length === 0) return null;
-
-        return (
-          <section className="py-12 bg-white border-t border-gray-100 mb-8">
-            <div className="container mx-auto px-4">
-              <h3 className="text-2xl font-bold text-gray-900 font-heading mb-8">
-                Frequently bought together
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {recommendedProducts.map((p) => (
-                  <div key={p.id}>
-                    <ProductCard
-                      product={p}
-                      addToCart={addToCart}
-                      onBuyNow={onBuyNow}
-                      onCompare={onCompare}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        );
-      })()}
-
-      {/* Recently Viewed Section */}
-      <RecentlyViewed
-        addToCart={addToCart}
-        onBuyNow={onBuyNow}
-        onProductClick={(p) => {
-          navigate(`/product/${p.id}`);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-        onCompare={onCompare}
-        currentProductId={product.id}
-      />
     </div>
   );
 };

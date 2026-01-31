@@ -72,6 +72,7 @@ function global_site_settings_init() {
         'includes/class-orders-endpoint.php',
         'includes/class-user-endpoint.php', // User registration & management
         'includes/class-user-admin-page.php', // User management admin UI
+        'includes/class-ecommerce-policies.php', // Ecommerce policies (Returns, Warranty, Shipping)
         // FTG Sync integration
         'includes/ftg-sync/class-ftg-api.php',
         'includes/ftg-sync/class-ftg-sync-endpoint.php',
@@ -531,6 +532,10 @@ function global_site_settings_main_page() {
                 <a class="bpc-nav-item" data-tab="branding">
                     <span class="dashicons dashicons-art"></span>
                     Branding
+                </a>
+                <a class="bpc-nav-item" data-tab="ecommerce">
+                    <span class="dashicons dashicons-store"></span>
+                    Ecommerce
                 </a>
                 
                 <div class="bpc-nav-group-title">Integrations</div>
@@ -1311,6 +1316,19 @@ function global_site_settings_main_page() {
                     }
                     ?>
                 </div>
+            </div>
+
+            <!-- Ecommerce Tab -->
+            <div id="tab-ecommerce" class="bpc-tab-content">
+                <?php
+                // Include ecommerce policies admin page content
+                if (class_exists('Ecommerce_Policies_Admin')) {
+                    $ecommerce_admin = new Ecommerce_Policies_Admin();
+                    $ecommerce_admin->render_inline_content();
+                } else {
+                    echo '<div class="bpc-card"><p>Ecommerce Policies module not loaded.</p></div>';
+                }
+                ?>
             </div>
 
             <!-- CORS & Security Tab -->

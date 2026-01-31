@@ -25,6 +25,7 @@ import { Archive } from "./components/Archive";
 import { RecentlyViewed } from "./components/RecentlyViewed";
 import { ShopByCategory } from "./components/ShopByCategory";
 import { TrackOrderPage } from "./components/TrackOrderPage";
+import { BrandStrip } from "./components/BrandStrip";
 import HeroBanner from "./components/HeroBanner";
 
 import { Product, CartItem, Store } from "./types";
@@ -72,6 +73,7 @@ const ProductPage = ({
   return (
     <SingleProduct
       product={product}
+      allProducts={products}
       addToCart={addToCart}
       onBuyNow={onBuyNow}
       onCompare={onCompare}
@@ -107,6 +109,14 @@ const ArchivePage = ({ products, addToCart, onBuyNow, onCompare }) => {
   );
 };
 
+type DealFilter =
+  | "all"
+  | "deal_of_day"
+  | "featured"
+  | "trade_special"
+  | "clearance"
+  | "weekly";
+
 const HomePage = ({
   products,
   featuredProducts,
@@ -117,6 +127,80 @@ const HomePage = ({
   categoryPills,
 }) => {
   const navigate = useNavigate();
+  const [activeDealFilter, setActiveDealFilter] = useState<DealFilter>("all");
+  const isTradeLoggedIn = false; // TODO: Replace with actual auth context
+
+  // Filter products for Deals of the Day
+  const dealsOfTheDay = useMemo(() => {
+    return products
+      .filter(
+        (product) =>
+          product.deals_resolved?.consumer?.bestDeal?.type === "deal_of_day",
+      )
+      .slice(0, 4);
+  }, [products]);
+
+  // Filter products for Featured Deals
+  const featuredDeals = useMemo(() => {
+    return products
+      .filter((product) => {
+        // If we have a resolved deal, it's featured worthy
+        if (product.deals_resolved?.consumer?.bestDeal) return true;
+        // Fallback to standard WooCommerce sale price check or native featured flag
+        return (
+          (product.sale_price && parseFloat(String(product.sale_price)) > 0) ||
+          product.isFeatured
+        );
+      })
+      .sort((a, b) => {
+        // Sort by priority (lower is better/higher priority)
+        // Deal priorities: day(10), clearance(20), weekly(30), trade(40), sale(50)
+        // We assign arbitrary priority to native featured (e.g., 45) and generic sale (100)
+        const pA =
+          a.deals_resolved?.consumer?.bestDeal?.priority ??
+          (a.isFeatured ? 45 : 100);
+        const pB =
+          b.deals_resolved?.consumer?.bestDeal?.priority ??
+          (b.isFeatured ? 45 : 100);
+        return pA - pB;
+      })
+      .slice(0, 4);
+  }, [products]);
+
+  // Filter products for Trade Specials
+  const tradeSpecials = useMemo(() => {
+    return products
+      .filter(
+        (product) =>
+          product.deals_resolved?.trade?.bestDeal?.type === "trade_special",
+      )
+      .slice(0, 4);
+  }, [products]);
+
+  // Filter products for Clearance
+  const clearanceDeals = useMemo(() => {
+    return products
+      .filter(
+        (product) =>
+          product.deals_resolved?.consumer?.bestDeal?.type === "clearance",
+      )
+      .slice(0, 4);
+  }, [products]);
+
+  // Filter products for Weekly Deals
+  const weeklyDeals = useMemo(() => {
+    return products
+      .filter(
+        (product) =>
+          product.deals_resolved?.consumer?.bestDeal?.type === "weekly_special",
+      )
+      .slice(0, 4);
+  }, [products]);
+
+  const shouldShowSection = (sectionType: DealFilter) => {
+    if (activeDealFilter === "all") return true;
+    return activeDealFilter === sectionType;
+  };
 
   return (
     <>
@@ -129,179 +213,277 @@ const HomePage = ({
         onCompare={addToCompare}
       />
 
+      {/* Deal Filter Chips */}
+      <section className=" bg-gray-50 py-12 pb-0" aria-label="Deal filters">
+        <div className="container mx-auto px-4">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 font-heading">
+              Browse all deals
+            </h2>
+          </div>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+            {[
+              { key: "all", label: "All deals", hasProducts: true },
+              {
+                key: "featured",
+                label: "On Sale",
+                hasProducts: featuredDeals.length > 0,
+              },
+              {
+                key: "deal_of_day",
+                label: "Deals of the day",
+                hasProducts: dealsOfTheDay.length > 0,
+              },
+              {
+                key: "weekly",
+                label: "Weekly deals",
+                hasProducts: weeklyDeals.length > 0,
+              },
+              {
+                key: "trade_special",
+                label: "Trade specials",
+                hasProducts: tradeSpecials.length > 0,
+              },
+              {
+                key: "clearance",
+                label: "Clearance",
+                hasProducts: clearanceDeals.length > 0,
+              },
+            ]
+              .filter((f) => f.hasProducts)
+              .map((filter) => (
+                <button
+                  key={filter.key}
+                  onClick={() => setActiveDealFilter(filter.key as DealFilter)}
+                  className={`px-4 h-9 rounded border font-semibold font-heading transition-colors whitespace-nowrap text-[13px] ${
+                    activeDealFilter === filter.key
+                      ? "bg-belims-blue text-white border-gray-200"
+                      : "bg-white text-[#64748b] border-gray-200 hover:bg-belims-blue hover:text-white"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Deals */}
+      {shouldShowSection("featured") && (
+        <section className="pt-6 pb-14 bg-gray-50" aria-label="Featured deals">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-end mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 font-heading">
+                  On Sale
+                </h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  Hand-picked savings across the store
+                </p>
+              </div>
+              <a
+                href="/deals"
+                className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
+              >
+                View all →
+              </a>
+            </div>
+
+            {featuredDeals.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {featuredDeals.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    addToCart={addToCart}
+                    onBuyNow={handleBuyNow}
+                    onCompare={addToCompare}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <p>No featured deals right now. Check back soon!</p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Deals of the Day */}
-      <section
-        className="mb-16 bg-gradient-to-r from-blue-50 to-blue-100 py-8"
-        aria-label="Deals of the day"
-      >
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-end mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 font-heading">
-                Deals of the day
-              </h2>
-              <p className="text-gray-500 text-sm mt-1">
-                Fresh discounts daily — limited stock
-              </p>
-            </div>
-            <a
-              href="/deals"
-              className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
-            >
-              View all →
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="relative">
-                <div className="h-48 bg-gray-200"></div>
-                <span className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
-                  -25%
-                </span>
+      {shouldShowSection("deal_of_day") && (
+        <section
+          className="pt-6 pb-14 bg-gray-50"
+          aria-label="Deals of the day"
+        >
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-end mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 font-heading">
+                  Deals of the day
+                </h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  Fresh discounts daily — limited stock
+                </p>
               </div>
-              <div className="p-4">
-                <div className="text-sm text-gray-500 mb-1">Paint</div>
-                <h3 className="font-semibold text-gray-900 mb-2">
-                  Dulux Weatherguard 20L - White
-                </h3>
-                <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-lg font-bold text-red-600">R449</span>
-                  <span className="text-sm line-through text-gray-400">
-                    R599
-                  </span>
-                </div>
-                <button className="w-full px-4 py-2 bg-belims-blue text-white font-semibold rounded hover:bg-belims-accent transition-colors text-sm">
-                  Add to Cart
-                </button>
-              </div>
+              <a
+                href="/deals"
+                className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
+              >
+                View all →
+              </a>
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="relative">
-                <div className="h-48 bg-gray-200"></div>
-                <span className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
-                  -30%
-                </span>
+            {dealsOfTheDay.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {dealsOfTheDay.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    addToCart={addToCart}
+                    onBuyNow={handleBuyNow}
+                    onCompare={addToCompare}
+                  />
+                ))}
               </div>
-              <div className="p-4">
-                <div className="text-sm text-gray-500 mb-1">Tools</div>
-                <h3 className="font-semibold text-gray-900 mb-2">
-                  Bosch Professional Drill Set
-                </h3>
-                <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-lg font-bold text-red-600">R1,399</span>
-                  <span className="text-sm line-through text-gray-400">
-                    R1,999
-                  </span>
-                </div>
-                <button className="w-full px-4 py-2 bg-belims-blue text-white font-semibold rounded hover:bg-belims-accent transition-colors text-sm">
-                  Add to Cart
-                </button>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <p>No deals available today. Check back soon!</p>
               </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Weekly Deals */}
+      {shouldShowSection("weekly") && (
+        <section
+          className="pt-6 pb-14 bg-gray-50"
+          aria-label="Weekly deals and bulk savings"
+        >
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-end mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 font-heading">
+                  Weekly deals
+                </h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  Save more when you buy in bulk
+                </p>
+              </div>
+              <a
+                href="/deals/weekly"
+                className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
+              >
+                All weekly deals →
+              </a>
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="relative">
-                <div className="h-48 bg-gray-200"></div>
-                <span className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
-                  -20%
-                </span>
-              </div>
-              <div className="p-4">
-                <div className="text-sm text-gray-500 mb-1">Plumbing</div>
-                <h3 className="font-semibold text-gray-900 mb-2">
-                  Chrome Basin Mixer Tap
-                </h3>
-                <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-lg font-bold text-red-600">R239</span>
-                  <span className="text-sm line-through text-gray-400">
-                    R299
-                  </span>
-                </div>
-                <button className="w-full px-4 py-2 bg-belims-blue text-white font-semibold rounded hover:bg-belims-accent transition-colors text-sm">
-                  Add to Cart
-                </button>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <a
+                href="/deals/paint-week"
+                className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-6 hover:from-blue-600 hover:to-blue-700 transition-all"
+              >
+                <div className="text-sm font-semibold mb-1">This Week</div>
+                <div className="text-xl font-bold">Paint Week</div>
+                <div className="text-sm opacity-90 mt-2">Up to 30% off</div>
+              </a>
+
+              <a
+                href="/deals/power-tools"
+                className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg p-6 hover:from-orange-600 hover:to-orange-700 transition-all"
+              >
+                <div className="text-sm font-semibold mb-1">Limited Time</div>
+                <div className="text-xl font-bold">Power Tools</div>
+                <div className="text-sm opacity-90 mt-2">Save R200+</div>
+              </a>
+
+              <a
+                href="/deals/bulk-cement"
+                className="bg-gradient-to-br from-gray-700 to-gray-800 text-white rounded-lg p-6 hover:from-gray-800 hover:to-gray-900 transition-all"
+              >
+                <div className="text-sm font-semibold mb-1">Bulk Buy</div>
+                <div className="text-xl font-bold">Cement</div>
+                <div className="text-sm opacity-90 mt-2">10+ bags save 15%</div>
+              </a>
+
+              <a
+                href="/deals/trade-bundles"
+                className="bg-gradient-to-br from-green-600 to-green-700 text-white rounded-lg p-6 hover:from-green-700 hover:to-green-800 transition-all"
+              >
+                <div className="text-sm font-semibold mb-1">Trade Only</div>
+                <div className="text-xl font-bold">Bundles</div>
+                <div className="text-sm opacity-90 mt-2">Special pricing</div>
+              </a>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Weekly Deals & Bulk Savings */}
-      <section className="mb-16" aria-label="Weekly deals and bulk savings">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-end mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 font-heading">
-                Weekly deals & bulk savings
-              </h2>
-              <p className="text-gray-500 text-sm mt-1">
-                Save more when you buy in bulk
-              </p>
+            {weeklyDeals.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {weeklyDeals.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    addToCart={addToCart}
+                    onBuyNow={handleBuyNow}
+                    onCompare={addToCompare}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg">
+                <p>No weekly specials available right now. Check back soon!</p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Trade Specials */}
+      {shouldShowSection("trade_special") && (
+        <section className="pt-6 pb-14 bg-gray-50" aria-label="Trade specials">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-end mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 font-heading">
+                  Trade specials
+                </h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  {isTradeLoggedIn
+                    ? "Exclusive contractor pricing for your account"
+                    : "Contractor pricing available — log in to purchase at trade rate"}
+                </p>
+              </div>
+              <a
+                href="/deals?type=trade_special"
+                className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
+              >
+                See all trade deals →
+              </a>
             </div>
-            <a
-              href="/deals/weekly"
-              className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
-            >
-              All weekly deals →
-            </a>
+
+            {tradeSpecials.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {tradeSpecials.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    addToCart={addToCart}
+                    onBuyNow={handleBuyNow}
+                    onCompare={addToCompare}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <p>No trade specials currently.</p>
+              </div>
+            )}
           </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <a
-              href="/deals/paint-week"
-              className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-6 hover:from-blue-600 hover:to-blue-700 transition-all"
-            >
-              <div className="text-sm font-semibold mb-1">This Week</div>
-              <div className="text-xl font-bold">Paint Week</div>
-              <div className="text-sm opacity-90 mt-2">Up to 30% off</div>
-            </a>
-
-            <a
-              href="/deals/power-tools"
-              className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg p-6 hover:from-orange-600 hover:to-orange-700 transition-all"
-            >
-              <div className="text-sm font-semibold mb-1">Limited Time</div>
-              <div className="text-xl font-bold">Power Tools</div>
-              <div className="text-sm opacity-90 mt-2">Save R200+</div>
-            </a>
-
-            <a
-              href="/deals/bulk-cement"
-              className="bg-gradient-to-br from-gray-700 to-gray-800 text-white rounded-lg p-6 hover:from-gray-800 hover:to-gray-900 transition-all"
-            >
-              <div className="text-sm font-semibold mb-1">Bulk Buy</div>
-              <div className="text-xl font-bold">Cement</div>
-              <div className="text-sm opacity-90 mt-2">10+ bags save 15%</div>
-            </a>
-
-            <a
-              href="/deals/trade-bundles"
-              className="bg-gradient-to-br from-green-600 to-green-700 text-white rounded-lg p-6 hover:from-green-700 hover:to-green-800 transition-all"
-            >
-              <div className="text-sm font-semibold mb-1">Trade Only</div>
-              <div className="text-xl font-bold">Bundles</div>
-              <div className="text-sm opacity-90 mt-2">Special pricing</div>
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {products.slice(0, 4).map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                addToCart={addToCart}
-                onBuyNow={handleBuyNow}
-                onCompare={addToCompare}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Trade Essentials */}
-      <section className="mb-16" aria-label="Trade essentials">
+      <section className="my-16" aria-label="Trade essentials">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-end mb-6">
             <div>
@@ -317,52 +499,48 @@ const HomePage = ({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <a
               href="/shop/ladders-trestles"
-              className="block p-6 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+              className="block p-6 bg-belims-accent rounded hover:bg-belims-blue transition-colors"
             >
-              <div className="font-semibold text-gray-900 mb-2">
+              <div className="font-semibold text-white mb-2">
                 Ladders & Trestles
               </div>
-              <div className="text-sm text-belims-blue hover:text-belims-accent">
+              <div className="text-sm text-white/90 hover:text-white/100">
                 Shop now →
               </div>
             </a>
             <a
               href="/shop/power-tools"
-              className="block p-6 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+              className="block p-6 bg-belims-accent rounded hover:bg-belims-blue transition-colors"
             >
-              <div className="font-semibold text-gray-900 mb-2">
-                Power Tools
-              </div>
-              <div className="text-sm text-belims-blue hover:text-belims-accent">
+              <div className="font-semibold text-white mb-2">Power Tools</div>
+              <div className="text-sm text-white/90 hover:text-white/100">
                 Shop now →
               </div>
             </a>
             <a
               href="/shop/fasteners"
-              className="block p-6 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+              className="block p-6 bg-belims-accent rounded hover:bg-belims-blue transition-colors"
             >
-              <div className="font-semibold text-gray-900 mb-2">Fasteners</div>
-              <div className="text-sm text-belims-blue hover:text-belims-accent">
+              <div className="font-semibold text-white mb-2">Fasteners</div>
+              <div className="text-sm text-white/90 hover:text-white/100">
                 Shop now →
               </div>
             </a>
             <a
               href="/shop/sealants-adhesives"
-              className="block p-6 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+              className="block p-6 bg-belims-accent rounded hover:bg-belims-blue transition-colors"
             >
-              <div className="font-semibold text-gray-900 mb-2">Sealants</div>
-              <div className="text-sm text-belims-blue hover:text-belims-accent">
+              <div className="font-semibold text-white mb-2">Sealants</div>
+              <div className="text-sm text-white/90 hover:text-white/100">
                 Shop now →
               </div>
             </a>
             <a
               href="/shop/safety-wear"
-              className="block p-6 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+              className="block p-6 bg-belims-accent rounded hover:bg-belims-blue transition-colors"
             >
-              <div className="font-semibold text-gray-900 mb-2">
-                Safety Wear
-              </div>
-              <div className="text-sm text-belims-blue hover:text-belims-accent">
+              <div className="font-semibold text-white mb-2">Safety Wear</div>
+              <div className="text-sm text-white/90 hover:text-white/100">
                 Shop now →
               </div>
             </a>
@@ -371,30 +549,7 @@ const HomePage = ({
       </section>
 
       {/* Brand Strip */}
-      <section className="mb-16 py-8 bg-gray-50" aria-label="Trusted brands">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-8 items-center opacity-60">
-            <div className="text-center text-2xl font-bold text-gray-400">
-              BOSCH
-            </div>
-            <div className="text-center text-2xl font-bold text-gray-400">
-              MAKITA
-            </div>
-            <div className="text-center text-2xl font-bold text-gray-400">
-              DEWALT
-            </div>
-            <div className="text-center text-2xl font-bold text-gray-400">
-              STANLEY
-            </div>
-            <div className="text-center text-2xl font-bold text-gray-400">
-              INGCO
-            </div>
-            <div className="text-center text-2xl font-bold text-gray-400">
-              RYOBI
-            </div>
-          </div>
-        </div>
-      </section>
+      <BrandStrip />
 
       {/* Featured Category Spotlights */}
       <section className="mb-16" aria-label="Featured categories">

@@ -1,126 +1,160 @@
 import React from "react";
+import { ArrowRight } from "lucide-react";
 
-const assets = {
-  left: "https://i5.walmartimages.com/dfw/4ff9c6c9-57a4/k2-_d96a5c18-0407-4248-b751-cdef0aa2dc5e.v1.jpg?odnHeight=1316&odnWidth=1316&odnBg=&odnDynImageQuality=70",
-  midTop:
-    "https://i5.walmartimages.com/dfw/4ff9c6c9-b8d0/k2-_076bc213-34e2-4307-ae2f-9a0f228e776a.v1.jpg?odnHeight=584&odnWidth=1024&odnBg=&odnDynImageQuality=70",
-  midBottomLeft:
-    "https://i5.walmartimages.com/dfw/4ff9c6c9-5f8f/k2-_38b00c0b-ef8d-4dc3-b5a8-012d7b2424a6.v1.jpg?odnHeight=684&odnWidth=496&odnBg=&odnDynImageQuality=70",
-  midBottomRight:
-    "https://i5.walmartimages.com/dfw/4ff9c6c9-b62d/k2-_df0d84dd-1d18-43ee-b6ba-3ec3cb8b8901.v1.jpg?odnHeight=684&odnWidth=496&odnBg=&odnDynImageQuality=70",
-  right:
-    "https://i5.walmartimages.com/dfw/4ff9c6c9-a9a3/k2-_247dba7f-cee1-4774-a5ba-53b98431c1d5.v1.jpg?odnHeight=1316&odnWidth=770&odnBg=&odnDynImageQuality=70",
-};
-
-type HeroCardProps = {
-  image: string;
-  eyebrow?: string;
+interface HeroCard {
   title: string;
-  cta: string;
+  kicker: string;
+  subtitle: string;
+  list: string[];
+  primaryBtn: string;
+  secondaryBtn: string;
+  image: string;
   href: string;
-};
+  isPro?: boolean;
+}
 
-const HeroCard: React.FC<HeroCardProps> = ({
-  image,
-  eyebrow,
-  title,
-  cta,
-  href,
-}) => {
-  return (
-    <div className="relative h-full w-full overflow-hidden object-contain rounded-3xl border border-gray-200 bg-white shadow-sm">
-      <img
-        src={image}
-        alt={title}
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="lazy"
-      />
-      <div className="absolute inset-0 bg-white/25" />
-      <div className="relative z-10 flex h-full flex-col justify-start p-6">
-        {eyebrow && (
-          <p className="text-sm font-semibold text-[#001E60]">{eyebrow}</p>
-        )}
-        <h3 className="mt-1 max-w-[18ch] text-2xl font-extrabold leading-tight text-[#001E60]">
-          {title}
-        </h3>
-        <a
-          href={href}
-          className="mt-4 inline-block w-fit rounded-full bg-white px-5 py-2 text-sm font-bold text-slate-900 shadow hover:bg-white/90"
-        >
-          {cta}
-        </a>
-      </div>
-    </div>
-  );
-};
+interface TrustItem {
+  icon: string;
+  label: string;
+}
 
 const HeroBanner: React.FC = () => {
+  const heroCards: HeroCard[] = [
+    {
+      title: "Build. Fix. Upgrade.",
+      kicker: "Home Improvement",
+      subtitle: "Tools, materials & supplies for every job — big or small.",
+      list: [
+        "DIY Essentials",
+        "Bathroom Makeovers",
+        "Interior & Exterior Paint",
+      ],
+      primaryBtn: "Shop DIY",
+      secondaryBtn: "Browse categories",
+      image: "/images/hero/diy.jpg",
+      href: "/shop",
+      isPro: false,
+    },
+    {
+      title: "Built for Contractors",
+      kicker: "Pro & Trade Deals",
+      subtitle: "Bulk pricing, site delivery & exclusive trade-only deals.",
+      list: ["Tools & Machinery", "Fasteners & Adhesives", "Building Supplies"],
+      primaryBtn: "Shop Trade",
+      secondaryBtn: "See contractor benefits",
+      image: "/images/hero/trade.jpg",
+      href: "/pro",
+      isPro: true,
+    },
+  ];
+
+  const trustItems: TrustItem[] = [
+    { icon: "🚚", label: "Fast Delivery" },
+    { icon: "📦", label: "Bulk Pricing" },
+    { icon: "✔️", label: "Trusted Brands" },
+    { icon: "🎧", label: "Dedicated Support" },
+  ];
+
   return (
-    <section className="w-full overflow-hidden">
-      <div className="w-full max-w-[1380px] mx-auto py-6 px-4">
-        <div
-          className="grid gap-4"
-          style={{
-            gridTemplateColumns: "41.6667% 33.3333% 25%",
-            gridTemplateRows: "1fr 1fr",
-          }}
-        >
-          {/* Left (row-span-2) */}
-          <div style={{ gridRow: "span 2" }}>
-            <div className="aspect-square h-full w-full">
-              <HeroCard
-                image={assets.left}
-                eyebrow="OnePay CashRewards Card"
-                title="Earn 3% cash back at Walmart"
-                cta="Learn more"
-                href="https://www.walmart.com/cp/9435689"
-              />
-            </div>
-          </div>
+    <section
+      className="hero hero--split w-full py-14 bg-gray-50"
+      aria-label="Primary entry"
+    >
+      <div className="container mx-auto px-4">
+        {/* Hero Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {heroCards.map((card, index) => (
+            <a
+              key={index}
+              href={card.href}
+              className="hero-card relative overflow-hidden rounded-lg h-96 flex flex-col justify-between p-8 text-white"
+              style={{
+                backgroundImage: `url('${card.image}')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+              aria-label={`Shop ${card.kicker}`}
+            >
+              {/* Background overlay */}
+              <div
+                className="absolute inset-0 bg-black/40"
+                aria-hidden="true"
+              ></div>
 
-          {/* Middle Top */}
-          <div>
-            <div className="aspect-[16/7]">
-              <HeroCard
-                image={assets.midTop}
-                eyebrow="Fast care for COVID, flu & strep"
-                title="Get same-day testing & treatment"
-                cta="Schedule now"
-                href="https://www.walmart.com/cp/test-treat/4097505"
-              />
-            </div>
-          </div>
+              {/* Content */}
+              <div className="relative z-10 flex flex-col h-full justify-between">
+                <div>
+                  <span className="hero-kicker text-sm font-semibold text-orange-300 mb-2 block">
+                    {card.kicker}
+                  </span>
+                  <h2 className="hero-title text-4xl font-bold mb-3 leading-tight">
+                    {card.title}
+                  </h2>
+                  <p className="hero-sub text-lg mb-1">{card.subtitle}</p>
 
-          {/* Right (row-span-2) */}
-          <div style={{ gridRow: "span 2" }}>
-            <HeroCard
-              image={assets.right}
-              eyebrow="Self-care delivered"
-              title="Relax & reset in as fast as 1 hour*"
-              cta="Shop now"
-              href="https://www.walmart.com/cp/6545138"
-            />
-          </div>
+                  {/* List */}
+                  <ul className="hero-list mb-6 space-y-2">
+                    {card.list.map((item, i) => (
+                      <li key={i} className="text-sm font-medium">
+                        • {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-          {/* Middle Bottom: 2 Cards */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="aspect-[3/4]">
-              <HeroCard
-                image={assets.midBottomLeft}
-                title="Subscribe to your faves"
-                cta="Shop wellness"
-                href="https://www.walmart.com/browse/health/all-vitamins-supplements/976760_1005863_8090261"
-              />
+                {/* Actions */}
+                <div className="hero-actions flex gap-4">
+                  <button
+                    className={`px-6 py-2 rounded font-bold text-sm transition-colors ${
+                      card.isPro
+                        ? "bg-belims-accent hover:bg-red-600 text-white"
+                        : "bg-belims-blue hover:bg-belims-accent text-white"
+                    }`}
+                  >
+                    {card.primaryBtn}
+                  </button>
+                  <button className="px-6 py-2 rounded font-bold text-sm border-2 border-white hover:bg-white/10 transition-colors">
+                    {card.secondaryBtn}
+                  </button>
+                </div>
+
+                {/* Trade CTA */}
+                {card.isPro && (
+                  <div className="hero-trade-cta mt-6 border-t border-white/30 pt-4 flex justify-between items-center">
+                    <span className="hero-trade-note text-sm block mb-2">
+                      Trade pricing available after registration.
+                    </span>
+                    <div className="hero-trade-links space-y-1">
+                      <div className="link-cta text-sm font-semibold hover:underline cursor-pointer">
+                        Register for Trade Deals →
+                      </div>
+                      {/* <div className="link-muted text-sm text-gray-200 hover:underline cursor-pointer">
+                        Already trade? Shop Trade →
+                      </div> */}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </a>
+          ))}
+        </div>
+
+        {/* Trust Row */}
+        <div className="hero-trust w-full grid grid-cols-2 md:grid-cols-4 gap-4 py-8 border-t border-b border-gray-200">
+          {trustItems.map((item, index) => (
+            <div
+              key={index}
+              className="trust-item flex items-center justify-center gap-3"
+              aria-label={item.label}
+            >
+              <span className="trust-ic text-2xl" aria-hidden="true">
+                {item.icon}
+              </span>
+              <span className="trust-txt font-semibold text-sm text-gray-900">
+                {item.label}
+              </span>
             </div>
-            <div className="aspect-[3/4]">
-              <HeroCard
-                image={assets.midBottomRight}
-                title="Mattress Accident Plans"
-                cta="Shop now"
-                href="https://www.walmart.com/browse/mattresses-accessories/4044_103150_539386_9682013"
-              />
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>

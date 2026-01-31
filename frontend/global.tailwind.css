@@ -1,0 +1,23 @@
+@tailwind components;
+
+@layer components {
+  .header-signin {
+    @apply items-start text-left;
+  }
+
+  .bg-custom-grey {
+    background-color: #f9fafb;
+  }
+
+  .text-custom-grey {
+    color: #f9fafb;
+  }
+
+  .border-custom-grey {
+    border-color: #f9fafb;
+  }
+
+  .bg-belims-blue-light {
+    background-color: #f1f5f9;
+  }
+}

@@ -206,8 +206,8 @@ class Belims_FTG_Sync_Endpoint {
     public function get_ftg_products($request) {
         $token = $request->get_param('token');
         $page = $request->get_param('page') ?: 1;
-        // Default test fetch to 400 products so we cover the Ingco catalog
-        $limit = $request->get_param('limit') ?: 400;
+        // Default test fetch to 10 products
+        $limit = $request->get_param('limit') ?: 10;
         
         $result = $this->ftg_api->get_products($token, array(
             'page' => $page,

@@ -1,4 +1,5 @@
 import { Product, Category } from "../types";
+import { enrichProductWithDeals } from "./dealService";
 
 /**
  * BELIMS HEADLESS API SERVICE
@@ -67,7 +68,8 @@ export const fetchProducts = async (category?: string): Promise<Product[]> => {
     const data = await response.json();
 
     // Data is already formatted by our custom plugin!
-    return data;
+    // But we need to resolve deals
+    return (data as any[]).map(enrichProductWithDeals);
   } catch (error) {
     console.error("Belims API Error:", error);
     return [];
@@ -96,7 +98,7 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
     }
 
     const data = await response.json();
-    return data;
+    return (data as any[]).map(enrichProductWithDeals);
   } catch (error) {
     console.error("Belims API Error:", error);
     return [];
