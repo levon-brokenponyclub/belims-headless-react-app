@@ -1,28 +1,17 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Star,
-  ShoppingCart,
   Truck,
   Store,
   Heart,
   Share2,
   ChevronRight,
-  ChevronDown,
   Minus,
   Plus,
   Check,
-  Sparkles,
-  Scale,
-  ShieldCheck,
-  X,
-  ArrowLeft,
-  ArrowRight,
-  Images,
   RefreshCw,
   Package,
   Zap,
-  CirclePlus,
   Clock,
   MapPin,
 } from "lucide-react";
@@ -81,23 +70,32 @@ const classifyRate = (
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
 
-  if (rate.total_price === minPrice && minPrice < maxPrice) {
-    return "Economy";
-  } else if (rate.total_price === maxPrice) {
-    return "Express";
-  }
+  if (rate.total_price === minPrice && minPrice < maxPrice) return "Economy";
+  if (rate.total_price === maxPrice) return "Express";
   return "Standard";
 };
 
 const formatEta = (dateStr?: string | null): string => {
   if (!dateStr) return "Estimated delivery";
+
+  // If it's already a human-readable string (not a date format), return it directly
+  if (
+    dateStr.includes("Tomorrow") ||
+    dateStr.includes("Days") ||
+    dateStr.includes("day") ||
+    dateStr.includes("Today")
+  ) {
+    return dateStr;
+  }
+
   try {
     const date = new Date(dateStr);
-    // Validate that the date is actually valid (not "Invalid Date")
-    if (!date || isNaN(date.getTime())) {
-      return "Estimated delivery";
-    }
-    return `Estimated date: ${date.toLocaleDateString("en-ZA", { month: "short", day: "numeric" })}`;
+    if (!date || Number.isNaN(date.getTime())) return "Estimated delivery";
+    return `Arrives ${date.toLocaleDateString("en-ZA", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    })}`;
   } catch {
     return "Estimated delivery";
   }
@@ -115,12 +113,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   isTradeApproved = false,
 }) => {
   const navigate = useNavigate();
-  const [mainImage, setMainImage] = useState(product.image);
   const [qty, setQty] = useState(1);
-  const [selectedTab, setSelectedTab] = useState<"desc" | "specs">("desc");
-  const [productTab, setProductTab] = useState<"description" | "reviews">(
-    "description",
-  );
+
   const [aiDescription, setAiDescription] = useState<string | null>(null);
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
@@ -131,21 +125,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const [showBottomCta, setShowBottomCta] = useState(false);
   const [secondaryNavVisible, setSecondaryNavVisible] = useState(true);
   const lastScrollYRef = useRef(0);
-  // Breadcrumb positions: 124px when secondary nav visible (desktop), 73px when hidden (scrolled)
+
+  // Breadcrumb positions
   const breadcrumbTop = secondaryNavVisible ? (isMobile ? 73 : 124) : 73;
   const contentPaddingTop = isMobile ? "12px" : "50px";
 
-  // Sticky Bar Logic
-  const [isStickyExpanded, setIsStickyExpanded] = useState(false);
+  // Right buy box ref for intersection observer
   const rightBuyBoxRef = useRef<HTMLDivElement>(null);
-
-  // Buy Box Progressive Reveal
-  const [scrollY, setScrollY] = useState(0);
-  const [showBuyBoxMinimal, setShowBuyBoxMinimal] = useState(false);
-  const [showBuyBoxFull, setShowBuyBoxFull] = useState(false);
-
-  // Gallery Modal State
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 
   // Store Locator State
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
@@ -169,7 +155,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   // Bundle Panel State
   const [isBundleOpen, setIsBundleOpen] = useState(false);
-  const [isBundleSectionExpanded, setIsBundleSectionExpanded] = useState(false); // Accordion state
+  const [isBundleSectionExpanded, setIsBundleSectionExpanded] = useState(false);
   const [showBundleTrigger, setShowBundleTrigger] = useState(false);
 
   // Trade Price Toggle
@@ -195,6 +181,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   const isTradeSpecial =
     pricingInfo.tradeDealsInfo?.bestDeal?.type === "trade_special";
+
+  // ✅ Trade logic:
+  // - If trade approved & trade special => ALWAYS trade price (no toggle needed)
+  // - Else allow user toggle if trade price exists
   const effectiveUseTradePrice =
     isTradeApproved && isTradeSpecial ? true : useTradePrice;
 
@@ -211,8 +201,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const dealEndAt =
     parseDateSafe(consumerBestDeal?.end_at) ||
     parseDateSafe((consumerDeal as any)?.end_at);
-  const hasDealCountdown = isDealOfDay && !!dealEndAt;
 
+  const hasDealCountdown = isDealOfDay && !!dealEndAt;
   const [dealNowMs, setDealNowMs] = useState(() => Date.now());
 
   const formatDealOfDayCountdown = (remainingMs: number) => {
@@ -224,7 +214,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     if (remainingMs >= oneHour) {
       const hours = Math.floor(remainingMs / oneHour);
       const minutes = Math.floor((remainingMs % oneHour) / (60 * 1000));
-      return `Ends in ${hours}h ${minutes}m`;
+      return `Offer ends in ${hours}h ${minutes}m`;
     }
 
     const minutes = Math.max(1, Math.floor(remainingMs / (60 * 1000)));
@@ -237,25 +227,19 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   useEffect(() => {
     if (!hasDealCountdown) return;
-
-    const interval = setInterval(() => {
-      setDealNowMs(Date.now());
-    }, 60000);
-
+    const interval = setInterval(() => setDealNowMs(Date.now()), 60000);
     return () => clearInterval(interval);
   }, [hasDealCountdown]);
 
   useEffect(() => {
     addToRecentlyViewed(product);
-    setMainImage(product.image);
     setQty(1);
     setAiDescription(null);
-    setIsBundleSectionExpanded(false); // Reset accordion on product change
-    setUseTradePrice(false); // Reset trade price toggle on product change
+    setIsBundleSectionExpanded(false);
+    setUseTradePrice(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
     setShowBottomCta(false);
 
-    // Fetch ecommerce policies
     const apiBase = getApiBaseUrl();
     fetch(`${apiBase}/ecommerce-policies`)
       .then((res) => res.json())
@@ -274,9 +258,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!isDeliveryModalOpen) {
-      refreshStoredAddress();
-    }
+    if (!isDeliveryModalOpen) refreshStoredAddress();
   }, [isDeliveryModalOpen]);
 
   useEffect(() => {
@@ -303,6 +285,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
       setLoadingDeliveryRates(true);
       setDeliveryRatesError(null);
+
       try {
         const items = [
           {
@@ -366,26 +349,21 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 767px)");
     const handleChange = (e: MediaQueryListEvent | MediaQueryList) =>
-      setIsMobile(e.matches);
+      setIsMobile(
+        (e as MediaQueryList).matches ?? (e as MediaQueryListEvent).matches,
+      );
     handleChange(mql);
     mql.addEventListener("change", handleChange as EventListener);
     return () =>
       mql.removeEventListener("change", handleChange as EventListener);
   }, []);
 
-  // Scroll listener for progressive buy box reveal and secondary nav visibility
+  // Scroll listener for secondary nav visibility and mobile bottom CTA
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      setScrollY(currentScrollY);
-
-      // Show minimal buy box after 200px scroll
-      setShowBuyBoxMinimal(currentScrollY > 200);
-
-      // Secondary nav hides after scrolling past ~50px
       setSecondaryNavVisible(currentScrollY < 50);
 
-      // Mobile bottom CTA: reveal on scroll down, hide on scroll up
       if (isMobile) {
         const scrollingDown = currentScrollY > lastScrollYRef.current;
         const beyondThreshold = currentScrollY > 180;
@@ -399,17 +377,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isMobile]);
 
-  // Scroll Observer to trigger Left Sticky Bar Expansion and Full Buy Box
+  // Scroll Observer for Bundle Trigger and Sticky Buy Box
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         const isBelow = entry.boundingClientRect.top < 100;
-        // Expand sticky bar if scrolled past
-        setIsStickyExpanded(!entry.isIntersecting && isBelow);
-        // Show full buy box when price scrolls past
-        setShowBuyBoxFull(!entry.isIntersecting && isBelow);
 
-        // Show bundle trigger if scrolled past and product has bundles
         if (product.bundleCandidates && product.bundleCandidates.length > 0) {
           setShowBundleTrigger(!entry.isIntersecting && isBelow);
         }
@@ -417,43 +390,31 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       { threshold: 0.1, rootMargin: "-140px 0px 0px 0px" },
     );
 
-    if (rightBuyBoxRef.current) {
-      observer.observe(rightBuyBoxRef.current);
-    }
-
+    if (rightBuyBoxRef.current) observer.observe(rightBuyBoxRef.current);
     return () => observer.disconnect();
   }, [product]);
-
-  const gallery =
-    product.images && product.images.length > 0
-      ? product.images
-      : [product.image];
 
   const handleAddToCart = () => {
     for (let i = 0; i < qty; i++) {
       const productToAdd = { ...product };
-      if (effectiveUseTradePrice && pricingInfo.tradeDealsInfo?.bestDeal) {
+
+      // ✅ Trade special cart metadata (restored / enforced)
+      if (
+        effectiveUseTradePrice &&
+        isTradeSpecial &&
+        pricingInfo.tradeDealsInfo?.bestDeal
+      ) {
         productToAdd.cartMetadata = {
           priceMode: "trade",
           dealId: pricingInfo.tradeDealsInfo.bestDeal.deal_id,
         };
+      } else {
+        // Ensure we don't accidentally persist prior metadata
+        productToAdd.cartMetadata = undefined;
       }
+
       addToCart(productToAdd);
     }
-  };
-
-  const handleBuyNowAction = () => {
-    // For Buy Now, we usually just add 1 item or the current qty
-    // If current qty > 1, add all? Assume yes.
-    for (let i = 0; i < qty; i++) {
-      addToCart(product);
-    }
-    // Trigger the open cart logic handled by App.tsx via onBuyNow wrapper,
-    // but here onBuyNow usually takes product. We can implement it simpler:
-    // Just call the prop with the product, assuming prop handles cart add + open.
-    // But wait, if I call onBuyNow, it adds ONE item.
-    // Let's trust the prop does the right thing for a "Buy Now" flow (Add 1 item & Checkout).
-    onBuyNow(product);
   };
 
   const handleGenerateDescription = async () => {
@@ -461,20 +422,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     const desc = await generateProductDescription(product);
     setAiDescription(desc);
     setGeneratingDesc(false);
-  };
-
-  const handleNextImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const currentIndex = gallery.indexOf(mainImage);
-    const nextIndex = (currentIndex + 1) % gallery.length;
-    setMainImage(gallery[nextIndex]);
-  };
-
-  const handlePrevImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const currentIndex = gallery.indexOf(mainImage);
-    const prevIndex = (currentIndex - 1 + gallery.length) % gallery.length;
-    setMainImage(gallery[prevIndex]);
   };
 
   const hasDeliveryLocation = !!deliveryAddress;
@@ -485,57 +432,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   return (
     <div className="animate-fadeIn relative">
-      {/* Full Screen Gallery Modal */}
-      {isGalleryOpen && (
-        <div className="fixed inset-0 z-[80] bg-black/95 flex flex-col items-center justify-center p-4 animate-fadeIn">
-          <button
-            onClick={() => setIsGalleryOpen(false)}
-            className="absolute top-6 right-6 text-white hover:text-gray-300 z-50"
-          >
-            <X size={32} />
-          </button>
-
-          <div className="relative w-full max-w-5xl h-[70vh] flex items-center justify-center">
-            {gallery.length > 1 && (
-              <button
-                onClick={handlePrevImage}
-                className="absolute left-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50"
-              >
-                <ArrowLeft size={32} />
-              </button>
-            )}
-            <img
-              src={mainImage}
-              alt={product.name}
-              className="max-w-full max-h-full object-contain"
-            />
-            {gallery.length > 1 && (
-              <button
-                onClick={handleNextImage}
-                className="absolute right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50"
-              >
-                <ArrowRight size={32} />
-              </button>
-            )}
-          </div>
-
-          <div className="mt-8 flex gap-4 overflow-x-auto max-w-full p-2 no-scrollbar">
-            {gallery.map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => setMainImage(img)}
-                className={`w-20 h-20 rounded border-2 overflow-hidden transition-all flex-shrink-0 ${mainImage === img ? "border-belims-blue opacity-100" : "border-transparent opacity-50 hover:opacity-80"}`}
-              >
-                <img src={img} alt="" className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-          <div className="text-white mt-4 font-bold font-heading text-lg">
-            {gallery.indexOf(mainImage) + 1} / {gallery.length}
-          </div>
-        </div>
-      )}
-
       {/* Store Locator Modal */}
       {isLocatorOpen && (
         <StoreLocator
@@ -581,7 +477,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       {showBundleTrigger && (
         <button
           onClick={() => setIsBundleOpen(true)}
-          className="fixed bottom-24 right-4 z-40 bg-belims-accent text-white px-6 py-3 rounded-full shadow-xl font-bold font-heading flex items-center gap-2 animate-bounce hover:bg-orange-600 transition-colors"
+          className="fixed bottom-24 right-4 z-40 bg-belims-accent text-white px-6 py-3 rounded font-bold font-heading flex items-center gap-2 hover:bg-orange-600 transition-colors"
         >
           <Package size={20} /> Bundle & Save
         </button>
@@ -589,7 +485,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
       {/* Fixed Breadcrumbs - Positioned below secondary nav */}
       <div
-        className="fixed left-0 right-0 bg-white/98 backdrop-blur-md border-b border-gray-200 z-40 px-6 py-3 shadow-sm"
+        className="fixed left-0 right-0 bg-white/98 backdrop-blur-md border-b border-gray-200 z-40 px-6 py-3"
         style={{ top: `${breadcrumbTop}px` }}
       >
         <div className="container mx-auto px-4 flex items-center gap-2 overflow-x-auto no-scrollbar">
@@ -632,18 +528,20 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         >
           {/* LEFT COLUMN: Sticky Image + Overlapping Sticky Control Box */}
           <div
-            className={`lg:col-span-7 ${isMobile ? "" : "sticky top-[190px] h-[calc(100vh-220px)]"} flex flex-col relative z-30`}
+            className={`lg:col-span-7 ${
+              isMobile ? "" : "sticky top-[190px] h-[calc(100vh-220px)]"
+            } flex flex-col relative z-30`}
             style={{ paddingLeft: "0" }}
           >
             {/* Image Container */}
-            <div className="flex-1 bg-white border border-gray-200 rounded relative group cursor-zoom-in shadow-sm overflow-hidden flex flex-col">
+            <div className="flex-1 bg-white border border-gray-200 rounded relative group cursor-zoom-in overflow-hidden flex flex-col">
               {/* Deal Badge (Top Left) */}
               <DealBadge deal={product.deals_resolved?.consumer} />
 
               {/* Trade Special Label (Top Right) */}
               {product.deals_resolved?.trade?.bestDeal?.type ===
                 "trade_special" && (
-                <div className="absolute top-4 right-4 z-20 text-white text-xs font-bold px-3 py-1.5 rounded shadow-sm uppercase tracking-wide font-heading bg-green-600">
+                <div className="absolute top-4 right-4 z-20 text-white text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wide font-heading bg-green-600">
                   TRADE SPECIAL
                 </div>
               )}
@@ -651,265 +549,43 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               {/* Main Image */}
               <div className="w-full h-full flex items-center justify-center p-6">
                 <img
-                  src={mainImage}
+                  src={product.image}
                   alt={product.name}
                   className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-105"
-                  onClick={() => setIsGalleryOpen(true)}
                 />
               </div>
 
-              {/* Mobile Image Dots */}
-              {isMobile && gallery.length > 1 && (
-                <div className="flex justify-center gap-2 pb-4">
-                  {gallery.map((img, idx) => {
-                    const active = mainImage === img;
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => setMainImage(img)}
-                        className={`w-2.5 h-2.5 rounded-full transition-all ${active ? "bg-belims-blue scale-110" : "bg-gray-300 hover:bg-belims-blue/70"}`}
-                        aria-label={`Go to image ${idx + 1}`}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-
               {/* STICKY OVERLAP BAR (Bottom Aligned) - Progressive Reveal (Desktop/Tablet only) */}
-              {!isMobile && (
-                <div
-                  className={`absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md rounded border border-gray-200 shadow-2xl z-30 transition-all duration-500 ${!showBuyBoxMinimal ? "opacity-0 translate-y-4 pointer-events-none" : "opacity-100 translate-y-0"} ${showBuyBoxFull ? "p-5" : "p-3"}`}
-                >
-                  {/* EXPANDABLE SECTION: Brand, Title, Price, Stock */}
-                  {/* Only visible when right column buy box is scrolled out AND in full mode */}
-                  <div
-                    className={`overflow-hidden transition-all duration-500 ease-in-out ${isStickyExpanded && showBuyBoxFull ? "max-h-[200px] opacity-100 mb-3 border-b border-gray-100 pb-3" : "max-h-0 opacity-0"}`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div>
-                        <div
-                          className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5 hover:text-belims-blue cursor-pointer transition-colors"
-                          onClick={() =>
-                            product.brand && onBrandClick?.(product.brand)
-                          }
-                        >
-                          {product.brand}
-                        </div>
-                        <h3 className="font-bold text-gray-900 font-heading text-base line-clamp-1">
-                          {product.name}
-                        </h3>
-                      </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-2xl font-extrabold font-heading ${product.deals_resolved?.consumer ? "text-red-600" : "text-belims-blue"}`}
-                        >
-                          {CURRENCY_SYMBOL}
-                          {(
-                            product.deals_resolved?.consumer?.price ??
-                            product.price
-                          ).toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-3 w-full hidden sm:block">
-                      <StockBar
-                        current={product.stock}
-                        max={product.maxStock}
-                      />
-                    </div>
-                  </div>
-
-                  {/* PROGRESSIVE SECTION: Controls & Fulfillment */}
-                  <div
-                    className={`flex flex-col transition-all duration-300 ${showBuyBoxFull ? "gap-3" : "gap-2"}`}
-                  >
-                    {showBuyBoxFull ? (
-                      // FULL MODE: Add to Cart and Buy Now - Side by Side with Quantity
-                      <div className="flex items-center gap-3">
-                        {/* Quantity */}
-                        <div className="flex items-center border border-gray-300 rounded bg-gray-50 h-11">
-                          <button
-                            onClick={() => setQty(Math.max(1, qty - 1))}
-                            className="px-3 hover:bg-gray-200 text-gray-600 h-full rounded-l-lg"
-                          >
-                            <Minus size={16} />
-                          </button>
-                          <div className="w-8 text-center font-bold text-sm">
-                            {qty}
-                          </div>
-                          <button
-                            onClick={() =>
-                              setQty(Math.min(product.stock, qty + 1))
-                            }
-                            className="px-3 hover:bg-gray-200 text-gray-600 h-full rounded-r-lg"
-                          >
-                            <Plus size={16} />
-                          </button>
-                        </div>
-
-                        <button
-                          onClick={handleAddToCart}
-                          disabled={product.stock === 0}
-                          className="flex-1 bg-belims-blue text-white font-bold text-sm h-11 rounded shadow-md hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                          {product.stock > 0 ? "Add to cart" : "Out of Stock"}
-                        </button>
-
-                        <button
-                          onClick={handleBuyNowAction}
-                          disabled={product.stock === 0}
-                          className="flex-1 bg-belims-accent text-white font-bold text-sm h-11 rounded shadow-md hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                          <Zap size={18} fill="currentColor" />{" "}
-                          {product.stock > 0 ? "Buy Now" : "Out of Stock"}
-                        </button>
-                      </div>
-                    ) : (
-                      // MINIMAL MODE: Just Add to Cart button
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center border border-gray-300 rounded bg-gray-50 h-9">
-                          <button
-                            onClick={() => setQty(Math.max(1, qty - 1))}
-                            className="px-2 hover:bg-gray-200 text-gray-600 h-full rounded-l-lg"
-                          >
-                            <Minus size={14} />
-                          </button>
-                          <div className="w-6 text-center font-bold text-xs">
-                            {qty}
-                          </div>
-                          <button
-                            onClick={() =>
-                              setQty(Math.min(product.stock, qty + 1))
-                            }
-                            className="px-2 hover:bg-gray-200 text-gray-600 h-full rounded-r-lg"
-                          >
-                            <Plus size={14} />
-                          </button>
-                        </div>
-                        <button
-                          onClick={handleAddToCart}
-                          disabled={product.stock === 0}
-                          className="flex-1 bg-belims-blue text-white font-bold text-xs h-9 rounded shadow-md hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-1 disabled:opacity-50"
-                        >
-                          Add to cart
-                        </button>
-                        <button
-                          onClick={handleBuyNowAction}
-                          disabled={product.stock === 0}
-                          className="flex-1 bg-belims-accent text-white font-bold text-xs h-9 rounded shadow-md hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-1 disabled:opacity-50"
-                        >
-                          <Zap size={14} /> Buy Now
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Fulfillment Status (Compact Line) - Only in full mode */}
-                    {showBuyBoxFull && (
-                      <div className="flex gap-4 text-[10px] font-bold text-gray-500 justify-center sm:justify-start items-center pt-1">
-                        <span
-                          className="flex items-center gap-1 hover:text-belims-blue cursor-pointer"
-                          onClick={() => setIsLocatorOpen(true)}
-                        >
-                          <Store size={12} /> Pick Up Available
-                        </span>
-                        <span
-                          className="flex items-center gap-1 hover:text-belims-blue cursor-pointer"
-                          onClick={() => setIsDeliveryModalOpen(true)}
-                        >
-                          <Truck size={12} /> Delivery Available
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Content (Scrollable) */}
-          <div className="lg:col-span-5 flex flex-col gap-8 pt-0">
-            {/* Header Info */}
+          {/* RIGHT COLUMN */}
+          <div className="lg:col-span-5 flex flex-col gap-4 pt-4">
+            {/* Header Info - Brand, Title, SKU (Conversion-first) */}
             <div>
-              {/* First Row: Stars/Reviews with SKU below, Wishlist/Compare on right */}
-              <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-3">
-                    <div className="flex text-yellow-400">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          size={18}
-                          fill={
-                            i < Math.round(product.rating)
-                              ? "currentColor"
-                              : "none"
-                          }
-                        />
-                      ))}
-                    </div>
-                    <span className="text-sm font-medium text-gray-500 hover:text-belims-blue cursor-pointer underline decoration-dotted">
-                      {product.reviews} Reviews
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-400 font-mono">
-                    SKU: {product.sku || "N/A"}
-                  </div>
-                </div>
-                <div className="flex gap-2 flex-shrink-0 items-center">
-                  <button className="p-2 rounded-full bg-gray-100 hover:bg-red-50 hover:text-belims-accent transition-colors">
-                    <Heart size={20} />
-                  </button>
-                  <button className="p-2 rounded-full bg-gray-100 hover:bg-blue-50 hover:text-belims-blue transition-colors">
-                    <Share2 size={20} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Second Row: Brand and Title only */}
               <div className="mb-4">
-                <div
-                  className="text-sm font-bold text-gray-500 mb-1 uppercase tracking-wider font-heading hover:text-belims-blue cursor-pointer transition-colors"
-                  onClick={() => product.brand && onBrandClick?.(product.brand)}
-                >
-                  {product.brand}
-                </div>
-                <h1
-                  className="font-extrabold text-gray-900 font-heading leading-tight"
-                  style={{ fontSize: "1.6rem" }}
-                >
-                  {product.name}
-                </h1>
-
-                {/* Key Features */}
-                {product.features && product.features.length > 0 && (
-                  <div className="mt-4">
-                    <h3 className="text-sm font-bold text-gray-700 mb-2 font-heading">
-                      Key Features:
-                    </h3>
-                    <ul className="space-y-1.5">
-                      {product.features.map((feature, idx) => (
-                        <li
-                          key={idx}
-                          className="text-sm text-gray-600 flex items-start gap-2"
-                        >
-                          <Check
-                            size={16}
-                            className="text-green-600 flex-shrink-0 mt-0.5"
-                          />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
+                {product.brand && (
+                  <div
+                    className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 hover:text-belims-blue cursor-pointer transition-colors"
+                    onClick={() =>
+                      product.brand && onBrandClick?.(product.brand)
+                    }
+                  >
+                    {product.brand}
                   </div>
                 )}
+                <h1 className="text-2xl font-bold text-gray-900 font-heading mb-2">
+                  {product.name}
+                </h1>
+                <div className="text-xs text-gray-400 font-mono">
+                  SKU: {product.sku || "N/A"}
+                </div>
               </div>
             </div>
 
-            {/* RIGHT COLUMN BUY BOX (Scroll Target) */}
-            <div
-              ref={rightBuyBoxRef}
-              className="bg-gray-50 p-6 rounded border border-gray-200 shadow-sm"
-            >
+            {/* BUY BOX */}
+            <div ref={rightBuyBoxRef} className="">
+              {/* Price row */}
               <div className="flex justify-between items-start mb-4 border-b border-gray-200 pb-4">
                 <div className="flex-1">
                   <ProductPriceDisplay
@@ -924,6 +600,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                     showCountdown={false}
                   />
                 </div>
+
                 {product.isBundle && (
                   <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded ml-4 flex-shrink-0">
                     Bundle Savings
@@ -931,6 +608,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 )}
               </div>
 
+              {/* Deal countdown */}
               {dealCountdownText && (
                 <div className="mb-4">
                   <div className="inline-flex items-center gap-2 text-amber-700 text-sm bg-amber-50 border border-amber-200 px-3 py-2 rounded">
@@ -940,109 +618,93 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 </div>
               )}
 
-              {/* Trade Price Toggle Block */}
-              {pricingInfo.hasTradePrice &&
-                isTradeSpecial &&
-                !isTradeApproved && (
-                  <div className="mb-4 border-b border-gray-200 pb-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <h3 className="text-sm font-bold text-gray-700">
-                        Trade price
-                      </h3>
-                      <div className="flex-1 h-px bg-gray-300" />
-                    </div>
+              {/* Trade Price Block */}
+              {pricingInfo.hasTradePrice && isTradeSpecial && (
+                <div className="mb-4 border-b border-gray-200 pb-4">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h3 className="text-sm font-bold text-gray-700">
+                      Trade price
+                    </h3>
 
-                    <button
-                      type="button"
-                      onClick={() => setUseTradePrice(!useTradePrice)}
-                      onKeyDown={(e) => {
-                        if (e.key === " " || e.key === "Enter") {
-                          e.preventDefault();
-                          setUseTradePrice(!useTradePrice);
-                        }
-                      }}
-                      role="switch"
-                      aria-checked={useTradePrice}
-                      className={`w-full rounded border-2 transition-all p-4 mb-3 relative ${
-                        useTradePrice
-                          ? "border-belims-blue bg-blue-50 ring-2 ring-belims-blue ring-opacity-30"
-                          : "border-gray-300 bg-white hover:border-gray-400"
-                      }`}
-                    >
-                      {/* 3-Column Grid */}
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        {/* Retail Column */}
-                        <div>
-                          <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-                            Retail
-                          </div>
-                          <div className="text-sm font-bold text-gray-700">
-                            {CURRENCY_SYMBOL}
-                            {pricingInfo.retailPrice.toFixed(2)}
-                          </div>
-                        </div>
-
-                        {/* Trade Column */}
-                        <div>
-                          <div className="text-xs font-semibold text-belims-blue mb-1 uppercase tracking-wide">
-                            Trade
-                          </div>
-                          <div className="text-lg font-extrabold text-belims-blue">
-                            {CURRENCY_SYMBOL}
-                            {pricingInfo.tradePrice.toFixed(2)}
-                          </div>
-                        </div>
-
-                        {/* Save Column */}
-                        <div>
-                          <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-                            Save
-                          </div>
-                          <div className="inline-block bg-green-100 text-green-700 text-sm font-bold px-2.5 py-1 rounded-full">
-                            {CURRENCY_SYMBOL}
-                            {pricingInfo.savings.toFixed(2)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Radio Indicator (Top Right) */}
-                      <div className="absolute top-3 right-3">
-                        {useTradePrice ? (
-                          <div className="w-5 h-5 rounded-full border-2 border-belims-blue bg-belims-blue flex items-center justify-center">
-                            <Check
-                              size={14}
-                              className="text-white"
-                              strokeWidth={3}
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-5 h-5 rounded-full border-2 border-gray-300" />
-                        )}
-                      </div>
-                    </button>
-
-                    {/* Helper Text */}
-                    {pricingInfo.tradeDealsInfo?.eligibilityCopy && (
-                      <p className="text-xs text-gray-500 italic">
-                        {pricingInfo.tradeDealsInfo.eligibilityCopy}
-                      </p>
-                    )}
-                    {!pricingInfo.tradeDealsInfo?.eligibilityCopy && (
-                      <p className="text-xs text-gray-500 italic">
-                        Available to approved contractor accounts.
-                      </p>
+                    {/* If approved, show status; if not approved, show toggle */}
+                    {isTradeApproved ? (
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-green-700 bg-green-100 px-2 py-1 rounded">
+                        Active
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setUseTradePrice(!useTradePrice)}
+                        className={`text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded border transition-colors ${
+                          useTradePrice
+                            ? "border-belims-blue text-belims-blue bg-white"
+                            : "border-gray-300 text-gray-600 bg-white hover:border-gray-400"
+                        }`}
+                        aria-pressed={useTradePrice}
+                      >
+                        {useTradePrice ? "Trade" : "Retail"}
+                      </button>
                     )}
                   </div>
-                )}
+
+                  {/* Summary grid */}
+                  <div className="grid grid-cols-3 gap-3 text-center border border-gray-200 bg-white rounded p-3">
+                    <div>
+                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                        Retail
+                      </div>
+                      <div className="text-sm font-bold text-gray-800">
+                        {CURRENCY_SYMBOL}
+                        {pricingInfo.retailPrice.toFixed(2)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-semibold text-belims-blue uppercase tracking-wide mb-1">
+                        Trade
+                      </div>
+                      <div className="text-sm font-extrabold text-belims-blue">
+                        {CURRENCY_SYMBOL}
+                        {pricingInfo.tradePrice.toFixed(2)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                        Save
+                      </div>
+                      <div className="inline-block bg-green-100 text-green-700 text-sm font-bold px-2 py-1 rounded">
+                        {CURRENCY_SYMBOL}
+                        {pricingInfo.savings.toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 text-xs text-gray-600">
+                    {isTradeApproved ? (
+                      <span className="font-medium">
+                        Trade pricing applied at checkout.
+                      </span>
+                    ) : pricingInfo.tradeDealsInfo?.eligibilityCopy ? (
+                      <span className="italic">
+                        {pricingInfo.tradeDealsInfo.eligibilityCopy}
+                      </span>
+                    ) : (
+                      <span className="italic">
+                        Available to approved contractor accounts.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <StockBar current={product.stock} max={product.maxStock} />
 
+              {/* Qty + Add */}
               <div className="space-y-3 mt-6 mb-4">
                 <div className="flex gap-4">
-                  <div className="flex items-center border border-gray-300 rounded bg-white h-12 shadow-sm">
+                  <div className="flex items-center border border-gray-300 rounded bg-white h-12">
                     <button
                       onClick={() => setQty(Math.max(1, qty - 1))}
-                      className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded-l-lg"
+                      className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded"
                     >
                       <Minus size={18} />
                     </button>
@@ -1051,27 +713,29 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                     </div>
                     <button
                       onClick={() => setQty(Math.min(product.stock, qty + 1))}
-                      className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded-r-lg"
+                      className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded"
                     >
                       <Plus size={18} />
                     </button>
                   </div>
+
                   <button
                     onClick={handleAddToCart}
                     disabled={product.stock === 0}
-                    className="flex-1 bg-belims-blue text-white font-semibold text-base h-12 rounded shadow-md hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="flex-1 bg-belims-blue text-white font-semibold text-base h-12 rounded hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {product.stock > 0 ? "Add to cart" : "Out of Stock"}
                   </button>
                 </div>
               </div>
 
-              {/* Delivery Preview Module */}
-              <div className="mt-4 mb-6">
+              {/* Delivery */}
+              <div className="mt-4 mb-2 border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-sm font-bold text-gray-900 font-heading">
                     Delivery
                   </div>
+
                   {hasDeliveryLocation && (
                     <button
                       onClick={handleOpenDeliveryLocation}
@@ -1112,7 +776,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         <div
                           role="radiogroup"
                           aria-label="Delivery options"
-                          className="grid grid-cols-1 sm:grid-cols-1 gap-3 mb-2"
+                          className="grid grid-cols-1 gap-3 mb-2"
                         >
                           {deliveryRates.map((rate, idx) => {
                             const tier = classifyRate(rate, deliveryRates);
@@ -1132,34 +796,36 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                     `rate-${idx}`,
                                   );
                                 }}
-                                className={`text-left rounded border p-4 transition-all focus:outline-none focus:ring-2 focus:ring-belims-blue/40 ${
+                                className={[
+                                  "text-left rounded border p-4 transition-all focus:outline-none focus:ring-2 focus:ring-belims-blue/40 bg-white",
                                   isSelected
-                                    ? "border-belims-blue bg-blue-50/60 shadow-sm"
-                                    : "border-gray-200 bg-white hover:border-belims-blue hover:bg-blue-50/50"
-                                }`}
+                                    ? "border-belims-blue bg-blue-50/60"
+                                    : "border-gray-200 hover:border-belims-blue hover:bg-blue-50/50",
+                                ].join(" ")}
                               >
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="font-bold text-gray-900 text-sm">
-                                    {rate.service_name}
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-gray-900 text-sm">
+                                      {rate.service_name}
+                                    </div>
+                                    <div className="text-xs text-gray-600 mt-1">
+                                      {formatEta(rate.expected_delivery_date)}
+                                    </div>
                                   </div>
-                                  <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wide">
-                                    {tier}
-                                  </span>
-                                </div>
-                                <div className="text-xs text-gray-600 mb-1">
-                                  {formatEta(rate.expected_delivery_date)}
-                                </div>
-                                <div className="text-xs font-semibold text-gray-800">
-                                  {CURRENCY_SYMBOL}
-                                  {rate.total_price.toFixed(2)}
+
+                                  <div className="text-right flex-shrink-0">
+                                    <div className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wide inline-block">
+                                      {tier}
+                                    </div>
+                                    <div className="text-sm font-bold text-gray-900 mt-2">
+                                      {CURRENCY_SYMBOL}
+                                      {rate.total_price.toFixed(2)}
+                                    </div>
+                                  </div>
                                 </div>
                               </button>
                             );
                           })}
-                        </div>
-
-                        <div className="text-xs text-gray-500">
-                          Rates calculated for {qty} unit{qty > 1 ? "s" : ""}.
                         </div>
                       </>
                     ) : (
@@ -1190,30 +856,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               </div>
             </div>
 
-            {/* COMPARE BUTTONS */}
-            <div className="mb-6">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => onCompare(product)}
-                  className="flex-1 text-sm font-bold text-gray-700 hover:text-belims-blue hover:border-belims-blue bg-white px-4 py-3 rounded border border-gray-200 shadow-sm transition-all flex items-center justify-center gap-2"
-                >
-                  <Scale size={18} /> Compare
-                </button>
-                <button
-                  onClick={() => onPriceMatch(product)}
-                  className="flex-1 text-sm font-bold text-belims-blue hover:text-white hover:bg-belims-blue bg-blue-50 px-4 py-3 rounded border border-blue-100 shadow-sm transition-all flex items-center justify-center gap-2"
-                >
-                  <ShieldCheck size={18} /> Price Match
-                </button>
-              </div>
-            </div>
-
             {/* Product Description */}
-            <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
-              <h3 className="font-bold text-gray-900 font-heading text-lg mb-4">
+            <div className="bg-white rounded p-0">
+              <h3 className="font-bold text-gray-900 font-heading text-medium mb-4">
                 Product Description
               </h3>
-              <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed [&_strong]:font-bold [&_strong]:text-gray-900 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_li]:text-gray-700 [&_p]:mb-3">
+              <div className="prose prose-sm max-w-none text-gray-700 text-sm leading-relaxed [&_strong]:font-bold [&_strong]:text-gray-900 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_li]:text-gray-700 [&_p]:mb-3">
                 {product.description ? (
                   <div
                     dangerouslySetInnerHTML={{ __html: product.description }}
@@ -1226,83 +874,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               </div>
             </div>
 
-            {/* Bundle Section - Outside Buy Block with Blue Theme */}
-            {product.bundleCandidates &&
-              product.bundleCandidates.length > 0 && (
-                <div className="mb-8">
-                  <div className="rounded border transition-all duration-300 border-belims-blue bg-blue-50">
-                    <div
-                      className="p-5 flex items-center justify-between cursor-pointer"
-                      onClick={() =>
-                        setIsBundleSectionExpanded(!isBundleSectionExpanded)
-                      }
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="bg-blue-100 p-2 rounded text-belims-blue">
-                          <Package size={24} />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-gray-900 font-heading text-lg leading-none">
-                            Bundle & Save
-                          </h3>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Add accessories to unlock up to 10% off.
-                          </p>
-                        </div>
-                      </div>
-                      <div
-                        className={`transform transition-transform duration-300 text-belims-blue ${isBundleSectionExpanded ? "rotate-180" : ""}`}
-                      >
-                        <ChevronDown size={24} />
-                      </div>
-                    </div>
-                    {isBundleSectionExpanded && (
-                      <div className="overflow-hidden transition-all duration-300 ease-in-out border-t border-blue-100">
-                        <div className="p-5 pt-2">
-                          <div className="flex items-center gap-3 mb-5 overflow-x-auto no-scrollbar pb-2">
-                            <div className="relative w-16 h-16 bg-white rounded border border-gray-200 p-1 flex-shrink-0 shadow-sm">
-                              <img
-                                alt=""
-                                className="w-full h-full object-contain"
-                                src={product.image}
-                              />
-                              <div className="absolute -bottom-2 -right-2 bg-green-500 text-white rounded-full p-0.5">
-                                <Check size={10} strokeWidth={3} />
-                              </div>
-                            </div>
-                            <CirclePlus
-                              size={20}
-                              className="text-gray-300 flex-shrink-0"
-                            />
-                            {product.bundleCandidates
-                              .slice(0, 3)
-                              .map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="w-16 h-16 bg-white rounded border border-dashed border-gray-300 p-1 flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity"
-                                >
-                                  <img
-                                    alt=""
-                                    className="w-full h-full object-contain"
-                                    src={item.image}
-                                  />
-                                </div>
-                              ))}
-                          </div>
-                          <button
-                            onClick={() => setIsBundleOpen(true)}
-                            className="w-full bg-white text-belims-blue border-2 border-belims-blue py-2.5 rounded font-bold hover:bg-belims-blue hover:text-white transition-colors font-heading shadow-sm"
-                          >
-                            Customize Your Bundle
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-            {/* Policy Accordions */}
+            {/* Policies */}
             <div className="space-y-3">
               {/* 15-Days Return Policy */}
               <div className="border border-gray-200 rounded overflow-hidden">
@@ -1317,9 +889,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
                     15-Days Return Policy
                   </span>
-                  <ChevronDown
+                  <ChevronRight
                     size={20}
-                    className={`text-gray-500 transition-transform ${expandedPolicy === "return" ? "rotate-180" : ""}`}
+                    className={`text-gray-500 transition-transform ${expandedPolicy === "return" ? "rotate-90" : ""}`}
                   />
                 </button>
                 {expandedPolicy === "return" && (
@@ -1348,9 +920,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
                     Change of Mind Return
                   </span>
-                  <ChevronDown
+                  <ChevronRight
                     size={20}
-                    className={`text-gray-500 transition-transform ${expandedPolicy === "change_mind" ? "rotate-180" : ""}`}
+                    className={`text-gray-500 transition-transform ${expandedPolicy === "change_mind" ? "rotate-90" : ""}`}
                   />
                 </button>
                 {expandedPolicy === "change_mind" && (
@@ -1379,9 +951,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
                     Warranty
                   </span>
-                  <ChevronDown
+                  <ChevronRight
                     size={20}
-                    className={`text-gray-500 transition-transform ${expandedPolicy === "warranty" ? "rotate-180" : ""}`}
+                    className={`text-gray-500 transition-transform ${expandedPolicy === "warranty" ? "rotate-90" : ""}`}
                   />
                 </button>
                 {expandedPolicy === "warranty" && (
@@ -1409,9 +981,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
                     Delivery and Shipping
                   </span>
-                  <ChevronDown
+                  <ChevronRight
                     size={20}
-                    className={`text-gray-500 transition-transform ${expandedPolicy === "shipping" ? "rotate-180" : ""}`}
+                    className={`text-gray-500 transition-transform ${expandedPolicy === "shipping" ? "rotate-90" : ""}`}
                   />
                 </button>
                 {expandedPolicy === "shipping" && (
@@ -1429,49 +1001,45 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           </div>
         </div>
 
-        {/* Mobile Bottom CTA (reveals on scroll down, hides on scroll up) */}
+        {/* Mobile Bottom CTA */}
         {isMobile && (
           <div
-            className={`fixed left-0 right-0 bottom-0 z-[260] bg-white border-t border-gray-200 shadow-2xl px-4 py-3 transition-transform duration-300 ${showBottomCta ? "translate-y-0" : "translate-y-full"}`}
+            className={`fixed left-0 right-0 bottom-0 z-[260] bg-white border-t border-gray-200 px-4 py-3 transition-transform duration-300 ${
+              showBottomCta ? "translate-y-0" : "translate-y-full"
+            }`}
           >
             <div className="flex items-center gap-3">
-              <div className="flex items-center border border-gray-300 rounded bg-gray-50 h-11 flex-shrink-0">
+              <div className="flex items-center border border-gray-300 rounded bg-white h-11 flex-shrink-0">
                 <button
                   onClick={() => setQty(Math.max(1, qty - 1))}
-                  className="px-3 hover:bg-gray-200 text-gray-600 h-full rounded-l-lg"
+                  className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded"
                 >
                   <Minus size={16} />
                 </button>
                 <div className="w-8 text-center font-bold text-sm">{qty}</div>
                 <button
                   onClick={() => setQty(Math.min(product.stock, qty + 1))}
-                  className="px-3 hover:bg-gray-200 text-gray-600 h-full rounded-r-lg"
+                  className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded"
                 >
                   <Plus size={16} />
                 </button>
               </div>
+
               <button
                 onClick={handleAddToCart}
                 disabled={product.stock === 0}
-                className="flex-1 bg-belims-blue text-white font-bold text-sm h-11 rounded shadow-md hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                className="flex-1 bg-belims-blue text-white font-bold text-sm h-11 rounded hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {product.stock > 0 ? "Add to cart" : "Out of Stock"}
-              </button>
-              <button
-                onClick={handleBuyNowAction}
-                disabled={product.stock === 0}
-                className="flex-1 bg-belims-accent text-white font-bold text-sm h-11 rounded shadow-md hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <Zap size={16} />{" "}
-                {product.stock > 0 ? "Buy Now" : "Out of Stock"}
               </button>
             </div>
           </div>
         )}
       </div>
+
       {/* How About These Section */}
       {allProducts.length > 0 && (
-        <section className="py-12 bg-gray-50 border-t border-gray-100 mb-8">
+        <section className="py-12 bg-gray-50 border-t border-gray-200 mb-8">
           <div className="container mx-auto px-4">
             <h3 className="text-2xl font-bold text-gray-900 font-heading mb-8">
               How about these
@@ -1501,13 +1069,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
       {/* Frequently Bought Together Section */}
       {(() => {
-        // Get the main category from breadcrumbs (first category after "Shop")
         const mainCategory =
           product.breadcrumbs?.find((b) => b.label !== "Shop")?.label ||
           product.category;
 
-        // Calculate recommended products
-        let recommendedProducts = [];
+        let recommendedProducts: Product[] = [];
+
         if (product.cross_sell_ids && product.cross_sell_ids.length > 0) {
           const crossSellIds = product.cross_sell_ids;
           recommendedProducts = allProducts
@@ -1515,15 +1082,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             .slice(0, 4);
         }
 
-        // If fewer than 4 cross-sells, fill with main category products
         if (recommendedProducts.length < 4) {
           const mainCategoryProducts = allProducts
             .filter((p) => {
               if (p.id === product.id) return false;
               if (recommendedProducts.some((rp) => rp.id === p.id))
                 return false;
-
-              // Check if product belongs to main category via breadcrumbs
               return (p.breadcrumbs || []).some(
                 (b) => b.label === mainCategory,
               );
@@ -1536,11 +1100,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           ];
         }
 
-        // Only render if we have products to show
         if (recommendedProducts.length === 0) return null;
 
         return (
-          <section className="py-12 bg-white border-t border-gray-100 mb-8">
+          <section className="py-12 bg-white border-t border-gray-200 mb-8">
             <div className="container mx-auto px-4">
               <h3 className="text-2xl font-bold text-gray-900 font-heading mb-8">
                 Frequently bought together
