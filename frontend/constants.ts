@@ -29,34 +29,32 @@ export const CATEGORIES: Category[] = [
     id: "power-tools",
     name: "Power Tools",
     image:
-      "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=400&q=80",
+      "/images/development/midsection-worker-using-circular-saw-workshop.webp",
     subcategories: ["Drills", "Saws", "Sanders", "Grinders"],
   },
   {
     id: "hand-tools",
     name: "Hand Tools",
-    image:
-      "https://images.unsplash.com/photo-1581235720704-06d3acfcb363?auto=format&fit=crop&w=400&q=80",
+    image: "/images/development/Image_44.webp",
     subcategories: ["Hammers", "Screwdrivers", "Wrenches", "Pliers"],
   },
   {
     id: "building",
     name: "Building Materials",
-    image:
-      "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=400&q=80",
+    image: "/images/development/Image_55.webp",
     subcategories: ["Cement", "Bricks", "Timber", "Insulation"],
   },
   {
     id: "paint",
     name: "Paint & Supplies",
-    image:
-      "https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=400&q=80",
+    image: "/images/development/Image_60.webp",
     subcategories: ["Interior", "Exterior", "Primers", "Brushes"],
   },
   {
     id: "safety",
     name: "Safety Gear",
-    image: "photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=400&q=80",
+    image:
+      "/images/development/man-portrait-tools-with-arms-crossed-home-development-construction-renovation-workshop-carpenter-male-employee-contractor-maintenance-drill-repair-work-diy.webp",
     subcategories: ["Helmets", "Gloves", "Boots", "Goggles"],
   },
 ];
@@ -74,7 +72,7 @@ export const HERO_SLIDES = [
     title: "Build It Better",
     subtitle: "Up to 25% off DeWalt and Makita power tools this week.",
     image:
-      "https://images.unsplash.com/photo-1581147036324-c17ac41dfa6c?auto=format&fit=crop&w=1600&q=80",
+      "/images/development/midsection-worker-using-circular-saw-workshop.webp",
     cta: "Shop Power Tools",
   },
   {
@@ -82,7 +80,7 @@ export const HERO_SLIDES = [
     title: "Contractors Warehouse",
     subtitle: "Bulk cement, bricks, and timber delivered to your site.",
     image:
-      "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1600&q=80",
+      "/images/development/man-portrait-tools-with-arms-crossed-home-development-construction-renovation-workshop-carpenter-male-employee-contractor-maintenance-drill-repair-work-diy.webp",
     cta: "Get A Quote",
   },
 ];
@@ -102,8 +100,7 @@ export const PROJECT_IDEAS = [
     title: "Build a Floating Deck",
     description:
       "Everything you need from timber to screws to build the perfect outdoor deck.",
-    image:
-      "https://images.unsplash.com/photo-1591825729269-caeb344f6df2?auto=format&fit=crop&w=500&q=80",
+    image: "/images/development/Image_44.webp",
     linkText: "Start Project",
   },
   {
@@ -111,8 +108,7 @@ export const PROJECT_IDEAS = [
     title: "Bathroom Renovation",
     description:
       "Upgrade your fixtures, tiling, and plumbing for a modern look.",
-    image:
-      "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=500&q=80",
+    image: "/images/development/Image_55.webp",
     linkText: "Shop Bathroom",
   },
   {
@@ -120,8 +116,7 @@ export const PROJECT_IDEAS = [
     title: "Garage Workshop Setup",
     description:
       "Organize your tools with our range of storage and workbenches.",
-    image:
-      "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?auto=format&fit=crop&w=500&q=80",
+    image: "/images/development/Image_60.webp",
     linkText: "Get Organized",
   },
   {
@@ -130,7 +125,7 @@ export const PROJECT_IDEAS = [
     description:
       "Professional tips and the best primers for a flawless finish.",
     image:
-      "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=500&q=80",
+      "/images/development/2147944853_7e958e74-e33b-4336-9aa0-ecfb13fb48bf.webp",
     linkText: "View Guide",
   },
 ];
@@ -156,37 +151,35 @@ export const CATEGORY_SLIDER_DATA: Record<
   "Top Deals": {
     title: "Pro-Grade Gear. Amateur Prices.",
     image:
-      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "/images/development/midsection-worker-using-circular-saw-workshop.webp",
     products: [],
   },
   "Power Tools": {
     title: "Drill, Cut, Sand. Done.",
     image:
-      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "/images/development/18920_d0e420f0-fd13-40c8-b17d-c5423b3805ac.webp",
     products: [],
   },
   "Hand Tools": {
     title: "Essential Tools for Every Toolbox.",
     image:
-      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "/images/development/2149451030_1163c5d2-c3df-428e-b198-96c8af43ee3a.webp",
     products: [],
   },
   "Building Materials": {
     title: "Foundation to Finish.",
-    image:
-      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    image: "/images/development/Image_44.webp",
     products: [],
   },
   "Safety Gear": {
     title: "Protect Yourself on Site.",
     image:
-      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "/images/development/man-portrait-tools-with-arms-crossed-home-development-construction-renovation-workshop-carpenter-male-employee-contractor-maintenance-drill-repair-work-diy.webp",
     products: [],
   },
   default: {
     title: "Hardware for Hard Work.",
-    image:
-      "https://plus.unsplash.com/premium_photo-1682089010043-988f05cb3344?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    image: "/images/development/Image_60.webp",
     products: [],
   },
 };

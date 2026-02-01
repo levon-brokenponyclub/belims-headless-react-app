@@ -42,37 +42,40 @@ const HeroBanner: React.FC<{}> = () => {
       name: "Fasteners and Adhesives",
       href: "/collections/fasteners-adhesives",
       icon: "🔩",
-      image: "https://via.placeholder.com/200x200?text=Fasteners",
+      image: "/images/development/Image_44.webp",
     },
     {
       name: "Outdoor Garden and Patio",
       href: "/collections/outdoor-garden-patio",
       icon: "🌿",
-      image: "https://via.placeholder.com/200x200?text=Garden",
+      image: "/images/development/Image_55.webp",
     },
     {
       name: "Safety and Protective Wear",
       href: "/collections/safety-protective",
       icon: "🛡️",
-      image: "https://via.placeholder.com/200x200?text=Safety",
+      image: "/images/development/Image_60.webp",
     },
     {
       name: "Tools and Machinery",
       href: "/collections/tools-machinery",
       icon: "⚙️",
-      image: "https://via.placeholder.com/200x200?text=Tools",
+      image:
+        "/images/development/midsection-worker-using-circular-saw-workshop.webp",
     },
     {
       name: "Uncategorized",
       href: "/collections/uncategorized",
       icon: "📦",
-      image: "https://via.placeholder.com/200x200?text=Uncategorized",
+      image:
+        "/images/development/2147944853_7e958e74-e33b-4336-9aa0-ecfb13fb48bf.webp",
     },
     {
       name: "Water Tanks and Filtration",
       href: "/collections/water-tanks-filtration",
       icon: "💧",
-      image: "https://via.placeholder.com/200x200?text=Water",
+      image:
+        "/images/development/man-portrait-tools-with-arms-crossed-home-development-construction-renovation-workshop-carpenter-male-employee-contractor-maintenance-drill-repair-work-diy.webp",
     },
   ];
 
