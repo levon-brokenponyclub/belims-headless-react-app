@@ -349,7 +349,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       eta: hasDeliveryLocation
         ? "3-5 business days"
         : "Set location for estimate",
-      fee: hasDeliveryLocation ? `${CURRENCY_SYMBOL}95` : null,
+      fee: "Calculated at checkout",
     },
     {
       id: "express",
@@ -358,7 +358,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       eta: hasDeliveryLocation
         ? "1-2 business days"
         : "Set location for estimate",
-      fee: hasDeliveryLocation ? `${CURRENCY_SYMBOL}150` : null,
+      fee: "Calculated at checkout",
     },
   ];
 

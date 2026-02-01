@@ -1089,10 +1089,17 @@ export const Checkout: React.FC<CheckoutProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>
-                    {deliveryType === "delivery" ? "Delivery" : "Pickup"}
-                  </span>
-                  <span>
+                  <div className="flex flex-col">
+                    <span>
+                      {deliveryType === "delivery" ? "Delivery" : "Pickup"}
+                    </span>
+                    {selectedShipping && (
+                      <span className="text-xs text-gray-500 font-medium">
+                        {selectedShipping.service_name}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-semibold">
                     {shippingCost > 0 || deliveryType === "delivery"
                       ? `${CURRENCY_SYMBOL}${shippingCost.toFixed(2)}`
                       : `${CURRENCY_SYMBOL}0.00`}
