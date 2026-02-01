@@ -397,10 +397,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
     }
   };
 
-  // STEP 2: Shipping Selected -> Go to Payment
+  // STEP 2: Shipping Selected
   const handleShippingSelect = (rate: ShippingRate) => {
     setSelectedShipping(rate);
-    setStep("payment");
   };
 
   // STEP 3: Place Order
@@ -772,6 +771,20 @@ export const Checkout: React.FC<CheckoutProps> = ({
                         }`}
                       >
                         <div className="flex items-center gap-3 flex-1">
+                          {/* Radio Button Checkbox */}
+                          <div className="flex-shrink-0">
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                isSelected
+                                  ? "border-belims-blue bg-belims-blue"
+                                  : "border-gray-300 bg-white"
+                              }`}
+                            >
+                              {isSelected && (
+                                <div className="w-2 h-2 rounded-full bg-white" />
+                              )}
+                            </div>
+                          </div>
                           <Truck
                             size={24}
                             className={
