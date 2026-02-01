@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Star,
   Truck,
   Store,
   Heart,
@@ -9,6 +10,9 @@ import {
   Minus,
   Plus,
   Check,
+  X,
+  ArrowLeft,
+  ArrowRight,
   RefreshCw,
   Package,
   Zap,
@@ -113,7 +117,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   isTradeApproved = false,
 }) => {
   const navigate = useNavigate();
+  const [mainImage, setMainImage] = useState(product.image);
   const [qty, setQty] = useState(1);
+
+  const [selectedTab, setSelectedTab] = useState<"desc" | "specs">("desc");
+  const [productTab, setProductTab] = useState<"description" | "reviews">(
+    "description",
+  );
 
   const [aiDescription, setAiDescription] = useState<string | null>(null);
   const [generatingDesc, setGeneratingDesc] = useState(false);
@@ -126,12 +136,21 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const [secondaryNavVisible, setSecondaryNavVisible] = useState(true);
   const lastScrollYRef = useRef(0);
 
-  // Breadcrumb positions
+  // Breadcrumb positions: 124px when secondary nav visible (desktop), 73px when hidden (scrolled)
   const breadcrumbTop = secondaryNavVisible ? (isMobile ? 73 : 124) : 73;
   const contentPaddingTop = isMobile ? "12px" : "50px";
 
-  // Right buy box ref for intersection observer
+  // Sticky Bar Logic
+  const [isStickyExpanded, setIsStickyExpanded] = useState(false);
   const rightBuyBoxRef = useRef<HTMLDivElement>(null);
+
+  // Buy Box Progressive Reveal
+  const [scrollY, setScrollY] = useState(0);
+  const [showBuyBoxMinimal, setShowBuyBoxMinimal] = useState(false);
+  const [showBuyBoxFull, setShowBuyBoxFull] = useState(false);
+
+  // Gallery Modal State
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 
   // Store Locator State
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
@@ -233,6 +252,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   useEffect(() => {
     addToRecentlyViewed(product);
+    setMainImage(product.image);
     setQty(1);
     setAiDescription(null);
     setIsBundleSectionExpanded(false);
@@ -358,10 +378,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       mql.removeEventListener("change", handleChange as EventListener);
   }, []);
 
-  // Scroll listener for secondary nav visibility and mobile bottom CTA
+  // Scroll listener for progressive buy box reveal and secondary nav visibility
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
+      setScrollY(currentScrollY);
+
+      setShowBuyBoxMinimal(currentScrollY > 200);
       setSecondaryNavVisible(currentScrollY < 50);
 
       if (isMobile) {
@@ -377,11 +400,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isMobile]);
 
-  // Scroll Observer for Bundle Trigger and Sticky Buy Box
+  // Scroll Observer to trigger Left Sticky Bar Expansion and Full Buy Box
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         const isBelow = entry.boundingClientRect.top < 100;
+        setIsStickyExpanded(!entry.isIntersecting && isBelow);
+        setShowBuyBoxFull(!entry.isIntersecting && isBelow);
 
         if (product.bundleCandidates && product.bundleCandidates.length > 0) {
           setShowBundleTrigger(!entry.isIntersecting && isBelow);
@@ -393,6 +418,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     if (rightBuyBoxRef.current) observer.observe(rightBuyBoxRef.current);
     return () => observer.disconnect();
   }, [product]);
+
+  const gallery =
+    product.images && product.images.length > 0
+      ? product.images
+      : [product.image];
 
   const handleAddToCart = () => {
     for (let i = 0; i < qty; i++) {
@@ -417,11 +447,31 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     }
   };
 
+  const handleBuyNowAction = () => {
+    // Keep existing behavior but respect current trade selection
+    handleAddToCart();
+    onBuyNow(product);
+  };
+
   const handleGenerateDescription = async () => {
     setGeneratingDesc(true);
     const desc = await generateProductDescription(product);
     setAiDescription(desc);
     setGeneratingDesc(false);
+  };
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentIndex = gallery.indexOf(mainImage);
+    const nextIndex = (currentIndex + 1) % gallery.length;
+    setMainImage(gallery[nextIndex]);
+  };
+
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentIndex = gallery.indexOf(mainImage);
+    const prevIndex = (currentIndex - 1 + gallery.length) % gallery.length;
+    setMainImage(gallery[prevIndex]);
   };
 
   const hasDeliveryLocation = !!deliveryAddress;
@@ -432,6 +482,64 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   return (
     <div className="animate-fadeIn relative">
+      {/* Full Screen Gallery Modal */}
+      {isGalleryOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/95 flex flex-col items-center justify-center p-4 animate-fadeIn">
+          <button
+            onClick={() => setIsGalleryOpen(false)}
+            className="absolute top-6 right-6 text-white hover:text-gray-300 z-50"
+          >
+            <X size={32} />
+          </button>
+
+          <div className="relative w-full max-w-5xl h-[70vh] flex items-center justify-center">
+            {gallery.length > 1 && (
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50"
+              >
+                <ArrowLeft size={32} />
+              </button>
+            )}
+
+            <img
+              src={mainImage}
+              alt={product.name}
+              className="max-w-full max-h-full object-contain"
+            />
+
+            {gallery.length > 1 && (
+              <button
+                onClick={handleNextImage}
+                className="absolute right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50"
+              >
+                <ArrowRight size={32} />
+              </button>
+            )}
+          </div>
+
+          <div className="mt-8 flex gap-4 overflow-x-auto max-w-full p-2 no-scrollbar">
+            {gallery.map((img, idx) => (
+              <button
+                key={idx}
+                onClick={() => setMainImage(img)}
+                className={`w-20 h-20 rounded border-2 overflow-hidden transition-all flex-shrink-0 ${
+                  mainImage === img
+                    ? "border-belims-blue opacity-100"
+                    : "border-transparent opacity-50 hover:opacity-80"
+                }`}
+              >
+                <img src={img} alt="" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+
+          <div className="text-white mt-4 font-bold font-heading text-lg">
+            {gallery.indexOf(mainImage) + 1} / {gallery.length}
+          </div>
+        </div>
+      )}
+
       {/* Store Locator Modal */}
       {isLocatorOpen && (
         <StoreLocator
@@ -549,37 +657,228 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               {/* Main Image */}
               <div className="w-full h-full flex items-center justify-center p-6">
                 <img
-                  src={product.image}
+                  src={mainImage}
                   alt={product.name}
                   className="max-w-full max-h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                  onClick={() => setIsGalleryOpen(true)}
                 />
               </div>
 
+              {/* Mobile Image Dots */}
+              {isMobile && gallery.length > 1 && (
+                <div className="flex justify-center gap-2 pb-4">
+                  {gallery.map((img, idx) => {
+                    const active = mainImage === img;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setMainImage(img)}
+                        className={`w-2.5 h-2.5 rounded-full transition-all ${
+                          active
+                            ? "bg-belims-blue scale-110"
+                            : "bg-gray-300 hover:bg-belims-blue/70"
+                        }`}
+                        aria-label={`Go to image ${idx + 1}`}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
               {/* STICKY OVERLAP BAR (Bottom Aligned) - Progressive Reveal (Desktop/Tablet only) */}
+              {!isMobile && (
+                <div
+                  className={`absolute bottom-4 left-4 right-4 bg-white/98 backdrop-blur-md rounded border border-gray-200 z-30 transition-all duration-500 ${
+                    !showBuyBoxMinimal
+                      ? "opacity-0 translate-y-4 pointer-events-none"
+                      : "opacity-100 translate-y-0"
+                  } ${showBuyBoxFull ? "p-5" : "p-3"}`}
+                >
+                  {/* EXPANDABLE SECTION: Brand, Title, Price, Stock */}
+                  <div
+                    className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                      isStickyExpanded && showBuyBoxFull
+                        ? "max-h-[220px] opacity-100 mb-3 border-b border-gray-200 pb-3"
+                        : "max-h-0 opacity-0"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <div
+                          className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 hover:text-belims-blue cursor-pointer transition-colors"
+                          onClick={() =>
+                            product.brand && onBrandClick?.(product.brand)
+                          }
+                        >
+                          {product.brand}
+                        </div>
+                        <h3 className="font-bold text-gray-900 font-heading text-base line-clamp-1">
+                          {product.name}
+                        </h3>
+                      </div>
+                      <div className="text-right">
+                        <div
+                          className={`text-2xl font-extrabold font-heading ${
+                            product.deals_resolved?.consumer
+                              ? "text-red-600"
+                              : "text-belims-blue"
+                          }`}
+                        >
+                          {CURRENCY_SYMBOL}
+                          {(
+                            product.deals_resolved?.consumer?.price ??
+                            product.price
+                          ).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 w-full hidden sm:block">
+                      <StockBar
+                        current={product.stock}
+                        max={product.maxStock}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Controls */}
+                  <div
+                    className={`flex flex-col transition-all duration-300 ${showBuyBoxFull ? "gap-3" : "gap-2"}`}
+                  >
+                    {showBuyBoxFull ? (
+                      <div className="flex items-center gap-3">
+                        {/* Quantity */}
+                        <div className="flex items-center border border-gray-300 rounded bg-white h-11">
+                          <button
+                            onClick={() => setQty(Math.max(1, qty - 1))}
+                            className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <div className="w-8 text-center font-bold text-sm">
+                            {qty}
+                          </div>
+                          <button
+                            onClick={() =>
+                              setQty(Math.min(product.stock, qty + 1))
+                            }
+                            className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={handleAddToCart}
+                          disabled={product.stock === 0}
+                          className="flex-1 bg-belims-blue text-white font-bold text-sm h-11 rounded hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {product.stock > 0 ? "Add to cart" : "Out of Stock"}
+                        </button>
+
+                        <button
+                          onClick={handleBuyNowAction}
+                          disabled={product.stock === 0}
+                          className="flex-1 bg-belims-accent text-white font-bold text-sm h-11 rounded hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          <Zap size={18} fill="currentColor" />{" "}
+                          {product.stock > 0 ? "Buy Now" : "Out of Stock"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center border border-gray-300 rounded bg-white h-9">
+                          <button
+                            onClick={() => setQty(Math.max(1, qty - 1))}
+                            className="px-2 hover:bg-gray-100 text-gray-600 h-full rounded"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <div className="w-6 text-center font-bold text-xs">
+                            {qty}
+                          </div>
+                          <button
+                            onClick={() =>
+                              setQty(Math.min(product.stock, qty + 1))
+                            }
+                            className="px-2 hover:bg-gray-100 text-gray-600 h-full rounded"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={handleAddToCart}
+                          disabled={product.stock === 0}
+                          className="flex-1 bg-belims-blue text-white font-bold text-xs h-9 rounded hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-1 disabled:opacity-50"
+                        >
+                          Add to cart
+                        </button>
+
+                        <button
+                          onClick={handleBuyNowAction}
+                          disabled={product.stock === 0}
+                          className="flex-1 bg-belims-accent text-white font-bold text-xs h-9 rounded hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-1 disabled:opacity-50"
+                        >
+                          <Zap size={14} /> Buy Now
+                        </button>
+                      </div>
+                    )}
+
+                    {showBuyBoxFull && (
+                      <div className="flex gap-4 text-[10px] font-semibold text-gray-500 justify-center sm:justify-start items-center pt-1">
+                        <span
+                          className="flex items-center gap-1 hover:text-belims-blue cursor-pointer"
+                          onClick={() => setIsLocatorOpen(true)}
+                        >
+                          <Store size={12} /> Pick Up Available
+                        </span>
+                        <span
+                          className="flex items-center gap-1 hover:text-belims-blue cursor-pointer"
+                          onClick={() => setIsDeliveryModalOpen(true)}
+                        >
+                          <Truck size={12} /> Delivery Available
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* RIGHT COLUMN */}
           <div className="lg:col-span-5 flex flex-col gap-4 pt-4">
-            {/* Header Info - Brand, Title, SKU (Conversion-first) */}
+            {/* Header Info */}
             <div>
               <div className="mb-4">
-                {product.brand && (
-                  <div
-                    className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2 hover:text-belims-blue cursor-pointer transition-colors"
-                    onClick={() =>
-                      product.brand && onBrandClick?.(product.brand)
-                    }
-                  >
-                    {product.brand}
-                  </div>
-                )}
-                <h1 className="text-2xl font-bold text-gray-900 font-heading mb-2">
+                <h1 className="text-2xl font-bold text-gray-900 font-heading letterspacing-tight mb-0">
                   {product.name}
                 </h1>
                 <div className="text-xs text-gray-400 font-mono">
                   SKU: {product.sku || "N/A"}
                 </div>
+                {/* {product.features && product.features.length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="text-sm font-bold text-gray-700 mb-2 font-heading">
+                      Key Features:
+                    </h3>
+                    <ul className="space-y-1.5">
+                      {product.features.map((feature, idx) => (
+                        <li
+                          key={idx}
+                          className="text-sm text-gray-600 flex items-start gap-2"
+                        >
+                          <Check
+                            size={16}
+                            className="text-green-600 flex-shrink-0 mt-0.5"
+                          />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )} */}
               </div>
             </div>
 
@@ -696,7 +995,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 </div>
               )}
 
-              <StockBar current={product.stock} max={product.maxStock} />
+              {/* <StockBar current={product.stock} max={product.maxStock} /> */}
 
               {/* Qty + Add */}
               <div className="space-y-3 mt-6 mb-4">
@@ -827,6 +1126,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                             );
                           })}
                         </div>
+
+                        <div className="text-xs text-gray-500">
+                          Rates calculated for {qty} unit{qty > 1 ? "s" : ""}.
+                        </div>
                       </>
                     ) : (
                       <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-700">
@@ -854,6 +1157,64 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Payment & Security */}
+            <div className="border border-gray-200 rounded bg-white p-4">
+              <div className="mb-3">
+                <div className="text-sm font-bold text-gray-900 font-heading mb-3">
+                  Payment & Security
+                </div>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {/* Visa */}
+                  <svg className="w-10 h-6" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Visa">
+                    <path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"></path>
+                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"></path>
+                    <path d="M28.3 10.1H28c-.4 1-.7 1.5-1 3h1.9c-.3-1.5-.3-2.2-.6-3zm2.9 5.9h-1.7c-.1 0-.1 0-.2-.1l-.2-.9-.1-.2h-2.4c-.1 0-.2 0-.2.2l-.3.9c0 .1-.1.1-.1.1h-2.1l.2-.5L27 8.7c0-.5.3-.7.8-.7h1.5c.1 0 .2 0 .2.2l1.4 6.5c.1.4.2.7.2 1.1.1.1.1.1.1.2zm-13.4-.3l.4-1.8c.1 0 .2.1.2.1.7.3 1.4.5 2.1.4.2 0 .5-.1.7-.2.5-.2.5-.7.1-1.1-.2-.2-.5-.3-.8-.5-.4-.2-.8-.4-1.1-.7-1.2-1-.8-2.4-.1-3.1.6-.4.9-.8 1.7-.8 1.2 0 2.5 0 3.1.2h.1c-.1.6-.2 1.1-.4 1.7-.5-.2-1-.4-1.5-.4-.3 0-.6 0-.9.1-.2 0-.3.1-.4.2-.2.2-.2.5 0 .7l.5.4c.4.2.8.4 1.1.6.5.3 1 .8 1.1 1.4.2.9-.1 1.7-.9 2.3-.5.4-.7.6-1.4.6-1.4 0-2.5.1-3.4-.2-.1.2-.1.2-.2.1zm-3.5.3c.1-.7.1-.7.2-1 .5-2.2 1-4.5 1.4-6.7.1-.2.1-.3.3-.3H18c-.2 1.2-.4 2.1-.7 3.2-.3 1.5-.6 3-1 4.5 0 .2-.1.2-.3.2M5 8.2c0-.1.2-.2.3-.2h3.4c.5 0 .9.3 1 .8l.9 4.4c0 .1 0 .1.1.2 0-.1.1-.1.1-.1l2.1-5.1c-.1-.1 0-.2.1-.2h2.1c0 .1 0 .1-.1.2l-3.1 7.3c-.1.2-.1.3-.2.4-.1.1-.3 0-.5 0H9.7c-.1 0-.2 0-.2-.2L7.9 9.5c-.2-.2-.5-.5-.9-.6-.6-.3-1.7-.5-1.9-.5L5 8.2z" fill="#142688"></path>
+                  </svg>
+                  {/* Mastercard */}
+                  <svg className="w-10 h-6" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mastercard">
+                    <path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"></path>
+                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"></path>
+                    <circle fill="#EB001B" cx="15" cy="12" r="7"></circle>
+                    <circle fill="#F79E1B" cx="23" cy="12" r="7"></circle>
+                    <path fill="#FF5F00" d="M22 12c0-2.4-1.2-4.5-3-5.7-1.8 1.3-3 3.4-3 5.7s1.2 4.5 3 5.7c1.8-1.2 3-3.3 3-5.7z"></path>
+                  </svg>
+                  {/* American Express */}
+                  <svg className="w-10 h-6" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="American Express" viewBox="0 0 38 24">
+                    <path fill="#000" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3Z" opacity=".07"></path>
+                    <path fill="#006FCF" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32Z"></path>
+                    <path fill="#FFF" d="M22.012 19.936v-8.421L37 11.528v2.326l-1.732 1.852L37 17.573v2.375h-2.766l-1.47-1.622-1.46 1.628-9.292-.02Z"></path>
+                    <path fill="#006FCF" d="M23.013 19.012v-6.57h5.572v1.513h-3.768v1.028h3.678v1.488h-3.678v1.01h3.768v1.531h-5.572Z"></path>
+                    <path fill="#006FCF" d="m28.557 19.012 3.083-3.289-3.083-3.282h2.386l1.884 2.083 1.89-2.082H37v.051l-3.017 3.23L37 18.92v.093h-2.307l-1.917-2.103-1.898 2.104h-2.321Z"></path>
+                    <path fill="#FFF" d="M22.71 4.04h3.614l1.269 2.881V4.04h4.46l.77 2.159.771-2.159H37v8.421H19l3.71-8.421Z"></path>
+                    <path fill="#006FCF" d="m23.395 4.955-2.916 6.566h2l.55-1.315h2.98l.55 1.315h2.05l-2.904-6.566h-2.31Zm.25 3.777.875-2.09.873 2.09h-1.748Z"></path>
+                    <path fill="#006FCF" d="M28.581 11.52V4.953l2.811.01L32.84 9l1.456-4.046H37v6.565l-1.74.016v-4.51l-1.644 4.494h-1.59L30.35 7.01v4.51h-1.768Z"></path>
+                  </svg>
+                  {/* PayPal */}
+                  <svg className="w-10 h-6" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PayPal">
+                    <path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"></path>
+                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"></path>
+                    <path fill="#003087" d="M23.9 8.3c.2-1 0-1.7-.6-2.3-.6-.7-1.7-1-3.1-1h-4.1c-.3 0-.5.2-.6.5L14 15.6c0 .2.1.4.3.4H17l.4-3.4 1.8-2.2 4.7-2.1z"></path>
+                    <path fill="#3086C8" d="M23.9 8.3l-.2.2c-.5 2.8-2.2 3.8-4.6 3.8H18c-.3 0-.5.2-.6.5l-.6 3.9-.2 1c0 .2.1.4.3.4H19c.3 0 .5-.2.5-.4v-.1l.4-2.4v-.1c0-.2.3-.4.5-.4h.3c2.1 0 3.7-.8 4.1-3.2.2-1 .1-1.8-.4-2.4-.1-.5-.3-.7-.5-.8z"></path>
+                    <path fill="#012169" d="M23.3 8.1c-.1-.1-.2-.1-.3-.1-.1 0-.2 0-.3-.1-.3-.1-.7-.1-1.1-.1h-3c-.1 0-.2 0-.2.1-.2.1-.3.2-.3.4l-.7 4.4v.1c0-.3.3-.5.6-.5h1.3c2.5 0 4.1-1 4.6-3.8v-.2c-.1-.1-.3-.2-.5-.2h-.1z"></path>
+                  </svg>
+                  {/* Diners Club */}
+                  <svg className="w-10 h-6" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diners Club">
+                    <path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"></path>
+                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"></path>
+                    <path d="M12 12v3.7c0 .3-.2.3-.5.2-1.9-.8-3-3.3-2.3-5.4.4-1.1 1.2-2 2.3-2.4.4-.2.5-.1.5.2V12zm2 0V8.3c0-.3 0-.3.3-.2 2.1.8 3.2 3.3 2.4 5.4-.4 1.1-1.2 2-2.3 2.4-.4.2-.4.1-.4-.2V12zm7.2-7H13c3.8 0 6.8 3.1 6.8 7s-3 7-6.8 7h8.2c3.8 0 6.8-3.1 6.8-7s-3-7-6.8-7z" fill="#3086C8"></path>
+                  </svg>
+                  {/* Discover */}
+                  <svg className="w-10 h-6" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Discover">
+                    <path fill="#000" opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"></path>
+                    <path d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32z" fill="#fff"></path>
+                  </svg>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600">
+                Your payment information is processed securely. We do not store credit card details nor have access to your credit card information.
+              </p>
             </div>
 
             {/* Product Description */}
@@ -1031,6 +1392,15 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 className="flex-1 bg-belims-blue text-white font-bold text-sm h-11 rounded hover:bg-belims-light transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {product.stock > 0 ? "Add to cart" : "Out of Stock"}
+              </button>
+
+              <button
+                onClick={handleBuyNowAction}
+                disabled={product.stock === 0}
+                className="flex-1 bg-belims-accent text-white font-bold text-sm h-11 rounded hover:bg-orange-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Zap size={16} />{" "}
+                {product.stock > 0 ? "Buy Now" : "Out of Stock"}
               </button>
             </div>
           </div>
