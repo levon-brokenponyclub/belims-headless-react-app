@@ -30,6 +30,7 @@ import { AuthPage } from "./components/AuthPage";
 import { Toast } from "./components/Toast";
 import HeroBanner from "./components/HeroBanner";
 import { CountdownTimer } from "./components/CountdownTimer";
+import CollageGrid from "./components/CollageGrid";
 import { getCurrentUser, UserData } from "./services/authService";
 
 import { Product, CartItem, Store } from "./types";
@@ -383,6 +384,9 @@ const HomePage = ({
           </div>
         </section>
       )}
+
+      {/* Collage Grid */}
+      <CollageGrid />
 
       {/* Weekly Deals */}
       {shouldShowSection("weekly") && (
