@@ -35,7 +35,7 @@ const DEFAULT_ITEMS: CollageItem[] = [
     id: "1",
     area: "main",
     imageSrc:
-      "https://koto-hardware.myshopify.com/cdn/shop/files/1.1_53c78eb6-efc4-4095-9cd7-6da1201ac819.jpg?v=1756106187&width=2000",
+      "/images/development/midsection-worker-using-circular-saw-workshop.webp",
     href: "/collections/air-intakes-filters",
     kicker: "Air Compressor Filter",
     heading: "Deals of the Year",
@@ -48,8 +48,7 @@ const DEFAULT_ITEMS: CollageItem[] = [
   {
     id: "2",
     area: "sec",
-    imageSrc:
-      "https://koto-hardware.myshopify.com/cdn/shop/files/3.1_90997244-e6a4-45c4-85b2-56878d20f107.jpg?v=1756106214&width=1100",
+    imageSrc: "/images/development/Image_44.webp",
     href: "/collections/car-starter-plugs",
     heading: "High-Performance",
     text: "Engineered for Noise Reduction.",
@@ -60,8 +59,7 @@ const DEFAULT_ITEMS: CollageItem[] = [
   {
     id: "3",
     area: "third",
-    imageSrc:
-      "https://koto-hardware.myshopify.com/cdn/shop/files/3_7fb1abd1-6b63-4d07-a236-242516cfe6fa.jpg?v=1756106268&width=1100",
+    imageSrc: "/images/development/Image_55.webp",
     href: "/collections/car-starter-plugs",
     heading: "Premium Shock Absorbers",
     text: "Engineered for Smooth Handling.",
@@ -72,8 +70,7 @@ const DEFAULT_ITEMS: CollageItem[] = [
   {
     id: "4",
     area: "fourth",
-    imageSrc:
-      "https://koto-hardware.myshopify.com/cdn/shop/files/4_9b244402-a974-4919-b0db-cf54b8e4364f.jpg?v=1756106199&width=2000",
+    imageSrc: "/images/development/Image_60.webp",
     href: "/collections/hand-tools",
     kicker: "Hand Tools",
     heading: "For the Expert",
