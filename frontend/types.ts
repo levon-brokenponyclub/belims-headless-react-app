@@ -42,6 +42,15 @@ export interface Product {
   };
 }
 
+export interface ShippingAddress {
+  street: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: "ZA";
+  label?: string;
+}
+
 export interface Deal {
   deal_id?: string;
   audience: "consumer" | "trade" | "both";

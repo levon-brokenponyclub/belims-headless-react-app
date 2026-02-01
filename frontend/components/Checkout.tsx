@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { CartItem, Product } from "../types";
+import { CartItem, Product, ShippingAddress } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import {
   getShippingRates,
   getFallbackShipping,
 } from "../services/bobGoService";
+import { readStoredAddress } from "../services/shippingAddress";
 import {
   createWooOrder,
   initializePayment,
@@ -154,40 +155,40 @@ export const Checkout: React.FC<CheckoutProps> = ({
   // Load and fetch shipping rates for saved delivery location
   useEffect(() => {
     const fetchSavedLocationRates = async () => {
-      const savedAddress = localStorage.getItem("deliveryAddress");
-      if (!savedAddress || savedLocationRates.length > 0) return;
+      if (savedLocationRates.length > 0) return;
 
       setLoadingSavedRates(true);
       try {
-        // Parse the saved address to extract city and province
-        // Format is usually: "Suburb, City, Province"
-        const parts = savedAddress.split(",").map((s) => s.trim());
-        const city = parts.length >= 2 ? parts[parts.length - 2] : "";
-        const province = parts.length >= 3 ? parts[parts.length - 1] : "";
+        // Use the new versioned storage format with fallback to legacy
+        const { address } = readStoredAddress();
 
-        if (city && province) {
-          const rates = await getShippingRates({
-            destination_address: {
-              street: savedAddress,
-              city: city,
-              province: province,
-              postal_code: "",
-              country: "ZA",
-            },
-          });
-
-          let finalRates = rates;
-          if (!finalRates || finalRates.length === 0) {
-            finalRates = getFallbackShipping();
-          }
-
-          const classifiedRates = finalRates.map((rate: any) => ({
-            ...rate,
-            tier: classifyRate(rate, finalRates),
-          }));
-
-          setSavedLocationRates(classifiedRates);
+        if (!address || !address.city || !address.province) {
+          setSavedLocationRates([]);
+          setLoadingSavedRates(false);
+          return;
         }
+
+        const rates = await getShippingRates({
+          destination_address: {
+            street: address.street,
+            city: address.city,
+            province: address.province,
+            postal_code: address.postalCode,
+            country: address.country,
+          },
+        });
+
+        let finalRates = rates;
+        if (!finalRates || finalRates.length === 0) {
+          finalRates = getFallbackShipping();
+        }
+
+        const classifiedRates = finalRates.map((rate: any) => ({
+          ...rate,
+          tier: classifyRate(rate, finalRates),
+        }));
+
+        setSavedLocationRates(classifiedRates);
       } catch (error) {
         console.error("Failed to fetch saved location rates:", error);
         setSavedLocationRates(
@@ -1007,7 +1008,12 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       Available Delivery
                     </h4>
                     <span className="text-xs text-gray-500">
-                      {localStorage.getItem("deliveryAddress")?.split(",")[0]}
+                      {(() => {
+                        const { address } = readStoredAddress();
+                        return address
+                          ? `${address.city}, ${address.province}`
+                          : "";
+                      })()}
                     </span>
                   </div>
 

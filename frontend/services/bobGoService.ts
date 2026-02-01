@@ -9,6 +9,12 @@ interface ShippingQuoteParams {
     postal_code: string;
     country?: string;
   };
+  items?: Array<{
+    id?: string | number;
+    sku?: string;
+    quantity: number;
+    grams?: number;
+  }>;
 }
 
 interface ShippingRate {
@@ -50,6 +56,7 @@ export const getShippingRates = async (
           address1: params.destination_address.street || "",
           address2: "",
         },
+        items: params.items,
       }),
     });
 

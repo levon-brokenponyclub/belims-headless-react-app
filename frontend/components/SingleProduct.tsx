@@ -26,13 +26,22 @@ import {
   Clock,
   MapPin,
 } from "lucide-react";
-import { Product } from "../types";
+import { Product, ShippingAddress } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
 import { StockBar } from "./StockBar";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import { generateProductDescription } from "../services/geminiService";
 import { addToRecentlyViewed } from "../services/storageService";
 import { getApiBaseUrl } from "../services/wooCommerceService";
+import {
+  getFallbackShipping,
+  getShippingRates,
+} from "../services/bobGoService";
+import {
+  buildAddressLabel,
+  readStoredAddress,
+  saveStoredAddress,
+} from "../services/shippingAddress";
 import { RecentlyViewed } from "./RecentlyViewed";
 import { StoreLocator } from "./StoreLocator";
 import { BundlePanel } from "./BundlePanel";
@@ -52,6 +61,43 @@ interface SingleProductProps {
   isAuthenticated?: boolean;
   isTradeApproved?: boolean;
 }
+
+type ShippingTier = "Express" | "Standard" | "Economy";
+
+interface ShippingRate {
+  service_name: string;
+  total_price: number;
+  expected_delivery_date?: string;
+  tier?: ShippingTier;
+}
+
+const classifyRate = (
+  rate: ShippingRate,
+  allRates: ShippingRate[],
+): ShippingTier => {
+  if (rate.tier) return rate.tier;
+
+  const prices = allRates.map((r) => r.total_price).sort((a, b) => a - b);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+
+  if (rate.total_price === minPrice && minPrice < maxPrice) {
+    return "Economy";
+  } else if (rate.total_price === maxPrice) {
+    return "Express";
+  }
+  return "Standard";
+};
+
+const formatEta = (dateStr?: string): string => {
+  if (!dateStr) return "Estimated delivery";
+  try {
+    const date = new Date(dateStr);
+    return `Arrives ${date.toLocaleDateString("en-ZA", { month: "short", day: "numeric" })}`;
+  } catch {
+    return "Estimated delivery";
+  }
+};
 
 export const SingleProduct: React.FC<SingleProductProps> = ({
   product,
@@ -103,8 +149,16 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   // Delivery Modal State
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
-  const [deliveryLocationLabel, setDeliveryLocationLabel] =
-    useState<string>("");
+  const [deliveryAddress, setDeliveryAddress] =
+    useState<ShippingAddress | null>(null);
+  const [legacyDeliveryLabel, setLegacyDeliveryLabel] = useState<string | null>(
+    null,
+  );
+  const [deliveryRates, setDeliveryRates] = useState<ShippingRate[]>([]);
+  const [loadingDeliveryRates, setLoadingDeliveryRates] = useState(false);
+  const [deliveryRatesError, setDeliveryRatesError] = useState<string | null>(
+    null,
+  );
   const [selectedDeliveryOptionId, setSelectedDeliveryOptionId] = useState(
     () => sessionStorage.getItem("selectedDeliveryOptionId") || "standard",
   );
@@ -205,15 +259,19 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       .catch((err) => console.error("Failed to fetch policies:", err));
   }, [product]);
 
+  const refreshStoredAddress = () => {
+    const { address, legacyLabel } = readStoredAddress();
+    setDeliveryAddress(address);
+    setLegacyDeliveryLabel(legacyLabel);
+  };
+
   useEffect(() => {
-    const savedAddress = localStorage.getItem("deliveryAddress") || "";
-    setDeliveryLocationLabel(savedAddress);
+    refreshStoredAddress();
   }, []);
 
   useEffect(() => {
     if (!isDeliveryModalOpen) {
-      const savedAddress = localStorage.getItem("deliveryAddress") || "";
-      setDeliveryLocationLabel(savedAddress);
+      refreshStoredAddress();
     }
   }, [isDeliveryModalOpen]);
 
@@ -223,6 +281,82 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       selectedDeliveryOptionId,
     );
   }, [selectedDeliveryOptionId]);
+
+  const deliveryLabel = deliveryAddress
+    ? deliveryAddress.label || buildAddressLabel(deliveryAddress)
+    : legacyDeliveryLabel || "";
+
+  const hasStructuredAddress = Boolean(
+    deliveryAddress?.city && deliveryAddress?.province,
+  );
+
+  useEffect(() => {
+    const fetchDeliveryRates = async () => {
+      if (!hasStructuredAddress || !deliveryAddress) {
+        setDeliveryRates([]);
+        return;
+      }
+
+      setLoadingDeliveryRates(true);
+      setDeliveryRatesError(null);
+      try {
+        const items = [
+          {
+            id: product.id,
+            sku: product.sku,
+            quantity: qty,
+            grams: product.weight
+              ? Math.round(product.weight * 1000)
+              : undefined,
+          },
+        ];
+
+        const rates = await getShippingRates({
+          destination_address: {
+            street: deliveryAddress.street,
+            city: deliveryAddress.city,
+            province: deliveryAddress.province,
+            postal_code: deliveryAddress.postalCode,
+            country: deliveryAddress.country,
+          },
+          items,
+        });
+
+        const finalRates = rates?.length ? rates : getFallbackShipping();
+        const classifiedRates = finalRates.map((rate: any) => ({
+          ...rate,
+          tier: classifyRate(rate, finalRates),
+        }));
+
+        setDeliveryRates(classifiedRates);
+      } catch (error) {
+        console.error("Failed to fetch delivery rates:", error);
+        const fallbackRates = getFallbackShipping().map((rate: any) => ({
+          ...rate,
+          tier: classifyRate(rate, getFallbackShipping()),
+        }));
+        setDeliveryRates(fallbackRates);
+        setDeliveryRatesError(
+          "Unable to fetch live rates. Showing estimated delivery options.",
+        );
+      } finally {
+        setLoadingDeliveryRates(false);
+      }
+    };
+
+    fetchDeliveryRates();
+  }, [
+    deliveryAddress?.street,
+    deliveryAddress?.city,
+    deliveryAddress?.province,
+    deliveryAddress?.postalCode,
+    deliveryAddress?.country,
+    qty,
+    product.id,
+    product.sku,
+    product.weight,
+    hasStructuredAddress,
+  ]);
 
   // Track viewport for mobile-specific UX
   useEffect(() => {
@@ -339,28 +473,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     setMainImage(gallery[prevIndex]);
   };
 
-  const hasDeliveryLocation = !!deliveryLocationLabel;
-
-  const deliveryPreviewOptions = [
-    {
-      id: "standard",
-      name: "Standard shipping",
-      chip: "Budget",
-      eta: hasDeliveryLocation
-        ? "3-5 business days"
-        : "Set location for estimate",
-      fee: "Calculated at checkout",
-    },
-    {
-      id: "express",
-      name: "Express shipping",
-      chip: "Faster",
-      eta: hasDeliveryLocation
-        ? "1-2 business days"
-        : "Set location for estimate",
-      fee: "Calculated at checkout",
-    },
-  ];
+  const hasDeliveryLocation = !!deliveryAddress;
 
   const handleOpenDeliveryLocation = () => {
     setIsDeliveryModalOpen(true);
@@ -436,12 +549,14 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       <DeliveryLocationModal
         isOpen={isDeliveryModalOpen}
         onClose={() => setIsDeliveryModalOpen(false)}
-        currentLocation={deliveryLocationLabel}
-        onLocationSelect={(location) => {
-          setDeliveryLocationLabel(location);
-          if (location) {
-            localStorage.setItem("deliveryAddress", location);
+        currentAddress={deliveryAddress || undefined}
+        onAddressSelect={(address) => {
+          setDeliveryAddress(address);
+          if (address) {
+            saveStoredAddress(address);
           } else {
+            setDeliveryAddress(null);
+            localStorage.removeItem("deliveryAddressV2");
             localStorage.removeItem("deliveryAddress");
           }
         }}
@@ -968,57 +1083,92 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                     <div className="flex items-center gap-2 text-xs text-gray-600 mb-3">
                       <MapPin size={14} className="text-gray-400" />
                       <span className="font-medium">Delivery to:</span>
-                      <span className="truncate">{deliveryLocationLabel}</span>
+                      <span className="truncate">
+                        {deliveryAddress?.street}, {deliveryAddress?.city},{" "}
+                        {deliveryAddress?.province}
+                        {deliveryAddress?.postalCode &&
+                          `, ${deliveryAddress.postalCode}`}
+                      </span>
                     </div>
 
-                    <div
-                      role="radiogroup"
-                      aria-label="Delivery options"
-                      className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2"
-                    >
-                      {deliveryPreviewOptions.map((option) => {
-                        const isSelected =
-                          selectedDeliveryOptionId === option.id;
+                    {loadingDeliveryRates ? (
+                      <div className="flex items-center justify-center gap-2 py-6 text-gray-500">
+                        <RefreshCw size={16} className="animate-spin" />
+                        <span className="text-xs">
+                          Finding delivery options...
+                        </span>
+                      </div>
+                    ) : deliveryRatesError ? (
+                      <div className="rounded border border-red-200 bg-red-50 p-3 text-xs text-red-700 mb-2">
+                        <p className="font-semibold mb-1">Delivery error</p>
+                        <p>{deliveryRatesError}</p>
+                      </div>
+                    ) : deliveryRates.length > 0 ? (
+                      <>
+                        <div
+                          role="radiogroup"
+                          aria-label="Delivery options"
+                          className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2"
+                        >
+                          {deliveryRates.map((rate, idx) => {
+                            const tier = classifyRate(rate, deliveryRates);
+                            const isSelected =
+                              selectedDeliveryOptionId === `rate-${idx}`;
 
-                        return (
-                          <button
-                            key={option.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={isSelected}
-                            onClick={() =>
-                              setSelectedDeliveryOptionId(option.id)
-                            }
-                            className={`text-left rounded border p-4 transition-all focus:outline-none focus:ring-2 focus:ring-belims-blue/40 ${
-                              isSelected
-                                ? "border-belims-blue bg-blue-50/60 shadow-sm"
-                                : "border-gray-200 bg-white hover:border-belims-blue hover:bg-blue-50/50"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="font-bold text-gray-900 text-sm">
-                                {option.name}
-                              </div>
-                              {option.chip && (
-                                <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wide">
-                                  {option.chip}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-600 mb-1">
-                              {option.eta}
-                            </div>
-                            <div className="text-xs font-semibold text-gray-800">
-                              {option.fee || "Calculated at checkout"}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                            return (
+                              <button
+                                key={`rate-${idx}`}
+                                type="button"
+                                role="radio"
+                                aria-checked={isSelected}
+                                onClick={() => {
+                                  setSelectedDeliveryOptionId(`rate-${idx}`);
+                                  sessionStorage.setItem(
+                                    "selectedDeliveryOptionId",
+                                    `rate-${idx}`,
+                                  );
+                                }}
+                                className={`text-left rounded border p-4 transition-all focus:outline-none focus:ring-2 focus:ring-belims-blue/40 ${
+                                  isSelected
+                                    ? "border-belims-blue bg-blue-50/60 shadow-sm"
+                                    : "border-gray-200 bg-white hover:border-belims-blue hover:bg-blue-50/50"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="font-bold text-gray-900 text-sm">
+                                    {rate.service_name}
+                                  </div>
+                                  <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wide">
+                                    {tier}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-600 mb-1">
+                                  {formatEta(rate.expected_delivery_date)}
+                                </div>
+                                <div className="text-xs font-semibold text-gray-800">
+                                  {CURRENCY_SYMBOL}
+                                  {rate.total_price.toFixed(2)}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
 
-                    <div className="text-xs text-gray-500">
-                      Final shipping rates are calculated at checkout.
-                    </div>
+                        <div className="text-xs text-gray-500">
+                          Rates calculated for {qty} unit{qty > 1 ? "s" : ""}.
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-700">
+                        <p className="font-semibold mb-1">
+                          No delivery options
+                        </p>
+                        <p>
+                          Unable to calculate delivery rates for your location.
+                          Rates will be calculated at checkout.
+                        </p>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="rounded border border-blue-100 bg-blue-50 p-3 text-xs text-gray-700 flex items-center justify-between gap-3">

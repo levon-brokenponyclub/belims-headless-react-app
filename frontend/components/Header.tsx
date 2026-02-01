@@ -16,12 +16,23 @@ import {
   Truck,
   LogOut,
 } from "lucide-react";
-import { Store, CategoryNode, CartItem, Product } from "../types";
+import {
+  Store,
+  CategoryNode,
+  CartItem,
+  Product,
+  ShippingAddress,
+} from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { initializeCategoryTree } from "../categoryTree";
 import { useScrollHide } from "../hooks/useScrollHide";
 import { logoutUser, UserData } from "../services/authService";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
+import {
+  buildAddressLabel,
+  readStoredAddress,
+  saveStoredAddress,
+} from "../services/shippingAddress";
 import "../global.tailwind.css";
 
 interface SearchCategoryResult {
@@ -85,7 +96,11 @@ export const Header: React.FC<HeaderProps> = ({
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
   const [isDeliveryLocationModalOpen, setIsDeliveryLocationModalOpen] =
     useState(false);
-  const [deliveryAddress, setDeliveryAddress] = useState<string>("");
+  const [deliveryAddress, setDeliveryAddress] =
+    useState<ShippingAddress | null>(null);
+  const [legacyDeliveryLabel, setLegacyDeliveryLabel] = useState<string | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{
     categories: SearchCategoryResult[];
@@ -100,63 +115,17 @@ export const Header: React.FC<HeaderProps> = ({
 
   // Load saved delivery address from localStorage on mount
   useEffect(() => {
-    const savedAddress = localStorage.getItem("deliveryAddress");
-    if (savedAddress) {
-      setDeliveryAddress(savedAddress);
-    }
-    // Note: Auto-detect removed - geolocation must be triggered by user gesture
+    const { address, legacyLabel } = readStoredAddress();
+    setDeliveryAddress(address);
+    setLegacyDeliveryLabel(legacyLabel);
   }, []);
 
-  const autoDetectLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-
-          try {
-            // Use OpenStreetMap Nominatim for reverse geocoding
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-              {
-                headers: {
-                  "User-Agent": "Belims-Store",
-                },
-              },
-            );
-
-            if (response.ok) {
-              const data = await response.json();
-              const formattedAddress = data.address
-                ? `${data.address.city || data.address.town || data.address.village || ""}, ${data.address.state || data.address.province || ""}`
-                    .replace(/^,\s*/, "")
-                    .replace(/,\s*,/g, ",")
-                    .trim()
-                : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-
-              setDeliveryAddress(formattedAddress);
-              localStorage.setItem("deliveryAddress", formattedAddress);
-            }
-          } catch (error) {
-            console.error("Reverse geocoding error:", error);
-            const fallbackAddress = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-            setDeliveryAddress(fallbackAddress);
-            localStorage.setItem("deliveryAddress", fallbackAddress);
-          }
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-        },
-      );
-    }
-  };
-
-  const handleLocationSelect = (location: string) => {
-    setDeliveryAddress(location);
-    if (location) {
-      localStorage.setItem("deliveryAddress", location);
-    } else {
-      localStorage.removeItem("deliveryAddress");
-    }
+  const handleAddressSelect = (address: ShippingAddress | null) => {
+    setDeliveryAddress(address);
+    setLegacyDeliveryLabel(
+      address ? address.label || buildAddressLabel(address) : null,
+    );
+    saveStoredAddress(address);
   };
 
   // Initialize category tree from API
@@ -471,7 +440,11 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-2 bg-white border border-gray-200 text-belims-blue hover:bg-gray-50 px-4 py-1.5 rounded cursor-pointer font-bold text-sm transition-all font-heading max-w-xs"
           >
             <MapPin size={16} />
-            <span className="truncate">{deliveryAddress || "Delivery"}</span>
+            <span className="truncate">
+              {deliveryAddress
+                ? deliveryAddress.label || buildAddressLabel(deliveryAddress)
+                : legacyDeliveryLabel || "Delivery"}
+            </span>
             <ChevronDown size={14} className="flex-shrink-0" />
           </button>
 
@@ -1215,8 +1188,8 @@ export const Header: React.FC<HeaderProps> = ({
       <DeliveryLocationModal
         isOpen={isDeliveryLocationModalOpen}
         onClose={() => setIsDeliveryLocationModalOpen(false)}
-        currentLocation={deliveryAddress}
-        onLocationSelect={handleLocationSelect}
+        currentAddress={deliveryAddress || undefined}
+        onAddressSelect={handleAddressSelect}
       />
     </header>
   );
