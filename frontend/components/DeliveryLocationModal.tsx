@@ -96,7 +96,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         async (position) => {
           try {
             const { latitude, longitude } = position.coords;
-            console.log("Location detected:", latitude, longitude);
 
             // Create a timeout for the fetch request
             const controller = new AbortController();
@@ -118,7 +117,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
               if (response.ok) {
                 const data = await response.json();
-                console.log("Reverse geocoding result:", data);
 
                 const formattedAddress = data.address
                   ? `${data.address.city || data.address.town || data.address.village || ""}, ${data.address.state || data.address.province || data.address.country || ""}`
@@ -127,7 +125,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                       .trim()
                   : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
 
-                console.log("Formatted address:", formattedAddress);
                 setInput(formattedAddress);
                 onLocationSelect(formattedAddress);
                 onClose();
@@ -175,6 +172,11 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           }
           alert(errorMessage + " Please enter your address manually.");
           setLoading(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000, // 10 second timeout for getting position
+          maximumAge: 0,
         },
       );
     } catch (error) {

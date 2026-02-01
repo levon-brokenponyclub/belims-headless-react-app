@@ -103,10 +103,8 @@ export const Header: React.FC<HeaderProps> = ({
     const savedAddress = localStorage.getItem("deliveryAddress");
     if (savedAddress) {
       setDeliveryAddress(savedAddress);
-    } else {
-      // Auto-detect location on first load if no saved address
-      autoDetectLocation();
     }
+    // Note: Auto-detect removed - geolocation must be triggered by user gesture
   }, []);
 
   const autoDetectLocation = () => {
