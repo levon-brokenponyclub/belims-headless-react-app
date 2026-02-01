@@ -18,14 +18,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['"DM Sans"', "sans-serif"],
-        heading: [
-          '"Inter"',
-          "system-ui",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "sans-serif",
-        ],
+        heading: ["Sora", "Inter", "system-ui", "sans-serif"],
+        body: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
       },
     },
   },
