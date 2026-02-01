@@ -155,21 +155,8 @@ export const Checkout: React.FC<CheckoutProps> = ({
   useEffect(() => {
     const fetchSavedLocationRates = async () => {
       const savedAddress = localStorage.getItem("deliveryAddress");
-      console.log(
-        "🔍 Checkout: Checking for saved delivery address:",
-        savedAddress,
-      );
-      if (!savedAddress || savedLocationRates.length > 0) {
-        console.log(
-          "🔍 Checkout: Skipping fetch - no address or rates already loaded",
-        );
-        return;
-      }
+      if (!savedAddress || savedLocationRates.length > 0) return;
 
-      console.log(
-        "📍 Checkout: Fetching rates for saved location:",
-        savedAddress,
-      );
       setLoadingSavedRates(true);
       try {
         // Parse the saved address to extract city and province
@@ -199,10 +186,6 @@ export const Checkout: React.FC<CheckoutProps> = ({
             tier: classifyRate(rate, finalRates),
           }));
 
-          console.log(
-            "✅ Checkout: Saved location rates loaded:",
-            classifiedRates,
-          );
           setSavedLocationRates(classifiedRates);
         }
       } catch (error) {
@@ -373,7 +356,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
       return;
     }
 
-    // Delivery mode: fetch rates and show them inline
+    // Delivery mode: fetch rates
     try {
       const rates = await getShippingRates({
         destination_address: {
@@ -406,10 +389,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
         setSelectedShipping(fastest);
       }
 
-      // Show delivery options inline - don't change step
-      setLoading(false);
+      setStep("shipping");
     } catch (err) {
       alert("Failed to get shipping rates");
+    } finally {
       setLoading(false);
     }
   };
@@ -543,23 +526,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     </div>
                   </div>
 
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      // If shipping rates are loaded and user is in delivery mode, go to payment
-                      if (
-                        deliveryType === "delivery" &&
-                        shippingRates.length > 0 &&
-                        selectedShipping
-                      ) {
-                        setStep("payment");
-                      } else {
-                        // Otherwise fetch shipping rates
-                        handleDetailsSubmit(e);
-                      }
-                    }}
-                    className="space-y-4"
-                  >
+                  <form onSubmit={handleDetailsSubmit} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <input
                         required
@@ -733,170 +700,150 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       </>
                     )}
 
-                    {/* Delivery Options - Show after rates are fetched OR if delivery location is saved */}
-                    {(() => {
-                      const shouldShow =
-                        deliveryType === "delivery" &&
-                        (shippingRates.length > 0 ||
-                          savedLocationRates.length > 0);
-                      console.log("🎯 Should show delivery options?", {
-                        deliveryType,
-                        shippingRatesCount: shippingRates.length,
-                        savedLocationRatesCount: savedLocationRates.length,
-                        shouldShow,
-                      });
-                      return shouldShow;
-                    })() && (
-                      <div className="border-t pt-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4">
-                          Choose Delivery Option
-                        </h3>
-
-                        {/* Selected Shipping Pill */}
-                        {selectedShipping && (
-                          <div className="flex items-center gap-2 bg-blue-50 border border-belims-blue px-4 py-2 rounded-full w-fit mb-4">
-                            <Check size={18} className="text-belims-blue" />
-                            <span className="text-sm font-semibold text-belims-blue">
-                              {selectedShipping.service_name} ·{" "}
-                              {formatEta(
-                                selectedShipping.expected_delivery_date,
-                              )}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Shipping Cards */}
-                        <div className="space-y-3">
-                          {(() => {
-                            const ratesToDisplay =
-                              shippingRates.length > 0
-                                ? shippingRates
-                                : savedLocationRates;
-                            console.log(
-                              "📦 Displaying delivery rates:",
-                              ratesToDisplay,
-                            );
-                            return ratesToDisplay;
-                          })().map((rate, idx) => {
-                            const ratesToUse =
-                              shippingRates.length > 0
-                                ? shippingRates
-                                : savedLocationRates;
-                            const tier =
-                              rate.tier || classifyRate(rate, ratesToUse);
-                            const isSelected =
-                              selectedShipping?.service_name ===
-                              rate.service_name;
-                            const isFastest =
-                              fastestRate?.service_name === rate.service_name;
-
-                            return (
-                              <div
-                                key={idx}
-                                onClick={() => handleShippingSelect(rate)}
-                                className={`border-2 p-4 rounded-lg cursor-pointer transition-all flex justify-between items-center ${
-                                  isSelected
-                                    ? "border-belims-blue bg-blue-50"
-                                    : isFastest
-                                      ? "border-orange-300 bg-orange-50"
-                                      : "border-gray-200 hover:border-belims-blue hover:bg-gray-50"
-                                }`}
-                              >
-                                <div className="flex items-center gap-3 flex-1">
-                                  {/* Radio Button */}
-                                  <div className="flex-shrink-0">
-                                    <div
-                                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                        isSelected
-                                          ? "border-belims-blue bg-belims-blue"
-                                          : "border-gray-300 bg-white"
-                                      }`}
-                                    >
-                                      {isSelected && (
-                                        <div className="w-2 h-2 rounded-full bg-white" />
-                                      )}
-                                    </div>
-                                  </div>
-                                  <Truck
-                                    size={24}
-                                    className={
-                                      isSelected
-                                        ? "text-belims-blue"
-                                        : "text-gray-400"
-                                    }
-                                  />
-                                  <div>
-                                    <div className="font-bold text-gray-900 flex items-center gap-2">
-                                      {rate.service_name}
-                                      {tier === "Express" && (
-                                        <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
-                                          <Zap size={12} /> Faster
-                                        </span>
-                                      )}
-                                      {tier === "Economy" && (
-                                        <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                                          Budget
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      {formatEta(rate.expected_delivery_date)}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-bold text-lg text-gray-900">
-                                    {CURRENCY_SYMBOL}
-                                    {rate.total_price.toFixed(2)}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
                     <button
-                      disabled={
-                        loading ||
-                        (deliveryType === "delivery" &&
-                          shippingRates.length === 0 &&
-                          savedLocationRates.length === 0 &&
-                          !loading)
-                      }
+                      disabled={loading}
                       type="submit"
-                      className="w-full bg-orange-500 text-white font-bold p-4 rounded-lg hover:bg-orange-600 transition flex justify-center items-center gap-2 mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-orange-500 text-white font-bold p-4 rounded-lg hover:bg-orange-600 transition flex justify-center items-center gap-2 mt-6"
                     >
                       {loading ? (
                         <>
                           <Loader2 size={20} className="animate-spin" />
-                          Loading rates...
-                        </>
-                      ) : deliveryType === "delivery" &&
-                        shippingRates.length === 0 &&
-                        savedLocationRates.length === 0 ? (
-                        <>
-                          Fetch Delivery Options
-                          <Truck size={20} />
-                        </>
-                      ) : deliveryType === "delivery" &&
-                        (shippingRates.length > 0 ||
-                          savedLocationRates.length > 0) ? (
-                        <>
-                          Continue to Payment
-                          <CreditCard size={20} />
+                          Loading...
                         </>
                       ) : (
                         <>
-                          Proceed to Payment
-                          <CreditCard size={20} />
+                          {deliveryType === "delivery"
+                            ? "Choose Delivery Option"
+                            : "Proceed to Payment"}
+                          {deliveryType === "delivery" && <Truck size={20} />}
                         </>
                       )}
                     </button>
                   </form>
                 </div>
               </>
+            )}
+
+            {step === "shipping" && (
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">
+                    Choose Delivery Option
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    Delivering to{" "}
+                    <strong>
+                      {customer.city}, {customer.province}
+                    </strong>
+                  </p>
+                </div>
+
+                {/* Selected Shipping Pill */}
+                {selectedShipping && (
+                  <div className="flex items-center gap-2 bg-blue-50 border border-belims-blue px-4 py-2 rounded-full w-fit">
+                    <Check size={18} className="text-belims-blue" />
+                    <span className="text-sm font-semibold text-belims-blue">
+                      {selectedShipping.service_name} ·{" "}
+                      {formatEta(selectedShipping.expected_delivery_date)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Shipping Cards */}
+                <div className="space-y-3">
+                  {shippingRates.map((rate, idx) => {
+                    const tier = rate.tier || classifyRate(rate, shippingRates);
+                    const isSelected =
+                      selectedShipping?.service_name === rate.service_name;
+                    const isFastest =
+                      fastestRate?.service_name === rate.service_name;
+
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => handleShippingSelect(rate)}
+                        className={`border-2 p-4 rounded-lg cursor-pointer transition-all flex justify-between items-center ${
+                          isSelected
+                            ? "border-belims-blue bg-blue-50"
+                            : isFastest
+                              ? "border-orange-300 bg-orange-50"
+                              : "border-gray-200 hover:border-belims-blue hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          {/* Radio Button Checkbox */}
+                          <div className="flex-shrink-0">
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                isSelected
+                                  ? "border-belims-blue bg-belims-blue"
+                                  : "border-gray-300 bg-white"
+                              }`}
+                            >
+                              {isSelected && (
+                                <div className="w-2 h-2 rounded-full bg-white" />
+                              )}
+                            </div>
+                          </div>
+                          <Truck
+                            size={24}
+                            className={
+                              isSelected ? "text-belims-blue" : "text-gray-400"
+                            }
+                          />
+                          <div>
+                            <div className="font-bold text-gray-900 flex items-center gap-2">
+                              {rate.service_name}
+                              {tier === "Express" && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                                  <Zap size={12} /> Faster
+                                </span>
+                              )}
+                              {tier === "Economy" && (
+                                <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                  Budget
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatEta(rate.expected_delivery_date)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-lg text-gray-900">
+                            {CURRENCY_SYMBOL}
+                            {rate.total_price.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {shippingRates.length === 0 && (
+                    <p className="text-gray-500 text-center py-8">
+                      No shipping options available.
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  disabled={!selectedShipping || loading}
+                  onClick={() => setStep("payment")}
+                  className="w-full bg-orange-500 text-white font-bold p-4 rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex justify-center items-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      Continue to Payment <CreditCard size={20} />
+                    </>
+                  )}
+                </button>
+              </div>
             )}
 
             {step === "payment" &&
