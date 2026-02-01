@@ -14,11 +14,14 @@ import {
   ArrowRight,
   Scale,
   Truck,
+  LogOut,
 } from "lucide-react";
 import { Store, CategoryNode, CartItem, Product } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { initializeCategoryTree } from "../categoryTree";
 import { useScrollHide } from "../hooks/useScrollHide";
+import { logoutUser, UserData } from "../services/authService";
+import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import "../global.tailwind.css";
 
 interface SearchCategoryResult {
@@ -57,6 +60,8 @@ interface HeaderProps {
   onOpenOnboarding: () => void;
   onCompare?: (product: Product) => void;
   products?: Product[];
+  currentUser: UserData | null;
+  setCurrentUser: (user: UserData | null) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -69,6 +74,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenOnboarding,
   onCompare,
   products = [],
+  currentUser,
+  setCurrentUser,
 }) => {
   const navigate = useNavigate();
   const isNavbarVisible = useScrollHide({ threshold: 100 }); // Hide navbar after scrolling 100px down
@@ -76,9 +83,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isServicesPanelOpen, setIsServicesPanelOpen] = useState(false);
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
-  const [isDeliveryLocationOpen, setIsDeliveryLocationOpen] = useState(false);
+  const [isDeliveryLocationModalOpen, setIsDeliveryLocationModalOpen] =
+    useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState<string>("");
-  const [deliveryAddressInput, setDeliveryAddressInput] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{
     categories: SearchCategoryResult[];
@@ -91,24 +98,18 @@ export const Header: React.FC<HeaderProps> = ({
     string | null
   >(null);
 
-  // Load saved delivery address from localStorage
+  // Load saved delivery address from localStorage on mount
   useEffect(() => {
     const savedAddress = localStorage.getItem("deliveryAddress");
     if (savedAddress) {
       setDeliveryAddress(savedAddress);
+    } else {
+      // Auto-detect location on first load if no saved address
+      autoDetectLocation();
     }
   }, []);
 
-  const handleSaveAddress = () => {
-    if (deliveryAddressInput.trim()) {
-      setDeliveryAddress(deliveryAddressInput);
-      localStorage.setItem("deliveryAddress", deliveryAddressInput);
-      setIsDeliveryLocationOpen(false);
-      setDeliveryAddressInput("");
-    }
-  };
-
-  const handleDetectAddress = () => {
+  const autoDetectLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
@@ -120,50 +121,43 @@ export const Header: React.FC<HeaderProps> = ({
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
               {
                 headers: {
-                  "User-Agent": "Belims-Store", // Nominatim requires a user agent
+                  "User-Agent": "Belims-Store",
                 },
               },
             );
 
             if (response.ok) {
               const data = await response.json();
-              const address =
-                data.display_name ||
-                `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
-
-              // Format address more cleanly (e.g., suburb, city, province)
               const formattedAddress = data.address
-                ? `${data.address.suburb || data.address.neighbourhood || ""}, ${data.address.city || data.address.town || data.address.village || ""}, ${data.address.state || data.address.province || ""}`
+                ? `${data.address.city || data.address.town || data.address.village || ""}, ${data.address.state || data.address.province || ""}`
                     .replace(/^,\s*/, "")
                     .replace(/,\s*,/g, ",")
                     .trim()
-                : address;
+                : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
 
-              setDeliveryAddress(formattedAddress || address);
-              localStorage.setItem(
-                "deliveryAddress",
-                formattedAddress || address,
-              );
-              setIsDeliveryLocationOpen(false);
-            } else {
-              throw new Error("Geocoding failed");
+              setDeliveryAddress(formattedAddress);
+              localStorage.setItem("deliveryAddress", formattedAddress);
             }
           } catch (error) {
             console.error("Reverse geocoding error:", error);
-            // Fallback to coordinates if geocoding fails
             const fallbackAddress = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
             setDeliveryAddress(fallbackAddress);
             localStorage.setItem("deliveryAddress", fallbackAddress);
-            setIsDeliveryLocationOpen(false);
           }
         },
         (error) => {
           console.error("Geolocation error:", error);
-          alert("Unable to detect your location. Please enter it manually.");
         },
       );
+    }
+  };
+
+  const handleLocationSelect = (location: string) => {
+    setDeliveryAddress(location);
+    if (location) {
+      localStorage.setItem("deliveryAddress", location);
     } else {
-      alert("Geolocation is not supported by your browser.");
+      localStorage.removeItem("deliveryAddress");
     }
   };
 
@@ -178,6 +172,13 @@ export const Header: React.FC<HeaderProps> = ({
     };
     loadCategories();
   }, []);
+
+  const handleLogout = async () => {
+    await logoutUser();
+    setCurrentUser(null);
+    setIsAccountPanelOpen(false);
+    navigate("/");
+  };
 
   const flatCategoryList = useMemo(
     () => flattenCategoryTree(categoryTree),
@@ -373,18 +374,32 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Side Icons */}
           <div className="flex items-center gap-6 text-white">
-            {/* Sign In / Account (icon hidden) */}
-            <button
-              onClick={() => setIsAccountPanelOpen(true)}
-              className="hidden md:flex flex-col cursor-pointer hover:text-gray-200 group header-signin"
-            >
-              <div className="text-[11px] leading-tight font-medium">
-                Sign In
-              </div>
-              <div className="text-sm font-bold leading-tight font-heading">
-                Account
-              </div>
-            </button>
+            {/* Sign In / Account */}
+            {currentUser ? (
+              <button
+                onClick={() => setIsAccountPanelOpen(true)}
+                className="hidden md:flex flex-col cursor-pointer hover:text-gray-200 group header-signin"
+              >
+                <div className="text-[11px] leading-tight font-medium">
+                  Welcome
+                </div>
+                <div className="text-sm font-bold leading-tight font-heading">
+                  {currentUser.first_name || currentUser.username}
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsAccountPanelOpen(true)}
+                className="hidden md:flex flex-col cursor-pointer hover:text-gray-200 group header-signin"
+              >
+                <div className="text-[11px] leading-tight font-medium">
+                  Sign In
+                </div>
+                <div className="text-sm font-bold leading-tight font-heading">
+                  Account
+                </div>
+              </button>
+            )}
 
             {/* Cart */}
             <div
@@ -431,7 +446,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={() => {
               setIsServicesPanelOpen(true);
-              setIsDeliveryLocationOpen(false);
+              setIsDeliveryLocationModalOpen(false);
             }}
             className="flex items-center gap-2 bg-white border border-gray-200 text-belims-blue px-4 py-1.5 rounded cursor-pointer font-bold text-sm transition-all font-heading hover:bg-gray-50"
           >
@@ -449,66 +464,18 @@ export const Header: React.FC<HeaderProps> = ({
             Track Your Order
           </button>
 
-          {/* Delivery Location Button */}
-          <div className="relative group">
-            <button
-              onClick={() => setIsDeliveryLocationOpen(!isDeliveryLocationOpen)}
-              className="flex items-center gap-2 bg-white border border-gray-200 text-belims-blue hover:bg-gray-50 px-4 py-1.5 rounded cursor-pointer font-bold text-sm transition-all font-heading max-w-xs"
-            >
-              <MapPin size={16} />
-              <span className="truncate">{deliveryAddress || "Delivery"}</span>
-              <ChevronDown
-                size={14}
-                className={`transition-transform flex-shrink-0 ${isDeliveryLocationOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-
-            {/* Delivery Location Dropdown */}
-            {isDeliveryLocationOpen && (
-              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg p-4 w-72 z-50">
-                <h4 className="font-bold text-sm text-gray-900 mb-1 font-heading">
-                  Delivery location
-                </h4>
-                <p className="text-xs text-gray-600 mb-4">
-                  Let us know so that we can show you available shipping rates.
-                </p>
-
-                <div className="flex gap-2 mb-3">
-                  <input
-                    type="text"
-                    placeholder="Enter your location"
-                    value={deliveryAddressInput}
-                    onChange={(e) => setDeliveryAddressInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSaveAddress()}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue"
-                  />
-                  <button
-                    onClick={handleSaveAddress}
-                    disabled={!deliveryAddressInput.trim()}
-                    className="bg-belims-blue text-white px-4 py-2 rounded text-sm font-bold transition-colors hover:bg-belims-light font-heading disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Save
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="flex-1 h-px bg-gray-300" />
-                  <span className="text-xs text-gray-500 font-medium">or</span>
-                  <div className="flex-1 h-px bg-gray-300" />
-                </div>
-
-                <button
-                  onClick={handleDetectAddress}
-                  className="w-full bg-belims-blue text-white px-3 py-2 rounded text-sm font-bold transition-colors hover:bg-belims-light font-heading"
-                >
-                  Detect my address
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Spacer pushes CTAs to the right */}
+          {/* Spacer pushes delivery location to the right */}
           <div className="flex-1" />
+
+          {/* Delivery Location Button */}
+          <button
+            onClick={() => setIsDeliveryLocationModalOpen(true)}
+            className="flex items-center gap-2 bg-white border border-gray-200 text-belims-blue hover:bg-gray-50 px-4 py-1.5 rounded cursor-pointer font-bold text-sm transition-all font-heading max-w-xs"
+          >
+            <MapPin size={16} />
+            <span className="truncate">{deliveryAddress || "Delivery"}</span>
+            <ChevronDown size={14} className="flex-shrink-0" />
+          </button>
 
           {/* PAINT ASSISTANT BUTTON (temporarily disabled) */}
           {false && (
@@ -1034,7 +1001,9 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Header */}
             <div className="p-5 border-b flex justify-between items-center bg-white">
               <h3 className="text-lg font-bold text-gray-900 font-heading">
-                Sign in or Create an Account
+                {currentUser
+                  ? `Welcome, ${currentUser.first_name || currentUser.username}!`
+                  : "Sign in or Create an Account"}
               </h3>
               <button
                 onClick={() => setIsAccountPanelOpen(false)}
@@ -1046,218 +1015,211 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto">
-              {/* Top CTA Buttons */}
-              <div className="p-5 border-b">
-                <div className="grid grid-cols-2 gap-3">
-                  <Link
-                    to="/account/sign-in"
-                    onClick={() => setIsAccountPanelOpen(false)}
-                    className="bg-belims-accent text-white py-3 px-4 rounded-lg font-bold text-center hover:bg-orange-600 transition-colors"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    to="/account/create"
-                    onClick={() => setIsAccountPanelOpen(false)}
-                    className="bg-white border-2 border-belims-blue text-belims-blue py-3 px-4 rounded-lg font-bold text-center hover:bg-blue-50 transition-colors"
-                  >
-                    Create an Account
-                  </Link>
-                </div>
-              </div>
-
-              {/* Pro Block */}
-              <div className="p-5 bg-blue-50 border-b">
-                <div className="flex gap-3">
-                  <div className="bg-belims-blue text-white px-3 py-1 rounded font-bold text-sm h-fit">
-                    PRO
+              {currentUser ? (
+                <div className="p-5">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-sm text-green-800">
+                      You are logged in as <strong>{currentUser.email}</strong>
+                    </p>
+                    {currentUser.roles?.includes("contractor") && (
+                      <p className="text-xs text-green-700 mt-1">
+                        Account type: Contractor
+                      </p>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-gray-900 mb-1">
-                      Are You a Pro?
+                </div>
+              ) : (
+                <>
+                  {/* Top CTA Buttons */}
+                  <div className="p-5 border-b">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Link
+                        to="/login"
+                        onClick={() => setIsAccountPanelOpen(false)}
+                        className="bg-belims-accent text-white py-3 px-4 rounded-lg font-bold text-center hover:bg-orange-600 transition-colors"
+                      >
+                        Sign in
+                      </Link>
+                      <Link
+                        to="/register"
+                        onClick={() => setIsAccountPanelOpen(false)}
+                        className="bg-white border-2 border-belims-blue text-belims-blue py-3 px-4 rounded-lg font-bold text-center hover:bg-blue-50 transition-colors"
+                      >
+                        Create an Account
+                      </Link>
                     </div>
-                    <div className="text-sm text-gray-700 mb-2">
-                      Get online tools to manage and grow your business — plus,
-                      Pro Xtra Members unlock more benefits and savings.
+                  </div>
+                </>
+              )}
+
+              {/* Account Links - Only show when logged in */}
+              {currentUser && (
+                <>
+                  <div
+                    className="h-px bg-gray-200"
+                    role="separator"
+                    aria-hidden="true"
+                  ></div>
+                  <button
+                    onClick={() => {
+                      setIsAccountPanelOpen(false);
+                      onOpenTrackOrder();
+                    }}
+                    className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group w-full text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl" aria-hidden="true">
+                        📦
+                      </span>
+                      <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                        Track Order
+                      </span>
                     </div>
-                    <Link
-                      to="/pro"
-                      onClick={() => setIsAccountPanelOpen(false)}
-                      className="text-belims-blue font-semibold text-sm hover:underline"
+                    <span
+                      className="text-gray-400 group-hover:text-belims-blue"
+                      aria-hidden="true"
                     >
-                      Learn more
-                    </Link>
+                      ›
+                    </span>
+                  </button>
+                  <Link
+                    to="/account/cards"
+                    onClick={() => setIsAccountPanelOpen(false)}
+                    className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl" aria-hidden="true">
+                        💳
+                      </span>
+                      <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                        Cards & Accounts
+                      </span>
+                    </div>
+                    <span
+                      className="text-gray-400 group-hover:text-belims-blue"
+                      aria-hidden="true"
+                    >
+                      ›
+                    </span>
+                  </Link>
+                  <Link
+                    to="/account/pay"
+                    onClick={() => setIsAccountPanelOpen(false)}
+                    className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl" aria-hidden="true">
+                        🧾
+                      </span>
+                      <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                        Pay Credit Card Bill
+                      </span>
+                    </div>
+                    <span
+                      className="text-gray-400 group-hover:text-belims-blue"
+                      aria-hidden="true"
+                    >
+                      ›
+                    </span>
+                  </Link>
+                  <Link
+                    to="/account/discounts"
+                    onClick={() => setIsAccountPanelOpen(false)}
+                    className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl" aria-hidden="true">
+                        🏷️
+                      </span>
+                      <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                        Discount Benefits
+                      </span>
+                    </div>
+                    <span
+                      className="text-gray-400 group-hover:text-belims-blue"
+                      aria-hidden="true"
+                    >
+                      ›
+                    </span>
+                  </Link>
+                  <Link
+                    to="/account/profile"
+                    onClick={() => setIsAccountPanelOpen(false)}
+                    className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl" aria-hidden="true">
+                        👤
+                      </span>
+                      <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
+                        Profile
+                      </span>
+                    </div>
+                    <span
+                      className="text-gray-400 group-hover:text-belims-blue"
+                      aria-hidden="true"
+                    >
+                      ›
+                    </span>
+                  </Link>
+                </>
+              )}
+
+              {/* Contractor/Trade Block - Only show when not logged in OR when logged in but not a contractor */}
+              {(!currentUser || !currentUser.roles?.includes("contractor")) && (
+                <div className="p-5 bg-blue-50 border-b">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <div className="font-bold text-gray-900 mb-2">
+                        Are you a Contractor?
+                      </div>
+                      <div className="text-sm text-gray-700 mb-3 leading-relaxed">
+                        See trade pricing across our range and unlock checkout
+                        access with a trade account.
+                      </div>
+                      <div className="text-sm text-gray-700 mb-3 leading-relaxed">
+                        Bulk pricing, site delivery and exclusive trade-only
+                        deals — built for professionals.
+                      </div>
+                      <Link
+                        to="/register?type=trade"
+                        onClick={() => setIsAccountPanelOpen(false)}
+                        className="text-belims-accent font-semibold text-sm hover:underline inline-flex items-center gap-1"
+                      >
+                        Register for Trade Deals
+                        <ArrowRight size={14} />
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div
-                className="h-px bg-gray-200"
-                role="separator"
-                aria-hidden="true"
-              ></div>
-
-              {/* Account Links */}
-              <button
-                onClick={() => {
-                  setIsAccountPanelOpen(false);
-                  onOpenTrackOrder();
-                }}
-                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group w-full text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl" aria-hidden="true">
-                    📦
-                  </span>
-                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
-                    Track Order
-                  </span>
-                </div>
-                <span
-                  className="text-gray-400 group-hover:text-belims-blue"
-                  aria-hidden="true"
-                >
-                  ›
-                </span>
-              </button>
-
-              <Link
-                to="/account/cards"
-                onClick={() => setIsAccountPanelOpen(false)}
-                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl" aria-hidden="true">
-                    💳
-                  </span>
-                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
-                    Cards & Accounts
-                  </span>
-                </div>
-                <span
-                  className="text-gray-400 group-hover:text-belims-blue"
-                  aria-hidden="true"
-                >
-                  ›
-                </span>
-              </Link>
-
-              <Link
-                to="/account/pay"
-                onClick={() => setIsAccountPanelOpen(false)}
-                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl" aria-hidden="true">
-                    🧾
-                  </span>
-                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
-                    Pay Credit Card Bill
-                  </span>
-                </div>
-                <span
-                  className="text-gray-400 group-hover:text-belims-blue"
-                  aria-hidden="true"
-                >
-                  ›
-                </span>
-              </Link>
-
-              <Link
-                to="/account/discounts"
-                onClick={() => setIsAccountPanelOpen(false)}
-                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl" aria-hidden="true">
-                    🏷️
-                  </span>
-                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
-                    Discount Benefits
-                  </span>
-                </div>
-                <span
-                  className="text-gray-400 group-hover:text-belims-blue"
-                  aria-hidden="true"
-                >
-                  ›
-                </span>
-              </Link>
-
-              <Link
-                to="/account/profile"
-                onClick={() => setIsAccountPanelOpen(false)}
-                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl" aria-hidden="true">
-                    👤
-                  </span>
-                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
-                    Profile
-                  </span>
-                </div>
-                <span
-                  className="text-gray-400 group-hover:text-belims-blue"
-                  aria-hidden="true"
-                >
-                  ›
-                </span>
-              </Link>
-
-              <div
-                className="h-px bg-gray-200 my-4 mx-4"
-                role="separator"
-                aria-hidden="true"
-              ></div>
-
-              <button
-                onClick={() => {
-                  setIsAccountPanelOpen(false);
-                  onOpenPaintAssistant();
-                }}
-                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group w-full text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl" aria-hidden="true">
-                    🎨
-                  </span>
-                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
-                    Paint Assistant
-                  </span>
-                </div>
-                <span
-                  className="text-gray-400 group-hover:text-belims-blue"
-                  aria-hidden="true"
-                >
-                  ›
-                </span>
-              </button>
-
-              <Link
-                to="/ai-helper"
-                onClick={() => setIsAccountPanelOpen(false)}
-                className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl" aria-hidden="true">
-                    🤖
-                  </span>
-                  <span className="font-semibold text-gray-800 group-hover:text-belims-blue">
-                    AI Helper
-                  </span>
-                </div>
-                <span
-                  className="text-gray-400 group-hover:text-belims-blue"
-                  aria-hidden="true"
-                >
-                  ›
-                </span>
-              </Link>
+              {/* Logout button at bottom - Only show when logged in */}
             </div>
+
+            {/* Logout button at bottom - Only show when logged in */}
+            {currentUser && (
+              <div className="p-5 border-t bg-white">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white font-semibold rounded hover:bg-red-700 transition-colors"
+                >
+                  <LogOut size={18} />
+                  Log out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
+
+      {/* Delivery Location Modal */}
+      <DeliveryLocationModal
+        isOpen={isDeliveryLocationModalOpen}
+        onClose={() => setIsDeliveryLocationModalOpen(false)}
+        currentLocation={deliveryAddress}
+        onLocationSelect={handleLocationSelect}
+      />
     </header>
   );
 };

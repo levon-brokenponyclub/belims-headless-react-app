@@ -8,7 +8,23 @@ import {
   normalizeTrackingResult,
 } from "./TrackingProgressCard";
 
-const TRACK_ENDPOINT = "https://cms.belims.co.za/wp-json/belims/v1/track";
+// Get track endpoint based on environment
+function getTrackEndpoint(): string {
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname === "localhost"
+  ) {
+    const ngrokUrl =
+      sessionStorage.getItem("ngrok_url") || localStorage.getItem("ngrok_url");
+    if (ngrokUrl) {
+      return ngrokUrl + "/wp-json/belims/v1/track";
+    }
+    return "http://belims-headless.local/wp-json/belims/v1/track";
+  }
+  return "https://cms.belims.co.za/wp-json/belims/v1/track";
+}
+
+const TRACK_ENDPOINT = getTrackEndpoint();
 
 export const TrackOrderPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();

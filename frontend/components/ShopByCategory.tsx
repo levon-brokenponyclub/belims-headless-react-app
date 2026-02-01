@@ -11,6 +11,8 @@ interface ShopByCategoryProps {
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
   onCompare: (product: Product) => void;
+  isAuthenticated?: boolean;
+  isTradeApproved?: boolean;
 }
 
 interface Category {
@@ -26,6 +28,8 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
   addToCart,
   onBuyNow,
   onCompare,
+  isAuthenticated = false,
+  isTradeApproved = false,
 }) => {
   const navigate = useNavigate();
   const [categoryPills, setCategoryPills] = useState<string[]>(["Top Deals"]);
@@ -202,6 +206,8 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
                   addToCart={addToCart}
                   onBuyNow={onBuyNow}
                   onCompare={onCompare}
+                  isAuthenticated={isAuthenticated}
+                  isTradeApproved={isTradeApproved}
                 />
               </div>
             ))}

@@ -15,7 +15,7 @@ import { CartDrawer } from "./components/CartDrawer";
 import { StoreLocator } from "./components/StoreLocator";
 import { PaintAssistant } from "./components/PaintAssistant";
 import { SingleProduct } from "./components/SingleProduct";
-import { FreeShippingWidget } from "./components/FreeShippingWidget";
+/* import { FreeShippingWidget } from "./components/FreeShippingWidget"; */
 import { OnboardingWizard } from "./components/OnboardingWizard";
 import { PriceMatchModal } from "./components/PriceMatchModal";
 import { ComparisonModal } from "./components/ComparisonModal";
@@ -26,7 +26,10 @@ import { RecentlyViewed } from "./components/RecentlyViewed";
 import { ShopByCategory } from "./components/ShopByCategory";
 import { TrackOrderPage } from "./components/TrackOrderPage";
 import { BrandStrip } from "./components/BrandStrip";
+import { AuthPage } from "./components/AuthPage";
+import { Toast } from "./components/Toast";
 import HeroBanner from "./components/HeroBanner";
+import { getCurrentUser, UserData } from "./services/authService";
 
 import { Product, CartItem, Store } from "./types";
 import {
@@ -61,6 +64,8 @@ const ProductPage = ({
   onBuyNow,
   onCompare,
   setPriceMatchProduct,
+  isAuthenticated,
+  isTradeApproved,
 }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -81,11 +86,20 @@ const ProductPage = ({
       onBrandClick={(brand) =>
         navigate(`/shop?brand=${encodeURIComponent(brand)}`)
       }
+      isAuthenticated={isAuthenticated}
+      isTradeApproved={isTradeApproved}
     />
   );
 };
 
-const ArchivePage = ({ products, addToCart, onBuyNow, onCompare }) => {
+const ArchivePage = ({
+  products,
+  addToCart,
+  onBuyNow,
+  onCompare,
+  isAuthenticated,
+  isTradeApproved,
+}) => {
   const { categorySlug } = useParams();
   const [searchParams] = useSearchParams();
 
@@ -105,6 +119,8 @@ const ArchivePage = ({ products, addToCart, onBuyNow, onCompare }) => {
       addToCart={addToCart}
       onBuyNow={onBuyNow}
       onCompare={onCompare}
+      isAuthenticated={isAuthenticated}
+      isTradeApproved={isTradeApproved}
     />
   );
 };
@@ -125,10 +141,12 @@ const HomePage = ({
   handleProductClick,
   addToCompare,
   categoryPills,
+  isAuthenticated,
+  isTradeApproved,
 }) => {
   const navigate = useNavigate();
   const [activeDealFilter, setActiveDealFilter] = useState<DealFilter>("all");
-  const isTradeLoggedIn = false; // TODO: Replace with actual auth context
+  const isTradeLoggedIn = !!isTradeApproved;
 
   // Filter products for Deals of the Day
   const dealsOfTheDay = useMemo(() => {
@@ -211,6 +229,8 @@ const HomePage = ({
         addToCart={addToCart}
         onBuyNow={handleBuyNow}
         onCompare={addToCompare}
+        isAuthenticated={isAuthenticated}
+        isTradeApproved={isTradeApproved}
       />
 
       {/* Deal Filter Chips */}
@@ -298,6 +318,8 @@ const HomePage = ({
                     addToCart={addToCart}
                     onBuyNow={handleBuyNow}
                     onCompare={addToCompare}
+                    isAuthenticated={isAuthenticated}
+                    isTradeApproved={isTradeApproved}
                   />
                 ))}
               </div>
@@ -323,7 +345,7 @@ const HomePage = ({
                   Deals of the day
                 </h2>
                 <p className="text-gray-500 text-sm mt-1">
-                  Fresh discounts daily — limited stock
+                  Fresh discounts daily — expire at midnight. While stocks last.
                 </p>
               </div>
               <a
@@ -343,6 +365,8 @@ const HomePage = ({
                     addToCart={addToCart}
                     onBuyNow={handleBuyNow}
                     onCompare={addToCompare}
+                    isAuthenticated={isAuthenticated}
+                    isTradeApproved={isTradeApproved}
                   />
                 ))}
               </div>
@@ -368,7 +392,8 @@ const HomePage = ({
                   Weekly deals
                 </h2>
                 <p className="text-gray-500 text-sm mt-1">
-                  Save more when you buy in bulk
+                  Weekly savings across selected products. — available until
+                  Sunday at midnight.
                 </p>
               </div>
               <a
@@ -426,6 +451,8 @@ const HomePage = ({
                     addToCart={addToCart}
                     onBuyNow={handleBuyNow}
                     onCompare={addToCompare}
+                    isAuthenticated={isAuthenticated}
+                    isTradeApproved={isTradeApproved}
                   />
                 ))}
               </div>
@@ -470,6 +497,8 @@ const HomePage = ({
                     addToCart={addToCart}
                     onBuyNow={handleBuyNow}
                     onCompare={addToCompare}
+                    isAuthenticated={isAuthenticated}
+                    isTradeApproved={isTradeApproved}
                   />
                 ))}
               </div>
@@ -976,6 +1005,8 @@ const HomePage = ({
               addToCart={addToCart}
               onBuyNow={handleBuyNow}
               onCompare={addToCompare}
+                    isAuthenticated={isAuthenticated}
+                    isTradeApproved={isTradeApproved}
             />
           ))}
         </div>
@@ -1014,6 +1045,11 @@ export default function App() {
     null,
   );
   const [categoryPills, setCategoryPills] = useState<string[]>(CATEGORY_PILLS);
+  const [currentUser, setCurrentUser] = useState<UserData | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -1035,6 +1071,14 @@ export default function App() {
       }
     };
     loadCategories();
+  }, []);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+    };
+    checkAuth();
   }, []);
 
   useEffect(() => {
@@ -1107,6 +1151,14 @@ export default function App() {
     if (comparisonList.length <= 1) setIsCompareOpen(false);
   };
 
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+  };
+
+  const handleLogin = (user: UserData) => {
+    setCurrentUser(user);
+  };
+
   return (
     <Router>
       <MainApp
@@ -1138,6 +1190,12 @@ export default function App() {
         priceMatchProduct={priceMatchProduct}
         setPriceMatchProduct={setPriceMatchProduct}
         categoryPills={categoryPills}
+        currentUser={currentUser}
+        setCurrentUser={setCurrentUser}
+        showToast={showToast}
+        toast={toast}
+        setToast={setToast}
+        handleLogin={handleLogin}
       />
     </Router>
   );
@@ -1146,6 +1204,8 @@ export default function App() {
 function MainApp(props) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isAuthenticated = !!props.currentUser;
+  const isTradeApproved = !!props.currentUser?.roles?.includes("contractor");
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1167,6 +1227,8 @@ function MainApp(props) {
         onOpenOnboarding={() => props.setIsOnboardingOpen(true)}
         onCompare={props.addToCompare}
         products={props.products}
+        currentUser={props.currentUser}
+        setCurrentUser={props.setCurrentUser}
       />
 
       <main className="flex-1 w-full px-0 relative">
@@ -1174,7 +1236,12 @@ function MainApp(props) {
           <Route
             path="/"
             element={
-              <HomePage {...props} handleProductClick={handleProductClick} />
+              <HomePage
+                {...props}
+                handleProductClick={handleProductClick}
+                isAuthenticated={isAuthenticated}
+                isTradeApproved={isTradeApproved}
+              />
             }
           />
           <Route
@@ -1186,6 +1253,8 @@ function MainApp(props) {
                 onBuyNow={props.handleBuyNow}
                 onCompare={props.addToCompare}
                 setPriceMatchProduct={props.setPriceMatchProduct}
+                isAuthenticated={isAuthenticated}
+                isTradeApproved={isTradeApproved}
               />
             }
           />
@@ -1197,6 +1266,8 @@ function MainApp(props) {
                 addToCart={props.addToCart}
                 onBuyNow={props.handleBuyNow}
                 onCompare={props.addToCompare}
+                isAuthenticated={isAuthenticated}
+                isTradeApproved={isTradeApproved}
               />
             }
           />
@@ -1208,6 +1279,8 @@ function MainApp(props) {
                 addToCart={props.addToCart}
                 onBuyNow={props.handleBuyNow}
                 onCompare={props.addToCompare}
+                isAuthenticated={isAuthenticated}
+                isTradeApproved={isTradeApproved}
               />
             }
           />
@@ -1221,18 +1294,200 @@ function MainApp(props) {
               />
             }
           />
+          <Route
+            path="/login"
+            element={
+              <AuthPage
+                mode="login"
+                onSuccess={props.handleLogin}
+                showToast={props.showToast}
+              />
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <AuthPage
+                mode="register"
+                onSuccess={props.handleLogin}
+                showToast={props.showToast}
+              />
+            }
+          />
           <Route path="/track-order" element={<TrackOrderPage />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
         </Routes>
       </main>
 
-      <footer className="bg-[#1a1f2e] text-gray-400 py-12 text-sm pb-24">
-        <div className="container mx-auto px-4 text-center">
-          &copy; 2024 Belims Hardware.
+      <footer className="bg-belims-blue border-t border-blue-900 py-12 text-sm pb-24">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+            {/* Shop Column */}
+            <div>
+              <h3 className="font-semibold text-white mb-4">Shop</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="/category/tools-machinery"
+                    className="text-white hover:text-white underline"
+                  >
+                    Tools & Machinery
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/category/paint"
+                    className="text-white hover:text-white underline"
+                  >
+                    Paint
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/category/building-materials"
+                    className="text-white hover:text-white underline"
+                  >
+                    Building Materials
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/category/plumbing"
+                    className="text-white hover:text-white underline"
+                  >
+                    Plumbing
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/deals"
+                    className="text-white hover:text-white underline"
+                  >
+                    Deals & Clearance
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Trade Column */}
+            <div>
+              <h3 className="font-semibold text-white mb-4">Trade</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="/trade-accounts"
+                    className="text-white hover:text-white underline"
+                  >
+                    Trade Accounts
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/bulk-orders"
+                    className="text-white hover:text-white underline"
+                  >
+                    Bulk Orders
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/delivery-areas"
+                    className="text-white hover:text-white underline"
+                  >
+                    Delivery Areas
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/returns-warranty"
+                    className="text-white hover:text-white underline"
+                  >
+                    Returns & Warranty
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Support Column */}
+            <div>
+              <h3 className="font-semibold text-white mb-4">Support</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="/contact"
+                    className="text-white hover:text-white underline"
+                  >
+                    Contact Us
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/help"
+                    className="text-white hover:text-white underline"
+                  >
+                    Help Centre
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/my-account"
+                    className="text-white hover:text-white underline"
+                  >
+                    My Account
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Belims Column */}
+            <div>
+              <h3 className="font-semibold text-white mb-4">Belims</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="/about"
+                    className="text-white hover:text-white underline"
+                  >
+                    About Belims
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/brands"
+                    className="text-white hover:text-white underline"
+                  >
+                    Brands
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/terms"
+                    className="text-white hover:text-white underline"
+                  >
+                    Terms & Conditions
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/privacy"
+                    className="text-white hover:text-white underline"
+                  >
+                    Privacy Policy
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Footer Bottom */}
+          <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/30 text-white">
+            <p>&copy; Belims Hardware</p>
+            <p>Trusted tools & materials for every build</p>
+          </div>
         </div>
       </footer>
 
-      <FreeShippingWidget cartItems={props.cartItems} />
+      {/* <FreeShippingWidget cartItems={props.cartItems} /> */}
 
       <CartDrawer
         isOpen={props.isCartOpen}
@@ -1286,6 +1541,8 @@ function MainApp(props) {
           addToCart={props.addToCart}
           onBuyNow={props.handleBuyNow}
           onCompare={props.addToCompare}
+          isAuthenticated={isAuthenticated}
+          isTradeApproved={isTradeApproved}
         />
       )}
 
@@ -1306,6 +1563,14 @@ function MainApp(props) {
             </div>
           </div>
         </div>
+      )}
+
+      {props.toast && (
+        <Toast
+          message={props.toast.message}
+          type={props.toast.type}
+          onClose={() => props.setToast(null)}
+        />
       )}
     </div>
   );

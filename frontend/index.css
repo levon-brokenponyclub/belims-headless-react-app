@@ -49,3 +49,19 @@
   background: #eff6ff;
   border: 1px solid rgba(30, 64, 175, 0.4);
 }
+
+/* Toast Animation */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}

@@ -1010,14 +1010,29 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       {savedLocationRates.slice(0, 3).map((rate, idx) => {
                         const tier =
                           rate.tier || classifyRate(rate, savedLocationRates);
+                        const isSelected =
+                          selectedShipping?.service_name === rate.service_name;
                         return (
-                          <div
+                          <button
                             key={idx}
-                            className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200"
+                            onClick={() => setSelectedShipping(rate)}
+                            className={`w-full flex items-center justify-between p-2 rounded-lg border-2 transition-all cursor-pointer ${
+                              isSelected
+                                ? "border-belims-blue bg-blue-50"
+                                : "border-gray-200 bg-gray-50 hover:border-belims-blue"
+                            }`}
                           >
                             <div className="flex items-center gap-2">
-                              <Truck size={14} className="text-gray-400" />
-                              <div>
+                              <div
+                                className={`${isSelected ? "text-belims-blue" : "text-gray-400"}`}
+                              >
+                                {isSelected ? (
+                                  <Check size={14} />
+                                ) : (
+                                  <Truck size={14} />
+                                )}
+                              </div>
+                              <div className="text-left">
                                 <div className="text-xs font-semibold text-gray-900 flex items-center gap-1">
                                   {tier === "Express" && (
                                     <Zap
@@ -1026,17 +1041,24 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                     />
                                   )}
                                   {rate.service_name}
+                                  {tier === "Economy" && (
+                                    <span className="text-[8px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                                      Budget
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-[10px] text-gray-500">
                                   {formatEta(rate.expected_delivery_date)}
                                 </div>
                               </div>
                             </div>
-                            <div className="text-xs font-bold text-gray-900">
+                            <div
+                              className={`text-xs font-bold ${isSelected ? "text-belims-blue" : "text-gray-900"}`}
+                            >
                               {CURRENCY_SYMBOL}
                               {rate.total_price.toFixed(2)}
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>

@@ -97,6 +97,18 @@ function global_site_settings_init() {
 add_action('plugins_loaded', 'global_site_settings_init');
 
 /**
+ * Register custom user roles
+ */
+function global_site_settings_register_user_roles() {
+    if (!get_role('contractor')) {
+        $customer_role = get_role('customer');
+        $capabilities = $customer_role ? $customer_role->capabilities : ['read' => true];
+        add_role('contractor', 'Contractor', $capabilities);
+    }
+}
+add_action('init', 'global_site_settings_register_user_roles');
+
+/**
  * Register custom product taxonomies (Range, Color)
  * Must be registered on init hook for WordPress admin to recognize them
  */

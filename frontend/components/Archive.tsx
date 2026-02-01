@@ -20,6 +20,8 @@ interface ArchiveProps {
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
   onCompare: (product: Product) => void;
+  isAuthenticated?: boolean;
+  isTradeApproved?: boolean;
 }
 
 export const Archive: React.FC<ArchiveProps> = ({
@@ -30,6 +32,8 @@ export const Archive: React.FC<ArchiveProps> = ({
   addToCart,
   onBuyNow,
   onCompare,
+  isAuthenticated = false,
+  isTradeApproved = false,
 }) => {
   const [sortBy, setSortBy] = useState<
     "featured" | "price-asc" | "price-desc" | "name"
@@ -587,6 +591,8 @@ export const Archive: React.FC<ArchiveProps> = ({
                       onBuyNow={onBuyNow}
                       onCompare={onCompare}
                       className="product-card h-full"
+                      isAuthenticated={isAuthenticated}
+                      isTradeApproved={isTradeApproved}
                     />
                   </li>
                 ))}

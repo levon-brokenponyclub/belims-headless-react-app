@@ -28,6 +28,7 @@ export interface RegisterParams {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  role?: "customer" | "contractor";
 }
 
 export interface LoginParams {

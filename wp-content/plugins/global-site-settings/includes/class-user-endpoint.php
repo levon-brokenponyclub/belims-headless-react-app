@@ -47,6 +47,14 @@ class User_Endpoint {
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
+                'role' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'validate_callback' => function($param) {
+                        return in_array($param, ['customer', 'contractor'], true);
+                    },
+                ],
             ],
         ]);
 
@@ -113,6 +121,7 @@ class User_Endpoint {
         $first_name = $request->get_param('first_name');
         $last_name = $request->get_param('last_name');
         $phone = $request->get_param('phone');
+        $role = $request->get_param('role');
 
         // Check if user already exists
         if (email_exists($email)) {
@@ -148,9 +157,10 @@ class User_Endpoint {
             update_user_meta($user_id, 'billing_phone', $phone);
         }
 
-        // Set user role to customer
+        // Set user role (default to customer)
         $user = new WP_User($user_id);
-        $user->set_role('customer');
+        $selected_role = ($role === 'contractor' && get_role('contractor')) ? 'contractor' : 'customer';
+        $user->set_role($selected_role);
 
         // Auto-login after registration
         wp_set_current_user($user_id);
@@ -277,7 +287,7 @@ class User_Endpoint {
      */
     public static function list_users($request) {
         $users = get_users([
-            'role__in' => ['customer', 'administrator', 'shop_manager'],
+            'role__in' => ['customer', 'contractor', 'administrator', 'shop_manager'],
             'orderby' => 'registered',
             'order' => 'DESC',
         ]);

@@ -10,6 +10,8 @@ interface RecentlyViewedProps {
   onProductClick: (product: Product) => void;
   onCompare?: (product: Product) => void;
   currentProductId?: string; // To exclude the currently viewed product from the list
+  isAuthenticated?: boolean;
+  isTradeApproved?: boolean;
 }
 
 export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
@@ -18,6 +20,8 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
   onProductClick,
   onCompare,
   currentProductId,
+  isAuthenticated = false,
+  isTradeApproved = false,
 }) => {
   const [products, setProducts] = useState<Product[]>([]);
 
@@ -51,6 +55,8 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
                 addToCart={addToCart}
                 onBuyNow={onBuyNow}
                 onCompare={onCompare}
+                isAuthenticated={isAuthenticated}
+                isTradeApproved={isTradeApproved}
               />
             </div>
           ))}

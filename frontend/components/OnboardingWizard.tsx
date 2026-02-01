@@ -24,6 +24,8 @@ interface OnboardingWizardProps {
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
   onCompare?: (product: Product) => void;
+  isAuthenticated?: boolean;
+  isTradeApproved?: boolean;
 }
 
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
@@ -32,6 +34,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   addToCart,
   onBuyNow,
   onCompare,
+  isAuthenticated = false,
+  isTradeApproved = false,
 }) => {
   const [step, setStep] = useState(1);
   const [userType, setUserType] = useState<"personal" | "business">("personal");
@@ -222,6 +226,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                       onBuyNow={onBuyNow}
                       onCompare={onCompare}
                       className="h-full border-none shadow-md hover:shadow-xl ring-1 ring-black/5"
+                      isAuthenticated={isAuthenticated}
+                      isTradeApproved={isTradeApproved}
                     />
                   </div>
                 ))}

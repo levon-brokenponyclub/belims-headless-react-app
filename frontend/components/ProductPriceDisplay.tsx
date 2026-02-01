@@ -9,6 +9,8 @@ interface ProductPriceDisplayProps {
   deal?: DealResolvedInfo;
   className?: string; // Standard className prop
   overridePrice?: number; // Override display price (e.g., for trade price)
+  isTradeToggleActive?: boolean; // Whether trade price toggle is selected
+  showCountdown?: boolean;
 }
 
 export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
@@ -16,12 +18,14 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
   deal,
   className = "",
   overridePrice,
+  isTradeToggleActive = false,
+  showCountdown = true,
 }) => {
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
   // Countdown Logic
   useEffect(() => {
-    if (!deal?.bestDeal?.end_at) {
+    if (!showCountdown || !deal?.bestDeal?.end_at) {
       setTimeLeft(null);
       return;
     }
@@ -83,7 +87,15 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           {/* Main Price */}
           <div
-            className={`text-4xl font-extrabold font-heading ${deal && !isTradeSpecial ? "text-red-600" : "text-belims-accent"}`}
+            className={`text-4xl font-extrabold font-heading ${
+              isTradeSpecial && isTradeToggleActive
+                ? "text-belims-accent"
+                : deal && !isTradeSpecial
+                  ? "text-red-600"
+                  : isTradeSpecial
+                    ? "text-red-600"
+                    : "text-belims-accent"
+            }`}
           >
             {CURRENCY_SYMBOL}
             {price.toLocaleString("en-US", {
@@ -118,7 +130,7 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
 
       {/* Timer */}
       <div className="flex items-center gap-3">
-        {timeLeft && (
+        {showCountdown && timeLeft && (
           <div className="text-red-600 text-xs font-bold uppercase flex items-center gap-1 bg-red-50 px-2 py-1 rounded">
             <Clock size={12} /> {timeLeft}
           </div>

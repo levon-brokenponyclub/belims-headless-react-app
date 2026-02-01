@@ -23,11 +23,13 @@ import {
   Package,
   Zap,
   CirclePlus,
+  Clock,
+  MapPin,
 } from "lucide-react";
 import { Product } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
 import { StockBar } from "./StockBar";
-import { DeliveryOptionsModal } from "./DeliveryOptionsModal";
+import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import { generateProductDescription } from "../services/geminiService";
 import { addToRecentlyViewed } from "../services/storageService";
 import { getApiBaseUrl } from "../services/wooCommerceService";
@@ -47,6 +49,8 @@ interface SingleProductProps {
   onCompare: (product: Product) => void;
   onPriceMatch: (product: Product) => void;
   onBrandClick?: (brand: string) => void;
+  isAuthenticated?: boolean;
+  isTradeApproved?: boolean;
 }
 
 export const SingleProduct: React.FC<SingleProductProps> = ({
@@ -57,6 +61,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   onCompare,
   onPriceMatch,
   onBrandClick,
+  isAuthenticated = false,
+  isTradeApproved = false,
 }) => {
   const navigate = useNavigate();
   const [mainImage, setMainImage] = useState(product.image);
@@ -97,6 +103,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   // Delivery Modal State
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+  const [deliveryLocationLabel, setDeliveryLocationLabel] =
+    useState<string>("");
+  const [selectedDeliveryOptionId, setSelectedDeliveryOptionId] = useState(
+    () => sessionStorage.getItem("selectedDeliveryOptionId") || "standard",
+  );
 
   // Bundle Panel State
   const [isBundleOpen, setIsBundleOpen] = useState(false);
@@ -124,6 +135,58 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     };
   }, [product]);
 
+  const isTradeSpecial =
+    pricingInfo.tradeDealsInfo?.bestDeal?.type === "trade_special";
+  const effectiveUseTradePrice =
+    isTradeApproved && isTradeSpecial ? true : useTradePrice;
+
+  const consumerDeal = product.deals_resolved?.consumer;
+  const consumerBestDeal = consumerDeal?.bestDeal;
+  const isDealOfDay = consumerBestDeal?.type === "deal_of_day";
+
+  const parseDateSafe = (value?: string | number | null): Date | null => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const dealEndAt =
+    parseDateSafe(consumerBestDeal?.end_at) ||
+    parseDateSafe((consumerDeal as any)?.end_at);
+  const hasDealCountdown = isDealOfDay && !!dealEndAt;
+
+  const [dealNowMs, setDealNowMs] = useState(() => Date.now());
+
+  const formatDealOfDayCountdown = (remainingMs: number) => {
+    const oneHour = 60 * 60 * 1000;
+    const oneDay = 24 * oneHour;
+
+    if (remainingMs > oneDay) return "Ends today";
+
+    if (remainingMs >= oneHour) {
+      const hours = Math.floor(remainingMs / oneHour);
+      const minutes = Math.floor((remainingMs % oneHour) / (60 * 1000));
+      return `Ends in ${hours}h ${minutes}m`;
+    }
+
+    const minutes = Math.max(1, Math.floor(remainingMs / (60 * 1000)));
+    return `Ends in ${minutes} minutes`;
+  };
+
+  const dealCountdownText = hasDealCountdown
+    ? formatDealOfDayCountdown(Math.max(0, dealEndAt!.getTime() - dealNowMs))
+    : null;
+
+  useEffect(() => {
+    if (!hasDealCountdown) return;
+
+    const interval = setInterval(() => {
+      setDealNowMs(Date.now());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [hasDealCountdown]);
+
   useEffect(() => {
     addToRecentlyViewed(product);
     setMainImage(product.image);
@@ -141,6 +204,25 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       .then((data) => setEcommercePolicies(data))
       .catch((err) => console.error("Failed to fetch policies:", err));
   }, [product]);
+
+  useEffect(() => {
+    const savedAddress = localStorage.getItem("deliveryAddress") || "";
+    setDeliveryLocationLabel(savedAddress);
+  }, []);
+
+  useEffect(() => {
+    if (!isDeliveryModalOpen) {
+      const savedAddress = localStorage.getItem("deliveryAddress") || "";
+      setDeliveryLocationLabel(savedAddress);
+    }
+  }, [isDeliveryModalOpen]);
+
+  useEffect(() => {
+    sessionStorage.setItem(
+      "selectedDeliveryOptionId",
+      selectedDeliveryOptionId,
+    );
+  }, [selectedDeliveryOptionId]);
 
   // Track viewport for mobile-specific UX
   useEffect(() => {
@@ -212,7 +294,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const handleAddToCart = () => {
     for (let i = 0; i < qty; i++) {
       const productToAdd = { ...product };
-      if (useTradePrice && pricingInfo.tradeDealsInfo?.bestDeal) {
+      if (effectiveUseTradePrice && pricingInfo.tradeDealsInfo?.bestDeal) {
         productToAdd.cartMetadata = {
           priceMode: "trade",
           dealId: pricingInfo.tradeDealsInfo.bestDeal.deal_id,
@@ -255,6 +337,33 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     const currentIndex = gallery.indexOf(mainImage);
     const prevIndex = (currentIndex - 1 + gallery.length) % gallery.length;
     setMainImage(gallery[prevIndex]);
+  };
+
+  const hasDeliveryLocation = !!deliveryLocationLabel;
+
+  const deliveryPreviewOptions = [
+    {
+      id: "standard",
+      name: "Standard shipping",
+      chip: "Budget",
+      eta: hasDeliveryLocation
+        ? "3-5 business days"
+        : "Set location for estimate",
+      fee: hasDeliveryLocation ? `${CURRENCY_SYMBOL}95` : null,
+    },
+    {
+      id: "express",
+      name: "Express shipping",
+      chip: "Faster",
+      eta: hasDeliveryLocation
+        ? "1-2 business days"
+        : "Set location for estimate",
+      fee: hasDeliveryLocation ? `${CURRENCY_SYMBOL}150` : null,
+    },
+  ];
+
+  const handleOpenDeliveryLocation = () => {
+    setIsDeliveryModalOpen(true);
   };
 
   return (
@@ -323,10 +432,20 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         />
       )}
 
-      {/* Delivery Options Modal */}
-      {isDeliveryModalOpen && (
-        <DeliveryOptionsModal onClose={() => setIsDeliveryModalOpen(false)} />
-      )}
+      {/* Delivery Location Modal */}
+      <DeliveryLocationModal
+        isOpen={isDeliveryModalOpen}
+        onClose={() => setIsDeliveryModalOpen(false)}
+        currentLocation={deliveryLocationLabel}
+        onLocationSelect={(location) => {
+          setDeliveryLocationLabel(location);
+          if (location) {
+            localStorage.setItem("deliveryAddress", location);
+          } else {
+            localStorage.removeItem("deliveryAddress");
+          }
+        }}
+      />
 
       {/* Bundle Panel */}
       {product.bundleCandidates && (
@@ -678,12 +797,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                     product={product}
                     deal={product.deals_resolved?.consumer}
                     overridePrice={
-                      useTradePrice &&
-                      pricingInfo.tradeDealsInfo?.bestDeal?.type ===
-                        "trade_special"
+                      effectiveUseTradePrice && isTradeSpecial
                         ? pricingInfo.tradePrice
                         : undefined
                     }
+                    isTradeToggleActive={effectiveUseTradePrice}
+                    showCountdown={false}
                   />
                 </div>
                 {product.isBundle && (
@@ -693,10 +812,19 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 )}
               </div>
 
+              {dealCountdownText && (
+                <div className="mb-4">
+                  <div className="inline-flex items-center gap-2 text-amber-700 text-sm bg-amber-50 border border-amber-200 px-3 py-2 rounded">
+                    <Clock size={14} />
+                    <span className="font-medium">{dealCountdownText}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Trade Price Toggle Block */}
               {pricingInfo.hasTradePrice &&
-                pricingInfo.tradeDealsInfo?.bestDeal?.type ===
-                  "trade_special" && (
+                isTradeSpecial &&
+                !isTradeApproved && (
                   <div className="mb-4 border-b border-gray-200 pb-4">
                     <div className="flex items-center gap-2 mb-3">
                       <h3 className="text-sm font-bold text-gray-700">
@@ -819,49 +947,92 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 </div>
               </div>
 
-              {/* Fulfillment Options: Side-by-Side Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                {/* PICK UP CARD */}
-                <div
-                  className="bg-white border border-gray-200 rounded p-4 cursor-pointer hover:border-belims-blue hover:bg-blue-50/50 transition-all shadow-sm relative group flex flex-col justify-between h-full"
-                  onClick={() => setIsLocatorOpen(true)}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 bg-blue-50 text-belims-blue rounded-full">
-                      <Store size={16} />
-                    </div>
-                    <h4 className="font-bold text-gray-900 font-heading text-sm">
-                      Pick Up
-                    </h4>
+              {/* Delivery Preview Module */}
+              <div className="mt-4 mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-bold text-gray-900 font-heading">
+                    Delivery
                   </div>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Check availability at nearby stores
-                  </p>
-                  <div className="text-xs font-bold text-belims-blue flex items-center gap-1 mt-auto">
-                    Select Store <ChevronRight size={12} />
-                  </div>
+                  {hasDeliveryLocation && (
+                    <button
+                      onClick={handleOpenDeliveryLocation}
+                      className="text-xs font-semibold text-belims-blue hover:text-belims-accent"
+                    >
+                      Change
+                    </button>
+                  )}
                 </div>
 
-                {/* DELIVERY CARD */}
-                <div
-                  className="bg-white border border-gray-200 rounded p-4 cursor-pointer hover:border-belims-blue hover:bg-blue-50/50 transition-all shadow-sm relative group flex flex-col justify-between h-full"
-                  onClick={() => setIsDeliveryModalOpen(true)}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 bg-gray-100 text-gray-600 rounded-full group-hover:bg-blue-100 group-hover:text-belims-blue transition-colors">
-                      <Truck size={16} />
+                {hasDeliveryLocation ? (
+                  <>
+                    <div className="flex items-center gap-2 text-xs text-gray-600 mb-3">
+                      <MapPin size={14} className="text-gray-400" />
+                      <span className="font-medium">Delivery to:</span>
+                      <span className="truncate">{deliveryLocationLabel}</span>
                     </div>
-                    <h4 className="font-bold text-gray-900 font-heading text-sm">
-                      Delivery
-                    </h4>
+
+                    <div
+                      role="radiogroup"
+                      aria-label="Delivery options"
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2"
+                    >
+                      {deliveryPreviewOptions.map((option) => {
+                        const isSelected =
+                          selectedDeliveryOptionId === option.id;
+
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            onClick={() =>
+                              setSelectedDeliveryOptionId(option.id)
+                            }
+                            className={`text-left rounded border p-4 transition-all focus:outline-none focus:ring-2 focus:ring-belims-blue/40 ${
+                              isSelected
+                                ? "border-belims-blue bg-blue-50/60 shadow-sm"
+                                : "border-gray-200 bg-white hover:border-belims-blue hover:bg-blue-50/50"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="font-bold text-gray-900 text-sm">
+                                {option.name}
+                              </div>
+                              {option.chip && (
+                                <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wide">
+                                  {option.chip}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-600 mb-1">
+                              {option.eta}
+                            </div>
+                            <div className="text-xs font-semibold text-gray-800">
+                              {option.fee || "Calculated at checkout"}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="text-xs text-gray-500">
+                      Final shipping rates are calculated at checkout.
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded border border-blue-100 bg-blue-50 p-3 text-xs text-gray-700 flex items-center justify-between gap-3">
+                    <span>
+                      Set your delivery location to see delivery estimates.
+                    </span>
+                    <button
+                      onClick={handleOpenDeliveryLocation}
+                      className="bg-belims-blue text-white px-3 py-1.5 rounded font-bold text-xs hover:bg-belims-light whitespace-nowrap"
+                    >
+                      Set delivery location
+                    </button>
                   </div>
-                  <p className="text-xs text-gray-500 mb-1">
-                    Free for orders &gt; {CURRENCY_SYMBOL}1,000
-                  </p>
-                  <div className="text-[10px] text-green-600 font-bold flex items-center gap-1 mt-auto">
-                    Earliest: Tomorrow
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -1164,6 +1335,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                       addToCart={addToCart}
                       onBuyNow={onBuyNow}
                       onCompare={onCompare}
+                      isAuthenticated={isAuthenticated}
+                      isTradeApproved={isTradeApproved}
                     />
                   </div>
                 ))}
@@ -1226,6 +1399,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                       addToCart={addToCart}
                       onBuyNow={onBuyNow}
                       onCompare={onCompare}
+                      isAuthenticated={isAuthenticated}
+                      isTradeApproved={isTradeApproved}
                     />
                   </div>
                 ))}
@@ -1245,6 +1420,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         }}
         onCompare={onCompare}
         currentProductId={product.id}
+        isAuthenticated={isAuthenticated}
+        isTradeApproved={isTradeApproved}
       />
     </div>
   );

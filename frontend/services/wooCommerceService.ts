@@ -26,6 +26,7 @@ export function getApiBaseUrl(): string {
     typeof window !== "undefined" &&
     window.location.hostname === "localhost"
   ) {
+    // Use local domain which is reachable
     return "http://belims-headless.local/wp-json/belims/v1";
   }
 
