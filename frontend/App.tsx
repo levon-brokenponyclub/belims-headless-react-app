@@ -737,77 +737,32 @@ const HomePage = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="h-40 bg-gray-200"></div>
-              <div className="p-4">
-                <h3 className="font-bold text-gray-900 mb-2">
-                  Bathroom Renovation Essentials
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Fixtures, fittings and finishes for bathroom upgrades.
-                </p>
-                <a
-                  href="/projects/bathroom-renovation"
-                  className="text-sm font-semibold text-belims-blue hover:text-belims-accent"
-                >
-                  View checklist →
-                </a>
+            {PROJECT_IDEAS.map((project) => (
+              <div
+                key={project.id}
+                className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+              >
+                <img
+                  src={project.image}
+                  alt={project.title}
+                  className="h-40 w-full object-cover"
+                />
+                <div className="p-4">
+                  <h3 className="font-bold text-gray-900 mb-2">
+                    {project.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {project.description}
+                  </p>
+                  <a
+                    href="#"
+                    className="text-sm font-semibold text-belims-blue hover:text-belims-accent"
+                  >
+                    {project.linkText} →
+                  </a>
+                </div>
               </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="h-40 bg-gray-200"></div>
-              <div className="p-4">
-                <h3 className="font-bold text-gray-900 mb-2">
-                  Interior Painting Checklist
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Paint, prep tools and accessories for a clean interior finish.
-                </p>
-                <a
-                  href="/projects/interior-painting"
-                  className="text-sm font-semibold text-belims-blue hover:text-belims-accent"
-                >
-                  View checklist →
-                </a>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="h-40 bg-gray-200"></div>
-              <div className="p-4">
-                <h3 className="font-bold text-gray-900 mb-2">
-                  Outdoor Patio Setup
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Sealants, coatings and materials for outdoor living spaces.
-                </p>
-                <a
-                  href="/projects/outdoor-patio"
-                  className="text-sm font-semibold text-belims-blue hover:text-belims-accent"
-                >
-                  View checklist →
-                </a>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="h-40 bg-gray-200"></div>
-              <div className="p-4">
-                <h3 className="font-bold text-gray-900 mb-2">
-                  Basic Home Security Upgrade
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Locks, fittings and accessories for added security.
-                </p>
-                <a
-                  href="/projects/home-security"
-                  className="text-sm font-semibold text-belims-blue hover:text-belims-accent"
-                >
-                  View checklist →
-                </a>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -849,7 +804,11 @@ const HomePage = ({
                 Start your project →
               </a>
             </div>
-            <div className="h-64 lg:h-96 bg-gray-300 rounded-lg"></div>
+            <img
+              src="/images/development/midsection-worker-using-circular-saw-workshop.webp"
+              alt="Worker using tools"
+              className="h-64 lg:h-96 w-full object-cover rounded-lg"
+            />
           </div>
         </div>
       </section>
