@@ -89,11 +89,15 @@ const classifyRate = (
   return "Standard";
 };
 
-const formatEta = (dateStr?: string): string => {
+const formatEta = (dateStr?: string | null): string => {
   if (!dateStr) return "Estimated delivery";
   try {
     const date = new Date(dateStr);
-    return `Arrives ${date.toLocaleDateString("en-ZA", { month: "short", day: "numeric" })}`;
+    // Validate that the date is actually valid (not "Invalid Date")
+    if (!date || isNaN(date.getTime())) {
+      return "Estimated delivery";
+    }
+    return `Estimated date: ${date.toLocaleDateString("en-ZA", { month: "short", day: "numeric" })}`;
   } catch {
     return "Estimated delivery";
   }
@@ -1108,7 +1112,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         <div
                           role="radiogroup"
                           aria-label="Delivery options"
-                          className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2"
+                          className="grid grid-cols-1 sm:grid-cols-1 gap-3 mb-2"
                         >
                           {deliveryRates.map((rate, idx) => {
                             const tier = classifyRate(rate, deliveryRates);
