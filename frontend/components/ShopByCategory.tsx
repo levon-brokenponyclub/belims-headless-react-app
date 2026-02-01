@@ -168,14 +168,20 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
 
         {/* Category Preview Section */}
         <div className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[420px] animate-fadeIn">
-          {/* Left: Category Hero Image */}
+          {/* Left: Category Hero Video */}
           <div className="w-full lg:w-1/3 xl:w-1/5 rounded overflow-hidden relative group shadow-md h-[360px] lg:h-[420px]">
-            <img
-              src={currentSliderContent.image}
-              alt={currentSliderContent.title}
-              key={currentSliderContent.image}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 animate-fadeIn"
-            />
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            >
+              <source
+                src="https://ecommerce-power-tools.myshopify.com/cdn/shop/videos/c/vp/368a24b1ebe4468c9182d31fd2b448bf/368a24b1ebe4468c9182d31fd2b448bf.HD-1080p-2.5Mbps-51036248.mp4?v=0"
+                type="video/mp4"
+              />
+            </video>
             <div className="absolute inset-0 bg-black/60"></div>
             <div className="absolute inset-0 p-6 flex flex-col justify-center items-start text-center lg:text-left">
               <h3 className="text-1xl md:text-2xl font-bold text-white mb-4 font-heading leading-tight drop-shadow-lg">
@@ -194,11 +200,11 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
           </div>
 
           {/* Right: Product Slider */}
-          <div className="flex-1 overflow-x-auto no-scrollbar flex gap-6 items-stretch">
+          <div className="flex-1 overflow-x-auto no-scrollbar flex gap-4 items-stretch">
             {categoryProducts.map((product) => (
               <div
                 key={product.id}
-                className="min-w-[310px] max-w-[310px] h-full cursor-pointer"
+                className="flex-shrink-0"
                 onClick={() => navigate(`/product/${product.id}`)}
               >
                 <ProductCard

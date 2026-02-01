@@ -2,13 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Font family utilities */
-body {
-  font-family: Inter, system-ui, sans-serif;
+/* 
+  NOTE: All typography configuration is centralized in tailwind.config.js
+  Modify font families, sizes, weights, and line heights there.
+*/
+
+@layer base {
+  body {
+    @apply font-body text-base text-[#333333];
+  }
+
+  h1 {
+    @apply font-heading text-h1;
+  }
+  h2 {
+    @apply font-heading text-h2;
+  }
+  h3 {
+    @apply font-heading text-h3;
+  }
+  h4 {
+    @apply font-heading text-h4;
+  }
+  h5 {
+    @apply font-heading text-h5;
+  }
+  h6 {
+    @apply font-heading text-h6;
+  }
 }
 
 .container {
   max-width: 1380px;
+}
+
+/* Ensure Belims blue utilities render consistently */
+.bg-belims-blue {
+  --tw-bg-opacity: 1;
+  background-color: rgb(50 39 131 / var(--tw-bg-opacity, 1));
+}
+
+.text-belims-blue {
+  --tw-text-opacity: 1;
+  color: rgb(4 34 62 / var(--tw-text-opacity));
+}
+
+.border-belims-blue {
+  --tw-border-opacity: 1;
+  border-color: rgb(4 34 62 / var(--tw-border-opacity));
+}
+
+.bg-belims-light {
+  --tw-bg-opacity: 1;
+  background-color: rgb(11 74 162 / var(--tw-bg-opacity));
+}
+
+.text-belims-light {
+  --tw-text-opacity: 1;
+  color: rgb(11 74 162 / var(--tw-text-opacity));
+}
+
+.border-belims-light {
+  --tw-border-opacity: 1;
+  border-color: rgb(11 74 162 / var(--tw-border-opacity));
 }
 
 /* Ensure Belims accent utilities use construction orange */

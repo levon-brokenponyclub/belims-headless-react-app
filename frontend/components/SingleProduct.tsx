@@ -41,6 +41,14 @@ import { BundlePanel } from "./BundlePanel";
 import { ProductCard } from "./ProductCard";
 import { ProductPriceDisplay } from "./ProductPriceDisplay";
 import { DealBadge } from "./DealBadge";
+import { FulfillmentTiles } from "./FulfillmentTiles";
+import { DeliveryRateOption } from "./DeliveryRateOption";
+import {
+  Skeleton,
+  SkeletonLine,
+  SkeletonImage,
+  SkeletonProductCard,
+} from "./Skeleton";
 import ReactMarkdown from "react-markdown";
 
 interface SingleProductProps {
@@ -136,8 +144,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const [secondaryNavVisible, setSecondaryNavVisible] = useState(true);
   const lastScrollYRef = useRef(0);
 
-  // Breadcrumb positions: 124px when secondary nav visible (desktop), 73px when hidden (scrolled)
-  const breadcrumbTop = secondaryNavVisible ? (isMobile ? 73 : 124) : 73;
+  // Breadcrumb positions: 129px when secondary nav visible (desktop), 73px when hidden (scrolled)
+  const breadcrumbTop = secondaryNavVisible ? (isMobile ? 73 : 129) : 73;
   const contentPaddingTop = isMobile ? "12px" : "50px";
 
   // Sticky Bar Logic
@@ -180,7 +188,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   // Trade Price Toggle
   const [useTradePrice, setUseTradePrice] = useState(false);
 
-  // Compute pricing info
+  // Trade Deal View Toggle (for non-approved users)
+  const [showTradeDeal, setShowTradeDeal] = useState(false);
+
+  // Fulfillment Selection
+  const [fulfillmentType, setFulfillmentType] = useState<
+    "pickup" | "delivery" | null
+  >(null);
   const pricingInfo = useMemo(() => {
     const tradeDealsInfo = product.deals_resolved?.trade;
     const tradePrice = tradeDealsInfo?.price;
@@ -211,6 +225,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const consumerBestDeal = consumerDeal?.bestDeal;
   const isDealOfDay = consumerBestDeal?.type === "deal_of_day";
 
+  const tradeBestDeal = pricingInfo.tradeDealsInfo?.bestDeal;
+  const tradeDealName = isTradeSpecial
+    ? tradeBestDeal?.deal_name ||
+      pricingInfo.tradeDealsInfo?.label ||
+      "Trade Special"
+    : undefined;
+
   const parseDateSafe = (value?: string | number | null): Date | null => {
     if (!value) return null;
     const date = new Date(value);
@@ -221,7 +242,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     parseDateSafe(consumerBestDeal?.end_at) ||
     parseDateSafe((consumerDeal as any)?.end_at);
 
+  const tradeEndAt = parseDateSafe(tradeBestDeal?.end_at);
+
   const hasDealCountdown = isDealOfDay && !!dealEndAt;
+  const hasTradeCountdown = isTradeSpecial && !!tradeEndAt;
   const [dealNowMs, setDealNowMs] = useState(() => Date.now());
 
   const formatDealOfDayCountdown = (remainingMs: number) => {
@@ -244,11 +268,15 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     ? formatDealOfDayCountdown(Math.max(0, dealEndAt!.getTime() - dealNowMs))
     : null;
 
+  const tradeCountdownText = hasTradeCountdown
+    ? formatDealOfDayCountdown(Math.max(0, tradeEndAt!.getTime() - dealNowMs))
+    : null;
+
   useEffect(() => {
-    if (!hasDealCountdown) return;
+    if (!hasDealCountdown && !hasTradeCountdown) return;
     const interval = setInterval(() => setDealNowMs(Date.now()), 60000);
     return () => clearInterval(interval);
-  }, [hasDealCountdown]);
+  }, [hasDealCountdown, hasTradeCountdown]);
 
   useEffect(() => {
     addToRecentlyViewed(product);
@@ -257,6 +285,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     setAiDescription(null);
     setIsBundleSectionExpanded(false);
     setUseTradePrice(false);
+    setShowTradeDeal(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
     setShowBottomCta(false);
 
@@ -496,7 +525,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             {gallery.length > 1 && (
               <button
                 onClick={handlePrevImage}
-                className="absolute left-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50"
+                className="absolute left-4 p-2 bg-white/10 hover:bg-white/20 rounded text-white transition-colors z-50"
               >
                 <ArrowLeft size={32} />
               </button>
@@ -511,7 +540,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             {gallery.length > 1 && (
               <button
                 onClick={handleNextImage}
-                className="absolute right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50"
+                className="absolute right-4 p-2 bg-white/10 hover:bg-white/20 rounded text-white transition-colors z-50"
               >
                 <ArrowRight size={32} />
               </button>
@@ -643,15 +672,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           >
             {/* Image Container */}
             <div className="flex-1 bg-white border border-gray-200 rounded relative group cursor-zoom-in overflow-hidden flex flex-col">
-              {/* Deal Badge (Top Left) */}
-              <DealBadge deal={product.deals_resolved?.consumer} />
-
-              {/* Trade Special Label (Top Right) */}
-              {product.deals_resolved?.trade?.bestDeal?.type ===
-                "trade_special" && (
-                <div className="absolute top-4 right-4 z-20 text-white text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wide font-heading bg-green-600">
-                  TRADE SPECIAL
-                </div>
+              {/* Deal Badge (Top Left) - Hide for trade specials in default state */}
+              {!(isTradeSpecial && !isTradeApproved && !showTradeDeal) && (
+                <DealBadge deal={product.deals_resolved?.consumer} />
               )}
 
               {/* Main Image */}
@@ -673,7 +696,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                       <button
                         key={idx}
                         onClick={() => setMainImage(img)}
-                        className={`w-2.5 h-2.5 rounded-full transition-all ${
+                        className={`w-2.5 h-2.5 rounded transition-all ${
                           active
                             ? "bg-belims-blue scale-110"
                             : "bg-gray-300 hover:bg-belims-blue/70"
@@ -848,7 +871,37 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           </div>
 
           {/* RIGHT COLUMN */}
-          <div className="lg:col-span-5 flex flex-col gap-4 pt-4">
+          <div className="lg:col-span-5 flex flex-col gap-3 pt-3">
+            {/* Trade Special Badge - Above Title */}
+            {isTradeSpecial && (
+              <div className="mb-2 flex flex-wrap items-center gap-3">
+                <div className="inline-flex items-center gap-2 bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wide font-heading">
+                  TRADE SPECIAL
+                </div>
+                {tradeCountdownText && (
+                  <div className="inline-flex items-center gap-2 text-amber-700 text-sm bg-amber-50 border border-amber-200 px-3 py-2 rounded">
+                    <Clock size={14} />
+                    <span className="font-medium">{tradeCountdownText}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Deal of the Day Badge - Above Title */}
+            {isDealOfDay && !isTradeSpecial && (
+              <div className="mb-2 flex flex-wrap items-center gap-3">
+                <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 text-xs font-bold px-3 py-2 rounded uppercase tracking-wide">
+                  Deal of the Day
+                </div>
+                {dealCountdownText && (
+                  <div className="inline-flex items-center gap-2 text-amber-700 text-sm bg-amber-50 border border-amber-200 px-3 py-2 rounded">
+                    <Clock size={14} />
+                    <span className="font-medium">{dealCountdownText}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Header Info */}
             <div>
               <div className="mb-4">
@@ -858,7 +911,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 <div className="text-xs text-gray-400 font-mono">
                   SKU: {product.sku || "N/A"}
                 </div>
-                {/* {product.features && product.features.length > 0 && (
+
+                {product.features && product.features.length > 0 && (
                   <div className="mt-4">
                     <h3 className="text-sm font-bold text-gray-700 mb-2 font-heading">
                       Key Features:
@@ -878,7 +932,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                       ))}
                     </ul>
                   </div>
-                )} */}
+                )}
               </div>
             </div>
 
@@ -889,116 +943,33 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 <div className="flex-1">
                   <ProductPriceDisplay
                     product={product}
-                    deal={product.deals_resolved?.consumer}
+                    deal={
+                      isTradeSpecial && !isTradeApproved && !showTradeDeal
+                        ? undefined
+                        : product.deals_resolved?.consumer
+                    }
                     overridePrice={
-                      effectiveUseTradePrice && isTradeSpecial
+                      (isTradeApproved || showTradeDeal) && isTradeSpecial
                         ? pricingInfo.tradePrice
                         : undefined
                     }
-                    isTradeToggleActive={effectiveUseTradePrice}
+                    isTradeToggleActive={isTradeApproved || showTradeDeal}
+                    showDualTradePricing={false}
                     showCountdown={false}
                   />
+                  <StockBar current={product.stock} max={product.maxStock} />
                 </div>
 
-                {product.isBundle && (
-                  <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded ml-4 flex-shrink-0">
-                    Bundle Savings
-                  </span>
-                )}
+                {product.isBundle &&
+                  !(isTradeSpecial && !isTradeApproved && !showTradeDeal) && (
+                    <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded ml-4 flex-shrink-0">
+                      Bundle Savings
+                    </span>
+                  )}
               </div>
 
-              {/* Deal countdown */}
-              {dealCountdownText && (
-                <div className="mb-4">
-                  <div className="inline-flex items-center gap-2 text-amber-700 text-sm bg-amber-50 border border-amber-200 px-3 py-2 rounded">
-                    <Clock size={14} />
-                    <span className="font-medium">{dealCountdownText}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Trade Price Block */}
-              {pricingInfo.hasTradePrice && isTradeSpecial && (
-                <div className="mb-4 border-b border-gray-200 pb-4">
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <h3 className="text-sm font-bold text-gray-700">
-                      Trade price
-                    </h3>
-
-                    {/* If approved, show status; if not approved, show toggle */}
-                    {isTradeApproved ? (
-                      <span className="text-[11px] font-bold uppercase tracking-wide text-green-700 bg-green-100 px-2 py-1 rounded">
-                        Active
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setUseTradePrice(!useTradePrice)}
-                        className={`text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded border transition-colors ${
-                          useTradePrice
-                            ? "border-belims-blue text-belims-blue bg-white"
-                            : "border-gray-300 text-gray-600 bg-white hover:border-gray-400"
-                        }`}
-                        aria-pressed={useTradePrice}
-                      >
-                        {useTradePrice ? "Trade" : "Retail"}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Summary grid */}
-                  <div className="grid grid-cols-3 gap-3 text-center border border-gray-200 bg-white rounded p-3">
-                    <div>
-                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                        Retail
-                      </div>
-                      <div className="text-sm font-bold text-gray-800">
-                        {CURRENCY_SYMBOL}
-                        {pricingInfo.retailPrice.toFixed(2)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-semibold text-belims-blue uppercase tracking-wide mb-1">
-                        Trade
-                      </div>
-                      <div className="text-sm font-extrabold text-belims-blue">
-                        {CURRENCY_SYMBOL}
-                        {pricingInfo.tradePrice.toFixed(2)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                        Save
-                      </div>
-                      <div className="inline-block bg-green-100 text-green-700 text-sm font-bold px-2 py-1 rounded">
-                        {CURRENCY_SYMBOL}
-                        {pricingInfo.savings.toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-2 text-xs text-gray-600">
-                    {isTradeApproved ? (
-                      <span className="font-medium">
-                        Trade pricing applied at checkout.
-                      </span>
-                    ) : pricingInfo.tradeDealsInfo?.eligibilityCopy ? (
-                      <span className="italic">
-                        {pricingInfo.tradeDealsInfo.eligibilityCopy}
-                      </span>
-                    ) : (
-                      <span className="italic">
-                        Available to approved contractor accounts.
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* <StockBar current={product.stock} max={product.maxStock} /> */}
-
               {/* Qty + Add */}
-              <div className="space-y-3 mt-6 mb-4">
+              <div className="space-y-3 mt-6 mb-6">
                 <div className="flex gap-4">
                   <div className="flex items-center border border-gray-300 rounded bg-white h-12">
                     <button
@@ -1028,193 +999,268 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 </div>
               </div>
 
-              {/* Delivery */}
-              <div className="mt-4 mb-2 border-t border-gray-200 pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-bold text-gray-900 font-heading">
-                    Delivery
-                  </div>
-
-                  {hasDeliveryLocation && (
-                    <button
-                      onClick={handleOpenDeliveryLocation}
-                      className="text-xs font-semibold text-belims-blue hover:text-belims-accent"
-                    >
-                      Change
-                    </button>
-                  )}
-                </div>
-
-                {hasDeliveryLocation ? (
-                  <>
-                    <div className="flex items-center gap-2 text-xs text-gray-600 mb-3">
-                      <MapPin size={14} className="text-gray-400" />
-                      <span className="font-medium">Delivery to:</span>
-                      <span className="truncate">
-                        {deliveryAddress?.street}, {deliveryAddress?.city},{" "}
-                        {deliveryAddress?.province}
-                        {deliveryAddress?.postalCode &&
-                          `, ${deliveryAddress.postalCode}`}
-                      </span>
-                    </div>
-
-                    {loadingDeliveryRates ? (
-                      <div className="flex items-center justify-center gap-2 py-6 text-gray-500">
-                        <RefreshCw size={16} className="animate-spin" />
-                        <span className="text-xs">
-                          Finding delivery options...
+              {/* Trade Price Block */}
+              {pricingInfo.hasTradePrice && isTradeSpecial && (
+                <div className="mb-4 pb-4">
+                  {isTradeApproved ? (
+                    // Approved users: Always show trade deal details
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <h3 className="text-sm font-bold text-gray-700">
+                          Trade price
+                        </h3>
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-green-700 bg-green-100 px-2 py-1 rounded">
+                          Active
                         </span>
                       </div>
-                    ) : deliveryRatesError ? (
-                      <div className="rounded border border-red-200 bg-red-50 p-3 text-xs text-red-700 mb-2">
-                        <p className="font-semibold mb-1">Delivery error</p>
-                        <p>{deliveryRatesError}</p>
+
+                      {/* Summary grid */}
+                      <div className="grid grid-cols-3 gap-3 text-center border border-gray-200 bg-white rounded p-3">
+                        <div>
+                          <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                            Retail
+                          </div>
+                          <div className="text-sm font-bold text-gray-800">
+                            {CURRENCY_SYMBOL}
+                            {pricingInfo.retailPrice.toFixed(2)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-semibold text-belims-blue uppercase tracking-wide mb-1">
+                            Trade
+                          </div>
+                          <div className="text-sm font-extrabold text-belims-blue">
+                            {CURRENCY_SYMBOL}
+                            {pricingInfo.tradePrice.toFixed(2)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                            Save
+                          </div>
+                          <div className="inline-block bg-green-100 text-green-700 text-sm font-bold px-2 py-1 rounded">
+                            {CURRENCY_SYMBOL}
+                            {pricingInfo.savings.toFixed(2)}
+                          </div>
+                        </div>
                       </div>
-                    ) : deliveryRates.length > 0 ? (
+
+                      <div className="mt-2 text-xs text-gray-600">
+                        <span className="font-medium">
+                          Trade pricing applied at checkout.
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    // Non-approved users: Collapsible trade deal section
+                    <>
+                      {!showTradeDeal ? (
+                        // Collapsed state: Show message and button
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="text-sm font-bold text-gray-900 mb-2">
+                            Trade pricing available
+                          </div>
+                          <div className="text-xs text-gray-600 mb-3">
+                            Available to registered contractors.
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowTradeDeal(true)}
+                            className="w-full border-2 border-belims-blue text-belims-blue bg-white font-bold text-sm py-2.5 px-4 rounded hover:bg-belims-blue hover:text-white transition-all"
+                          >
+                            VIEW TRADE DEAL
+                          </button>
+                        </div>
+                      ) : (
+                        // Expanded state: Show full trade deal details
+                        <>
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <h3 className="text-sm font-bold text-gray-700">
+                              Trade price
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => setShowTradeDeal(false)}
+                              className="text-[11px] font-bold uppercase tracking-wide text-gray-600 bg-white px-2 py-1 rounded border border-gray-300 hover:border-gray-400 transition-colors"
+                            >
+                              VIEW RETAIL PRICE
+                            </button>
+                          </div>
+
+                          {/* Summary grid */}
+                          <div className="grid grid-cols-3 gap-3 text-center border border-gray-200 bg-white rounded p-3">
+                            <div>
+                              <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                Retail
+                              </div>
+                              <div className="text-sm font-bold text-gray-800">
+                                {CURRENCY_SYMBOL}
+                                {pricingInfo.retailPrice.toFixed(2)}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-semibold text-belims-blue uppercase tracking-wide mb-1">
+                                Trade
+                              </div>
+                              <div className="text-sm font-extrabold text-belims-blue">
+                                {CURRENCY_SYMBOL}
+                                {pricingInfo.tradePrice.toFixed(2)}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                                Save
+                              </div>
+                              <div className="inline-block bg-green-100 text-green-700 text-sm font-bold px-2 py-1 rounded">
+                                {CURRENCY_SYMBOL}
+                                {pricingInfo.savings.toFixed(2)}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-2 text-xs text-gray-600">
+                            {pricingInfo.tradeDealsInfo?.eligibilityCopy ? (
+                              <span className="italic">
+                                {pricingInfo.tradeDealsInfo.eligibilityCopy}
+                              </span>
+                            ) : (
+                              <span className="italic">
+                                Available to approved contractor accounts.
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Fulfillment Tiles - Pickup / Delivery Selection */}
+              <div className="pt-4 mb-6 border-t border-gray-200">
+                <div className="text-sm font-bold text-gray-900 font-heading mb-3">
+                  Available pickup or delivery
+                </div>
+
+                <FulfillmentTiles
+                  selectedType={fulfillmentType}
+                  onSelect={setFulfillmentType}
+                  onSetDeliveryLocation={handleOpenDeliveryLocation}
+                  deliveryLocationSet={hasDeliveryLocation}
+                  deliveryAddress={deliveryAddress}
+                  pickup={{
+                    type: "pickup",
+                    available: product.stock,
+                    eta: "Today",
+                    price: 0,
+                    isFree: true,
+                  }}
+                  delivery={{
+                    type: "delivery",
+                    available: product.stock,
+                    eta: "Today",
+                    price:
+                      deliveryRates.length > 0
+                        ? deliveryRates[0].total_price
+                        : 0,
+                    isFree:
+                      deliveryRates.length > 0
+                        ? deliveryRates[0].total_price === 0
+                        : false,
+                  }}
+                  loading={loadingDeliveryRates}
+                />
+              </div>
+
+              {/* Delivery Details - Show only when address + options/loading/error */}
+              {fulfillmentType === "delivery" &&
+                hasDeliveryLocation &&
+                (loadingDeliveryRates ||
+                  !!deliveryRatesError ||
+                  deliveryRates.length > 0) && (
+                  <div className="border-t border-gray-200 pt-4 mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-bold text-gray-900 font-heading">
+                        Rates
+                      </div>
+                    </div>
+
+                    {hasDeliveryLocation && (
                       <>
-                        <div
-                          role="radiogroup"
-                          aria-label="Delivery options"
-                          className="grid grid-cols-1 gap-3 mb-2"
-                        >
-                          {deliveryRates.map((rate, idx) => {
-                            const tier = classifyRate(rate, deliveryRates);
-                            const isSelected =
-                              selectedDeliveryOptionId === `rate-${idx}`;
+                        <div className="flex items-center gap-2 text-xs text-gray-600 mb-3"></div>
 
-                            return (
-                              <button
-                                key={`rate-${idx}`}
-                                type="button"
-                                role="radio"
-                                aria-checked={isSelected}
-                                onClick={() => {
-                                  setSelectedDeliveryOptionId(`rate-${idx}`);
-                                  sessionStorage.setItem(
-                                    "selectedDeliveryOptionId",
-                                    `rate-${idx}`,
-                                  );
-                                }}
-                                className={[
-                                  "text-left rounded border p-4 transition-all focus:outline-none focus:ring-2 focus:ring-belims-blue/40 bg-white",
-                                  isSelected
-                                    ? "border-belims-blue bg-blue-50/60"
-                                    : "border-gray-200 hover:border-belims-blue hover:bg-blue-50/50",
-                                ].join(" ")}
-                              >
-                                <div className="flex items-start justify-between gap-4">
-                                  <div className="min-w-0">
-                                    <div className="font-bold text-gray-900 text-sm">
-                                      {rate.service_name}
-                                    </div>
-                                    <div className="text-xs text-gray-600 mt-1">
-                                      {formatEta(rate.expected_delivery_date)}
-                                    </div>
-                                  </div>
+                        {loadingDeliveryRates ? (
+                          <div className="flex items-center justify-center gap-2 py-6 text-gray-500">
+                            <RefreshCw size={16} className="animate-spin" />
+                            <span className="text-xs">
+                              Finding delivery options...
+                            </span>
+                          </div>
+                        ) : deliveryRatesError ? (
+                          <div className="rounded border border-red-200 bg-red-50 p-3 text-xs text-red-700 mb-2">
+                            <p className="font-semibold mb-1">Delivery error</p>
+                            <p>{deliveryRatesError}</p>
+                          </div>
+                        ) : deliveryRates.length > 0 ? (
+                          <>
+                            <div
+                              role="radiogroup"
+                              aria-label="Delivery options"
+                              className="space-y-2 mb-4"
+                            >
+                              {deliveryRates.map((rate, idx) => {
+                                const tier = classifyRate(rate, deliveryRates);
+                                const isSelected =
+                                  selectedDeliveryOptionId === `rate-${idx}`;
+                                const isFaster = tier === "Express";
 
-                                  <div className="text-right flex-shrink-0">
-                                    <div className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wide inline-block">
-                                      {tier}
-                                    </div>
-                                    <div className="text-sm font-bold text-gray-900 mt-2">
-                                      {CURRENCY_SYMBOL}
-                                      {rate.total_price.toFixed(2)}
-                                    </div>
-                                  </div>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
+                                return (
+                                  <DeliveryRateOption
+                                    key={`rate-${idx}`}
+                                    option={{
+                                      id: `rate-${idx}`,
+                                      serviceName: rate.service_name,
+                                      eta: formatEta(
+                                        rate.expected_delivery_date,
+                                      ),
+                                      price: rate.total_price,
+                                      isFree: rate.total_price === 0,
+                                      badge: isFaster ? "Faster" : undefined,
+                                      isFaster: isFaster,
+                                    }}
+                                    isSelected={isSelected}
+                                    onSelect={(id) => {
+                                      setSelectedDeliveryOptionId(id);
+                                      sessionStorage.setItem(
+                                        "selectedDeliveryOptionId",
+                                        id,
+                                      );
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
 
-                        <div className="text-xs text-gray-500">
-                          Rates calculated for {qty} unit{qty > 1 ? "s" : ""}.
-                        </div>
+                            <div className="text-xs text-gray-500">
+                              Rates calculated for {qty} unit
+                              {qty > 1 ? "s" : ""}.
+                            </div>
+                          </>
+                        ) : (
+                          <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-700">
+                            <p className="font-semibold mb-1">
+                              No delivery options
+                            </p>
+                            <p>
+                              Unable to calculate delivery rates for your
+                              location. Rates will be calculated at checkout.
+                            </p>
+                          </div>
+                        )}
                       </>
-                    ) : (
-                      <div className="rounded border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-700">
-                        <p className="font-semibold mb-1">
-                          No delivery options
-                        </p>
-                        <p>
-                          Unable to calculate delivery rates for your location.
-                          Rates will be calculated at checkout.
-                        </p>
-                      </div>
                     )}
-                  </>
-                ) : (
-                  <div className="rounded border border-blue-100 bg-blue-50 p-3 text-xs text-gray-700 flex items-center justify-between gap-3">
-                    <span>
-                      Set your delivery location to see delivery estimates.
-                    </span>
-                    <button
-                      onClick={handleOpenDeliveryLocation}
-                      className="bg-belims-blue text-white px-3 py-1.5 rounded font-bold text-xs hover:bg-belims-light whitespace-nowrap"
-                    >
-                      Set delivery location
-                    </button>
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Payment & Security */}
-            <div className="border border-gray-200 rounded bg-white p-4">
-              <div className="mb-3">
-                <div className="text-sm font-bold text-gray-900 font-heading mb-3">
-                  Payment & Security
-                </div>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {/* Visa */}
-                  <svg className="w-10 h-6" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Visa">
-                    <path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"></path>
-                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"></path>
-                    <path d="M28.3 10.1H28c-.4 1-.7 1.5-1 3h1.9c-.3-1.5-.3-2.2-.6-3zm2.9 5.9h-1.7c-.1 0-.1 0-.2-.1l-.2-.9-.1-.2h-2.4c-.1 0-.2 0-.2.2l-.3.9c0 .1-.1.1-.1.1h-2.1l.2-.5L27 8.7c0-.5.3-.7.8-.7h1.5c.1 0 .2 0 .2.2l1.4 6.5c.1.4.2.7.2 1.1.1.1.1.1.1.2zm-13.4-.3l.4-1.8c.1 0 .2.1.2.1.7.3 1.4.5 2.1.4.2 0 .5-.1.7-.2.5-.2.5-.7.1-1.1-.2-.2-.5-.3-.8-.5-.4-.2-.8-.4-1.1-.7-1.2-1-.8-2.4-.1-3.1.6-.4.9-.8 1.7-.8 1.2 0 2.5 0 3.1.2h.1c-.1.6-.2 1.1-.4 1.7-.5-.2-1-.4-1.5-.4-.3 0-.6 0-.9.1-.2 0-.3.1-.4.2-.2.2-.2.5 0 .7l.5.4c.4.2.8.4 1.1.6.5.3 1 .8 1.1 1.4.2.9-.1 1.7-.9 2.3-.5.4-.7.6-1.4.6-1.4 0-2.5.1-3.4-.2-.1.2-.1.2-.2.1zm-3.5.3c.1-.7.1-.7.2-1 .5-2.2 1-4.5 1.4-6.7.1-.2.1-.3.3-.3H18c-.2 1.2-.4 2.1-.7 3.2-.3 1.5-.6 3-1 4.5 0 .2-.1.2-.3.2M5 8.2c0-.1.2-.2.3-.2h3.4c.5 0 .9.3 1 .8l.9 4.4c0 .1 0 .1.1.2 0-.1.1-.1.1-.1l2.1-5.1c-.1-.1 0-.2.1-.2h2.1c0 .1 0 .1-.1.2l-3.1 7.3c-.1.2-.1.3-.2.4-.1.1-.3 0-.5 0H9.7c-.1 0-.2 0-.2-.2L7.9 9.5c-.2-.2-.5-.5-.9-.6-.6-.3-1.7-.5-1.9-.5L5 8.2z" fill="#142688"></path>
-                  </svg>
-                  {/* Mastercard */}
-                  <svg className="w-10 h-6" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mastercard">
-                    <path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"></path>
-                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"></path>
-                    <circle fill="#EB001B" cx="15" cy="12" r="7"></circle>
-                    <circle fill="#F79E1B" cx="23" cy="12" r="7"></circle>
-                    <path fill="#FF5F00" d="M22 12c0-2.4-1.2-4.5-3-5.7-1.8 1.3-3 3.4-3 5.7s1.2 4.5 3 5.7c1.8-1.2 3-3.3 3-5.7z"></path>
-                  </svg>
-                  {/* American Express */}
-                  <svg className="w-10 h-6" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="American Express" viewBox="0 0 38 24">
-                    <path fill="#000" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3Z" opacity=".07"></path>
-                    <path fill="#006FCF" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32Z"></path>
-                    <path fill="#FFF" d="M22.012 19.936v-8.421L37 11.528v2.326l-1.732 1.852L37 17.573v2.375h-2.766l-1.47-1.622-1.46 1.628-9.292-.02Z"></path>
-                    <path fill="#006FCF" d="M23.013 19.012v-6.57h5.572v1.513h-3.768v1.028h3.678v1.488h-3.678v1.01h3.768v1.531h-5.572Z"></path>
-                    <path fill="#006FCF" d="m28.557 19.012 3.083-3.289-3.083-3.282h2.386l1.884 2.083 1.89-2.082H37v.051l-3.017 3.23L37 18.92v.093h-2.307l-1.917-2.103-1.898 2.104h-2.321Z"></path>
-                    <path fill="#FFF" d="M22.71 4.04h3.614l1.269 2.881V4.04h4.46l.77 2.159.771-2.159H37v8.421H19l3.71-8.421Z"></path>
-                    <path fill="#006FCF" d="m23.395 4.955-2.916 6.566h2l.55-1.315h2.98l.55 1.315h2.05l-2.904-6.566h-2.31Zm.25 3.777.875-2.09.873 2.09h-1.748Z"></path>
-                    <path fill="#006FCF" d="M28.581 11.52V4.953l2.811.01L32.84 9l1.456-4.046H37v6.565l-1.74.016v-4.51l-1.644 4.494h-1.59L30.35 7.01v4.51h-1.768Z"></path>
-                  </svg>
-                  {/* PayPal */}
-                  <svg className="w-10 h-6" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PayPal">
-                    <path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"></path>
-                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"></path>
-                    <path fill="#003087" d="M23.9 8.3c.2-1 0-1.7-.6-2.3-.6-.7-1.7-1-3.1-1h-4.1c-.3 0-.5.2-.6.5L14 15.6c0 .2.1.4.3.4H17l.4-3.4 1.8-2.2 4.7-2.1z"></path>
-                    <path fill="#3086C8" d="M23.9 8.3l-.2.2c-.5 2.8-2.2 3.8-4.6 3.8H18c-.3 0-.5.2-.6.5l-.6 3.9-.2 1c0 .2.1.4.3.4H19c.3 0 .5-.2.5-.4v-.1l.4-2.4v-.1c0-.2.3-.4.5-.4h.3c2.1 0 3.7-.8 4.1-3.2.2-1 .1-1.8-.4-2.4-.1-.5-.3-.7-.5-.8z"></path>
-                    <path fill="#012169" d="M23.3 8.1c-.1-.1-.2-.1-.3-.1-.1 0-.2 0-.3-.1-.3-.1-.7-.1-1.1-.1h-3c-.1 0-.2 0-.2.1-.2.1-.3.2-.3.4l-.7 4.4v.1c0-.3.3-.5.6-.5h1.3c2.5 0 4.1-1 4.6-3.8v-.2c-.1-.1-.3-.2-.5-.2h-.1z"></path>
-                  </svg>
-                  {/* Diners Club */}
-                  <svg className="w-10 h-6" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diners Club">
-                    <path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"></path>
-                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"></path>
-                    <path d="M12 12v3.7c0 .3-.2.3-.5.2-1.9-.8-3-3.3-2.3-5.4.4-1.1 1.2-2 2.3-2.4.4-.2.5-.1.5.2V12zm2 0V8.3c0-.3 0-.3.3-.2 2.1.8 3.2 3.3 2.4 5.4-.4 1.1-1.2 2-2.3 2.4-.4.2-.4.1-.4-.2V12zm7.2-7H13c3.8 0 6.8 3.1 6.8 7s-3 7-6.8 7h8.2c3.8 0 6.8-3.1 6.8-7s-3-7-6.8-7z" fill="#3086C8"></path>
-                  </svg>
-                  {/* Discover */}
-                  <svg className="w-10 h-6" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Discover">
-                    <path fill="#000" opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"></path>
-                    <path d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32z" fill="#fff"></path>
-                  </svg>
-                </div>
-              </div>
-              <p className="text-xs text-gray-600">
-                Your payment information is processed securely. We do not store credit card details nor have access to your credit card information.
-              </p>
             </div>
 
             {/* Product Description */}
@@ -1359,6 +1405,176 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Payment & Security */}
+            <div className="border border-gray-200 rounded bg-white p-4">
+              <div className="mb-3">
+                <div className="text-sm font-bold text-gray-900 font-heading mb-3">
+                  Payment & Security
+                </div>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {/* Visa */}
+                  <svg
+                    className="w-10 h-6"
+                    viewBox="0 0 38 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    role="img"
+                    aria-label="Visa"
+                  >
+                    <path
+                      opacity=".07"
+                      d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"
+                    ></path>
+                    <path
+                      fill="#fff"
+                      d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"
+                    ></path>
+                    <path
+                      d="M28.3 10.1H28c-.4 1-.7 1.5-1 3h1.9c-.3-1.5-.3-2.2-.6-3zm2.9 5.9h-1.7c-.1 0-.1 0-.2-.1l-.2-.9-.1-.2h-2.4c-.1 0-.2 0-.2.2l-.3.9c0 .1-.1.1-.1.1h-2.1l.2-.5L27 8.7c0-.5.3-.7.8-.7h1.5c.1 0 .2 0 .2.2l1.4 6.5c.1.4.2.7.2 1.1.1.1.1.1.1.2zm-13.4-.3l.4-1.8c.1 0 .2.1.2.1.7.3 1.4.5 2.1.4.2 0 .5-.1.7-.2.5-.2.5-.7.1-1.1-.2-.2-.5-.3-.8-.5-.4-.2-.8-.4-1.1-.7-1.2-1-.8-2.4-.1-3.1.6-.4.9-.8 1.7-.8 1.2 0 2.5 0 3.1.2h.1c-.1.6-.2 1.1-.4 1.7-.5-.2-1-.4-1.5-.4-.3 0-.6 0-.9.1-.2 0-.3.1-.4.2-.2.2-.2.5 0 .7l.5.4c.4.2.8.4 1.1.6.5.3 1 .8 1.1 1.4.2.9-.1 1.7-.9 2.3-.5.4-.7.6-1.4.6-1.4 0-2.5.1-3.4-.2-.1.2-.1.2-.2.1zm-3.5.3c.1-.7.1-.7.2-1 .5-2.2 1-4.5 1.4-6.7.1-.2.1-.3.3-.3H18c-.2 1.2-.4 2.1-.7 3.2-.3 1.5-.6 3-1 4.5 0 .2-.1.2-.3.2M5 8.2c0-.1.2-.2.3-.2h3.4c.5 0 .9.3 1 .8l.9 4.4c0 .1 0 .1.1.2 0-.1.1-.1.1-.1l2.1-5.1c-.1-.1 0-.2.1-.2h2.1c0 .1 0 .1-.1.2l-3.1 7.3c-.1.2-.1.3-.2.4-.1.1-.3 0-.5 0H9.7c-.1 0-.2 0-.2-.2L7.9 9.5c-.2-.2-.5-.5-.9-.6-.6-.3-1.7-.5-1.9-.5L5 8.2z"
+                      fill="#142688"
+                    ></path>
+                  </svg>
+                  {/* Mastercard */}
+                  <svg
+                    className="w-10 h-6"
+                    viewBox="0 0 38 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    role="img"
+                    aria-label="Mastercard"
+                  >
+                    <path
+                      opacity=".07"
+                      d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"
+                    ></path>
+                    <path
+                      fill="#fff"
+                      d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"
+                    ></path>
+                    <circle fill="#EB001B" cx="15" cy="12" r="7"></circle>
+                    <circle fill="#F79E1B" cx="23" cy="12" r="7"></circle>
+                    <path
+                      fill="#FF5F00"
+                      d="M22 12c0-2.4-1.2-4.5-3-5.7-1.8 1.3-3 3.4-3 5.7s1.2 4.5 3 5.7c1.8-1.2 3-3.3 3-5.7z"
+                    ></path>
+                  </svg>
+                  {/* American Express */}
+                  <svg
+                    className="w-10 h-6"
+                    xmlns="http://www.w3.org/2000/svg"
+                    role="img"
+                    aria-label="American Express"
+                    viewBox="0 0 38 24"
+                  >
+                    <path
+                      fill="#000"
+                      d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3Z"
+                      opacity=".07"
+                    ></path>
+                    <path
+                      fill="#006FCF"
+                      d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32Z"
+                    ></path>
+                    <path
+                      fill="#FFF"
+                      d="M22.012 19.936v-8.421L37 11.528v2.326l-1.732 1.852L37 17.573v2.375h-2.766l-1.47-1.622-1.46 1.628-9.292-.02Z"
+                    ></path>
+                    <path
+                      fill="#006FCF"
+                      d="M23.013 19.012v-6.57h5.572v1.513h-3.768v1.028h3.678v1.488h-3.678v1.01h3.768v1.531h-5.572Z"
+                    ></path>
+                    <path
+                      fill="#006FCF"
+                      d="m28.557 19.012 3.083-3.289-3.083-3.282h2.386l1.884 2.083 1.89-2.082H37v.051l-3.017 3.23L37 18.92v.093h-2.307l-1.917-2.103-1.898 2.104h-2.321Z"
+                    ></path>
+                    <path
+                      fill="#FFF"
+                      d="M22.71 4.04h3.614l1.269 2.881V4.04h4.46l.77 2.159.771-2.159H37v8.421H19l3.71-8.421Z"
+                    ></path>
+                    <path
+                      fill="#006FCF"
+                      d="m23.395 4.955-2.916 6.566h2l.55-1.315h2.98l.55 1.315h2.05l-2.904-6.566h-2.31Zm.25 3.777.875-2.09.873 2.09h-1.748Z"
+                    ></path>
+                    <path
+                      fill="#006FCF"
+                      d="M28.581 11.52V4.953l2.811.01L32.84 9l1.456-4.046H37v6.565l-1.74.016v-4.51l-1.644 4.494h-1.59L30.35 7.01v4.51h-1.768Z"
+                    ></path>
+                  </svg>
+                  {/* PayPal */}
+                  <svg
+                    className="w-10 h-6"
+                    viewBox="0 0 38 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    role="img"
+                    aria-label="PayPal"
+                  >
+                    <path
+                      opacity=".07"
+                      d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"
+                    ></path>
+                    <path
+                      fill="#fff"
+                      d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"
+                    ></path>
+                    <path
+                      fill="#003087"
+                      d="M23.9 8.3c.2-1 0-1.7-.6-2.3-.6-.7-1.7-1-3.1-1h-4.1c-.3 0-.5.2-.6.5L14 15.6c0 .2.1.4.3.4H17l.4-3.4 1.8-2.2 4.7-2.1z"
+                    ></path>
+                    <path
+                      fill="#3086C8"
+                      d="M23.9 8.3l-.2.2c-.5 2.8-2.2 3.8-4.6 3.8H18c-.3 0-.5.2-.6.5l-.6 3.9-.2 1c0 .2.1.4.3.4H19c.3 0 .5-.2.5-.4v-.1l.4-2.4v-.1c0-.2.3-.4.5-.4h.3c2.1 0 3.7-.8 4.1-3.2.2-1 .1-1.8-.4-2.4-.1-.5-.3-.7-.5-.8z"
+                    ></path>
+                    <path
+                      fill="#012169"
+                      d="M23.3 8.1c-.1-.1-.2-.1-.3-.1-.1 0-.2 0-.3-.1-.3-.1-.7-.1-1.1-.1h-3c-.1 0-.2 0-.2.1-.2.1-.3.2-.3.4l-.7 4.4v.1c0-.3.3-.5.6-.5h1.3c2.5 0 4.1-1 4.6-3.8v-.2c-.1-.1-.3-.2-.5-.2h-.1z"
+                    ></path>
+                  </svg>
+                  {/* Diners Club */}
+                  <svg
+                    className="w-10 h-6"
+                    viewBox="0 0 38 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    role="img"
+                    aria-label="Diners Club"
+                  >
+                    <path
+                      opacity=".07"
+                      d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"
+                    ></path>
+                    <path
+                      fill="#fff"
+                      d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"
+                    ></path>
+                    <path
+                      d="M12 12v3.7c0 .3-.2.3-.5.2-1.9-.8-3-3.3-2.3-5.4.4-1.1 1.2-2 2.3-2.4.4-.2.5-.1.5.2V12zm2 0V8.3c0-.3 0-.3.3-.2 2.1.8 3.2 3.3 2.4 5.4-.4 1.1-1.2 2-2.3 2.4-.4.2-.4.1-.4-.2V12zm7.2-7H13c3.8 0 6.8 3.1 6.8 7s-3 7-6.8 7h8.2c3.8 0 6.8-3.1 6.8-7s-3-7-6.8-7z"
+                      fill="#3086C8"
+                    ></path>
+                  </svg>
+                  {/* Discover */}
+                  <svg
+                    className="w-10 h-6"
+                    viewBox="0 0 38 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    role="img"
+                    aria-label="Discover"
+                  >
+                    <path
+                      fill="#000"
+                      opacity=".07"
+                      d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"
+                    ></path>
+                    <path
+                      d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32z"
+                      fill="#fff"
+                    ></path>
+                  </svg>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600">
+                Your payment information is processed securely. We do not store
+                credit card details nor have access to your credit card
+                information.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -1422,14 +1638,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 .slice(0, 4)
                 .map((p) => (
                   <div key={p.id}>
-                    <ProductCard
-                      product={p}
-                      addToCart={addToCart}
-                      onBuyNow={onBuyNow}
-                      onCompare={onCompare}
-                      isAuthenticated={isAuthenticated}
-                      isTradeApproved={isTradeApproved}
-                    />
+                    <ProductCard product={p} addToCart={addToCart} />
                   </div>
                 ))}
             </div>
@@ -1481,14 +1690,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {recommendedProducts.map((p) => (
                   <div key={p.id}>
-                    <ProductCard
-                      product={p}
-                      addToCart={addToCart}
-                      onBuyNow={onBuyNow}
-                      onCompare={onCompare}
-                      isAuthenticated={isAuthenticated}
-                      isTradeApproved={isTradeApproved}
-                    />
+                    <ProductCard product={p} addToCart={addToCart} />
                   </div>
                 ))}
               </div>

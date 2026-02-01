@@ -26,14 +26,19 @@ interface ShippingRate {
 // Directly call the CMS WordPress REST API (BobGo/uAfrica plugin)
 const API_BASE_URL = "https://cms.belims.co.za/wp-json/belims/v1";
 
-// Development/fallback free shipping option
-const DEV_FREE_SHIPPING: ShippingRate = {
-  service_code: "dev_free",
-  service_name: "Free Shipping (Development)",
-  total_price: 0,
-  expected_delivery_date: new Date(
-    Date.now() + 3 * 24 * 60 * 60 * 1000,
-  ).toLocaleDateString("en-ZA"),
+// Development/fallback shipping options for local testing
+const DEV_ECONOMY_SHIPPING: ShippingRate = {
+  service_code: "dev_economy",
+  service_name: "Standard Shipping",
+  total_price: 65,
+  expected_delivery_date: "Tomorrow",
+};
+
+const DEV_EXPRESS_SHIPPING: ShippingRate = {
+  service_code: "dev_express",
+  service_name: "Express Shipping",
+  total_price: 117,
+  expected_delivery_date: "2 - 3 Days",
 };
 
 export const getShippingRates = async (
@@ -100,8 +105,10 @@ export const getShippingRates = async (
 
     // Fallback: Check if we're in development/localhost
     if (isLocalhost()) {
-      console.warn("Using fallback free shipping for development environment");
-      return [DEV_FREE_SHIPPING];
+      console.warn(
+        "Using fallback shipping options for development environment",
+      );
+      return getFallbackShipping();
     }
 
     throw error;
@@ -121,8 +128,8 @@ function isLocalhost(): boolean {
 }
 
 /**
- * Get fallback shipping (for testing without BobGo)
+ * Get fallback shipping options for local development testing
  */
 export const getFallbackShipping = (): ShippingRate[] => {
-  return [DEV_FREE_SHIPPING];
+  return [DEV_ECONOMY_SHIPPING, DEV_EXPRESS_SHIPPING];
 };

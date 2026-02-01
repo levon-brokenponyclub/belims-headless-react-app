@@ -29,6 +29,7 @@ import { BrandStrip } from "./components/BrandStrip";
 import { AuthPage } from "./components/AuthPage";
 import { Toast } from "./components/Toast";
 import HeroBanner from "./components/HeroBanner";
+import { CountdownTimer } from "./components/CountdownTimer";
 import { getCurrentUser, UserData } from "./services/authService";
 
 import { Product, CartItem, Store } from "./types";
@@ -234,9 +235,12 @@ const HomePage = ({
       />
 
       {/* Deal Filter Chips */}
-      <section className=" bg-gray-50 py-12 pb-0" aria-label="Deal filters">
-        <div className="container mx-auto px-4">
-          <div className="mb-6">
+      <section
+        className=" bg-belims-gray border-t border-black/5 py-12 pb-0"
+        aria-label="Deal filters"
+      >
+        <div className="container mx-auto px-4 flex gap-8 align-items-center">
+          <div className="mb-0">
             <h2 className="text-2xl font-bold text-gray-900 font-heading">
               Browse all deals
             </h2>
@@ -277,8 +281,8 @@ const HomePage = ({
                   onClick={() => setActiveDealFilter(filter.key as DealFilter)}
                   className={`px-4 h-9 rounded border font-semibold font-heading transition-colors whitespace-nowrap text-[13px] ${
                     activeDealFilter === filter.key
-                      ? "bg-belims-blue text-white border-gray-200"
-                      : "bg-white text-[#64748b] border-gray-200 hover:bg-belims-blue hover:text-white"
+                      ? "bg-belims-blue text-white border-gray-100"
+                      : "bg-white text-[#64748b] border-gray-100 hover:bg-belims-blue hover:text-white"
                   }`}
                 >
                   {filter.label}
@@ -290,7 +294,10 @@ const HomePage = ({
 
       {/* Featured Deals */}
       {shouldShowSection("featured") && (
-        <section className="pt-6 pb-14 bg-gray-50" aria-label="Featured deals">
+        <section
+          className="pt-6 pb-14 bg-belims-gray border-b border-black/5"
+          aria-label="Featured deals"
+        >
           <div className="container mx-auto px-4">
             <div className="flex justify-between items-end mb-6">
               <div>
@@ -316,10 +323,6 @@ const HomePage = ({
                     key={product.id}
                     product={product}
                     addToCart={addToCart}
-                    onBuyNow={handleBuyNow}
-                    onCompare={addToCompare}
-                    isAuthenticated={isAuthenticated}
-                    isTradeApproved={isTradeApproved}
                   />
                 ))}
               </div>
@@ -335,11 +338,11 @@ const HomePage = ({
       {/* Deals of the Day */}
       {shouldShowSection("deal_of_day") && (
         <section
-          className="pt-6 pb-14 bg-gray-50"
+          className="py-14 bg-belims-gray border-b border-black/5"
           aria-label="Deals of the day"
         >
           <div className="container mx-auto px-4">
-            <div className="flex justify-between items-end mb-6">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 mb-6">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 font-heading">
                   Deals of the day
@@ -348,12 +351,18 @@ const HomePage = ({
                   Fresh discounts daily — expire at midnight. While stocks last.
                 </p>
               </div>
-              <a
-                href="/deals"
-                className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
-              >
-                View all →
-              </a>
+              <div className="flex items-center gap-4">
+                <CountdownTimer
+                  targetDate={new Date(new Date().setHours(23, 59, 59, 999))}
+                  label="Hurry up! Offer ends in"
+                />
+                <a
+                  href="/deals"
+                  className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block whitespace-nowrap"
+                >
+                  View all →
+                </a>
+              </div>
             </div>
 
             {dealsOfTheDay.length > 0 ? (
@@ -363,10 +372,6 @@ const HomePage = ({
                     key={product.id}
                     product={product}
                     addToCart={addToCart}
-                    onBuyNow={handleBuyNow}
-                    onCompare={addToCompare}
-                    isAuthenticated={isAuthenticated}
-                    isTradeApproved={isTradeApproved}
                   />
                 ))}
               </div>
@@ -382,11 +387,11 @@ const HomePage = ({
       {/* Weekly Deals */}
       {shouldShowSection("weekly") && (
         <section
-          className="pt-6 pb-14 bg-gray-50"
+          className="py-14  bg-belims-gray border-b border-black/5"
           aria-label="Weekly deals and bulk savings"
         >
           <div className="container mx-auto px-4">
-            <div className="flex justify-between items-end mb-6">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 mb-6">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 font-heading">
                   Weekly deals
@@ -396,15 +401,29 @@ const HomePage = ({
                   Sunday at midnight.
                 </p>
               </div>
-              <a
-                href="/deals/weekly"
-                className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
-              >
-                All weekly deals →
-              </a>
+              <div className="flex items-center gap-4">
+                <CountdownTimer
+                  targetDate={(() => {
+                    const now = new Date();
+                    const dayOfWeek = now.getDay();
+                    const daysUntilSunday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
+                    const sunday = new Date(now);
+                    sunday.setDate(now.getDate() + daysUntilSunday);
+                    sunday.setHours(23, 59, 59, 999);
+                    return sunday;
+                  })()}
+                  label="Week ends in"
+                />
+                <a
+                  href="/deals/weekly"
+                  className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block whitespace-nowrap"
+                >
+                  All weekly deals →
+                </a>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <a
                 href="/deals/paint-week"
                 className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-6 hover:from-blue-600 hover:to-blue-700 transition-all"
@@ -440,7 +459,7 @@ const HomePage = ({
                 <div className="text-xl font-bold">Bundles</div>
                 <div className="text-sm opacity-90 mt-2">Special pricing</div>
               </a>
-            </div>
+            </div> */}
 
             {weeklyDeals.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -449,10 +468,6 @@ const HomePage = ({
                     key={product.id}
                     product={product}
                     addToCart={addToCart}
-                    onBuyNow={handleBuyNow}
-                    onCompare={addToCompare}
-                    isAuthenticated={isAuthenticated}
-                    isTradeApproved={isTradeApproved}
                   />
                 ))}
               </div>
@@ -467,7 +482,10 @@ const HomePage = ({
 
       {/* Trade Specials */}
       {shouldShowSection("trade_special") && (
-        <section className="pt-6 pb-14 bg-gray-50" aria-label="Trade specials">
+        <section
+          className="py-14 bg-belims-gray border-b border-black/5"
+          aria-label="Trade specials"
+        >
           <div className="container mx-auto px-4">
             <div className="flex justify-between items-end mb-6">
               <div>
@@ -495,10 +513,6 @@ const HomePage = ({
                     key={product.id}
                     product={product}
                     addToCart={addToCart}
-                    onBuyNow={handleBuyNow}
-                    onCompare={addToCompare}
-                    isAuthenticated={isAuthenticated}
-                    isTradeApproved={isTradeApproved}
                   />
                 ))}
               </div>
@@ -512,67 +526,54 @@ const HomePage = ({
       )}
 
       {/* Trade Essentials */}
-      <section className="my-16" aria-label="Trade essentials">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-end mb-6">
+      <section
+        className="bg-belims-gray border-y border-black/5"
+        aria-label="Trade essentials"
+      >
+        <div className="container mx-auto px-4 py-12 md:py-14">
+          <div className="flex justify-between items-end mb-8">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 font-heading">
+              <h2 className="font-heading text-h3 text-gray-900">
                 Trade essentials
               </h2>
-              <p className="text-gray-500 text-sm mt-1">
+              <p className="mt-2 font-body text-base text-gray-500">
                 Quick access for everyday jobs
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <a
-              href="/shop/ladders-trestles"
-              className="block p-6 bg-belims-accent rounded hover:bg-belims-blue transition-colors"
-            >
-              <div className="font-semibold text-white mb-2">
-                Ladders & Trestles
-              </div>
-              <div className="text-sm text-white/90 hover:text-white/100">
-                Shop now →
-              </div>
-            </a>
-            <a
-              href="/shop/power-tools"
-              className="block p-6 bg-belims-accent rounded hover:bg-belims-blue transition-colors"
-            >
-              <div className="font-semibold text-white mb-2">Power Tools</div>
-              <div className="text-sm text-white/90 hover:text-white/100">
-                Shop now →
-              </div>
-            </a>
-            <a
-              href="/shop/fasteners"
-              className="block p-6 bg-belims-accent rounded hover:bg-belims-blue transition-colors"
-            >
-              <div className="font-semibold text-white mb-2">Fasteners</div>
-              <div className="text-sm text-white/90 hover:text-white/100">
-                Shop now →
-              </div>
-            </a>
-            <a
-              href="/shop/sealants-adhesives"
-              className="block p-6 bg-belims-accent rounded hover:bg-belims-blue transition-colors"
-            >
-              <div className="font-semibold text-white mb-2">Sealants</div>
-              <div className="text-sm text-white/90 hover:text-white/100">
-                Shop now →
-              </div>
-            </a>
-            <a
-              href="/shop/safety-wear"
-              className="block p-6 bg-belims-accent rounded hover:bg-belims-blue transition-colors"
-            >
-              <div className="font-semibold text-white mb-2">Safety Wear</div>
-              <div className="text-sm text-white/90 hover:text-white/100">
-                Shop now →
-              </div>
-            </a>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+            {[
+              { href: "/shop/ladders-trestles", label: "Ladders & Trestles" },
+              { href: "/shop/power-tools", label: "Power Tools" },
+              { href: "/shop/fasteners", label: "Fasteners" },
+              { href: "/shop/sealants-adhesives", label: "Sealants" },
+              { href: "/shop/safety-wear", label: "Safety Wear" },
+            ].map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className={[
+                  "group relative block",
+                  "rounded-lg border border-black/10 bg-white",
+                  "p-5 shadow-[0_1px_2px_rgba(16,24,40,0.06)]",
+                  "transition-all duration-200",
+                  "hover:shadow-[0_8px_24px_rgba(16,24,40,0.08)]",
+                  "hover:-translate-y-0.5",
+                ].join(" ")}
+              >
+                {/* subtle red accent bar (Belims accent) */}
+                <span className="absolute left-0 top-0 h-1 w-10 rounded-br-lg bg-red-600" />
+
+                <div className="font-heading text-h5 text-gray-900 mb-3">
+                  {item.label}
+                </div>
+
+                <div className="inline-flex items-center gap-2 font-body text-sm font-semibold text-gray-500 transition-colors group-hover:text-belims-blue">
+                  Shop now <span aria-hidden>→</span>
+                </div>
+              </a>
+            ))}
           </div>
         </div>
       </section>
@@ -1003,10 +1004,6 @@ const HomePage = ({
               key={product.id}
               product={product}
               addToCart={addToCart}
-              onBuyNow={handleBuyNow}
-              onCompare={addToCompare}
-                    isAuthenticated={isAuthenticated}
-                    isTradeApproved={isTradeApproved}
             />
           ))}
         </div>

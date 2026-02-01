@@ -110,15 +110,15 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
   }, [deal?.bestDeal?.end_at, showCountdown, dualMode]);
 
   const headlineClass = useMemo(() => {
-    if (dualMode || isTradeToggleActive) return "text-belims-accent";
+    if (dualMode || isTradeToggleActive) return "text-belims-blue";
     if (deal && deal.price && deal.compareAtPrice) return "text-red-600";
     return "text-gray-900";
   }, [dualMode, isTradeToggleActive, deal]);
 
   return (
     <div className={className}>
-      <div className="items-start gap-4">
-        <div className="flex justify-between">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
           <div
             className={`font-heading text-[28px] leading-tight font-bold ${headlineClass}`}
           >
