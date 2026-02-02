@@ -15,7 +15,7 @@
 if (!defined('ABSPATH')) exit;
 
 define('GLOBAL_SITE_SETTINGS_VERSION', '2.1.2');
-define('GLOBAL_SITE_SETTINGS_COMMIT_HASH', '3b2c7b3');
+define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-02-03 14:30:00');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -2079,13 +2079,13 @@ function belims_add_ftg_sync_status_to_publish_box() {
 add_action('post_submitbox_misc_actions', 'belims_add_ftg_sync_status_to_publish_box');
 
 /**
- * Output deployment commit hash to browser console for verification
+ * Output deployment timestamp to browser console for verification
  * Helps identify if auto-deployment was successful or if cache issues exist
  */
 function belims_output_deployment_info() {
     $version = defined('GLOBAL_SITE_SETTINGS_VERSION') ? GLOBAL_SITE_SETTINGS_VERSION : 'unknown';
-    $commit = defined('GLOBAL_SITE_SETTINGS_COMMIT_HASH') ? GLOBAL_SITE_SETTINGS_COMMIT_HASH : 'unknown';
-    $output = sprintf('Global Site Settings v%s (commit: %s)', $version, $commit);
+    $timestamp = defined('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP') ? GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP : 'unknown';
+    $output = sprintf('Global Site Settings v%s (deployed: %s)', $version, $timestamp);
     ?>
     <script>
         console.log('<?php echo esc_js($output); ?>');
