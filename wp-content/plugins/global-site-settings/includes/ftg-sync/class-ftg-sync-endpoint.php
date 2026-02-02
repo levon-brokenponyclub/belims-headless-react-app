@@ -84,6 +84,13 @@ class Belims_FTG_Sync_Endpoint {
             'callback' => array($this, 'get_product_filters'),
             'permission_callback' => '__return_true', // Public endpoint
         ));
+
+        // Sync single product by SKU
+        register_rest_route('belims/v1', '/ftg/sync/product', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'sync_product_by_sku_endpoint'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
     }
     
     /**
@@ -469,6 +476,39 @@ class Belims_FTG_Sync_Endpoint {
     }
 
     /**
+     * REST endpoint to sync single product by SKU
+     */
+    public function sync_product_by_sku_endpoint($request) {
+        $params = $request->get_json_params();
+        $sku = sanitize_text_field($params['sku'] ?? '');
+        $collection_token = sanitize_text_field($params['collection_token'] ?? '');
+
+        if (empty($sku)) {
+            return new WP_Error('missing_sku', 'SKU is required', array('status' => 400));
+        }
+
+        if (empty($collection_token)) {
+            $collection_token = get_field('ftg_collection_token', 'option');
+        }
+
+        if (empty($collection_token)) {
+            return new WP_Error('missing_token', 'Collection token not provided and not configured in site settings', array('status' => 400));
+        }
+
+        error_log('=== Syncing Single Product via REST: SKU=' . $sku . ' ===');
+
+        set_time_limit(300); // 5 minutes for single product sync
+
+        $result = $this->sync_single_product_by_sku($collection_token, $sku);
+
+        if (!$result['success']) {
+            return new WP_Error('sync_failed', $result['message'] ?? 'Failed to sync product', array('status' => 400));
+        }
+
+        return rest_ensure_response($result);
+    }
+
+    /**
      * Remove duplicate products by SKU to prevent repeated updates when pagination repeats results.
      */
     private function deduplicate_products_by_sku(array $products) {
@@ -594,6 +634,23 @@ class Belims_FTG_Sync_Endpoint {
             } else {
                 $product = new WC_Product_Simple();
             }
+
+            $previous = array(
+                'name' => $product->get_name(),
+                'description' => $product->get_description(),
+                'short_description' => $product->get_short_description(),
+                'price' => $product->get_regular_price(),
+                'stock' => $product->get_stock_quantity(),
+                'weight' => $product->get_weight(),
+                'length' => $product->get_length(),
+                'width' => $product->get_width(),
+                'height' => $product->get_height(),
+                'image_id' => $product->get_image_id(),
+                'categories' => $existing_product_id ? wp_get_post_terms($existing_product_id, 'product_cat', array('fields' => 'ids')) : array(),
+                'brand' => $existing_product_id ? wp_get_post_terms($existing_product_id, 'product_brand', array('fields' => 'names')) : array(),
+                'range' => $existing_product_id ? wp_get_post_terms($existing_product_id, 'product_range', array('fields' => 'names')) : array(),
+                'color' => $existing_product_id ? wp_get_post_terms($existing_product_id, 'product_color', array('fields' => 'names')) : array(),
+            );
             
             // Set basic product data using correct FTG field names
             $product_name = $product_data['description1'] ?? $product_data['description2'] ?? $product_data['description3'] ?? 'Unnamed Product';
@@ -606,7 +663,10 @@ class Belims_FTG_Sync_Endpoint {
             error_log("Product $sku - description3: " . ($product_data['description3'] ?? 'EMPTY'));
             
             // Set description
-            $product->set_description($product_data['description2'] ?? '');
+            // Use wp_kses_post to allow safe HTML tags (h3, ul, li, strong, p, br, etc.)
+            $raw_description = $product_data['description2'] ?? '';
+            $safe_description = wp_kses_post($raw_description);
+            $product->set_description($safe_description);
             $product->set_short_description($product_data['description1'] ?? '');
             
             // Set pricing (FTG prices are EXCLUDING VAT - add 15%)
@@ -657,11 +717,13 @@ class Belims_FTG_Sync_Endpoint {
             
             // Set categories from webUrlHierarchyCollection.web_hierarchy
             $category_ids = array();
+            $categories_names = array();
             if (isset($product_data['webUrlHierarchyCollection']['web_hierarchy']) && is_array($product_data['webUrlHierarchyCollection']['web_hierarchy'])) {
                 $parent_id = 0;
                 
                 foreach ($product_data['webUrlHierarchyCollection']['web_hierarchy'] as $level_data) {
                     if (!empty($level_data['value'])) {
+                        $categories_names[] = $level_data['value'];
                         $cat_id = $this->get_or_create_category($level_data['value'], $parent_id);
                         if ($cat_id) {
                             $category_ids[] = $cat_id;
@@ -742,12 +804,81 @@ class Belims_FTG_Sync_Endpoint {
                 error_log('Setting color for product ' . $sku . ': ' . $color_name);
                 $this->set_product_taxonomy($product_id, 'product_color', $color_name, 'Color');
             }
+
+            $updated_fields = array();
+            if ($previous['name'] !== $product_name) {
+                $updated_fields[] = 'name';
+            }
+            if ($previous['description'] !== ($product_data['description2'] ?? '')) {
+                $updated_fields[] = 'description';
+            }
+            if ($previous['short_description'] !== ($product_data['description1'] ?? '')) {
+                $updated_fields[] = 'short_description';
+            }
+            if (floatval($previous['price']) !== floatval($price_incl_vat)) {
+                $updated_fields[] = 'price';
+            }
+            if (intval($previous['stock']) !== intval($stock_qty)) {
+                $updated_fields[] = 'stock';
+            }
+            if (!empty($product_data['weight'])) {
+                if (floatval($previous['weight']) !== floatval($weight)) {
+                    $updated_fields[] = 'weight';
+                }
+            }
+            if (floatval($previous['length']) !== floatval($length) || floatval($previous['width']) !== floatval($width) || floatval($previous['height']) !== floatval($height)) {
+                $updated_fields[] = 'dimensions';
+            }
+            $current_categories = wp_get_post_terms($product_id, 'product_cat', array('fields' => 'ids'));
+            sort($current_categories);
+            $previous_categories = $previous['categories'];
+            sort($previous_categories);
+            if ($current_categories !== $previous_categories) {
+                $updated_fields[] = 'categories';
+            }
+            $current_brand = wp_get_post_terms($product_id, 'product_brand', array('fields' => 'names'));
+            $current_range = wp_get_post_terms($product_id, 'product_range', array('fields' => 'names'));
+            $current_color = wp_get_post_terms($product_id, 'product_color', array('fields' => 'names'));
+            if ($current_brand !== $previous['brand']) {
+                $updated_fields[] = 'brand';
+            }
+            if ($current_range !== $previous['range']) {
+                $updated_fields[] = 'range';
+            }
+            if ($current_color !== $previous['color']) {
+                $updated_fields[] = 'color';
+            }
+            $current_image_id = $product->get_image_id();
+            $has_pending_image = !empty(get_post_meta($product_id, '_ftg_image_url_pending', true));
+            if ($current_image_id && intval($current_image_id) !== intval($previous['image_id'])) {
+                $updated_fields[] = 'image';
+            } elseif ($has_pending_image && empty($previous['image_id'])) {
+                $updated_fields[] = 'image_pending';
+            }
+
+            $synced_data = array(
+                'name' => $product_name,
+                'sku' => $sku,
+                'description' => $product_data['description2'] ?? '',
+                'short_description' => $product_data['description1'] ?? '',
+                'price_excl_vat' => $price_excl_vat,
+                'price_incl_vat' => $price_incl_vat,
+                'stock' => $stock_qty,
+                'weight' => array('value' => $weight, 'unit' => $weight_unit),
+                'dimensions' => array('length' => $length, 'width' => $width, 'height' => $height, 'unit' => $dim_unit),
+                'brand' => !empty($product_data['brand']) ? sanitize_text_field($product_data['brand']) : '',
+                'range' => !empty($product_data['range']) ? sanitize_text_field($product_data['range']) : '',
+                'color' => !empty($product_data['colour']) ? sanitize_text_field($product_data['colour']) : '',
+                'categories' => $categories_names,
+            );
             
             return array(
                 'success' => true,
                 'product_id' => $product_id,
                 'sku' => $sku,
                 'name' => $product_name,
+                'updated_fields' => $updated_fields,
+                'synced_data' => $synced_data,
             );
             
         } catch (Exception $e) {
@@ -1068,41 +1199,69 @@ class Belims_FTG_Sync_Endpoint {
             return new WP_Error('missing_token', 'FTG Collection token not configured', array('status' => 400));
         }
         
-        // Get all products from FTG (request large limit to get all products)
-        $ftg_result = $this->ftg_api->get_products($collection_token, array('PageSize' => 10000));
-        
-        if (isset($ftg_result['error'])) {
-            return new WP_Error('ftg_error', $ftg_result['error'], array('status' => 500));
-        }
-        
-        // Extract products array
-        $products = array();
-        if (isset($ftg_result['data']['response']) && is_array($ftg_result['data']['response'])) {
-            $products = $ftg_result['data']['response'];
-        } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
-            $products = $ftg_result['data'];
-        }
-        
-        // Find product by SKU (check multiple possible code fields)
+        // Paginate through all products to find the matching SKU
+        $per_page = 100;
+        $max_pages = 1000; // Safety limit - equivalent to 100,000 products
+        $page = 1;
         $found_product = null;
-        foreach ($products as $product) {
-            $product_data = $product['productData'] ?? $product;
-            $product_code = $product_data['productCode'] ?? '';
-            $mdr_code = $product_data['mdrProductCode'] ?? '';
-            $alt_code = $product_data['altProductCode'] ?? '';
+        $total_checked = 0;
+        
+        do {
+            error_log("Searching for SKU on page $page");
             
-            // Check all possible code fields
-            if (strcasecmp($product_code, $sku) === 0 || 
-                strcasecmp($mdr_code, $sku) === 0 || 
-                strcasecmp($alt_code, $sku) === 0) {
-                $found_product = $product_data;
+            // Get products from FTG with pagination
+            $ftg_result = $this->ftg_api->get_products($collection_token, array(
+                'PageSize' => $per_page,
+                'PageNumber' => $page,
+            ));
+            
+            if (isset($ftg_result['error'])) {
+                error_log('FTG Error on page ' . $page . ': ' . $ftg_result['error']);
+                return new WP_Error('ftg_error', $ftg_result['error'], array('status' => 500));
+            }
+            
+            // Extract products array
+            $products = array();
+            if (isset($ftg_result['data']['response']) && is_array($ftg_result['data']['response'])) {
+                $products = $ftg_result['data']['response'];
+            } elseif (isset($ftg_result['data']['data']) && is_array($ftg_result['data']['data'])) {
+                $products = $ftg_result['data']['data'];
+            } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
+                $products = $ftg_result['data'];
+            }
+            
+            error_log("Page $page returned " . count($products) . " products");
+            $total_checked += count($products);
+            
+            // Search for product by SKU on this page
+            foreach ($products as $product) {
+                $product_data = $product['productData'] ?? $product;
+                $product_code = $product_data['productCode'] ?? '';
+                $mdr_code = $product_data['mdrProductCode'] ?? '';
+                $alt_code = $product_data['altProductCode'] ?? '';
+                
+                // Check all possible code fields (case-insensitive)
+                if (strcasecmp($product_code, $sku) === 0 || 
+                    strcasecmp($mdr_code, $sku) === 0 || 
+                    strcasecmp($alt_code, $sku) === 0) {
+                    error_log("✅ Found matching product: $sku");
+                    $found_product = $product_data;
+                    break 2; // Break out of both loops
+                }
+            }
+            
+            // If no more products on this page, we've reached the end
+            if (empty($products) || count($products) < $per_page) {
+                error_log("No more products - reached end of catalog on page $page (checked $total_checked total)");
                 break;
             }
-        }
+            
+            $page++;
+        } while ($page <= $max_pages);
         
         if (!$found_product) {
-            error_log("Product not found: $sku. Total products in FTG: " . count($products));
-            return new WP_Error('not_found', 'Product not found: ' . $sku, array('status' => 404));
+            error_log("❌ Product not found: $sku. Searched through $total_checked products across " . ($page - 1) . " pages");
+            return new WP_Error('not_found', 'Product not found: ' . $sku . ' (searched ' . $total_checked . ' products)', array('status' => 404));
         }
         
         // Format response with all relevant fields
@@ -1326,53 +1485,84 @@ class Belims_FTG_Sync_Endpoint {
         }
 
         try {
-            // Get all products from FTG
-            $ftg_result = $this->ftg_api->get_products($ftg_token, array('limit' => 10000));
-            
-            if (isset($ftg_result['error'])) {
-                return array(
-                    'success' => false,
-                    'message' => 'Failed to fetch from FTG: ' . $ftg_result['error'],
-                );
-            }
-            
-            // Extract products array
-            $products = array();
-            if (isset($ftg_result['data']['response']) && is_array($ftg_result['data']['response'])) {
-                $products = $ftg_result['data']['response'];
-            } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
-                $products = $ftg_result['data'];
-            }
-            
-            // Find product by SKU (check multiple possible code fields)
+            // Paginate through all products to find the matching SKU
+            $per_page = 100;
+            $max_pages = 1000; // Safety limit - equivalent to 100,000 products
+            $page = 1;
             $found_product = null;
-            foreach ($products as $product) {
-                $product_data = $product['productData'] ?? $product;
-                $product_code = $product_data['productCode'] ?? '';
-                $mdr_code = $product_data['mdrProductCode'] ?? '';
-                $alt_code = $product_data['altProductCode'] ?? '';
+            
+            do {
+                error_log("Searching for SKU on page $page");
                 
-                // Check all possible code fields
-                if (strcasecmp($product_code, $sku) === 0 || 
-                    strcasecmp($mdr_code, $sku) === 0 || 
-                    strcasecmp($alt_code, $sku) === 0) {
-                    $found_product = $product;
+                // Get products from FTG with pagination
+                $ftg_result = $this->ftg_api->get_products($ftg_token, array(
+                    'PageSize' => $per_page,
+                    'PageNumber' => $page,
+                ));
+                
+                if (isset($ftg_result['error'])) {
+                    error_log('FTG Error on page ' . $page . ': ' . $ftg_result['error']);
+                    return array(
+                        'success' => false,
+                        'message' => 'Failed to fetch from FTG: ' . $ftg_result['error'],
+                    );
+                }
+                
+                // Extract products array
+                $products = array();
+                if (isset($ftg_result['data']['response']) && is_array($ftg_result['data']['response'])) {
+                    $products = $ftg_result['data']['response'];
+                } elseif (isset($ftg_result['data']['data']) && is_array($ftg_result['data']['data'])) {
+                    $products = $ftg_result['data']['data'];
+                } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
+                    $products = $ftg_result['data'];
+                }
+                
+                error_log("Page $page returned " . count($products) . " products");
+                
+                // Search for product by SKU on this page
+                foreach ($products as $product) {
+                    $product_data = $product['productData'] ?? $product;
+                    $product_code = $product_data['productCode'] ?? '';
+                    $mdr_code = $product_data['mdrProductCode'] ?? '';
+                    $alt_code = $product_data['altProductCode'] ?? '';
+                    
+                    error_log("Checking product codes: productCode=$product_code, mdrProductCode=$mdr_code, altProductCode=$alt_code");
+                    
+                    // Check all possible code fields (case-insensitive)
+                    if (strcasecmp($product_code, $sku) === 0 || 
+                        strcasecmp($mdr_code, $sku) === 0 || 
+                        strcasecmp($alt_code, $sku) === 0) {
+                        error_log("✅ Found matching product: $sku");
+                        $found_product = $product;
+                        break 2; // Break out of both loops
+                    }
+                }
+                
+                // If no more products on this page, we've reached the end
+                if (empty($products) || count($products) < $per_page) {
+                    error_log("No more products - reached end of catalog on page $page");
                     break;
                 }
-            }
+                
+                $page++;
+            } while ($page <= $max_pages);
             
             if (!$found_product) {
-                error_log("Product not found in FTG: $sku");
+                error_log("❌ Product not found in FTG after searching all pages: $sku");
                 return array(
                     'success' => false,
-                    'message' => 'Product not found in FTG',
+                    'message' => 'Product not found in FTG. Please verify the SKU is correct.',
                 );
             }
+            
+            error_log("✅ Found product, creating/updating in WooCommerce");
             
             // Create or update WC product
             $result = $this->create_or_update_wc_product($found_product);
             
             if (!$result['success']) {
+                error_log("❌ Failed to create/update WooCommerce product: " . ($result['error'] ?? 'Unknown error'));
                 return array(
                     'success' => false,
                     'message' => $result['error'] ?? 'Failed to update product',
@@ -1383,17 +1573,19 @@ class Belims_FTG_Sync_Endpoint {
             $product_data = $found_product['productData'] ?? $found_product;
             $product_name = $product_data['description1'] ?? $product_data['description2'] ?? 'Product';
             
-            error_log("Successfully synced product: $sku - $product_name");
+            error_log("✅ Successfully synced product: $sku - $product_name");
             
             return array(
                 'success' => true,
                 'message' => 'Product synced successfully',
                 'product_name' => $product_name,
                 'sku' => $sku,
+                'updated_fields' => $result['updated_fields'] ?? array(),
+                'synced_data' => $result['synced_data'] ?? array(),
             );
             
         } catch (Exception $e) {
-            error_log("Exception while syncing product $sku: " . $e->getMessage());
+            error_log("❌ Exception while syncing product $sku: " . $e->getMessage());
             return array(
                 'success' => false,
                 'message' => 'Exception: ' . $e->getMessage(),

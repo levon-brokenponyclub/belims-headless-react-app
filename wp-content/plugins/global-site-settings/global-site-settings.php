@@ -893,6 +893,22 @@ function global_site_settings_main_page() {
                                 </button>
                                 <div id="ftg-sync-status" style="margin-top: 15px;"></div>
                             </div>
+
+                            <!-- Sync Specific Product by SKU -->
+                            <div id="ftg-sync-sku-section" style="margin-top: 30px; padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px;">
+                                <h4 style="margin-top: 0;">Sync Specific Product by SKU</h4>
+                                <p style="margin-top: 0; color: #666;">Enter a product SKU to sync just that product from FTG.</p>
+                                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                                    <div style="flex: 1; max-width: 250px;">
+                                        <label for="ftg-sku-input" style="display: block; margin-bottom: 5px; font-weight: 500;">Product SKU:</label>
+                                        <input type="text" id="ftg-sku-input" placeholder="e.g., ING-12345" class="regular-text" />
+                                    </div>
+                                    <button type="button" id="ftg-sync-single-btn" class="button button-primary">
+                                        ✅ Sync Product
+                                    </button>
+                                </div>
+                                <div id="ftg-sync-single-result" style="margin-top: 15px;"></div>
+                            </div>
                             
                             <style>
                             .ftg-progress-bar {
@@ -1287,6 +1303,93 @@ function global_site_settings_main_page() {
                                             status.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
                                         }
                                     });
+                                });
+                                
+                                // Sync single product by SKU
+                                $('#ftg-sync-single-btn').on('click', function() {
+                                    var sku = $('#ftg-sku-input').val().trim();
+                                    var btn = $(this);
+                                    var resultDiv = $('#ftg-sync-single-result');
+                                    
+                                    if (!sku) {
+                                        resultDiv.html('<div class="notice notice-error inline"><p>⚠️ Please enter a SKU</p></div>');
+                                        return;
+                                    }
+                                    
+                                    btn.prop('disabled', true).text('Syncing...');
+                                    resultDiv.html('<p>⏳ Syncing product: ' + sku + '...</p>');
+                                    
+                                    $.ajax({
+                                        url: '<?php echo rest_url('belims/v1/ftg/sync/product'); ?>',
+                                        method: 'POST',
+                                        contentType: 'application/json',
+                                        data: JSON.stringify({
+                                            sku: sku,
+                                            collection_token: '<?php echo esc_js($ftg_token); ?>'
+                                        }),
+                                        beforeSend: function(xhr) {
+                                            xhr.setRequestHeader('X-WP-Nonce', '<?php echo wp_create_nonce('wp_rest'); ?>');
+                                        },
+                                        success: function(response) {
+                                            btn.prop('disabled', false).text('✅ Sync Product');
+                                            
+                                            if (response.success) {
+                                                var html = '<div class="notice notice-success inline"><p>✅ ' + response.message + '</p>';
+                                                if (response.product_name) {
+                                                    html += '<p><strong>Product:</strong> ' + response.product_name + '</p>';
+                                                    html += '<p><strong>SKU:</strong> ' + response.sku + '</p>';
+                                                }
+                                                if (Array.isArray(response.updated_fields)) {
+                                                    var updatedText = response.updated_fields.length ? response.updated_fields.join(', ') : 'No changes detected';
+                                                    html += '<p><strong>Updated Fields:</strong> ' + updatedText + '</p>';
+                                                }
+                                                if (response.synced_data) {
+                                                    var d = response.synced_data;
+                                                    html += '<details style="margin-top: 10px;"><summary style="cursor: pointer; font-weight: 600;">View Synced Data</summary>';
+                                                    html += '<div style="margin-top: 8px;">';
+                                                    html += '<p><strong>Price:</strong> R' + (d.price_incl_vat || 0) + ' (incl VAT), R' + (d.price_excl_vat || 0) + ' (excl VAT)</p>';
+                                                    html += '<p><strong>Stock:</strong> ' + (d.stock ?? '-') + '</p>';
+                                                    if (d.weight && typeof d.weight.value !== 'undefined') {
+                                                        html += '<p><strong>Weight:</strong> ' + d.weight.value + ' ' + (d.weight.unit || 'kg') + '</p>';
+                                                    }
+                                                    if (d.dimensions) {
+                                                        html += '<p><strong>Dimensions:</strong> ' + (d.dimensions.length || '-') + ' x ' + (d.dimensions.width || '-') + ' x ' + (d.dimensions.height || '-') + ' ' + (d.dimensions.unit || 'cm') + '</p>';
+                                                    }
+                                                    html += '<p><strong>Brand:</strong> ' + (d.brand || '-') + '</p>';
+                                                    html += '<p><strong>Range:</strong> ' + (d.range || '-') + '</p>';
+                                                    html += '<p><strong>Color:</strong> ' + (d.color || '-') + '</p>';
+                                                    if (Array.isArray(d.categories) && d.categories.length) {
+                                                        html += '<p><strong>Categories:</strong> ' + d.categories.join(' > ') + '</p>';
+                                                    }
+                                                    if (d.short_description) {
+                                                        html += '<p><strong>Short Description:</strong> ' + d.short_description + '</p>';
+                                                    }
+                                                    if (d.description) {
+                                                        html += '<p><strong>Description:</strong> ' + d.description + '</p>';
+                                                    }
+                                                    html += '</div></details>';
+                                                }
+                                                html += '</div>';
+                                                resultDiv.html(html);
+                                                $('#ftg-sku-input').val('');
+                                            } else {
+                                                resultDiv.html('<div class="notice notice-error inline"><p>❌ ' + (response.message || 'Failed to sync product') + '</p></div>');
+                                            }
+                                        },
+                                        error: function(xhr) {
+                                            btn.prop('disabled', false).text('✅ Sync Product');
+                                            var errorMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Sync failed';
+                                            resultDiv.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
+                                        }
+                                    });
+                                });
+                                
+                                // Allow Enter key to trigger sync
+                                $('#ftg-sku-input').on('keypress', function(e) {
+                                    if (e.key === 'Enter' || e.keyCode === 13) {
+                                        e.preventDefault();
+                                        $('#ftg-sync-single-btn').click();
+                                    }
                                 });
                             });
                             </script>

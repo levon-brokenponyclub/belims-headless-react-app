@@ -65,12 +65,61 @@ function belims_ftg_sync_page() {
             </tr>
         </table>
 
+        <h2>Sync All Products</h2>
         <form method="post">
             <?php wp_nonce_field('belims_ftg_sync_action', 'belims_ftg_sync_nonce'); ?>
             <p>
                 <input type="submit" name="belims_ftg_sync_submit" id="belims_ftg_sync_submit" class="button button-primary" value="Test Sync - 10 Products">
             </p>
         </form>
+
+        <hr />
+
+        <h2>Sync Specific Product by SKU</h2>
+        <p>Enter a product SKU below to sync just that product from FTG.</p>
+        <div id="ftg-single-sync-container">
+            <table class="form-table">
+                <tr>
+                    <th scope="row">
+                        <label for="ftg-product-sku">Product SKU:</label>
+                    </th>
+                    <td>
+                        <input type="text" id="ftg-product-sku" name="sku" placeholder="e.g., ING-12345" style="width: 200px;" />
+                    </td>
+                </tr>
+            </table>
+            <p>
+                <button type="button" id="ftg-sync-single-btn" class="button button-primary">Sync Product</button>
+            </p>
+            <div id="ftg-single-sync-result" style="margin-top: 15px; display: none;"></div>
+        </div>
     </div>
     <?php
 }
+
+/**
+ * Enqueue JavaScript for single product sync
+ */
+function belims_ftg_sync_enqueue_scripts($hook_suffix) {
+    // Only load on the belims-site-settings admin page
+    if ($hook_suffix !== 'toplevel_page_belims-site-settings') {
+        return;
+    }
+
+    $script_url = GLOBAL_SITE_SETTINGS_PLUGIN_URL . 'includes/ftg-sync/js/ftg-sync-single.js';
+
+    wp_enqueue_script(
+        'belims-ftg-sync-single',
+        $script_url,
+        array('wp-api-fetch'),
+        '1.0',
+        true
+    );
+
+    // Pass REST endpoint data to JavaScript
+    wp_localize_script('belims-ftg-sync-single', 'belimsFTGSync', array(
+        'restEndpoint' => rest_url('belims/v1/ftg/sync/product'),
+        'nonce' => wp_create_nonce('wp_rest'),
+    ));
+}
+add_action('admin_enqueue_scripts', 'belims_ftg_sync_enqueue_scripts');
