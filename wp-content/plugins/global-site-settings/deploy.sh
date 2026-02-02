@@ -112,11 +112,13 @@ echo -e "${YELLOW}Creating remote directory and uploading plugin via tar+ssh...$
 
 # Stream a tarball over SSH and extract on the remote server. This avoids rsync and
 # will work on systems with older rsync versions. Excluded files remain excluded.
+# Use remote $HOME to ensure we don't try to create absolute /home entries.
+REMOTE_PATH_NO_TILDE="${REMOTE_PATH#~/}"
 tar -czf - -C "$SCRIPT_DIR" \
     --exclude='.DS_Store' \
     --exclude='*.zip' \
     --exclude='deploy.sh' \
-    . | ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_PATH && tar -xzf - -C $REMOTE_PATH"
+    . | ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "rm -rf \$HOME/$REMOTE_PATH_NO_TILDE && mkdir -p \$HOME/$REMOTE_PATH_NO_TILDE && tar -xzf - -C \$HOME/$REMOTE_PATH_NO_TILDE"
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Plugin uploaded successfully via tar+ssh${NC}\n"
