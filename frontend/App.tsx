@@ -15,23 +15,28 @@ import { CartDrawer } from "./components/CartDrawer";
 import { StoreLocator } from "./components/StoreLocator";
 import { PaintAssistant } from "./components/PaintAssistant";
 import { SingleProduct } from "./components/SingleProduct";
+import { MobileBottomNav } from "./components/MobileBottomNav";
 /* import { FreeShippingWidget } from "./components/FreeShippingWidget"; */
 import { OnboardingWizard } from "./components/OnboardingWizard";
 import { PriceMatchModal } from "./components/PriceMatchModal";
 import { ComparisonModal } from "./components/ComparisonModal";
+import { Footer } from "./components/Footer";
 import { Checkout } from "./components/Checkout";
 import { OrderConfirmation } from "./components/OrderConfirmation";
+import { AdminOrderPreview } from "./components/AdminOrderPreview";
+import { AdminAccountPreview } from "./components/AdminAccountPreview";
 import { Archive } from "./components/Archive";
 import { RecentlyViewed } from "./components/RecentlyViewed";
 import { ShopByCategory } from "./components/ShopByCategory";
 import { TrackOrderPage } from "./components/TrackOrderPage";
 import { BrandStrip } from "./components/BrandStrip";
 import { AuthPage } from "./components/AuthPage";
+import { AccountPage } from "./components/AccountPage";
 import { Toast } from "./components/Toast";
 import HeroBanner from "./components/HeroBanner";
 import { CountdownTimer } from "./components/CountdownTimer";
 import CollageGrid from "./components/CollageGrid";
-import { getCurrentUser, UserData } from "./services/authService";
+import { getCurrentUser, UserData, logoutUser } from "./services/authService";
 
 import { Product, CartItem, Store } from "./types";
 import {
@@ -406,18 +411,47 @@ const HomePage = ({
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <CountdownTimer
-                  targetDate={(() => {
-                    const now = new Date();
-                    const dayOfWeek = now.getDay();
-                    const daysUntilSunday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
-                    const sunday = new Date(now);
-                    sunday.setDate(now.getDate() + daysUntilSunday);
-                    sunday.setHours(23, 59, 59, 999);
-                    return sunday;
-                  })()}
-                  label="Week ends in"
-                />
+                {(() => {
+                  const now = new Date();
+                  const dayOfWeek = now.getDay();
+                  const daysUntilSunday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
+                  const sunday = new Date(now);
+                  sunday.setDate(now.getDate() + daysUntilSunday);
+                  sunday.setHours(23, 59, 59, 999);
+
+                  const timeRemaining = sunday.getTime() - now.getTime();
+                  const hoursRemaining = timeRemaining / (1000 * 60 * 60);
+
+                  const dayName = sunday.toLocaleDateString("en-US", {
+                    weekday: "long",
+                  });
+                  const date = sunday.toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "long",
+                  });
+
+                  if (hoursRemaining < 24) {
+                    return (
+                      <div className="flex flex-col items-end">
+                        <CountdownTimer targetDate={sunday} label="Ends" />
+                        <span className="text-xs text-gray-500 mt-1">
+                          {dayName}, {date}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex flex-col items-end">
+                      <span className="text-sm font-semibold text-gray-900">
+                        Deals End
+                      </span>
+                      <span className="text-xs text-gray-500 mt-1">
+                        {dayName}, {date}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <a
                   href="/deals/weekly"
                   className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block whitespace-nowrap"
@@ -1119,6 +1153,16 @@ export default function App() {
     setCurrentUser(user);
   };
 
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      setCurrentUser(null);
+      showToast("Successfully logged out", "success");
+    } catch (error) {
+      showToast("Error logging out", "error");
+    }
+  };
+
   return (
     <Router>
       <MainApp
@@ -1156,6 +1200,7 @@ export default function App() {
         toast={toast}
         setToast={setToast}
         handleLogin={handleLogin}
+        handleLogout={handleLogout}
       />
     </Router>
   );
@@ -1276,176 +1321,24 @@ function MainApp(props) {
           />
           <Route path="/track-order" element={<TrackOrderPage />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
+          <Route path="/admin/order-preview" element={<AdminOrderPreview />} />
+          <Route
+            path="/admin/account-preview"
+            element={<AdminAccountPreview />}
+          />
+          <Route
+            path="/account"
+            element={
+              <AccountPage
+                user={props.currentUser}
+                onLogout={props.handleLogout}
+              />
+            }
+          />
         </Routes>
       </main>
 
-      <footer className="bg-belims-blue border-t border-blue-900 py-12 text-sm pb-24">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-            {/* Shop Column */}
-            <div>
-              <h3 className="font-semibold text-white mb-4">Shop</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="/category/tools-machinery"
-                    className="text-white hover:text-white underline"
-                  >
-                    Tools & Machinery
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/category/paint"
-                    className="text-white hover:text-white underline"
-                  >
-                    Paint
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/category/building-materials"
-                    className="text-white hover:text-white underline"
-                  >
-                    Building Materials
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/category/plumbing"
-                    className="text-white hover:text-white underline"
-                  >
-                    Plumbing
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/deals"
-                    className="text-white hover:text-white underline"
-                  >
-                    Deals & Clearance
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Trade Column */}
-            <div>
-              <h3 className="font-semibold text-white mb-4">Trade</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="/trade-accounts"
-                    className="text-white hover:text-white underline"
-                  >
-                    Trade Accounts
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/bulk-orders"
-                    className="text-white hover:text-white underline"
-                  >
-                    Bulk Orders
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/delivery-areas"
-                    className="text-white hover:text-white underline"
-                  >
-                    Delivery Areas
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/returns-warranty"
-                    className="text-white hover:text-white underline"
-                  >
-                    Returns & Warranty
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Support Column */}
-            <div>
-              <h3 className="font-semibold text-white mb-4">Support</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="/contact"
-                    className="text-white hover:text-white underline"
-                  >
-                    Contact Us
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/help"
-                    className="text-white hover:text-white underline"
-                  >
-                    Help Centre
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/my-account"
-                    className="text-white hover:text-white underline"
-                  >
-                    My Account
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Belims Column */}
-            <div>
-              <h3 className="font-semibold text-white mb-4">Belims</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="/about"
-                    className="text-white hover:text-white underline"
-                  >
-                    About Belims
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/brands"
-                    className="text-white hover:text-white underline"
-                  >
-                    Brands
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/terms"
-                    className="text-white hover:text-white underline"
-                  >
-                    Terms & Conditions
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/privacy"
-                    className="text-white hover:text-white underline"
-                  >
-                    Privacy Policy
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Footer Bottom */}
-          <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/30 text-white">
-            <p>&copy; Belims Hardware</p>
-            <p>Trusted tools & materials for every build</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       {/* <FreeShippingWidget cartItems={props.cartItems} /> */}
 
@@ -1532,6 +1425,8 @@ function MainApp(props) {
           onClose={() => props.setToast(null)}
         />
       )}
+
+      <MobileBottomNav />
     </div>
   );
 }

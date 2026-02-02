@@ -4,6 +4,8 @@ interface CountdownTimerProps {
   targetDate: Date;
   label?: string;
   onComplete?: () => void;
+  variant?: "default" | "inverse" | "compact";
+  hideDays?: boolean;
 }
 
 interface TimeLeft {
@@ -17,7 +19,11 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
   targetDate,
   label = "Hurry up! Offer ends in",
   onComplete,
+  variant = "default",
+  hideDays = false,
 }) => {
+  const isInverse = variant === "inverse";
+
   const calculateTimeLeft = (): TimeLeft => {
     const difference = targetDate.getTime() - new Date().getTime();
 
@@ -59,44 +65,110 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
   };
 
   return (
-    <div className="inline-flex items-center gap-3 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
-      <div className="text-sm font-semibold text-gray-900 whitespace-nowrap">
-        {label}
-      </div>
+    <div
+      className={`inline-flex flex-col gap-2 rounded-lg px-4 py-3 ${
+        isInverse
+          ? "bg-white/10 border border-white/20 backdrop-blur-sm"
+          : "bg-yellow-50 border border-yellow-200"
+      }`}
+    >
+      {label && (
+        <div
+          className={`text-xs font-bold uppercase tracking-wider ${
+            isInverse ? "text-blue-200" : "text-gray-600"
+          }`}
+        >
+          {label}
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
-        <div className="flex flex-col items-center">
-          <span className="text-2xl font-bold text-gray-900">
-            {formatNumber(timeLeft.days)}
-          </span>
-          <span className="text-xs text-gray-600">Days</span>
-        </div>
+        {!hideDays && (
+          <>
+            <div className="flex flex-col items-center">
+              <span
+                className={`text-2xl font-bold ${
+                  isInverse ? "text-white" : "text-gray-900"
+                }`}
+              >
+                {formatNumber(timeLeft.days)}
+              </span>
+              <span
+                className={`text-xs ${isInverse ? "text-blue-200" : "text-gray-600"}`}
+              >
+                Days
+              </span>
+            </div>
 
-        <span className="text-2xl font-bold text-gray-400">:</span>
+            <span
+              className={`text-2xl font-bold ${
+                isInverse ? "text-white/40" : "text-gray-400"
+              }`}
+            >
+              :
+            </span>
+          </>
+        )}
 
         <div className="flex flex-col items-center">
-          <span className="text-2xl font-bold text-gray-900">
+          <span
+            className={`text-2xl font-bold ${
+              isInverse ? "text-white" : "text-gray-900"
+            }`}
+          >
             {formatNumber(timeLeft.hours)}
           </span>
-          <span className="text-xs text-gray-600">Hours</span>
+          <span
+            className={`text-xs ${isInverse ? "text-blue-200" : "text-gray-600"}`}
+          >
+            Hours
+          </span>
         </div>
 
-        <span className="text-2xl font-bold text-gray-400">:</span>
+        <span
+          className={`text-2xl font-bold ${
+            isInverse ? "text-white/40" : "text-gray-400"
+          }`}
+        >
+          :
+        </span>
 
         <div className="flex flex-col items-center">
-          <span className="text-2xl font-bold text-gray-900">
+          <span
+            className={`text-2xl font-bold ${
+              isInverse ? "text-white" : "text-gray-900"
+            }`}
+          >
             {formatNumber(timeLeft.minutes)}
           </span>
-          <span className="text-xs text-gray-600">Minutes</span>
+          <span
+            className={`text-xs ${isInverse ? "text-blue-200" : "text-gray-600"}`}
+          >
+            Minutes
+          </span>
         </div>
 
-        <span className="text-2xl font-bold text-gray-400">:</span>
+        <span
+          className={`text-2xl font-bold ${
+            isInverse ? "text-white/40" : "text-gray-400"
+          }`}
+        >
+          :
+        </span>
 
         <div className="flex flex-col items-center">
-          <span className="text-2xl font-bold text-gray-900">
+          <span
+            className={`text-2xl font-bold ${
+              isInverse ? "text-white" : "text-gray-900"
+            }`}
+          >
             {formatNumber(timeLeft.seconds)}
           </span>
-          <span className="text-xs text-gray-600">Seconds</span>
+          <span
+            className={`text-xs ${isInverse ? "text-blue-200" : "text-gray-600"}`}
+          >
+            Seconds
+          </span>
         </div>
       </div>
     </div>
