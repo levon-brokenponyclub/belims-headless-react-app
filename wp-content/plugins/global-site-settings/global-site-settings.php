@@ -15,7 +15,7 @@
 if (!defined('ABSPATH')) exit;
 
 define('GLOBAL_SITE_SETTINGS_VERSION', '2.1.2');
-define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-02-03 01:16:49');
+define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-02-03 01:21:53');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -695,6 +695,9 @@ function global_site_settings_main_page() {
                         <button type="button" id="ftg-brand-count" class="bpc-btn-secondary">
                             Check Ingco Count
                         </button>
+                        <button type="button" id="belims-clear-cache" class="bpc-btn-secondary">
+                            Clear Cache
+                        </button>
                     </p>
                     <div id="ftg-brand-count-status" style="margin-top: 10px;"></div>
 
@@ -719,6 +722,12 @@ function global_site_settings_main_page() {
                                     btn.prop('disabled', false).text('Check Ingco Count');
                                     status.text('Request failed: ' + err);
                                 });
+                        });
+
+                        $('#belims-clear-cache').on('click', function() {
+                            var cacheBuster = Math.floor(Math.random() * 1000000000);
+                            var url = 'https://cms.belims.co.za/wp-admin/index.php?no-cache=' + cacheBuster;
+                            window.open(url, '_blank');
                         });
                     });
                     </script>
