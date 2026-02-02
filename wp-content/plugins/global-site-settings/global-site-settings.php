@@ -3,7 +3,7 @@
  * Plugin Name: Global Site Settings
  * Plugin URI: https://belims.co.za
  * Description: Unified plugin for Belims site settings, ACF field groups, REST API endpoints, and third-party integrations (WooCommerce, FTG, BobGo, AI).
- * Version: 2.1.1
+ * Version: 2.1.2
  * Author: Belims Team & Co Pilot
  * Author URI: https://belims.co.za
  * Requires at least: 5.8
@@ -14,7 +14,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('GLOBAL_SITE_SETTINGS_VERSION', '2.1.1');
+define('GLOBAL_SITE_SETTINGS_VERSION', '2.1.2');
 define('GLOBAL_SITE_SETTINGS_COMMIT_HASH', '3b2c7b3');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
