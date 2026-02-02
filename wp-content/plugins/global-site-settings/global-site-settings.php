@@ -15,6 +15,7 @@
 if (!defined('ABSPATH')) exit;
 
 define('GLOBAL_SITE_SETTINGS_VERSION', '2.1.1');
+define('GLOBAL_SITE_SETTINGS_COMMIT_HASH', '3b2c7b3');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -2076,3 +2077,21 @@ function belims_add_ftg_sync_status_to_publish_box() {
     <?php
 }
 add_action('post_submitbox_misc_actions', 'belims_add_ftg_sync_status_to_publish_box');
+
+/**
+ * Output deployment commit hash to browser console for verification
+ * Helps identify if auto-deployment was successful or if cache issues exist
+ */
+function belims_output_deployment_info() {
+    $version = defined('GLOBAL_SITE_SETTINGS_VERSION') ? GLOBAL_SITE_SETTINGS_VERSION : 'unknown';
+    $commit = defined('GLOBAL_SITE_SETTINGS_COMMIT_HASH') ? GLOBAL_SITE_SETTINGS_COMMIT_HASH : 'unknown';
+    $output = sprintf('Global Site Settings v%s (commit: %s)', $version, $commit);
+    ?>
+    <script>
+        console.log('<?php echo esc_js($output); ?>');
+        console.log('Deployment verification: Global Site Settings plugin loaded successfully');
+    </script>
+    <?php
+}
+add_action('admin_footer', 'belims_output_deployment_info');
+add_action('wp_footer', 'belims_output_deployment_info');
