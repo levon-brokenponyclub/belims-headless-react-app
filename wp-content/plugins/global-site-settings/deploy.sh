@@ -13,7 +13,9 @@
 SSH_USER="master_ggrkakuzjf"
 SSH_HOST="209.38.84.64"
 SSH_PORT="22"
-REMOTE_PATH="/home/master_ggrkakuzjf/applications/uhkkwupuum/public_html/wp-content/plugins/global-site-settings"
+# Use a home-relative path so the remote user's shell can create dirs without needing
+# permissions to create absolute /home entries. This will expand to the user's home.
+REMOTE_PATH="~/applications/uhkkwupuum/public_html/wp-content/plugins/global-site-settings"
 
 # Local paths
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -114,7 +116,7 @@ tar -czf - -C "$SCRIPT_DIR" \
     --exclude='.DS_Store' \
     --exclude='*.zip' \
     --exclude='deploy.sh' \
-    . | ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$REMOTE_PATH' && tar -xzf - -C '$REMOTE_PATH'"
+    . | ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_PATH && tar -xzf - -C $REMOTE_PATH"
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Plugin uploaded successfully via tar+ssh${NC}\n"
