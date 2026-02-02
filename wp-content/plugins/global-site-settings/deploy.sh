@@ -116,9 +116,10 @@ echo -e "${YELLOW}Creating remote directory and uploading plugin via tar+ssh...$
 REMOTE_PATH_NO_TILDE="${REMOTE_PATH#~/}"
 tar -czf - -C "$SCRIPT_DIR" \
     --exclude='.DS_Store' \
+    --exclude='._*' \
     --exclude='*.zip' \
     --exclude='deploy.sh' \
-    . | ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "rm -rf \$HOME/$REMOTE_PATH_NO_TILDE && mkdir -p \$HOME/$REMOTE_PATH_NO_TILDE && tar -xzf - -C \$HOME/$REMOTE_PATH_NO_TILDE"
+    . | ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p \$HOME/$REMOTE_PATH_NO_TILDE && tar --no-same-owner --no-same-permissions --overwrite -xzf - -C \$HOME/$REMOTE_PATH_NO_TILDE"
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Plugin uploaded successfully via tar+ssh${NC}\n"
