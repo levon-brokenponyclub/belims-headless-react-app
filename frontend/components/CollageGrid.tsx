@@ -5,31 +5,31 @@ const categories = [
     title: "Power Tools",
     count: "1,240 Pieces",
     image:
-      "/dist/images/development/man-portrait-tools-with-arms-crossed-home-development-construction-renovation-workshop-carpenter-male-employee-contractor-maintenance-drill-repair-work-diy.webp",
+      "/images/development/man-portrait-tools-with-arms-crossed-home-development-construction-renovation-workshop-carpenter-male-employee-contractor-maintenance-drill-repair-work-diy.webp",
   },
   {
     title: "Hand Tools",
     count: "850 Pieces",
     image:
-      "/dist/images/development/midsection-worker-using-circular-saw-workshop.webp",
+      "/images/development/midsection-worker-using-circular-saw-workshop.webp",
   },
   {
     title: "Safety Equipment",
     count: "420 Pieces",
     image:
-      "/dist/images/development/18920_d0e420f0-fd13-40c8-b17d-c5423b3805ac.webp",
+      "/images/development/18920_d0e420f0-fd13-40c8-b17d-c5423b3805ac.webp",
   },
   {
     title: "Plumbing",
     count: "680 Pieces",
     image:
-      "/dist/images/development/2147944853_7e958e74-e33b-4336-9aa0-ecfb13fb48bf.webp",
+      "/images/development/2147944853_7e958e74-e33b-4336-9aa0-ecfb13fb48bf.webp",
   },
   {
     title: "Electrical",
     count: "540 Pieces",
     image:
-      "/dist/images/development/2149451030_1163c5d2-c3df-428e-b198-96c8af43ee3a.webp",
+      "/images/development/2149451030_1163c5d2-c3df-428e-b198-96c8af43ee3a.webp",
   },
 ];
 
