@@ -33,6 +33,14 @@ import { BrandStrip } from "./components/BrandStrip";
 import { AuthPage } from "./components/AuthPage";
 import { AccountPage } from "./components/AccountPage";
 import { Toast } from "./components/Toast";
+import {
+  Skeleton,
+  SkeletonLine,
+  SkeletonImage,
+  SkeletonProductCard,
+  SkeletonDealCard,
+  SkeletonDealCardHorizontal,
+} from "./components/Skeleton";
 import HeroBanner from "./components/HeroBanner";
 import { CountdownTimer } from "./components/CountdownTimer";
 import CollageGrid from "./components/CollageGrid";
@@ -67,6 +75,7 @@ import {
 
 const ProductPage = ({
   products,
+  isLoadingProducts,
   addToCart,
   onBuyNow,
   onCompare,
@@ -78,9 +87,32 @@ const ProductPage = ({
   const navigate = useNavigate();
   const product = products.find((p) => String(p.id) === id);
 
-  if (!product && products.length > 0)
+  if (!product && !isLoadingProducts && products.length > 0)
     return <div className="p-10 text-center">Product not found</div>;
-  if (!product) return <div className="p-10 text-center">Loading...</div>;
+  if (!product && !isLoadingProducts)
+    return <div className="p-10 text-center">Product not found</div>;
+  if (!product)
+    return (
+      <div className="container mx-auto px-4 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8">
+          <div className="space-y-4">
+            <SkeletonImage height="420px" />
+            <div className="grid grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={`thumb-skel-${index}`} height="80px" />
+              ))}
+            </div>
+          </div>
+          <div className="space-y-5">
+            <Skeleton height="1.75rem" width="80%" />
+            <Skeleton height="1rem" width="40%" />
+            <Skeleton height="2rem" width="55%" />
+            <SkeletonLine count={3} height="0.9rem" />
+            <Skeleton height="2.75rem" borderRadius="0.5rem" />
+          </div>
+        </div>
+      </div>
+    );
 
   return (
     <SingleProduct
@@ -101,6 +133,7 @@ const ProductPage = ({
 
 const ArchivePage = ({
   products,
+  isLoadingProducts,
   addToCart,
   onBuyNow,
   onCompare,
@@ -120,6 +153,7 @@ const ArchivePage = ({
   return (
     <Archive
       products={products}
+      isLoadingProducts={isLoadingProducts}
       category={categoryLabel}
       brand={brand}
       searchQuery={searchQuery}
@@ -143,6 +177,7 @@ type DealFilter =
 const HomePage = ({
   products,
   featuredProducts,
+  isLoadingProducts,
   addToCart,
   handleBuyNow,
   handleProductClick,
@@ -154,6 +189,7 @@ const HomePage = ({
   const navigate = useNavigate();
   const [activeDealFilter, setActiveDealFilter] = useState<DealFilter>("all");
   const isTradeLoggedIn = !!isTradeApproved;
+  const showDealSkeletons = isLoadingProducts;
 
   // Filter products for Deals of the Day
   const dealsOfTheDay = useMemo(() => {
@@ -236,6 +272,7 @@ const HomePage = ({
 
       <ShopByCategory
         products={products}
+        isLoadingProducts={isLoadingProducts}
         addToCart={addToCart}
         onBuyNow={handleBuyNow}
         onCompare={addToCompare}
@@ -321,7 +358,13 @@ const HomePage = ({
                     View all →
                   </a>
                 </div>
-                {dealsOfTheDay.length > 0 ? (
+                {showDealSkeletons ? (
+                  <div className="flex-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+                    {Array.from({ length: 2 }).map((_, index) => (
+                      <SkeletonDealCard key={`deal-day-skel-${index}`} />
+                    ))}
+                  </div>
+                ) : dealsOfTheDay.length > 0 ? (
                   <div className="flex-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
                     {dealsOfTheDay.slice(0, 2).map((product) => (
                       <ProductCard
@@ -357,7 +400,18 @@ const HomePage = ({
                     View all →
                   </a>
                 </div>
-                {tradeSpecials.length > 0 ? (
+                {showDealSkeletons ? (
+                  <div className="flex-1 flex flex-col divide-y divide-[#E0E0E0]">
+                    {Array.from({ length: 2 }).map((_, index) => (
+                      <div
+                        key={`trade-skel-${index}`}
+                        className="flex-1 flex flex-col justify-center py-4 first:pt-0 last:pb-0"
+                      >
+                        <SkeletonDealCardHorizontal />
+                      </div>
+                    ))}
+                  </div>
+                ) : tradeSpecials.length > 0 ? (
                   <div className="flex-1 flex flex-col divide-y divide-[#E0E0E0]">
                     {tradeSpecials.slice(0, 2).map((product) => (
                       <div
@@ -397,7 +451,13 @@ const HomePage = ({
                     View all →
                   </a>
                 </div>
-                {weeklyDeals.length > 0 ? (
+                {showDealSkeletons ? (
+                  <div className="flex-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+                    {Array.from({ length: 2 }).map((_, index) => (
+                      <SkeletonDealCard key={`weekly-skel-${index}`} />
+                    ))}
+                  </div>
+                ) : weeklyDeals.length > 0 ? (
                   <div className="flex-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
                     {weeklyDeals.slice(0, 2).map((product) => (
                       <ProductCard
@@ -446,7 +506,15 @@ const HomePage = ({
               </a>
             </div>
 
-            {featuredDeals.length > 0 ? (
+            {isLoadingProducts ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={`featured-skel-${index}`}>
+                    <SkeletonProductCard className="rounded border border-[#E0E0E0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.06)]" />
+                  </div>
+                ))}
+              </div>
+            ) : featuredDeals.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {featuredDeals.map((product) => (
                   <ProductCard
@@ -1145,6 +1213,7 @@ const HomePage = ({
 export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
@@ -1201,6 +1270,7 @@ export default function App() {
 
   useEffect(() => {
     const loadProducts = async () => {
+      setIsLoadingProducts(true);
       try {
         const apiProducts = await fetchProducts();
         if (apiProducts?.length) setProducts(apiProducts);
@@ -1209,6 +1279,8 @@ export default function App() {
         if (apiFeatured?.length) setFeaturedProducts(apiFeatured);
       } catch (error) {
         console.error("Failed to load products:", error);
+      } finally {
+        setIsLoadingProducts(false);
       }
     };
     loadProducts();
@@ -1292,6 +1364,7 @@ export default function App() {
       <MainApp
         products={products}
         featuredProducts={featuredProducts}
+        isLoadingProducts={isLoadingProducts}
         cartItems={cartItems}
         isCartOpen={isCartOpen}
         setIsCartOpen={setIsCartOpen}
@@ -1379,6 +1452,7 @@ function MainApp(props) {
             element={
               <ProductPage
                 products={props.products}
+                isLoadingProducts={props.isLoadingProducts}
                 addToCart={props.addToCart}
                 onBuyNow={props.handleBuyNow}
                 onCompare={props.addToCompare}
@@ -1393,6 +1467,7 @@ function MainApp(props) {
             element={
               <ArchivePage
                 products={props.products}
+                isLoadingProducts={props.isLoadingProducts}
                 addToCart={props.addToCart}
                 onBuyNow={props.handleBuyNow}
                 onCompare={props.addToCompare}
@@ -1406,6 +1481,7 @@ function MainApp(props) {
             element={
               <ArchivePage
                 products={props.products}
+                isLoadingProducts={props.isLoadingProducts}
                 addToCart={props.addToCart}
                 onBuyNow={props.handleBuyNow}
                 onCompare={props.addToCompare}

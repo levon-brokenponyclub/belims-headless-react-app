@@ -5,9 +5,11 @@ import { ProductCard } from "./ProductCard";
 import { ArrowRight } from "lucide-react";
 import { CATEGORY_SLIDER_DATA } from "../constants";
 import { getApiBaseUrl } from "../services/wooCommerceService";
+import { SkeletonProductCard } from "./Skeleton";
 
 interface ShopByCategoryProps {
   products: Product[];
+  isLoadingProducts?: boolean;
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
   onCompare: (product: Product) => void;
@@ -25,6 +27,7 @@ interface Category {
 
 export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
   products,
+  isLoadingProducts = false,
   addToCart,
   onBuyNow,
   onCompare,
@@ -130,6 +133,8 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
     })
     .slice(0, 10);
 
+  const showSkeletons = isLoadingProducts;
+
   // Debug: log when filtering and when no products found
   console.log(
     `Filtering for category: "${activeCategory}", found: ${categoryProducts.length} products`,
@@ -210,22 +215,28 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
 
           {/* Right: Product Slider */}
           <div className="flex-1 overflow-x-auto no-scrollbar flex gap-4 items-stretch">
-            {categoryProducts.map((product) => (
-              <div
-                key={product.id}
-                className="flex-shrink-0"
-                onClick={() => navigate(`/product/${product.id}`)}
-              >
-                <ProductCard
-                  product={product}
-                  addToCart={addToCart}
-                  onBuyNow={onBuyNow}
-                  onCompare={onCompare}
-                  isAuthenticated={isAuthenticated}
-                  isTradeApproved={isTradeApproved}
-                />
-              </div>
-            ))}
+            {showSkeletons
+              ? Array.from({ length: 5 }).map((_, index) => (
+                  <div key={`shop-skel-${index}`} className="flex-shrink-0">
+                    <SkeletonProductCard className="w-[310px]" />
+                  </div>
+                ))
+              : categoryProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    className="flex-shrink-0"
+                    onClick={() => navigate(`/product/${product.id}`)}
+                  >
+                    <ProductCard
+                      product={product}
+                      addToCart={addToCart}
+                      onBuyNow={onBuyNow}
+                      onCompare={onCompare}
+                      isAuthenticated={isAuthenticated}
+                      isTradeApproved={isTradeApproved}
+                    />
+                  </div>
+                ))}
           </div>
           {/* {categoryProducts.length === 0 && (
               <p className="text-gray-500">No products found in this category.</p>

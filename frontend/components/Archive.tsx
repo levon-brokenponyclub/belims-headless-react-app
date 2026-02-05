@@ -4,6 +4,7 @@ import { ProductCard } from "./ProductCard";
 import { Filter, ChevronDown, ChevronRight, Search, X } from "lucide-react";
 import { CATEGORY_TREE } from "../categoryTree";
 import { getApiBaseUrl } from "../services/wooCommerceService";
+import { SkeletonProductCard } from "./Skeleton";
 
 interface FilterOption {
   id: number;
@@ -14,6 +15,7 @@ interface FilterOption {
 
 interface ArchiveProps {
   products: Product[];
+  isLoadingProducts?: boolean;
   category?: string; // The selected category slug or name
   brand?: string; // The selected brand
   searchQuery?: string;
@@ -26,6 +28,7 @@ interface ArchiveProps {
 
 export const Archive: React.FC<ArchiveProps> = ({
   products,
+  isLoadingProducts = false,
   category,
   brand,
   searchQuery,
@@ -40,6 +43,7 @@ export const Archive: React.FC<ArchiveProps> = ({
   >("featured");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const showSkeletons = isLoadingProducts;
 
   // Additional local filters
   const [filterInStock, setFilterInStock] = useState(false);
@@ -581,7 +585,15 @@ export const Archive: React.FC<ArchiveProps> = ({
             </div>
 
             {/* Grid */}
-            {filteredProducts.length > 0 ? (
+            {showSkeletons ? (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <li key={`archive-skel-${index}`} className="grid__item">
+                    <SkeletonProductCard className="rounded border border-[#E0E0E0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.06)]" />
+                  </li>
+                ))}
+              </ul>
+            ) : filteredProducts.length > 0 ? (
               <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredProducts.map((product) => (
                   <li key={product.id} className="grid__item">

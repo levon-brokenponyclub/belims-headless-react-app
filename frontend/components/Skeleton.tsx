@@ -99,3 +99,49 @@ export const SkeletonProductCard: React.FC<SkeletonProductCardProps> = ({
     </div>
   );
 };
+
+interface SkeletonDealCardProps {
+  className?: string;
+}
+
+export const SkeletonDealCard: React.FC<SkeletonDealCardProps> = ({
+  className = "",
+}) => {
+  return (
+    <div className={`flex flex-col ${className}`}>
+      <Skeleton height="140px" borderRadius="0.5rem" />
+      <div className="mt-3 space-y-2">
+        <Skeleton height="0.75rem" width="90%" />
+        <Skeleton height="0.75rem" width="70%" />
+      </div>
+      <div className="mt-3">
+        <Skeleton height="1rem" width="45%" />
+      </div>
+      <div className="mt-4">
+        <Skeleton height="2.25rem" borderRadius="0.5rem" />
+      </div>
+    </div>
+  );
+};
+
+export const SkeletonDealCardHorizontal: React.FC<SkeletonDealCardProps> = ({
+  className = "",
+}) => {
+  return (
+    <div className={`flex gap-4 ${className}`}>
+      <Skeleton height="120px" width="33%" borderRadius="0.5rem" />
+      <div className="flex-1">
+        <Skeleton height="0.8rem" width="80%" />
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+          <Skeleton height="0.65rem" width="70%" />
+          <Skeleton height="0.65rem" width="70%" />
+          <Skeleton height="1rem" width="85%" />
+          <Skeleton height="1rem" width="85%" />
+        </div>
+        <div className="mt-4">
+          <Skeleton height="2.25rem" borderRadius="0.5rem" />
+        </div>
+      </div>
+    </div>
+  );
+};
