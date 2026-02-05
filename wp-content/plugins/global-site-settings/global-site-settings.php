@@ -15,7 +15,7 @@
 if (!defined('ABSPATH')) exit;
 
 define('GLOBAL_SITE_SETTINGS_VERSION', '2.1.2');
-define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-02-03 01:21:53');
+define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-02-05 23:53:56');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -471,6 +471,14 @@ function global_site_settings_enqueue_admin_assets($hook) {
         GLOBAL_SITE_SETTINGS_VERSION
     );
 
+    // Enqueue dashboard admin CSS (new modular styles)
+    /* wp_enqueue_style(
+        'global-site-settings-dashboard-admin',
+        GLOBAL_SITE_SETTINGS_PLUGIN_URL . 'assets/css/dashboard-admin.css',
+        array(),
+        GLOBAL_SITE_SETTINGS_VERSION
+    ); */
+
     // Enqueue admin JS (merged from admin.js and admin-tabs.js)
     wp_enqueue_script(
         'global-site-settings-admin',
@@ -524,62 +532,58 @@ function global_site_settings_main_page() {
     // Integration statuses for dashboard summary
     $ftg_enabled = (bool) get_field('ftg_enabled', 'option');
     $bobgo_enabled = !empty(get_option('bobgo_api_token', ''));
+    
+    // Load new dashboard template
+    /* $dashboard_template = GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/dashboard-template.php';
+    if (file_exists($dashboard_template)) {
+        include $dashboard_template;
+        return;
+    } */
     ?>
     <div id="bpc-admin-root">
         <!-- Sidebar Navigation -->
         <div class="bpc-admin-sidebar">
             <div class="bpc-admin-logo">
                 <h2>
-                    <span class="dashicons dashicons-admin-settings" style="font-size: 24px;"></span>
-                    Site Settings
+                    Settings  
                 </h2>
             </div>
             <nav class="bpc-admin-nav">
                 <div class="bpc-nav-group-title">Overview</div>
                 <a class="bpc-nav-item" data-tab="dashboard">
-                    <span class="dashicons dashicons-dashboard"></span>
                     Dashboard
                 </a>
                 
                 <div class="bpc-nav-group-title">Settings</div>
                 <a class="bpc-nav-item" data-tab="branding">
-                    <span class="dashicons dashicons-art"></span>
                     Branding
                 </a>
                 <a class="bpc-nav-item" data-tab="ecommerce">
-                    <span class="dashicons dashicons-store"></span>
                     Ecommerce
                 </a>
                 
                 <div class="bpc-nav-group-title">Integrations</div>
                 <a class="bpc-nav-item" data-tab="ftg-sync">
-                    <span class="dashicons dashicons-update"></span>
                     FTG Sync
                 </a>
-                <a class="bpc-nav-item" data-tab="cors-security">
-                    <span class="dashicons dashicons-shield"></span>
+                <a class="bpc-nav-item" data-tab="cors-security"> 
                     CORS & Security
                 </a>
                 <a class="bpc-nav-item" data-tab="woocommerce">
-                    <span class="dashicons dashicons-cart"></span>
                     WooCommerce
                 </a>
                 <a class="bpc-nav-item" data-tab="bobgo-shipping">
-                    <span class="dashicons dashicons-location"></span>
                     BobGo Shipping
                 </a>
                 <a class="bpc-nav-item" data-tab="payment-gateways">
-                    <span class="dashicons dashicons-money-alt"></span>
                     Payment Gateways
                 </a>
                 <a class="bpc-nav-item" data-tab="ai-services">
-                    <span class="dashicons dashicons-superhero"></span>
                     AI Services
                 </a>
                 
                 <div class="bpc-nav-group-title">Tools</div>
                 <a class="bpc-nav-item" data-tab="payfast-testing">
-                    <span class="dashicons dashicons-admin-tools"></span>
                     PayFast Testing
                 </a>
             </nav>
@@ -593,32 +597,10 @@ function global_site_settings_main_page() {
         <div class="bpc-admin-content">
             <!-- Dashboard Tab -->
             <div id="tab-dashboard" class="bpc-tab-content">
-                <div class="bpc-card">
+                
                     <div class="bpc-card-header">
-                        <h2 class="bpc-card-title">Welcome to Site Settings</h2>
-                        <p class="bpc-card-description">Overview of your headless CMS status and content.</p>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                        <div class="bpc-stat-card">
-                            <div class="bpc-stat-icon">
-                                <span class="dashicons dashicons-rest-api"></span>
-                            </div>
-                            <div>
-                                <div style="font-size: 14px; color: var(--bpc-text-muted); margin-bottom: 4px;">REST API</div>
-                                <div style="font-size: 18px; font-weight: 600; color: #10b981;">Active & Healthy</div>
-                            </div>
-                        </div>
-                        
-                        <div class="bpc-stat-card">
-                            <div class="bpc-stat-icon">
-                                <span class="dashicons dashicons-admin-settings"></span>
-                            </div>
-                            <div>
-                                <div style="font-size: 14px; color: var(--bpc-text-muted); margin-bottom: 4px;">CMS Mode</div>
-                                <div style="font-size: 18px; font-weight: 600;">Headless Optimized</div>
-                            </div>
-                        </div>
+                        <h2 class="bpc-card-title">Belims Hardware</h2>
+                        <p class="bpc-card-description">Site content & API management</p>
                     </div>
                     
                     <style>
@@ -668,7 +650,7 @@ function global_site_settings_main_page() {
                     <h3>Integration Status</h3>
                     <div class="bpc-status-list">
                         <div class="bpc-status-row">
-                            <span class="bpc-status-title">Find The Gap Integration</span>
+                            <span class="bpc-status-title">Find The Gap</span>
                             <span class="bpc-status-pill <?php echo $ftg_enabled ? 'enabled' : 'disabled'; ?>">
                                 <?php echo $ftg_enabled ? 'Enabled' : 'Disabled'; ?>
                             </span>
@@ -679,6 +661,55 @@ function global_site_settings_main_page() {
                                 <?php echo $bobgo_enabled ? 'Enabled' : 'Disabled'; ?>
                             </span>
                         </div>
+                    </div>
+                    
+                    
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                        
+                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; display: grid; gap: 16px;">
+                            <div>
+                                <h4>White Label</h4>
+                                <p>White label & rebrand the WordPress admin area with the White Label module.</p> 
+                            </div>
+                            <div class="feature-status">
+                                <div class="status">
+                                    <span>Status: </span>
+                                    <span class="status-code" data-active-text="Active" data-inactive-text="Inactive">
+                                    <span class="active">Active</span>								</span>
+                                </div>
+                                <div class="status-switch">
+                                    <label for="udb_is_active_white_label" class="toggle-switch">
+                                        <input type="checkbox" name="white_label" id="udb_is_active_white_label" checked="checked">
+                                        <div class="switch-track">
+                                            <div class="switch-thumb"></div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>  
+
+                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; display: grid; gap: 16px;">
+                            <div>
+                                <h4>White Label</h4>
+                                <p>White label & rebrand the WordPress admin area with the White Label module.</p> 
+                            </div>
+                            <div class="feature-status">
+                                <div class="status">
+                                    <span>Status: </span>
+                                    <span class="status-code" data-active-text="Active" data-inactive-text="Inactive">
+                                    <span class="active">Active</span>								</span>
+                                </div>
+                                <div class="status-switch">
+                                    <label for="udb_is_active_white_label" class="toggle-switch">
+                                        <input type="checkbox" name="white_label" id="udb_is_active_white_label" checked="checked">
+                                        <div class="switch-track">
+                                            <div class="switch-thumb"></div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>  
                     </div>
                     
                     <h3>Quick Actions</h3>
@@ -731,7 +762,7 @@ function global_site_settings_main_page() {
                         });
                     });
                     </script>
-                </div>
+                
             </div>
 
             <!-- FTG Sync Tab -->
@@ -1644,7 +1675,207 @@ function global_site_settings_main_page() {
 
             <!-- WooCommerce Tab -->
             <div id="tab-woocommerce" class="bpc-tab-content">
+                <!-- Product Import Section -->
                 <div class="bpc-card">
+                    <div class="bpc-card-header">
+                        <h2 class="bpc-card-title">🔄 Product Description Import</h2>
+                        <p class="bpc-card-description">Update/add product descriptions from a CSV file by SKU.</p>
+                    </div>
+
+                    <?php
+                    // Handle product import
+                    if (isset($_POST['import_products']) && check_admin_referer('import_products_action', 'import_nonce')) {
+                        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+                            echo '<div class="notice notice-error inline" style="margin-bottom: 20px;"><p>❌ Error: Please select a valid CSV file.</p></div>';
+                        } else {
+                            $csv_file = $_FILES['csv_file']['tmp_name'];
+                            
+                            if (!is_readable($csv_file)) {
+                                echo '<div class="notice notice-error inline" style="margin-bottom: 20px;"><p>❌ Error: Cannot read CSV file.</p></div>';
+                            } else {
+                                $handle = fopen($csv_file, 'r');
+                                $header = fgetcsv($handle); // Skip header
+                                
+                                $updated = 0;
+                                $created = 0;
+                                $failed = 0;
+                                
+                                while (($row = fgetcsv($handle)) !== false) {
+                                    $sku = trim($row[0] ?? '');
+                                    $title = trim($row[1] ?? '');
+                                    $description = trim($row[3] ?? '');
+                                    
+                                    if (empty($sku) || empty($description)) {
+                                        $failed++;
+                                        continue;
+                                    }
+                                    
+                                    $product_id = wc_get_product_id_by_sku($sku);
+                                    
+                                    if ($product_id) {
+                                        $product = wc_get_product($product_id);
+                                        $product->set_description($description);
+                                        $product->save();
+                                        $updated++;
+                                    } else {
+                                        $product = new WC_Product_Simple();
+                                        $product->set_sku($sku);
+                                        $product->set_name($title);
+                                        $product->set_description($description);
+                                        $product->set_status('draft');
+                                        $product->save();
+                                        $created++;
+                                    }
+                                }
+                                
+                                fclose($handle);
+                                
+                                echo '<div class="notice notice-success inline" style="margin-bottom: 20px;">';
+                                echo '<p>✅ Import Complete!</p>';
+                                echo '<ul style="margin: 10px 0; padding-left: 20px;">';
+                                echo '<li>✏️ Updated: <strong>' . $updated . '</strong> products</li>';
+                                echo '<li>➕ Created: <strong>' . $created . '</strong> products (as draft)</li>';
+                                echo '<li>⏭️  Skipped: <strong>' . $failed . '</strong> rows</li>';
+                                echo '</ul>';
+                                echo '</div>';
+                            }
+                        }
+                    }
+                    ?>
+
+                    <form method="post" action="" enctype="multipart/form-data" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <?php wp_nonce_field('import_products_action', 'import_nonce'); ?>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label for="csv_file" style="display: block; margin-bottom: 8px; font-weight: 500;">
+                                📁 Select CSV File:
+                            </label>
+                            <input type="file" name="csv_file" id="csv_file" accept=".csv" required style="display: block; margin-bottom: 10px;">
+                            <p style="color: #64748b; font-size: 13px; margin: 10px 0;">
+                                <strong>Required columns:</strong> SKU, Title, URL, Description, Status<br>
+                                <strong>Example:</strong> <code>CGGLI2001, 20V Lithium-Ion Glue Gun, https://..., Model: CGGLI2001..., SUCCESS</code>
+                            </p>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="submit" name="import_products" class="bpc-btn-primary" value="🚀 Import Products" />
+                            <span style="color: #64748b; font-size: 13px;">
+                                Existing products updated, new products created as draft for review
+                            </span>
+                        </div>
+                    </form>
+
+                    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px 20px; border-radius: 6px; margin-top: 20px;">
+                        <p style="margin: 0; color: #1e40af; font-size: 13px;">
+                            <strong>ℹ️ How it works:</strong><br>
+                            1. Prepare CSV with columns: SKU, Title, URL, Description, Status<br>
+                            2. Upload the file above<br>
+                            3. Existing products are updated by SKU<br>
+                            4. New products are created as drafts (review in Products page before publishing)
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Product Export Section -->
+                <div class="bpc-card">
+                    <div class="bpc-card-header">
+                        <h2 class="bpc-card-title">📥 Export Products to CSV</h2>
+                        <p class="bpc-card-description">Export all WooCommerce products with descriptions to CSV format.</p>
+                    </div>
+
+                    <?php
+                    // Handle product export
+                    if (isset($_POST['export_products']) && check_admin_referer('export_products_action', 'export_nonce')) {
+                        // Get all products
+                        $products = wc_get_products([
+                            'limit' => -1,
+                            'status' => ['publish', 'draft'],
+                        ]);
+                        
+                        if (empty($products)) {
+                            echo '<div class="notice notice-warning inline" style="margin-bottom: 20px;"><p>⚠️ No products found to export.</p></div>';
+                        } else {
+                            // Generate CSV
+                            ob_start();
+                            $csv = fopen('php://output', 'w');
+                            
+                            // Write header
+                            fputcsv($csv, ['SKU', 'Title', 'URL', 'Description', 'Price', 'Status']);
+                            
+                            // Write product rows
+                            foreach ($products as $product) {
+                                fputcsv($csv, [
+                                    $product->get_sku(),
+                                    $product->get_name(),
+                                    get_permalink($product->get_id()),
+                                    $product->get_description(),
+                                    $product->get_price(),
+                                    $product->get_status(),
+                                ]);
+                            }
+                            
+                            fclose($csv);
+                            $csv_content = ob_get_clean();
+                            
+                            // Download file
+                            header('Content-Type: text/csv; charset=utf-8');
+                            header('Content-Disposition: attachment; filename="WooCommerce_Products_' . date('Y-m-d_H-i-s') . '.csv"');
+                            echo $csv_content;
+                            exit;
+                        }
+                    }
+                    ?>
+
+                    <form method="post" action="" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <?php wp_nonce_field('export_products_action', 'export_nonce'); ?>
+                        
+                        <p style="color: #64748b; font-size: 13px; margin-bottom: 15px;">
+                            Click the button below to export all products (published and draft) with their SKU, title, URL, description, price, and status.
+                        </p>
+
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button type="button" id="export-products-btn" class="bpc-btn-primary" style="cursor: pointer;">
+                                📥 Export to CSV
+                            </button>
+                            <span style="color: #64748b; font-size: 13px;">
+                                File will include all product information with descriptions
+                            </span>
+                        </div>
+                    </form>
+
+                    <script>
+                    jQuery(document).ready(function($) {
+                        $('#export-products-btn').on('click', function(e) {
+                            e.preventDefault();
+                            var btn = $(this);
+                            var originalText = btn.html();
+                            
+                            btn.prop('disabled', true).html('⏳ Exporting...');
+                            
+                            // Download CSV via AJAX
+                            window.location.href = '<?php echo admin_url('admin-ajax.php?action=export_woocommerce_products'); ?>';
+                            
+                            setTimeout(function() {
+                                btn.prop('disabled', false).html(originalText);
+                            }, 2000);
+                        });
+                    });
+                    </script>
+
+                    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px 20px; border-radius: 6px; margin-top: 20px;">
+                        <p style="margin: 0; color: #1e40af; font-size: 13px;">
+                            <strong>ℹ️ Export Details:</strong><br>
+                            ✓ Includes all product SKUs and titles<br>
+                            ✓ Exports full product descriptions<br>
+                            ✓ Includes product URLs<br>
+                            ✓ Captures current pricing<br>
+                            ✓ Shows publication status<br>
+                            ✓ File named: WooCommerce_Products_YYYY-MM-DD_HH-MM-SS.csv
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bpc-card" style="margin-top: 30px;">
                     <div class="bpc-card-header">
                         <h2 class="bpc-card-title">WooCommerce Integration</h2>
                         <p class="bpc-card-description">REST API endpoints and WooCommerce settings.</p>
@@ -1880,6 +2111,64 @@ function global_site_settings_main_page() {
 }
 
 /**
+ * AJAX handler for product export
+ */
+add_action('wp_ajax_export_woocommerce_products', function() {
+    // Check if user is logged in and is an admin
+    if (!is_user_logged_in() || !current_user_can('manage_options')) {
+        wp_die('Unauthorized - Admin access required', 403);
+    }
+    
+    // Get all products
+    $products = wc_get_products([
+        'limit' => -1,
+        'status' => ['publish', 'draft'],
+    ]);
+    
+    if (empty($products)) {
+        wp_die('No products found', 400);
+    }
+    
+    // Generate CSV in memory
+    ob_start();
+    $output = fopen('php://output', 'w');
+    
+    // Write header
+    fputcsv($output, ['SKU', 'Title', 'URL', 'Description', 'Price', 'Status']);
+    
+    // Write product rows
+    foreach ($products as $product) {
+        fputcsv($output, [
+            $product->get_sku(),
+            $product->get_name(),
+            get_permalink($product->get_id()),
+            $product->get_description(),
+            $product->get_price(),
+            $product->get_status(),
+        ]);
+    }
+    
+    fclose($output);
+    $csv_content = ob_get_clean();
+    
+    // Send as download
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="WooCommerce_Products_' . date('Y-m-d_H-i-s') . '.csv"');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    
+    echo $csv_content;
+    wp_die();
+});
+
+/**
+ * Also register for nopriv (logged-out users) - will check capability
+ */
+add_action('wp_ajax_nopriv_export_woocommerce_products', function() {
+    wp_die('Unauthorized - Admin access required', 403);
+});
+
+/**
  * Activation / Deactivation hooks
  */
 function global_site_settings_activate() { flush_rewrite_rules(); }
@@ -2104,3 +2393,274 @@ function belims_output_deployment_info() {
 }
 add_action('admin_footer', 'belims_output_deployment_info');
 add_action('wp_footer', 'belims_output_deployment_info');
+
+// ============= DRY RUN IMPORT FEATURE =============
+
+/**
+ * Dry run preview - show what will be imported without actually importing
+ */
+add_action('wp_ajax_import_dry_run', function() {
+    check_ajax_referer('import_nonce', 'nonce');
+    if (!current_user_can('manage_options')) wp_die(json_encode(['error' => 'Unauthorized']));
+    if (empty($_FILES['csv_file'])) wp_die(json_encode(['error' => 'No file uploaded']));
+    
+    $file = $_FILES['csv_file'];
+    $products_preview = [];
+    $total_count = 0;
+    
+    if (($handle = fopen($file['tmp_name'], 'r')) !== false) {
+        $header = fgetcsv($handle);
+        $col_index = array_flip($header);
+        $preview_count = 0;
+        
+        while (($row = fgetcsv($handle)) !== false && $preview_count < 5) {
+            $sku = isset($row[$col_index['SKU']]) ? trim($row[$col_index['SKU']]) : '';
+            $title = isset($row[$col_index['Title']]) ? trim($row[$col_index['Title']]) : '';
+            $description = isset($row[$col_index['Description']]) ? trim($row[$col_index['Description']]) : '';
+            
+            if ($sku) {
+                $desc_preview = wp_strip_all_tags($description);
+                if (strlen($desc_preview) > 150) $desc_preview = substr($desc_preview, 0, 150) . '...';
+                
+                $products_preview[] = [
+                    'sku' => $sku,
+                    'title' => $title,
+                    'description_preview' => $desc_preview
+                ];
+                $preview_count++;
+            }
+            $total_count++;
+        }
+        
+        while (($row = fgetcsv($handle)) !== false) $total_count++;
+        fclose($handle);
+    }
+    
+    wp_die(json_encode([
+        'success' => true,
+        'total_products' => $total_count,
+        'preview_products' => $products_preview
+    ]));
+});
+
+/**
+ * Execute actual import after user confirms dry run preview
+ */
+add_action('wp_ajax_import_execute', function() {
+    check_ajax_referer('import_nonce', 'nonce');
+    if (!current_user_can('manage_options')) wp_die(json_encode(['error' => 'Unauthorized']));
+    if (empty($_FILES['csv_file'])) wp_die(json_encode(['error' => 'No file uploaded']));
+    
+    $file = $_FILES['csv_file'];
+    $imported = 0;
+    $updated = 0;
+    $skipped = 0;
+    
+    if (($handle = fopen($file['tmp_name'], 'r')) !== false) {
+        $header = fgetcsv($handle);
+        $col_index = array_flip($header);
+        
+        while (($row = fgetcsv($handle)) !== false) {
+            $sku = isset($row[$col_index['SKU']]) ? trim($row[$col_index['SKU']]) : '';
+            $title = isset($row[$col_index['Title']]) ? trim($row[$col_index['Title']]) : '';
+            $description = isset($row[$col_index['Description']]) ? trim($row[$col_index['Description']]) : '';
+            $status = isset($row[$col_index['Status']]) ? trim($row[$col_index['Status']]) : 'draft';
+            
+            if (!$sku || !$title) {
+                $skipped++;
+                continue;
+            }
+            
+            // Check if product exists by SKU using WooCommerce function
+            $product_id = wc_get_product_id_by_sku($sku);
+            
+            if ($product_id) {
+                // Update existing product
+                $product = wc_get_product($product_id);
+                $product->set_name($title);
+                $product->set_description($description);
+                $product->set_status($status);
+                $product->save();
+                $updated++;
+            } else {
+                // Create new product
+                $product = new WC_Product_Simple();
+                $product->set_name($title);
+                $product->set_sku($sku);
+                $product->set_description($description);
+                $product->set_status($status);
+                $product->save();
+                $imported++;
+            }
+        }
+        
+        fclose($handle);
+    }
+    
+    wp_die(json_encode([
+        'success' => true,
+        'imported' => $imported,
+        'updated' => $updated,
+        'skipped' => $skipped,
+        'message' => "Import complete! Created {$imported} new products, Updated {$updated} existing, Skipped {$skipped}."
+    ]));
+});
+
+/**
+ * Add Import menu and UI
+ */
+add_action('admin_menu', function() {
+    add_menu_page(
+        'Product Import Preview',
+        'Product Import',
+        'manage_options',
+        'product-import-preview',
+        function() {
+            ?>
+            <div class="wrap">
+                <h1>Product Import with Preview</h1>
+                
+                <div style="max-width: 800px; margin: 30px 0;">
+                    <h2 style="background: #f0f0f0; padding: 15px; border-radius: 5px;">Step 1: Upload CSV & Preview</h2>
+                    <form id="import-dry-run-form" enctype="multipart/form-data" style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+                        <table class="form-table">
+                            <tr>
+                                <th><label for="csv_file">CSV File:</label></th>
+                                <td>
+                                    <input type="file" id="csv_file" name="csv_file" accept=".csv" required style="padding: 10px;">
+                                    <p class="description" style="margin-top: 10px;">Upload INGCO_Products_199_with_Descriptions.csv</p>
+                                </td>
+                            </tr>
+                        </table>
+                        <?php wp_nonce_field('import_nonce', 'nonce'); ?>
+                        <button type="button" class="button button-primary" id="dry-run-btn" style="padding: 8px 20px; font-size: 14px;">👁 Preview Import</button>
+                    </form>
+                </div>
+                
+                <!-- Preview Results -->
+                <div id="preview-results" style="display: none; max-width: 800px; background: #e8f5e9; padding: 20px; border-radius: 5px; border: 2px solid #4caf50;">
+                    <h2 style="color: #2e7d32;">✓ Preview Ready: <span id="total-products-span" style="color: #1565c0;">0</span> Products Found</h2>
+                    
+                    <div style="background: white; border-radius: 3px; padding: 15px; margin: 15px 0; max-height: 500px; overflow-y: auto;">
+                        <strong style="display: block; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Sample Products (first 5):</strong>
+                        <div id="products-preview-list"></div>
+                    </div>
+                    
+                    <button type="button" class="button button-success" id="confirm-import-btn" style="padding: 10px 30px; font-size: 14px; margin-right: 10px;">✓ Confirm & Import All</button>
+                    <button type="button" class="button" id="cancel-import-btn" style="padding: 10px 30px; font-size: 14px;">✗ Cancel</button>
+                </div>
+                
+                <!-- Import Status -->
+                <div id="import-status" style="display: none; max-width: 800px; background: #fff3cd; padding: 20px; border-radius: 5px; border: 2px solid #ffc107;">
+                    <h2 style="color: #856404;">✓ Import Complete!</h2>
+                    <div id="import-results-text" style="font-size: 16px; line-height: 1.8; margin-top: 15px;"></div>
+                </div>
+            </div>
+            
+            <style>
+                .product-preview-item {
+                    background: #f9f9f9;
+                    padding: 15px;
+                    margin: 10px 0;
+                    border-left: 5px solid #4caf50;
+                    border-radius: 3px;
+                }
+                .product-sku {
+                    font-weight: bold;
+                    color: #1565c0;
+                    font-size: 13px;
+                    text-transform: uppercase;
+                }
+                .product-title {
+                    font-weight: bold;
+                    margin: 6px 0;
+                    font-size: 15px;
+                }
+                .product-desc {
+                    color: #555;
+                    font-size: 13px;
+                    margin-top: 8px;
+                    line-height: 1.5;
+                }
+            </style>
+            
+            <script>
+            jQuery(document).ready(function($) {
+                $('#dry-run-btn').click(function() {
+                    var formData = new FormData($('#import-dry-run-form')[0]);
+                    formData.append('action', 'import_dry_run');
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function(response) {
+                            var data = JSON.parse(response);
+                            if (data.success) {
+                                $('#total-products-span').text(data.total_products);
+                                
+                                var html = '';
+                                $.each(data.preview_products, function(i, product) {
+                                    html += '<div class="product-preview-item">';
+                                    html += '<div class="product-sku">SKU: ' + product.sku + '</div>';
+                                    html += '<div class="product-title">' + product.title + '</div>';
+                                    html += '<div class="product-desc"><strong>Description:</strong> ' + product.description_preview + '</div>';
+                                    html += '</div>';
+                                });
+                                
+                                $('#products-preview-list').html(html);
+                                $('#preview-results').show();
+                            } else {
+                                alert('Error: ' + (data.error || 'Unknown error'));
+                            }
+                        }
+                    });
+                });
+                
+                $('#confirm-import-btn').click(function() {
+                    if (!confirm('Import ' + $('#total-products-span').text() + ' products? This cannot be undone.')) return;
+                    
+                    $('#confirm-import-btn').prop('disabled', true).text('⏳ Importing...');
+                    
+                    var formData = new FormData($('#import-dry-run-form')[0]);
+                    formData.append('action', 'import_execute');
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function(response) {
+                            var data = JSON.parse(response);
+                            if (data.success) {
+                                $('#preview-results').hide();
+                                $('#import-results-text').html(
+                                    '<strong style="color: green; font-size: 18px;">✓ Success! All products imported.</strong><br><br>' +
+                                    '<span style="font-size: 15px;">' +
+                                    '✓ <strong style="color: green;">' + data.imported + ' new products created</strong><br>' +
+                                    '✓ <strong style="color: #1565c0;">' + data.updated + ' existing products updated</strong><br>' +
+                                    '⊘ <strong>' + data.skipped + ' rows skipped</strong><br><br>' +
+                                    '</span>' +
+                                    '<em>Next: Go to Products to verify or Export tab to verify descriptions.</em>'
+                                );
+                                $('#import-status').show();
+                            }
+                        }
+                    });
+                });
+                
+                $('#cancel-import-btn').click(function() {
+                    $('#preview-results').hide();
+                    $('#import-dry-run-form')[0].reset();
+                });
+            });
+            </script>
+            <?php
+        },
+        'dashicons-upload',
+        25
+    );
+});
