@@ -222,7 +222,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {badgeLabel && (
         <div
           className={[
-            "absolute top-3 z-10 rounded px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+            "absolute top-3 z-10 rounded px-2.5 py-1 font-semibold uppercase tracking-wide",
+            isFlat ? "text-[10px]" : "text-[11px]",
             badgeClass,
           ].join(" ")}
         >
@@ -254,22 +255,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       <div
         className={`flex flex-1 flex-col ${
           isFlat ? "" : "p-5"
-        } ${isFlatHorizontal ? "px-4" : ""}`}
+        } ${isFlatHorizontal ? "px-4 pr-0" : ""}`}
       >
         {/* Category / Deal Name */}
-        {/* {(!isFlat || isFlatHorizontal) && (
+        {!isFlat && (
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#565969]">
             {showDealName && consumerBest?.deal_name
               ? consumerBest.deal_name
               : product.category}
           </div>
-        )} */}
+        )}
 
         {/* Title - Fixed height for 2 lines */}
         <Link
           to={`/product/${product.id}`}
-          className={`mb-3 mt-3 line-clamp-2 font-heading font-semibold leading-[1.35] text-gray-900 hover:underline min-h-[41px] ${
-            isFlat ? "text-[13px] min-h-[30px]" : "text-[15px]"
+          className={`mb-3 mt-0 line-clamp-2 font-heading font-semibold leading-[1.35] text-gray-900 hover:underline min-h-[41px] ${
+            isFlat ? "text-[13px] min-h-[20px] mt-3" : "text-[15px]"
           }`}
         >
           {product.name}
@@ -313,7 +314,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               isFlatHorizontal ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-left">
-                    <div className="text-[11px] font-semibold text-gray-500 mb-1">
+                    <div className="text-[10px] font-semibold text-gray-500 mb-1">
                       Trade Price
                     </div>
                     <span className="font-heading text-[16px] font-bold text-belims-accent bg-belims-accent/10 inline-block rounded px-2 py-1">
@@ -321,7 +322,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     </span>
                   </div>
                   <div className="text-right flex flex-col justify-between">
-                    <div className="text-[11px] font-semibold text-gray-500 mb-1">
+                    <div className="text-[10px] font-semibold text-gray-500 mb-1">
                       Retail Price
                     </div>
                     <span className="font-heading text-[16px] font-bold text-[#04223E] py-1">

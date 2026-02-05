@@ -303,27 +303,27 @@ const HomePage = ({
           aria-label="Deals highlights"
         >
           <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="rounded-lg border border-gray-200 bg-white p-5">
-                <div className="flex items-center justify-between mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="flex flex-col rounded-lg border border-gray-200 bg-white p-5">
+                <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900 font-heading">
+                    <h2 className="font-heading text-lg font-bold text-gray-900">
                       Deals of the day
                     </h2>
-                    <p className="text-gray-500 text-xs mt-1">
+                    <p className="mt-1 text-xs text-gray-500">
                       Fresh discounts daily — expire at midnight.
                     </p>
                   </div>
                   <a
                     href="/deals"
-                    className="text-xs font-semibold text-belims-blue hover:text-belims-accent whitespace-nowrap"
+                    className="whitespace-nowrap text-xs font-semibold text-belims-blue hover:text-belims-accent"
                   >
                     View all →
                   </a>
                 </div>
                 {dealsOfTheDay.length > 0 ? (
-                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
-                    {dealsOfTheDay.map((product) => (
+                  <div className="flex-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+                    {dealsOfTheDay.slice(0, 2).map((product) => (
                       <ProductCard
                         key={product.id}
                         product={product}
@@ -334,68 +334,72 @@ const HomePage = ({
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-10 text-gray-500 rounded-lg border border-gray-100">
+                  <div className="flex-1 flex items-center justify-center rounded-lg border border-gray-100 py-10 text-center text-gray-500">
                     <p>No deals available today. Check back soon!</p>
                   </div>
                 )}
               </div>
 
-              <div className="rounded-lg border border-gray-200 bg-white p-5">
-                <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col rounded-lg border border-gray-200 bg-white p-5">
+                <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900 font-heading">
+                    <h2 className="font-heading text-lg font-bold text-gray-900">
                       Trade specials
                     </h2>
-                    <p className="text-gray-500 text-xs mt-1">
+                    <p className="mt-1 text-xs text-gray-500">
                       Contractor pricing available — log in to purchase.
                     </p>
                   </div>
                   <a
                     href="/deals?type=trade_special"
-                    className="text-xs font-semibold text-belims-blue hover:text-belims-accent whitespace-nowrap"
+                    className="whitespace-nowrap text-xs font-semibold text-belims-blue hover:text-belims-accent"
                   >
                     View all →
                   </a>
                 </div>
                 {tradeSpecials.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-4">
-                    {tradeSpecials.map((product) => (
-                      <ProductCard
+                  <div className="flex-1 flex flex-col divide-y divide-[#E0E0E0]">
+                    {tradeSpecials.slice(0, 2).map((product) => (
+                      <div
                         key={product.id}
-                        product={product}
-                        addToCart={addToCart}
-                        className="min-w-full max-w-full w-full"
-                        variant="flat-horizontal"
-                      />
+                        className="flex-1 flex flex-col justify-center py-4 first:pt-0 last:pb-0"
+                      >
+                        <ProductCard
+                          product={product}
+                          addToCart={addToCart}
+                          className="min-w-full max-w-full w-full"
+                          variant="flat-horizontal"
+                        />
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-10 text-gray-500 rounded-lg border border-gray-100">
+                  <div className="flex-1 flex items-center justify-center rounded-lg border border-gray-100 py-10 text-center text-gray-500">
                     <p>No trade specials currently.</p>
                   </div>
                 )}
               </div>
 
-              <div className="rounded-lg border border-gray-200 bg-white p-5">
-                <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col rounded-lg border border-gray-200 bg-white p-5">
+                <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900 font-heading">
+                    <h2 className="font-heading text-lg font-bold text-gray-900">
                       Weekly deals
                     </h2>
-                    <p className="text-gray-500 text-xs mt-1">
+                    <p className="mt-1 text-xs text-gray-500">
                       Weekly savings across selected products.
                     </p>
                   </div>
                   <a
                     href="/deals/weekly"
-                    className="text-xs font-semibold text-belims-blue hover:text-belims-accent whitespace-nowrap"
+                    className="whitespace-nowrap text-xs font-semibold text-belims-blue hover:text-belims-accent"
                   >
                     View all →
                   </a>
                 </div>
                 {weeklyDeals.length > 0 ? (
-                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
-                    {weeklyDeals.map((product) => (
+                  <div className="flex-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+                    {weeklyDeals.slice(0, 2).map((product) => (
                       <ProductCard
                         key={product.id}
                         product={product}
@@ -406,7 +410,7 @@ const HomePage = ({
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-10 text-gray-500 rounded-lg border border-gray-100">
+                  <div className="flex-1 flex items-center justify-center rounded-lg border border-gray-100 py-10 text-center text-gray-500">
                     <p>
                       No weekly specials available right now. Check back soon!
                     </p>
