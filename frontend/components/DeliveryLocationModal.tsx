@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { X, MapPin, Loader } from "lucide-react";
-import { ShippingAddress } from "../types";
+import { X, MapPin, Loader, Search, Map } from "lucide-react";
+import { ShippingAddress, Store } from "../types";
+import { STORES } from "../constants";
 import {
   buildAddressLabel,
   mapNominatimAddress,
@@ -15,6 +16,8 @@ interface DeliveryLocationModalProps {
   onClose: () => void;
   currentAddress?: ShippingAddress;
   onAddressSelect: (address: ShippingAddress | null) => void;
+  currentStore?: Store | null;
+  onStoreSelect?: (store: Store | null) => void;
 }
 
 export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
@@ -22,6 +25,8 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   onClose,
   currentAddress,
   onAddressSelect,
+  currentStore,
+  onStoreSelect,
 }) => {
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -36,19 +41,38 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   const [manualPostalCode, setManualPostalCode] = useState("");
   const [manualProvince, setManualProvince] = useState("");
 
+  const [fulfillmentType, setFulfillmentType] = useState<"delivery" | "pickup">(
+    "delivery",
+  );
+  const [storeSearch, setStoreSearch] = useState("");
+  const [storeList, setStoreList] = useState(STORES);
+  const [selectedPickupStoreId, setSelectedPickupStoreId] = useState<
+    string | null
+  >(null);
+
   useEffect(() => {
     if (isOpen) {
+      const storedFulfillment = localStorage.getItem("fulfillmentType");
       const { legacyLabel: storedLegacy } = readStoredAddress();
       const currentLabel = currentAddress
         ? currentAddress.label || buildAddressLabel(currentAddress)
         : storedLegacy || "";
 
+      if (storedFulfillment === "pickup" || storedFulfillment === "delivery") {
+        setFulfillmentType(storedFulfillment);
+      } else {
+        setFulfillmentType("delivery");
+      }
+
       setLegacyLabel(storedLegacy);
       setInput(currentLabel);
       setSuggestions([]);
       setErrorMessage(null);
+      setStoreSearch("");
+      setStoreList(STORES);
+      setSelectedPickupStoreId(currentStore?.id || null);
     }
-  }, [currentAddress, isOpen]);
+  }, [currentAddress, currentStore, isOpen]);
 
   // Google Places Autocomplete Script Loading
   useEffect(() => {
@@ -196,6 +220,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
       setInput(address.label || buildAddressLabel(address));
       setSuggestions([]);
+      localStorage.setItem("fulfillmentType", "delivery");
       onAddressSelect(address);
       onClose();
     } catch (error) {
@@ -206,7 +231,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     }
   };
 
-  /* COMMENTED OUT - Detect location functionality
   const handleDetectLocation = async () => {
     setLoading(true);
     setErrorMessage(null);
@@ -272,6 +296,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                 };
 
                 setInput(address.label || buildAddressLabel(address));
+                localStorage.setItem("fulfillmentType", "delivery");
                 onAddressSelect(address);
                 onClose();
               } else {
@@ -316,7 +341,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       setLoading(false);
     }
   };
-  */
 
   const handleClearLocation = () => {
     setInput("");
@@ -368,6 +392,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
     // Save address and notify parent
     saveStoredAddress(address);
+    localStorage.setItem("fulfillmentType", "delivery");
     onAddressSelect(address);
 
     // Clear form and close modal
@@ -378,121 +403,372 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     onClose();
   };
 
+  const handleFulfillmentChange = (type: "delivery" | "pickup") => {
+    setErrorMessage(null);
+    setFulfillmentType(type);
+    localStorage.setItem("fulfillmentType", type);
+  };
+
+  const handlePickupSave = () => {
+    setErrorMessage(null);
+    const selectedStore = storeList.find(
+      (store) => store.id === selectedPickupStoreId,
+    );
+
+    if (!selectedStore) {
+      setErrorMessage("Please select a pickup store.");
+      return;
+    }
+
+    onStoreSelect?.(selectedStore);
+    localStorage.setItem("fulfillmentType", "pickup");
+    onClose();
+  };
+
+  const handleLocateStores = () => {
+    setErrorMessage(null);
+    const sorted = [...STORES].sort(
+      (a, b) => (a.distance || 0) - (b.distance || 0),
+    );
+    setStoreList(sorted);
+  };
+
+  const filteredStores = storeList.filter((store) => {
+    if (!storeSearch.trim()) return true;
+    const query = storeSearch.toLowerCase();
+    return (
+      store.name.toLowerCase().includes(query) ||
+      store.address.toLowerCase().includes(query)
+    );
+  });
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white w-full max-w-lg rounded shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[9999] overflow-hidden">
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      ></div>
+
+      <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white flex flex-col animate-in slide-in-from-right-4 duration-200">
         {/* Header */}
-        <div className="sticky top-0 p-4 border-b bg-white flex justify-between items-center z-10">
-          <h3 className="text-lg font-bold text-gray-900 font-heading">
-            Delivery Location
-          </h3>
+        <div className="p-5 border-b bg-white flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <MapPin className="text-belims-blue" size={18} />
+            <h3 className="text-lg font-bold text-gray-900 font-heading">
+              Delivery Location
+            </h3>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
+            className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
           >
             <X size={24} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-4">
-          {/* Manual Address Form */}
-          <div className="space-y-3 pt-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Street Address
-              </label>
-              <input
-                type="text"
-                placeholder="123 Main Street"
-                value={manualStreet}
-                onChange={(e) => setManualStreet(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  City
-                </label>
-                <input
-                  type="text"
-                  placeholder="Johannesburg"
-                  value={manualCity}
-                  onChange={(e) => setManualCity(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Postal Code
-                </label>
-                <input
-                  type="text"
-                  placeholder="2000"
-                  value={manualPostalCode}
-                  onChange={(e) => setManualPostalCode(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Province
-              </label>
-              <select
-                value={manualProvince}
-                onChange={(e) => setManualProvince(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue bg-white"
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {/* Fulfillment Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="inline-flex rounded-full bg-gray-100 p-1">
+              <button
+                type="button"
+                onClick={() => handleFulfillmentChange("delivery")}
+                className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                  fulfillmentType === "delivery"
+                    ? "bg-belims-blue text-white"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
               >
-                <option value="">Select province</option>
-                {PROVINCES.map((province) => (
-                  <option key={province} value={province}>
-                    {province}
-                  </option>
-                ))}
-              </select>
+                Delivery
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFulfillmentChange("pickup")}
+                className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                  fulfillmentType === "pickup"
+                    ? "bg-belims-blue text-white"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Pickup
+              </button>
             </div>
-
-            {errorMessage && (
-              <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                {errorMessage}
-              </div>
+            {fulfillmentType === "pickup" && (
+              <button
+                type="button"
+                className="flex items-center gap-2 text-xs font-semibold text-belims-blue hover:text-belims-navy"
+              >
+                <Map size={14} /> Map View
+              </button>
             )}
-
-            <button
-              onClick={handleSaveManualAddress}
-              className="w-full bg-belims-blue text-white px-4 py-2 rounded text-sm font-bold hover:bg-belims-light transition-colors"
-            >
-              Save Address
-            </button>
-
-            {/* Development Testing: Reset Address Button */}
-            <button
-              onClick={() => {
-                localStorage.removeItem("deliveryAddressV2");
-                localStorage.removeItem("deliveryAddress");
-                setManualStreet("");
-                setManualCity("");
-                setManualPostalCode("");
-                setManualProvince("");
-                setErrorMessage(null);
-                onAddressSelect(null);
-              }}
-              className="w-full bg-gray-400 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-gray-500 transition-colors"
-            >
-              Reset Address (Dev Testing)
-            </button>
           </div>
 
-          <p className="text-xs text-gray-500 text-center">
-            Your location is saved automatically when you select or enter your
-            address.
-          </p>
+          {fulfillmentType === "delivery" ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-gray-600">
+                  Enter street address or suburb
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <Search
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    />
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      placeholder="Search delivery address"
+                      value={input}
+                      onChange={handleInputChange}
+                      className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-full text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
+                    />
+                    {input && (
+                      <button
+                        type="button"
+                        onClick={handleClearLocation}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDetectLocation}
+                  className="flex items-center gap-2 text-xs font-semibold text-belims-blue hover:text-belims-navy"
+                >
+                  <MapPin size={14} /> Use my current location
+                </button>
+              </div>
+
+              {loading && (
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Loader size={14} className="animate-spin" />
+                  Finding address suggestions...
+                </div>
+              )}
+
+              {suggestions.length > 0 && (
+                <div className="rounded-lg border border-gray-200 divide-y overflow-hidden">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.place_id}
+                      type="button"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
+                    >
+                      {suggestion.description}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Street Address
+                </label>
+                <input
+                  type="text"
+                  placeholder="123 Main Street"
+                  value={manualStreet}
+                  onChange={(e) => setManualStreet(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Johannesburg"
+                    value={manualCity}
+                    onChange={(e) => setManualCity(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">
+                    Postal Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="2000"
+                    value={manualPostalCode}
+                    onChange={(e) => setManualPostalCode(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Province
+                </label>
+                <select
+                  value={manualProvince}
+                  onChange={(e) => setManualProvince(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue bg-white"
+                >
+                  <option value="">Select province</option>
+                  {PROVINCES.map((province) => (
+                    <option key={province} value={province}>
+                      {province}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {errorMessage && (
+                <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  {errorMessage}
+                </div>
+              )}
+
+              <button
+                onClick={handleSaveManualAddress}
+                className="w-full bg-belims-blue text-white px-4 py-2 rounded text-sm font-bold hover:bg-belims-light transition-colors"
+              >
+                Save Address
+              </button>
+
+              {/* Development Testing: Reset Address Button */}
+              <button
+                onClick={() => {
+                  localStorage.removeItem("deliveryAddressV2");
+                  localStorage.removeItem("deliveryAddress");
+                  setManualStreet("");
+                  setManualCity("");
+                  setManualPostalCode("");
+                  setManualProvince("");
+                  setErrorMessage(null);
+                  onAddressSelect(null);
+                }}
+                className="w-full bg-gray-400 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-gray-500 transition-colors"
+              >
+                Reset Address (Dev Testing)
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-gray-600">
+                  Enter suburb, city or postcode
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <Search
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search pickup stores"
+                      value={storeSearch}
+                      onChange={(e) => setStoreSearch(e.target.value)}
+                      className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-full text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
+                    />
+                    {storeSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setStoreSearch("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLocateStores}
+                  className="flex items-center gap-2 text-xs font-semibold text-belims-blue hover:text-belims-navy"
+                >
+                  <MapPin size={14} /> Use my current location
+                </button>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 divide-y">
+                {filteredStores.map((store) => {
+                  const isSelected = store.id === selectedPickupStoreId;
+                  return (
+                    <button
+                      key={store.id}
+                      type="button"
+                      onClick={() => setSelectedPickupStoreId(store.id)}
+                      className="w-full text-left p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            isSelected
+                              ? "border-belims-blue"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {isSelected && (
+                            <div className="w-2.5 h-2.5 rounded-full bg-belims-blue" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-bold text-gray-900 text-sm font-heading">
+                            {store.name}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {store.address}
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] mt-2">
+                            <span className="text-green-600 font-semibold">
+                              Open
+                            </span>
+                            <span className="text-gray-400">· until 8pm</span>
+                            {store.distance !== undefined && (
+                              <span className="text-gray-500">
+                                {store.distance} km away
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="mt-2 text-[11px] font-semibold text-belims-blue hover:underline"
+                          >
+                            Store details
+                          </button>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {filteredStores.length === 0 && (
+                  <div className="p-4 text-xs text-gray-500 text-center">
+                    No stores match your search.
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={handlePickupSave}
+                className="w-full bg-belims-blue text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-belims-light transition-colors"
+              >
+                Save Pickup Store
+              </button>
+            </div>
+          )}
+
+          {fulfillmentType === "delivery" && (
+            <p className="text-xs text-gray-500 text-center">
+              Your location is saved automatically when you select or enter your
+              address.
+            </p>
+          )}
         </div>
       </div>
     </div>

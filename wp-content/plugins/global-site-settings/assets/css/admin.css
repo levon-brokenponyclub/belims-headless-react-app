@@ -2009,14 +2009,6 @@ button.bpc-btn-primary:hover,
   justify-content: center;
 }
 
-/* Fix WP Footer */
-#wpfooter {
-  position: static !important;
-  margin-left: 280px !important;
-  padding: 20px 40px !important;
-  color: var(--bpc-text-muted) !important;
-}
-
 #wpbody-content {
   padding-bottom: 0 !important;
 }

@@ -42,7 +42,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
   const showDeliveryPrompt = !deliveryLocationSet;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+    <div className="grid grid-cols-2 gap-3 w-full">
       {/* Pickup Option */}
       {pickup && (
         <button
@@ -177,7 +177,7 @@ export const ShippingSelectionTiles: React.FC = () => {
   const [selected, setSelected] = useState<"free" | "express">("free");
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+    <div className="grid grid-cols-1 gap-3 mt-4">
       {/* Free Shipping */}
       <button
         type="button"

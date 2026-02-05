@@ -1,0 +1,348 @@
+/**
+ * Belims Dashboard Admin Styles
+ * Modern, scalable CSS for the admin dashboard
+ */
+
+/* ========================================
+   CSS VARIABLES / DESIGN TOKENS
+   ======================================== */
+:root {
+  /* Colors - Neutrals */
+  --bpc-dash-gray-50: #f3f4f6;
+  --bpc-dash-gray-100: #e5e7eb;
+  --bpc-dash-gray-200: #d1d5db;
+  --bpc-dash-gray-300: #9ca3af;
+  --bpc-dash-gray-400: #6b7280;
+  --bpc-dash-gray-700: #374151;
+  --bpc-dash-gray-800: #1f2937;
+
+  /* Colors - Primary */
+  --bpc-dash-primary: #10b981;
+  --bpc-dash-primary-dark: #059669;
+
+  /* Spacing */
+  --bpc-dash-space-xs: 8px;
+  --bpc-dash-space-sm: 12px;
+  --bpc-dash-space-md: 16px;
+  --bpc-dash-space-lg: 20px;
+  --bpc-dash-space-xl: 24px;
+  --bpc-dash-space-2xl: 32px;
+  --bpc-dash-space-3xl: 60px;
+
+  /* Border Radius */
+  --bpc-dash-radius-sm: 6px;
+  --bpc-dash-radius-md: 8px;
+  --bpc-dash-radius-lg: 12px;
+
+  /* Shadows */
+  --bpc-dash-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --bpc-dash-shadow-md: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  /* Transitions */
+  --bpc-dash-transition: all 0.2s ease;
+
+  /* Typography */
+  --bpc-dash-font-family: InterVariable, system-ui, sans-serifz;
+}
+
+/* ========================================
+   LAYOUT CONTAINERS
+   ======================================== */
+.bpc-dash-wrapper {
+  margin-left: 0;
+  margin-top: 35px;
+  margin-right: var(--bpc-dash-space-lg);
+  background: white;
+  color: var(--bpc-dash-gray-800);
+  font-family: var(--bpc-dash-font-family);
+  border-radius: var(--bpc-dash-radius-md);
+}
+
+.bpc-dash-content {
+  display: flex;
+  gap: var(--bpc-dash-space-lg);
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+.bpc-dash-header {
+  margin: var(--bpc-dash-space-lg) 0;
+  padding: var(--bpc-dash-space-lg) var(--bpc-dash-space-xl);
+  box-shadow: var(--bpc-dash-shadow-md);
+}
+
+.bpc-dash-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.bpc-dash-header__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--bpc-dash-space-sm);
+}
+
+.bpc-dash-header__logo {
+  width: 32px;
+  height: 32px;
+  color: var(--bpc-dash-primary);
+}
+
+.bpc-dash-header__title {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: var(--bpc-dash-gray-800) !important;
+  margin: 0;
+}
+
+.bpc-dash-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--bpc-dash-space-md);
+}
+
+.bpc-dash-header__version {
+  color: var(--bpc-dash-gray-400);
+  font-size: 14px;
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+.bpc-dash-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: var(--bpc-dash-space-xs) var(--bpc-dash-space-sm);
+  border-radius: var(--bpc-dash-radius-sm);
+  transition: var(--bpc-dash-transition);
+  font-family: inherit;
+}
+
+.bpc-dash-btn--secondary {
+  color: var(--bpc-dash-gray-300);
+}
+
+.bpc-dash-btn--secondary:hover {
+  background: var(--bpc-dash-gray-700);
+  color: var(--bpc-dash-gray-50);
+}
+
+.bpc-dash-btn--primary {
+  background: var(--bpc-dash-primary);
+  color: white;
+}
+
+.bpc-dash-btn--primary:hover {
+  background: var(--bpc-dash-primary-dark);
+}
+
+/* ========================================
+   SIDEBAR
+   ======================================== */
+.bpc-dash-sidebar {
+  width: 256px;
+  flex-shrink: 0;
+  background: white;
+  overflow-y: auto;
+  height: fit-content;
+  position: sticky;
+}
+
+.bpc-dash-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bpc-dash-space-xs);
+  padding: 0 var(--bpc-dash-space-md);
+}
+
+.bpc-dash-sidebar__divider {
+  margin: var(--bpc-dash-space-md) 0;
+  border: none;
+  border-top: 1px solid var(--bpc-dash-gray-100);
+}
+
+.bpc-dash-sidebar__footer {
+  padding: var(--bpc-dash-space-md);
+  font-size: 12px;
+  color: var(--bpc-dash-gray-300);
+}
+
+.bpc-dash-sidebar__footer-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.bpc-dash-sidebar__footer-divider {
+  margin-top: var(--bpc-dash-space-xs);
+  padding-top: var(--bpc-dash-space-xs);
+  border-top: 1px solid var(--bpc-dash-gray-100);
+}
+
+.bpc-dash-sidebar__deploy-time {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--bpc-dash-gray-400);
+}
+
+/* ========================================
+   NAVIGATION ITEMS
+   ======================================== */
+.bpc-dash-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--bpc-dash-space-sm);
+  padding: var(--bpc-dash-space-sm) var(--bpc-dash-space-md);
+  border-radius: var(--bpc-dash-radius-md);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: var(--bpc-dash-transition);
+  cursor: pointer;
+  color: var(--bpc-dash-gray-400) !important;
+}
+
+.bpc-dash-nav-item:hover {
+  background: var(--bpc-dash-gray-100);
+  color: var(--bpc-dash-gray-800);
+}
+
+.bpc-dash-nav-item.active,
+.bpc-dash-nav-item--active {
+  background: var(--bpc-dash-gray-50);
+  color: var(--bpc-dash-gray-800);
+}
+
+.bpc-dash-nav-item__icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* ========================================
+   MAIN CONTENT
+   ======================================== */
+.bpc-dash-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.bpc-dash-main__container {
+  max-width: 100%;
+  padding: 0 var(--bpc-dash-space-lg);
+}
+
+/* ========================================
+   CARDS
+   ======================================== */
+.bpc-dash-card {
+  background: white;
+  border-radius: var(--bpc-dash-radius-lg);
+  padding: var(--bpc-dash-space-2xl);
+  box-shadow: var(--bpc-dash-shadow-sm);
+  border: 1px solid var(--bpc-dash-gray-100);
+}
+
+.bpc-dash-card--centered {
+  text-align: center;
+  padding: var(--bpc-dash-space-3xl) var(--bpc-dash-space-lg);
+}
+
+.bpc-dash-card__icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--bpc-dash-space-md);
+  color: var(--bpc-dash-gray-200);
+}
+
+.bpc-dash-card__title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--bpc-dash-gray-800);
+  margin-bottom: var(--bpc-dash-space-xs);
+}
+
+.bpc-dash-card__description {
+  color: var(--bpc-dash-gray-400);
+  font-size: 14px;
+}
+
+/* ========================================
+   UTILITIES
+   ======================================== */
+.bpc-dash-hidden {
+  display: none !important;
+}
+
+.bpc-dash-flex {
+  display: flex;
+}
+
+.bpc-dash-flex-col {
+  flex-direction: column;
+}
+
+.bpc-dash-items-center {
+  align-items: center;
+}
+
+.bpc-dash-justify-between {
+  justify-content: space-between;
+}
+
+.bpc-dash-gap-sm {
+  gap: var(--bpc-dash-space-sm);
+}
+
+.bpc-dash-gap-md {
+  gap: var(--bpc-dash-space-md);
+}
+
+.bpc-dash-gap-lg {
+  gap: var(--bpc-dash-space-lg);
+}
+
+.bpc-dash-mt-0 {
+  margin-top: 0;
+}
+
+.bpc-dash-mb-sm {
+  margin-bottom: var(--bpc-dash-space-sm);
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+.bpc-dash-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.bpc-dash-sidebar::-webkit-scrollbar-track {
+  background: var(--bpc-dash-gray-50);
+}
+
+.bpc-dash-sidebar::-webkit-scrollbar-thumb {
+  background: var(--bpc-dash-gray-200);
+  border-radius: 4px;
+}
+
+.bpc-dash-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--bpc-dash-gray-300);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 768px) {
+  .bpc-dash-content {
+    flex-direction: column;
+  }
+
+  .bpc-dash-sidebar {
+    width: 100%;
+    position: static;
+  }
+}

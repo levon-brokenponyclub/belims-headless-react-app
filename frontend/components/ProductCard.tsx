@@ -11,6 +11,7 @@ interface ProductCardProps {
   onNotify?: (product: Product) => Promise<void> | void;
   className?: string;
   showDealName?: boolean;
+  variant?: "default" | "flat" | "flat-horizontal";
 }
 
 const formatMoney = (value: number) =>
@@ -33,7 +34,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onNotify,
   className = "",
   showDealName = false,
+  variant = "default",
 }) => {
+  const isFlat = variant === "flat" || variant === "flat-horizontal";
+  const isFlatHorizontal = variant === "flat-horizontal";
   const [notifyStatus, setNotifyStatus] = React.useState<
     "idle" | "pending" | "sent" | "error"
   >("idle");
@@ -132,11 +136,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const getBadgeLabel = (): string | undefined => {
     if (!activeDeal || !showBadge) return undefined;
 
-    if (isTradeSpecial) return "TRADE SPECIAL";
-
     if (labelMode === "manual") {
       return (
-        (activeDeal as any)?.label_text || consumerDeal?.label || undefined
+        (activeDeal as any)?.label_text ||
+        (isTradeSpecial ? tradeDeal?.label : consumerDeal?.label) ||
+        undefined
       );
     }
 
@@ -145,14 +149,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       if (!tpl) return undefined;
 
       const dealName = (activeDeal as any)?.deal_name || "";
+      const amount = isTradeSpecial
+        ? formatMoney(tradeSavings)
+        : formatMoney(consumerSavings);
+      const pct = isTradeSpecial
+        ? retailPrice > 0
+          ? Math.round(((retailPrice - tradePrice) / retailPrice) * 100)
+          : 0
+        : percentOff;
+
       return tpl
         .replace("{deal_name}", dealName)
-        .replace("{amount}", formatMoney(consumerSavings))
-        .replace("{percent_off}", String(percentOff));
+        .replace("{amount}", amount)
+        .replace("{percent_off}", String(pct));
     }
 
     // auto
     const type = (activeDeal as any)?.type;
+    if (isTradeSpecial) return "TRADE SPECIAL";
     if (type === "clearance") return "CLEARANCE";
     if (percentOff > 0) return `${percentOff}% OFF`;
     if (consumerDeal?.label) return consumerDeal.label;
@@ -166,7 +180,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const badgeClass = (() => {
     // premium defaults: red for "sale"; keep others restrained
-    if (isTradeSpecial) return "right-3 bg-[#DF1119] text-white";
+    if (isTradeSpecial) return "left-3 bg-belims-accent text-white";
     if (badgeStyle === "clearance") return "left-3 bg-[#DF1119] text-white";
     if (badgeStyle === "info") return "left-3 bg-[#ECF0F1] text-[#04223E]";
     if (badgeStyle === "trade") return "right-3 bg-[#ECF0F1] text-[#04223E]";
@@ -194,10 +208,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div
       className={[
-        "relative flex h-full min-w-[310px] max-w-[310px] flex-col overflow-hidden",
-        "rounded border border-[#E0E0E0] bg-white",
-        "shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition-shadow",
-        "hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]",
+        `relative flex h-full overflow-hidden ${
+          isFlatHorizontal ? "flex-row" : "flex-col"
+        }`,
+        isFlat ? "min-w-full max-w-full w-full" : "min-w-[310px] max-w-[310px]",
+        isFlat
+          ? "bg-white"
+          : "rounded border border-[#E0E0E0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition-shadow hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]",
         className,
       ].join(" ")}
     >
@@ -216,13 +233,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Image */}
       <Link
         to={`/product/${product.id}`}
-        className="flex h-52 items-center justify-center bg-[#F9F9F9] p-5"
+        className={`flex items-center justify-center bg-[#F9F9F9] ${
+          isFlatHorizontal ? "h-full w-[33%] p-4" : "h-52"
+        } ${isFlat && !isFlatHorizontal ? "" : !isFlatHorizontal ? "p-5" : ""}`}
       >
         {product.image ? (
           <img
             src={product.image}
             alt={product.name}
-            className="max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-[1.03]"
+            className="max-h-full max-w-full p-4 object-contain transition-transform duration-300 hover:scale-[1.03] mix-blend-multiply"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center rounded bg-[#ECF0F1] text-sm text-[#565969]">
@@ -232,18 +251,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </Link>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col p-5">
+      <div
+        className={`flex flex-1 flex-col ${
+          isFlat ? "" : "p-5"
+        } ${isFlatHorizontal ? "p-4" : ""}`}
+      >
         {/* Category / Deal Name */}
-        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#565969]">
-          {showDealName && consumerBest?.deal_name
-            ? consumerBest.deal_name
-            : product.category}
-        </div>
+        {(!isFlat || isFlatHorizontal) && (
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#565969]">
+            {showDealName && consumerBest?.deal_name
+              ? consumerBest.deal_name
+              : product.category}
+          </div>
+        )}
 
         {/* Title - Fixed height for 2 lines */}
         <Link
           to={`/product/${product.id}`}
-          className="mb-3 line-clamp-2 font-heading text-[15px] font-semibold leading-[1.35] text-gray-900 hover:underline min-h-[41px]"
+          className={`mb-3 line-clamp-2 font-heading font-semibold leading-[1.35] text-gray-900 hover:underline min-h-[41px] ${
+            isFlat ? "text-[13px]" : "text-[15px]"
+          }`}
         >
           {product.name}
         </Link>
@@ -254,13 +281,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div> */}
 
         {/* Trade Special Price Options */}
-        {isTradeSpecial && tradePrice > 0 && (
-          <div className="mt-auto grid grid-cols-2 gap-6 py-4 border-t border-[#E0E0E0]">
-            <div>
+        {!isFlat && isTradeSpecial && tradePrice > 0 && (
+          <div
+            className={`mt-auto grid grid-cols-2 gap-6 ${
+              isFlat ? "" : "py-4 border-t border-[#E0E0E0]"
+            }`}
+          >
+            <div className="flex flex-col justify-between">
               <div className="text-xs font-semibold text-[#565969] mb-2">
                 Retail Price
               </div>
-              <div className="text-[18px] font-bold text-[#04223E]">
+              <div className="text-[18px] font-bold text-[#04223E] py-1">
                 {formatMoney(retailPrice)}
               </div>
             </div>
@@ -268,7 +299,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <div className="text-xs font-semibold text-[#565969] mb-2">
                 Trade Price
               </div>
-              <div className="text-[18px] font-bold text-[#04223E]">
+              <div className="text-[18px] font-bold text-belims-accent bg-belims-accent/10 inline-block rounded px-2 py-1">
                 {formatMoney(tradePrice)}
               </div>
             </div>
@@ -276,22 +307,62 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
 
         {/* Price Block */}
-        {!isTradeSpecial && (
-          <div className="mt-auto py-4">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
-              {/* Dominant price */}
-              <span className="font-heading text-[20px] font-bold text-[#04223E]">
+        {isFlat ? (
+          <div className="mt-auto py-2">
+            {isTradeSpecial && tradePrice > 0 ? (
+              isFlatHorizontal ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-left">
+                    <div className="text-[11px] font-semibold text-gray-500 mb-1">
+                      Trade Price
+                    </div>
+                    <span className="font-heading text-[16px] font-bold text-belims-accent bg-belims-accent/10 inline-block rounded px-2 py-1">
+                      {formatMoney(tradePrice)}
+                    </span>
+                  </div>
+                  <div className="text-right flex flex-col justify-between">
+                    <div className="text-[11px] font-semibold text-gray-500 mb-1">
+                      Retail Price
+                    </div>
+                    <span className="font-heading text-[16px] font-bold text-[#04223E] py-1">
+                      {formatMoney(retailPrice)}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <span className="text-[12px] font-semibold text-gray-500 line-through">
+                    {formatMoney(retailPrice)}
+                  </span>
+                  <span className="font-heading text-[16px] font-bold text-belims-accent bg-belims-accent/10 inline-block rounded px-2 py-1">
+                    {formatMoney(tradePrice)}
+                  </span>
+                </div>
+              )
+            ) : (
+              <span className="font-heading text-[16px] font-bold text-red-600">
                 {formatMoney(displayPrice)}
               </span>
-
-              {/* Non-trade deals: compare → sale */}
-              {hasConsumerStrike && (
-                <span className="text-[16px] font-light text-[#9b9b9b] line-through">
-                  {formatMoney(consumerCompareAt as number)}
-                </span>
-              )}
-            </div>
+            )}
           </div>
+        ) : (
+          !isTradeSpecial && (
+            <div className="mt-auto py-4">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
+                {/* Dominant price */}
+                <span className="font-heading text-[20px] font-bold text-[#04223E]">
+                  {formatMoney(displayPrice)}
+                </span>
+
+                {/* Non-trade deals: compare → sale */}
+                {hasConsumerStrike && (
+                  <span className="text-[16px] font-light text-[#9b9b9b] line-through">
+                    {formatMoney(consumerCompareAt as number)}
+                  </span>
+                )}
+              </div>
+            </div>
+          )
         )}
 
         {/* CTA */}
@@ -301,7 +372,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               e.stopPropagation();
               addWithPriceMode(isTradeSpecial ? "trade" : "retail");
             }}
-            className="mt-0 h-11 w-full rounded bg-[#04223E] font-heading text-sm font-semibold text-white transition-colors hover:bg-[#02172A]"
+            className={`mt-0 w-full rounded bg-[#04223E] font-heading text-sm font-semibold text-white transition-colors hover:bg-[#02172A] ${
+              isFlat ? "h-9" : "h-11"
+            }`}
           >
             Add to cart
           </button>
@@ -310,7 +383,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             onClick={handleNotify}
             disabled={notifyStatus === "pending" || notifyStatus === "sent"}
             className={[
-              "mt-0 h-11 w-full rounded font-heading text-sm font-semibold",
+              `mt-0 ${isFlat ? "h-9" : "h-11"} w-full rounded font-heading text-sm font-semibold`,
               "flex items-center justify-center gap-2 transition-colors",
               notifyStatus === "sent"
                 ? "bg-green-50 text-green-800 border border-green-200"

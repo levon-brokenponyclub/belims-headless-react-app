@@ -64,6 +64,7 @@ const flattenCategoryTree = (
 
 interface HeaderProps {
   selectedStore: Store | null;
+  setSelectedStore: (store: Store | null) => void;
   cartItems: CartItem[];
   toggleCart: () => void;
   toggleStoreLocator: () => void;
@@ -78,6 +79,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   selectedStore,
+  setSelectedStore,
   cartItems,
   toggleCart,
   toggleStoreLocator,
@@ -100,6 +102,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
   const [isDeliveryLocationModalOpen, setIsDeliveryLocationModalOpen] =
     useState(false);
+  const [fulfillmentType, setFulfillmentType] = useState<
+    "pickup" | "delivery" | null
+  >(null);
   const [deliveryAddress, setDeliveryAddress] =
     useState<ShippingAddress | null>(null);
   const [legacyDeliveryLabel, setLegacyDeliveryLabel] = useState<string | null>(
@@ -117,12 +122,42 @@ export const Header: React.FC<HeaderProps> = ({
     string | null
   >(null);
 
+  const computeFulfillmentType = (
+    stored: string | null,
+    address: ShippingAddress | null,
+    legacy: string | null,
+    store: Store | null,
+  ): "pickup" | "delivery" | null => {
+    const hasDelivery = Boolean(address || legacy);
+    const hasPickup = Boolean(store);
+
+    if (stored === "delivery" && hasDelivery) return "delivery";
+    if (stored === "pickup" && hasPickup) return "pickup";
+
+    if (hasPickup && !hasDelivery) return "pickup";
+    if (hasDelivery && !hasPickup) return "delivery";
+    if (hasPickup && hasDelivery) {
+      return stored === "pickup" ? "pickup" : "delivery";
+    }
+
+    return null;
+  };
+
   // Load saved delivery address from localStorage on mount
   useEffect(() => {
     const { address, legacyLabel } = readStoredAddress();
     setDeliveryAddress(address);
     setLegacyDeliveryLabel(legacyLabel);
-  }, []);
+    const storedFulfillment = localStorage.getItem("fulfillmentType");
+    setFulfillmentType(
+      computeFulfillmentType(
+        storedFulfillment,
+        address,
+        legacyLabel,
+        selectedStore,
+      ),
+    );
+  }, [selectedStore]);
 
   const handleAddressSelect = (address: ShippingAddress | null) => {
     setDeliveryAddress(address);
@@ -130,7 +165,63 @@ export const Header: React.FC<HeaderProps> = ({
       address ? address.label || buildAddressLabel(address) : null,
     );
     saveStoredAddress(address);
+    if (address) {
+      setFulfillmentType("delivery");
+    } else {
+      const storedFulfillment = localStorage.getItem("fulfillmentType");
+      setFulfillmentType(
+        computeFulfillmentType(storedFulfillment, null, null, selectedStore),
+      );
+    }
   };
+
+  useEffect(() => {
+    if (!isDeliveryLocationModalOpen) {
+      const storedFulfillment = localStorage.getItem("fulfillmentType");
+      setFulfillmentType(
+        computeFulfillmentType(
+          storedFulfillment,
+          deliveryAddress,
+          legacyDeliveryLabel,
+          selectedStore,
+        ),
+      );
+    }
+  }, [
+    isDeliveryLocationModalOpen,
+    deliveryAddress,
+    legacyDeliveryLabel,
+    selectedStore,
+  ]);
+
+  const deliveryLabel = deliveryAddress
+    ? deliveryAddress.label || buildAddressLabel(deliveryAddress)
+    : legacyDeliveryLabel || "";
+
+  const deliveryAddressDisplay = deliveryAddress?.street
+    ? [deliveryAddress.street, deliveryAddress.city, deliveryAddress.province]
+        .filter(Boolean)
+        .join(", ")
+    : deliveryLabel;
+
+  const truncateText = (value: string, maxLength: number) => {
+    if (value.length <= maxLength) return value;
+    return `${value.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+  };
+
+  const deliveryButtonTitle = fulfillmentType
+    ? fulfillmentType === "pickup"
+      ? "Pickup"
+      : "Delivery"
+    : "Pickup or Delivery?";
+
+  const deliveryButtonSubtitle = fulfillmentType
+    ? fulfillmentType === "pickup"
+      ? selectedStore?.name || "Select a store"
+      : deliveryAddressDisplay
+        ? truncateText(deliveryAddressDisplay, 32)
+        : "Select delivery address"
+    : "Select your preference";
 
   // Initialize category tree from API
   useEffect(() => {
@@ -238,7 +329,7 @@ export const Header: React.FC<HeaderProps> = ({
           </Link>
 
           {/* Search Bar (Pill Shape) with Predictive Dropdown */}
-          <div className="flex-1 relative group max-w-2xl mx-auto">
+          <div className="hidden md:block flex-1 relative group max-w-2xl mx-auto">
             <form
               onSubmit={handleSearchSubmit}
               className="relative flex items-center bg-white rounded-full overflow-hidden transition-all"
@@ -434,22 +525,31 @@ export const Header: React.FC<HeaderProps> = ({
               )}
           </div>
 
-          {/* Delivery Location Button */}
+          {/* Delivery Location Button (Desktop) */}
           <button
             onClick={() => setIsDeliveryLocationModalOpen(true)}
-            className="flex items-center gap-2 bg-[#3b308e] border border-belims-blue/0 text-white hover:bg-gray-50 px-5 py-3 rounded-full cursor-pointer font-bold text-sm transition-all font-heading max-w-xs"
+            className="hidden md:flex items-center gap-2 bg-[#3b308e] border border-belims-blue/0 text-white hover:bg-gray-50 px-5 py-3 rounded-full cursor-pointer font-bold text-sm transition-all font-heading w-[240px]"
           >
             <MapPin size={16} />
-            <span className="truncate">
-              {deliveryAddress
-                ? deliveryAddress.label || buildAddressLabel(deliveryAddress)
-                : legacyDeliveryLabel || "Delivery"}
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block text-[11px] font-semibold leading-tight text-white/80 text-left">
+                {deliveryButtonTitle}
+              </span>
+              <span className="block text-sm font-bold leading-tight truncate text-left">
+                {deliveryButtonSubtitle}
+              </span>
             </span>
             <ChevronDown size={14} className="flex-shrink-0" />
           </button>
 
           {/* Right Side Icons */}
-          <div className="flex items-center gap-6 text-white">
+          <div className="ml-auto md:ml-0 flex items-center gap-4 md:gap-6 text-white">
+            <button
+              onClick={() => setIsAccountPanelOpen(true)}
+              className="md:hidden flex items-center gap-2 text-white"
+            >
+              <User size={20} />
+            </button>
             {/* Sign In / Account */}
             {currentUser ? (
               <button
@@ -466,14 +566,11 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <button
                 onClick={() => setIsAccountPanelOpen(true)}
-                className="hidden md:flex flex-col cursor-pointer hover:text-gray-200 group header-signin"
+                className="hidden md:flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/10"
+                aria-label="Sign in"
+                title="Sign in"
               >
-                <div className="text-[11px] leading-tight font-medium">
-                  Sign In
-                </div>
-                <div className="text-sm font-bold leading-tight font-heading">
-                  Account
-                </div>
+                <User size={20} />
               </button>
             )}
 
@@ -484,18 +581,43 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <div className="relative">
                 <ShoppingCart size={24} />
-                <span className="absolute -top-2 -right-2 bg-belims-accent text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-belims-blue">
-                  {cartCount}
-                </span>
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-belims-accent text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-belims-blue">
+                    {cartCount}
+                  </span>
+                )}
               </div>
-              <div className="text-[10px] mt-0.5 font-bold hidden md:block font-heading">
-                {CURRENCY_SYMBOL}
-                {cartItems
-                  .reduce((acc, i) => acc + i.price * i.quantity, 0)
-                  .toFixed(2)}
-              </div>
+              {cartCount > 0 && (
+                <div className="text-[10px] mt-0.5 font-bold hidden md:block font-heading">
+                  {CURRENCY_SYMBOL}
+                  {cartItems
+                    .reduce((acc, i) => acc + i.price * i.quantity, 0)
+                    .toFixed(2)}
+                </div>
+              )}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile Secondary Menu */}
+      <div className="md:hidden bg-[#251e62] text-white px-4 py-3">
+        <div className="space-y-3">
+          <button
+            onClick={() => setIsDeliveryLocationModalOpen(true)}
+            className="w-full flex items-center gap-2 text-white cursor-pointer font-bold text-sm transition-all font-heading"
+          >
+            <MapPin size={16} />
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block text-[11px] font-semibold leading-tight text-white/80 text-left">
+                {deliveryButtonTitle}
+              </span>
+              <span className="block text-sm font-bold leading-tight truncate text-left">
+                {deliveryButtonSubtitle}
+              </span>
+            </span>
+            <ChevronDown size={14} className="flex-shrink-0" />
+          </button>
         </div>
       </div>
 
@@ -1313,6 +1435,8 @@ export const Header: React.FC<HeaderProps> = ({
         onClose={() => setIsDeliveryLocationModalOpen(false)}
         currentAddress={deliveryAddress || undefined}
         onAddressSelect={handleAddressSelect}
+        currentStore={selectedStore}
+        onStoreSelect={setSelectedStore}
       />
     </header>
   );

@@ -87,38 +87,33 @@ const HeroBanner: React.FC = () => {
           {/* Secondary Promo Cards - 4cols on LG */}
           <div className="lg:col-span-4 flex flex-col gap-6 md:gap-8">
             {/* Daily Deals Card - Top Right */}
-            <div className="relative flex-1 bg-belims-blue rounded-lg overflow-hidden shadow-sm  flex items-center p-6 md:p-8">
-              <div className="z-10 w-full flex flex-row items-center justify-between gap-4">
-                {/* Left Side: Content */}
-                <div className="flex flex-col items-start">
-                  <h3 className="mb-2 text-xl font-bold text-white font-heading letterspacing-tight mb-">
-                    Daily deals
-                  </h3>
-                  <p className="mb-6 text-base text-white leading-relaxed">
-                    Fresh discounts daily.
-                  </p>
-                  <a
-                    href="/collections/all"
-                    className="inline-flex h-11 items-center justify-center rounded bg-red-600 px-8 text-base font-bold text-white transition-color hover:bg-red-700 shadow-md"
-                  >
-                    Shop Now
-                  </a>
-                </div>
-
-                {/* Right Side: Counter */}
-                <div className="origin-right">
+            <div className="relative flex-1 bg-belims-blue rounded-lg overflow-hidden shadow-sm flex items-center p-3 md:p-5">
+              <div className="z-10 w-full flex flex-col items-center text-center gap-4">
+                <h3 className="text-xl font-bold text-white font-heading letterspacing-tight">
+                  Daily deals
+                </h3>
+                {/* <p className="text-base text-white leading-relaxed">
+                  Fresh discounts daily.
+                </p> */}
+                <div className="origin-center">
                   <CountdownTimer
                     targetDate={new Date(new Date().setHours(23, 59, 59, 999))}
-                    label="Deals end in"
+                    label=""
                     variant="inverse"
                     hideDays={true}
                   />
                 </div>
+                <a
+                  href="/collections/all"
+                  className="inline-flex h-11 items-center justify-center rounded bg-red-600 px-8 text-base font-bold text-white transition-color hover:bg-red-700 shadow-md"
+                >
+                  Shop Now
+                </a>
               </div>
             </div>
 
             {/* Tool Servicing Card - Bottom Right */}
-            <div className="relative flex-1 bg-[#F3F4F6] rounded-lg overflow-hidden flex items-center min-h-[160px] lg:min-h-[280px] shadow-sm">
+            <div className="relative flex-1 bg-[#F3F4F6] rounded-lg overflow-hidden flex items-center min-h-[150px] lg:min-h-[260px] shadow-sm">
               {/* Background Image */}
               <div className="absolute inset-0">
                 <img

@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Wallet, Plus, Settings, User } from "lucide-react";
+import { Home, Search, LayoutGrid, ShoppingCart, User } from "lucide-react";
 
 export const MobileBottomNav: React.FC = () => {
   return (
@@ -20,62 +20,62 @@ export const MobileBottomNav: React.FC = () => {
           </div>
         </div>
 
-        {/* Wallet */}
+        {/* Search */}
         <div className="relative group flex-1 flex justify-center">
           <button
             type="button"
             className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
           >
-            <Wallet className="w-6 h-6 text-gray-500 group-hover:text-belims-blue transition-colors" />
-            <span className="sr-only">Wallet</span>
+            <Search className="w-6 h-6 text-gray-500 group-hover:text-belims-blue transition-colors" />
+            <span className="sr-only">Search</span>
           </button>
           <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
-            Wallet
+            Search
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[5px] border-t-belims-navy" />
           </div>
         </div>
 
-        {/* Plus Button (Center) */}
+        {/* Departments */}
         <div className="relative group flex-1 flex justify-center">
           <button
             type="button"
-            className="flex items-center justify-center w-10 h-10 bg-belims-blue text-white rounded-full shadow-lg hover:bg-belims-blue/90 hover:scale-110 active:scale-95 transition-all"
+            className="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-red-600 transition-colors"
           >
-            <Plus className="w-6 h-6" />
-            <span className="sr-only">New item</span>
+            <LayoutGrid className="w-6 h-6 text-white" />
+            <span className="sr-only">Departments</span>
           </button>
           <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
-            Create new
+            Departments
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[5px] border-t-belims-navy" />
           </div>
         </div>
 
-        {/* Settings */}
+        {/* Cart */}
         <div className="relative group flex-1 flex justify-center">
           <button
             type="button"
             className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
           >
-            <Settings className="w-6 h-6 text-gray-500 group-hover:text-belims-blue transition-colors" />
-            <span className="sr-only">Settings</span>
+            <ShoppingCart className="w-6 h-6 text-gray-500 group-hover:text-belims-blue transition-colors" />
+            <span className="sr-only">Cart</span>
           </button>
           <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
-            Settings
+            Cart
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[5px] border-t-belims-navy" />
           </div>
         </div>
 
-        {/* Profile */}
+        {/* Account */}
         <div className="relative group flex-1 flex justify-center">
           <button
             type="button"
             className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
           >
             <User className="w-6 h-6 text-gray-500 group-hover:text-belims-blue transition-colors" />
-            <span className="sr-only">Profile</span>
+            <span className="sr-only">Account</span>
           </button>
           <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
-            Profile
+            Account
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[5px] border-t-belims-navy" />
           </div>
         </div>

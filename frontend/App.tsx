@@ -169,6 +169,9 @@ const HomePage = ({
   const featuredDeals = useMemo(() => {
     return products
       .filter((product) => {
+        if (product.deals_resolved?.trade?.bestDeal?.type === "trade_special") {
+          return false;
+        }
         // If we have a resolved deal, it's featured worthy
         if (product.deals_resolved?.consumer?.bestDeal) return true;
         // Fallback to standard WooCommerce sale price check or native featured flag
@@ -242,23 +245,18 @@ const HomePage = ({
 
       {/* Deal Filter Chips */}
       <section
-        className=" bg-belims-gray border-t border-black/5 py-12 pb-0"
+        className=" bg-gray-50 border-t border-black/5 py-12 pb-0"
         aria-label="Deal filters"
       >
-        <div className="container mx-auto px-4 flex gap-8 align-items-center">
+        <div className="container mx-auto px-4 flex flex-col gap-4 md:flex-row md:gap-8 md:items-center">
           <div className="mb-0">
             <h2 className="text-2xl font-bold text-gray-900 font-heading">
-              Browse all deals
+              {activeDealFilter === "all" ? "Browse all Deals" : "Browse Deals"}
             </h2>
           </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+          <div className="flex gap-3 overflow-x-auto no-scrollbar">
             {[
               { key: "all", label: "All deals", hasProducts: true },
-              {
-                key: "featured",
-                label: "On Sale",
-                hasProducts: featuredDeals.length > 0,
-              },
               {
                 key: "deal_of_day",
                 label: "Deals of the day",
@@ -298,10 +296,132 @@ const HomePage = ({
         </div>
       </section>
 
-      {/* Featured Deals */}
-      {shouldShowSection("featured") && (
+      {/* Featured + Daily + Weekly Deals Grid (All Deals View) */}
+      {activeDealFilter === "all" && (
         <section
-          className="pt-6 pb-14 bg-belims-gray border-b border-black/5"
+          className="pt-6 pb-14 bg-gray-50 border-b border-black/5"
+          aria-label="Deals highlights"
+        >
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="rounded-lg border border-gray-200 bg-white p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 font-heading">
+                      Deals of the day
+                    </h2>
+                    <p className="text-gray-500 text-xs mt-1">
+                      Fresh discounts daily — expire at midnight.
+                    </p>
+                  </div>
+                  <a
+                    href="/deals"
+                    className="text-xs font-semibold text-belims-blue hover:text-belims-accent whitespace-nowrap"
+                  >
+                    View all →
+                  </a>
+                </div>
+                {dealsOfTheDay.length > 0 ? (
+                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+                    {dealsOfTheDay.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        addToCart={addToCart}
+                        className="min-w-full max-w-full w-full"
+                        variant="flat"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10 text-gray-500 rounded-lg border border-gray-100">
+                    <p>No deals available today. Check back soon!</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 font-heading">
+                      Trade specials
+                    </h2>
+                    <p className="text-gray-500 text-xs mt-1">
+                      Contractor pricing available — log in to purchase.
+                    </p>
+                  </div>
+                  <a
+                    href="/deals?type=trade_special"
+                    className="text-xs font-semibold text-belims-blue hover:text-belims-accent whitespace-nowrap"
+                  >
+                    View all →
+                  </a>
+                </div>
+                {tradeSpecials.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4">
+                    {tradeSpecials.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        addToCart={addToCart}
+                        className="min-w-full max-w-full w-full"
+                        variant="flat-horizontal"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10 text-gray-500 rounded-lg border border-gray-100">
+                    <p>No trade specials currently.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 font-heading">
+                      Weekly deals
+                    </h2>
+                    <p className="text-gray-500 text-xs mt-1">
+                      Weekly savings across selected products.
+                    </p>
+                  </div>
+                  <a
+                    href="/deals/weekly"
+                    className="text-xs font-semibold text-belims-blue hover:text-belims-accent whitespace-nowrap"
+                  >
+                    View all →
+                  </a>
+                </div>
+                {weeklyDeals.length > 0 ? (
+                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+                    {weeklyDeals.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        addToCart={addToCart}
+                        className="min-w-full max-w-full w-full"
+                        variant="flat"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10 text-gray-500 rounded-lg border border-gray-100">
+                    <p>
+                      No weekly specials available right now. Check back soon!
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Featured Deals */}
+      {activeDealFilter !== "all" && shouldShowSection("featured") && (
+        <section
+          className="pt-6 pb-14 bg-gray-50 border-b border-black/5"
           aria-label="Featured deals"
         >
           <div className="container mx-auto px-4">
@@ -342,7 +462,7 @@ const HomePage = ({
       )}
 
       {/* Deals of the Day */}
-      {shouldShowSection("deal_of_day") && (
+      {activeDealFilter !== "all" && shouldShowSection("deal_of_day") && (
         <section
           className="py-14 bg-belims-gray border-b border-black/5"
           aria-label="Deals of the day"
@@ -394,7 +514,7 @@ const HomePage = ({
       <CollageGrid />
 
       {/* Weekly Deals */}
-      {shouldShowSection("weekly") && (
+      {activeDealFilter !== "all" && shouldShowSection("weekly") && (
         <section
           className="py-14  bg-belims-gray border-b border-black/5"
           aria-label="Weekly deals and bulk savings"
@@ -1031,7 +1151,7 @@ export default function App() {
     // const hasSeen = localStorage.getItem("hasSeenOnboarding");
     // return !hasSeen;
   });
-  const [selectedStore, setSelectedStore] = useState<Store | null>(STORES[0]);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [userType, setUserType] = useState<"personal" | "business">("personal");
   const [comparisonList, setComparisonList] = useState<Product[]>([]);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
@@ -1224,6 +1344,7 @@ function MainApp(props) {
     <div className="min-h-screen flex flex-col bg-white font-sans">
       <Header
         selectedStore={props.selectedStore}
+        setSelectedStore={props.setSelectedStore}
         cartItems={props.cartItems}
         toggleCart={() => props.setIsCartOpen(true)}
         toggleStoreLocator={() => props.setIsLocatorOpen(true)}

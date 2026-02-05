@@ -1236,7 +1236,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         <p>{deliveryRatesError}</p>
                       </div>
                     ) : (
-                      <div className="flex flex-col-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {deliveryRates.map((rate, idx) => {
                           const tier = classifyRate(rate, deliveryRates);
                           const isSelected =

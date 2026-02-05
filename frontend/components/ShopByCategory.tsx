@@ -32,8 +32,8 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
   isTradeApproved = false,
 }) => {
   const navigate = useNavigate();
-  const [categoryPills, setCategoryPills] = useState<string[]>(["Top Deals"]);
-  const [activeCategory, setActiveCategory] = useState("Top Deals");
+  const [categoryPills, setCategoryPills] = useState<string[]>(["On Sale"]);
+  const [activeCategory, setActiveCategory] = useState("On Sale");
 
   console.log("ShopByCategory rendered, products count:", products.length);
 
@@ -75,7 +75,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
           console.log("Matching categories:", matchingCategories);
 
           if (matchingCategories.length > 0) {
-            setCategoryPills(["Top Deals", ...matchingCategories]);
+            setCategoryPills(["On Sale", ...matchingCategories]);
           } else {
             console.warn("No matching categories found");
           }
@@ -96,9 +96,18 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
   // Filter products by active category and limit to 10
   const categoryProducts = products
     .filter((product) => {
-      if (activeCategory === "Top Deals") {
-        // Show products with sale price or featured products
-        return product.sale_price || product.isFeatured;
+      if (activeCategory === "On Sale") {
+        // Show consumer deals / on-sale items, exclude trade specials
+        if (product.deals_resolved?.trade?.bestDeal?.type === "trade_special") {
+          return false;
+        }
+
+        if (product.deals_resolved?.consumer?.bestDeal) return true;
+
+        return (
+          (product.sale_price && parseFloat(String(product.sale_price)) > 0) ||
+          product.isFeatured
+        );
       }
 
       // Check if product category matches the active category exactly
@@ -125,7 +134,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
   console.log(
     `Filtering for category: "${activeCategory}", found: ${categoryProducts.length} products`,
   );
-  if (categoryProducts.length === 0 && activeCategory !== "Top Deals") {
+  if (categoryProducts.length === 0 && activeCategory !== "On Sale") {
     console.log("No products found for category:", activeCategory);
     // Get unique categories from ALL products
     const uniqueCategories = [
@@ -169,7 +178,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
         {/* Category Preview Section */}
         <div className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[420px] animate-fadeIn">
           {/* Left: Category Hero Video */}
-          <div className="w-full lg:w-1/3 xl:w-1/5 rounded overflow-hidden relative group shadow-md h-[360px] lg:h-[420px]">
+          <div className="hidden lg:block w-full lg:w-1/3 xl:w-1/5 rounded overflow-hidden relative group shadow-md h-[360px] lg:h-[420px]">
             <video
               autoPlay
               muted
