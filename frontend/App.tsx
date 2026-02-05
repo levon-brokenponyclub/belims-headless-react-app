@@ -641,7 +641,7 @@ const HomePage = ({
       {/* Trade Specials */}
       {shouldShowSection("trade_special") && (
         <section
-          className="py-14 bg-belims-gray border-b border-black/5"
+          className="py-14 bg-gray-50 border-t border-b border-black/5"
           aria-label="Trade specials"
         >
           <div className="container mx-auto px-4">

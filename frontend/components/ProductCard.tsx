@@ -234,7 +234,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       <Link
         to={`/product/${product.id}`}
         className={`flex items-center justify-center bg-[#F9F9F9] ${
-          isFlatHorizontal ? "h-full w-[33%] p-4" : "h-52"
+          isFlatHorizontal ? "h-full w-[33%]" : "h-52"
         } ${isFlat && !isFlatHorizontal ? "" : !isFlatHorizontal ? "p-5" : ""}`}
       >
         {product.image ? (
@@ -254,22 +254,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       <div
         className={`flex flex-1 flex-col ${
           isFlat ? "" : "p-5"
-        } ${isFlatHorizontal ? "p-4" : ""}`}
+        } ${isFlatHorizontal ? "px-4" : ""}`}
       >
         {/* Category / Deal Name */}
-        {(!isFlat || isFlatHorizontal) && (
+        {/* {(!isFlat || isFlatHorizontal) && (
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#565969]">
             {showDealName && consumerBest?.deal_name
               ? consumerBest.deal_name
               : product.category}
           </div>
-        )}
+        )} */}
 
         {/* Title - Fixed height for 2 lines */}
         <Link
           to={`/product/${product.id}`}
-          className={`mb-3 line-clamp-2 font-heading font-semibold leading-[1.35] text-gray-900 hover:underline min-h-[41px] ${
-            isFlat ? "text-[13px]" : "text-[15px]"
+          className={`mb-3 mt-3 line-clamp-2 font-heading font-semibold leading-[1.35] text-gray-900 hover:underline min-h-[41px] ${
+            isFlat ? "text-[13px] min-h-[30px]" : "text-[15px]"
           }`}
         >
           {product.name}
