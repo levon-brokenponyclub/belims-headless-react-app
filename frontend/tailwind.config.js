@@ -7,6 +7,14 @@ export default {
     "./components/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    container: {
+      center: true,
+      padding: "1rem",
+      screens: {
+        xl: "1380px",
+        "2xl": "1380px",
+      },
+    },
     extend: {
       // ============================================
       // COLOR SYSTEM (Belims Premium)

@@ -32,10 +32,6 @@
   }
 }
 
-.container {
-  max-width: 1380px;
-}
-
 /* Ensure Belims blue utilities render consistently */
 .bg-belims-blue {
   --tw-bg-opacity: 1;
