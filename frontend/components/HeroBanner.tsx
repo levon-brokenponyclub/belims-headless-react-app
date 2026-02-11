@@ -1,8 +1,37 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { CountdownTimer } from "./CountdownTimer";
 
 const HeroBanner: React.FC = () => {
+  const [shouldPlayVideo, setShouldPlayVideo] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const startPlayback = () => setShouldPlayVideo(true);
+    let idleHandle: number | null = null;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (idleWindow.requestIdleCallback) {
+      idleHandle = idleWindow.requestIdleCallback(startPlayback);
+    } else {
+      timeoutHandle = setTimeout(startPlayback, 1500);
+    }
+
+    return () => {
+      if (idleHandle !== null && idleWindow.cancelIdleCallback) {
+        idleWindow.cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle !== null) {
+        clearTimeout(timeoutHandle);
+      }
+    };
+  }, []);
+
   return (
     <section className="bg-gray-200 py-6 md:py-8 lg:py-10">
       <div className="container mx-auto px-4 max-w-[1400px]">
@@ -13,16 +42,20 @@ const HeroBanner: React.FC = () => {
               {/* Background Video Overlay */}
               <div className="absolute inset-0 opacity-90">
                 <video
-                  autoPlay
+                  autoPlay={shouldPlayVideo}
                   loop
                   muted
                   playsInline
+                  preload="none"
+                  poster="/images/development/midsection-worker-using-circular-saw-workshop.webp"
                   className="h-full w-full object-cover"
                 >
-                  <source
-                    src="https://www.shutterstock.com/shutterstock/videos/3530100681/preview/stock-footage-helmet-worker-and-laughing-with-glasses-in-construction-safety-and-black-man-in-warehouse-face.webm"
-                    type="video/webm"
-                  />
+                  {shouldPlayVideo && (
+                    <source
+                      src="https://www.shutterstock.com/shutterstock/videos/3530100681/preview/stock-footage-helmet-worker-and-laughing-with-glasses-in-construction-safety-and-black-man-in-warehouse-face.webm"
+                      type="video/webm"
+                    />
+                  )}
                   {/* Fallback Image */}
                   <img
                     src="/images/development/midsection-worker-using-circular-saw-workshop.webp"
@@ -30,6 +63,16 @@ const HeroBanner: React.FC = () => {
                     className="h-full w-full object-cover"
                   />
                 </video>
+                {!shouldPlayVideo && (
+                  <button
+                    type="button"
+                    onClick={() => setShouldPlayVideo(true)}
+                    className="absolute bottom-6 left-6 rounded-full bg-black/50 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-black/70"
+                    aria-label="Play hero video"
+                  >
+                    Play
+                  </button>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-r from-[#09111D] via-[#09111D]/50 to-transparent"></div>
               </div>
 

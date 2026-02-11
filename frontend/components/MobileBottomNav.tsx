@@ -1,9 +1,57 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Home, Search, LayoutGrid, ShoppingCart, User } from "lucide-react";
 
 export const MobileBottomNav: React.FC = () => {
+  const [isVisible, setIsVisible] = useState(true);
+  const [stickyBarVisible, setStickyBarVisible] = useState(false);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // Show menu when scrolling up, hide when scrolling down
+      if (currentScrollY < lastScrollY.current) {
+        setIsVisible(true);
+      } else if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        setIsVisible(false);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Detect sticky add to cart bar visibility
+  useEffect(() => {
+    const stickyBar = document.querySelector("[data-sticky-cart-bar]");
+    if (!stickyBar) return;
+
+    const observer = new MutationObserver(() => {
+      const isBarVisible = stickyBar.classList.contains("translate-y-0");
+      setStickyBarVisible(isBarVisible);
+    });
+
+    observer.observe(stickyBar, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    // Initial check
+    const isBarVisible = stickyBar.classList.contains("translate-y-0");
+    setStickyBarVisible(isBarVisible);
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] w-full max-w-lg px-4">
+    <div
+      className={`lg:hidden fixed left-1/2 -translate-x-1/2 z-[100] w-full max-w-lg px-4 transition-all duration-300 ${
+        isVisible ? "translate-y-0" : "translate-y-[80px]"
+      } ${stickyBarVisible ? "bottom-[77px]" : "bottom-4"}`}
+    >
       <div className="h-16 bg-white/90 backdrop-blur-lg border border-gray-200 rounded-full shadow-2xl flex items-center justify-between px-2">
         {/* Home */}
         <div className="relative group flex-1 flex justify-center">

@@ -163,6 +163,7 @@ export function BrandStrip() {
                       src={brand.logo}
                       alt={brand.name}
                       loading="lazy"
+                      decoding="async"
                       className="w-[65%] object-contain"
                     />
                   </span>

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   User,
   Package,
@@ -12,7 +13,9 @@ import {
   Truck,
   PlusCircle,
 } from "lucide-react";
-import { UserData } from "../services/authService";
+import { UserData, updateUserProfile } from "../services/authService";
+import { fetchCustomerOrders } from "../services/wooCommerceService";
+import { Order } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 
 interface AccountPageProps {
@@ -23,7 +26,85 @@ interface AccountPageProps {
 type Tab = "dashboard" | "orders" | "addresses" | "payment" | "details";
 
 export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") as Tab | null;
+  const [activeTab, setActiveTab] = useState<Tab>(tabParam || "dashboard");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [detailsMessage, setDetailsMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // Form state for account details
+  const [formData, setFormData] = useState({
+    first_name: user?.first_name || "",
+    last_name: user?.last_name || "",
+    display_name: user?.display_name || "",
+    phone: user?.phone || "",
+  });
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  // Fetch orders on component mount
+  useEffect(() => {
+    const loadOrders = async () => {
+      if (!user) return;
+      setLoadingOrders(true);
+      try {
+        const fetchedOrders = await fetchCustomerOrders();
+        setOrders(Array.isArray(fetchedOrders) ? fetchedOrders : []);
+      } catch (error) {
+        console.error("Failed to load orders:", error);
+        setOrders([]);
+      } finally {
+        setLoadingOrders(false);
+      }
+    };
+
+    loadOrders();
+  }, [user]);
+
+  // Update form data when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+        display_name: user.display_name || "",
+        phone: user.phone || "",
+      });
+    }
+  }, [user]);
+
+  const handleSaveDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingDetails(true);
+    setDetailsMessage(null);
+
+    try {
+      const result = await updateUserProfile(formData);
+      setDetailsMessage({
+        type: "success",
+        text: result.message || "Account details updated successfully!",
+      });
+
+      // Reload user data by dispatching a custom event or calling a parent callback
+      window.dispatchEvent(new Event("user-updated"));
+    } catch (error: any) {
+      setDetailsMessage({
+        type: "error",
+        text: error.message || "Failed to update account details.",
+      });
+    } finally {
+      setSavingDetails(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -51,6 +132,40 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     { id: "details", label: "Account Details", icon: <User size={20} /> },
   ];
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-50 text-green-700 border-green-100";
+      case "processing":
+      case "on-hold":
+        return "bg-blue-50 text-blue-700 border-blue-100";
+      case "pending":
+        return "bg-yellow-50 text-yellow-700 border-yellow-100";
+      case "cancelled":
+      case "failed":
+        return "bg-red-50 text-red-700 border-red-100";
+      default:
+        return "bg-gray-50 text-gray-600 border-gray-200";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1).replace("-", " ");
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const activeOrderCount = orders.filter(
+    (o) => o.status === "processing" || o.status === "on-hold",
+  ).length;
+
   const renderDashboard = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -61,7 +176,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             </div>
             <h3 className="font-bold text-gray-900">Total Orders</h3>
           </div>
-          <p className="text-3xl font-extrabold text-belims-blue">12</p>
+          <p className="text-3xl font-extrabold text-belims-blue">
+            {loadingOrders ? "-" : orders.length}
+          </p>
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <div className="flex items-center gap-4 mb-2">
@@ -70,7 +187,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             </div>
             <h3 className="font-bold text-gray-900">Active Orders</h3>
           </div>
-          <p className="text-3xl font-extrabold text-green-600">2</p>
+          <p className="text-3xl font-extrabold text-green-600">
+            {loadingOrders ? "-" : activeOrderCount}
+          </p>
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <div className="flex items-center gap-4 mb-2">
@@ -96,43 +215,59 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           </button>
         </div>
         <div className="divide-y divide-gray-100">
-          {[1, 2, 3].map((order) => (
-            <div
-              key={order}
-              className="p-6 hover:bg-gray-50 transition-colors cursor-pointer group"
-            >
-              <div className="flex flex-wrap justify-between items-center gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-gray-400 group-hover:bg-white group-hover:shadow-sm transition-all">
-                    <Package size={24} />
+          {loadingOrders ? (
+            <div className="p-6 text-center text-gray-500">
+              Loading orders...
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">No orders yet</div>
+          ) : (
+            orders.slice(0, 3).map((order) => (
+              <div
+                key={order.id}
+                className="p-6 hover:bg-gray-50 transition-colors cursor-pointer group"
+              >
+                <div className="flex flex-wrap justify-between items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-gray-400 group-hover:bg-white group-hover:shadow-sm transition-all">
+                      <Package size={24} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900">
+                        Order #{order.order_number}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(order.date_created)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-gray-900">
-                      Order #7829{order}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      March {12 + order}, 2021
-                    </p>
+                  <div className="flex items-center gap-6">
+                    <div className="hidden md:block">
+                      <p className="text-sm font-medium text-gray-900">
+                        {order.currency || "ZAR"}{" "}
+                        {parseFloat(order.total).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {order.line_items.length} item
+                        {order.line_items.length !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <div
+                      className={`px-3 py-1 text-xs font-bold rounded-full border uppercase tracking-wide ${getStatusColor(
+                        order.status,
+                      )}`}
+                    >
+                      {getStatusLabel(order.status)}
+                    </div>
+                    <ChevronRight
+                      size={20}
+                      className="text-gray-300 group-hover:text-belims-blue transition-colors"
+                    />
                   </div>
-                </div>
-                <div className="flex items-center gap-6">
-                  <div className="hidden md:block">
-                    <p className="text-sm font-medium text-gray-900">
-                      {CURRENCY_SYMBOL}129.00
-                    </p>
-                    <p className="text-xs text-gray-500">2 items</p>
-                  </div>
-                  <div className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-wide">
-                    {order === 1 ? "Delivered" : "Processing"}
-                  </div>
-                  <ChevronRight
-                    size={20}
-                    className="text-gray-300 group-hover:text-belims-blue transition-colors"
-                  />
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -144,61 +279,69 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
         <h3 className="font-bold text-gray-900 text-lg">Order History</h3>
       </div>
       <div className="divide-y divide-gray-100">
-        {[1, 2, 3, 4, 5].map((order) => (
-          <div
-            key={order}
-            className="p-6 hover:bg-gray-50 transition-colors cursor-pointer group"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-                  <Package size={28} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-gray-900">#ORD-9021{order}</p>
-                    <span className="text-[10px] bg-blue-50 text-belims-blue px-2 py-0.5 rounded font-bold uppercase border border-blue-100">
-                      {order % 2 === 0 ? "Express" : "Standard"}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-0.5">
-                    Placed on Mar {25 - order}, 2021
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between sm:justify-end gap-8 pt-4 sm:pt-0 border-t sm:border-0 border-gray-100">
-                <div className="text-left sm:text-right">
-                  <p className="text-sm font-bold text-gray-900">
-                    {CURRENCY_SYMBOL}
-                    {(145.5 * order).toFixed(2)}
-                  </p>
-                  <p className="text-xs text-gray-500">{order} items</p>
-                </div>
+        {loadingOrders ? (
+          <div className="p-6 text-center text-gray-500">Loading orders...</div>
+        ) : orders.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">
+            No orders found. Start shopping to place your first order.
+          </div>
+        ) : (
+          orders.map((order) => (
+            <div
+              key={order.id}
+              className="p-6 hover:bg-gray-50 transition-colors cursor-pointer group"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div
-                    className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
-                      order === 1
-                        ? "bg-green-50 text-green-700 border-green-100"
-                        : order === 2
-                          ? "bg-blue-50 text-blue-700 border-blue-100"
-                          : "bg-gray-50 text-gray-600 border-gray-200"
-                    }`}
-                  >
-                    {order === 1
-                      ? "Delivered"
-                      : order === 2
-                        ? "Shipped"
-                        : "Completed"}
+                  <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                    <Package size={28} />
                   </div>
-                  <button className="p-2 hover:bg-white hover:shadow-sm rounded-lg border border-transparent hover:border-gray-200 text-gray-400 hover:text-belims-blue transition-all">
-                    <ChevronRight size={20} />
-                  </button>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-gray-900">
+                        #{order.order_number}
+                      </p>
+                      {order.shipping_lines &&
+                        order.shipping_lines.length > 0 && (
+                          <span className="text-[10px] bg-blue-50 text-belims-blue px-2 py-0.5 rounded font-bold uppercase border border-blue-100">
+                            {order.shipping_lines[0].method_title || "Standard"}
+                          </span>
+                        )}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-0.5">
+                      Placed on {formatDate(order.date_created)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-8 pt-4 sm:pt-0 border-t sm:border-0 border-gray-100">
+                  <div className="text-left sm:text-right">
+                    <p className="text-sm font-bold text-gray-900">
+                      {order.currency || "ZAR"}{" "}
+                      {parseFloat(order.total).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {order.line_items.length} item
+                      {order.line_items.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(
+                        order.status,
+                      )}`}
+                    >
+                      {getStatusLabel(order.status)}
+                    </div>
+                    <button className="p-2 hover:bg-white hover:shadow-sm rounded-lg border border-transparent hover:border-gray-200 text-gray-400 hover:text-belims-blue transition-all">
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
@@ -275,7 +418,18 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
         <h3 className="font-bold text-gray-900 text-lg">Account Details</h3>
       </div>
       <div className="p-8">
-        <form className="space-y-6 max-w-2xl">
+        {detailsMessage && (
+          <div
+            className={`mb-6 p-4 rounded-lg border ${
+              detailsMessage.type === "success"
+                ? "bg-green-50 border-green-200 text-green-800"
+                : "bg-red-50 border-red-200 text-red-800"
+            }`}
+          >
+            {detailsMessage.text}
+          </div>
+        )}
+        <form onSubmit={handleSaveDetails} className="space-y-6 max-w-2xl">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
@@ -283,7 +437,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
               </label>
               <input
                 type="text"
-                defaultValue={user.first_name}
+                value={formData.first_name}
+                onChange={(e) =>
+                  setFormData({ ...formData, first_name: e.target.value })
+                }
                 className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
               />
             </div>
@@ -293,7 +450,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
               </label>
               <input
                 type="text"
-                defaultValue={user.last_name}
+                value={formData.last_name}
+                onChange={(e) =>
+                  setFormData({ ...formData, last_name: e.target.value })
+                }
                 className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
               />
             </div>
@@ -305,7 +465,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             </label>
             <input
               type="text"
-              defaultValue={user.display_name}
+              value={formData.display_name}
+              onChange={(e) =>
+                setFormData({ ...formData, display_name: e.target.value })
+              }
               className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
             />
             <p className="text-[10px] text-gray-400 mt-1.5 italic">
@@ -319,14 +482,32 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             </label>
             <input
               type="email"
-              defaultValue={user.email}
+              value={user?.email || ""}
               className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors bg-gray-50 cursor-not-allowed"
               readOnly
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
+              className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
+            />
+          </div>
+
           <div className="pt-6 border-t border-gray-100">
-            <h4 className="font-bold text-gray-900 mb-6">Password Change</h4>
+            <h4 className="font-bold text-gray-900 mb-2">Password Change</h4>
+            <p className="text-sm text-gray-500 mb-6">
+              Leave these fields blank if you don't want to change your
+              password.
+            </p>
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
@@ -334,8 +515,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                 </label>
                 <input
                   type="password"
-                  placeholder="Leave blank to keep same"
+                  placeholder="Enter current password"
                   className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
+                  disabled
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -347,6 +529,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                     type="password"
                     placeholder="Min. 8 characters"
                     className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
+                    disabled
                   />
                 </div>
                 <div>
@@ -357,18 +540,23 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                     type="password"
                     placeholder="Repeat password"
                     className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
+                    disabled
                   />
                 </div>
               </div>
+              <p className="text-xs text-gray-500 italic">
+                Password change functionality coming soon.
+              </p>
             </div>
           </div>
 
           <div className="pt-4">
             <button
               type="submit"
-              className="bg-belims-blue text-white px-8 py-3 rounded font-bold hover:bg-belims-light transition-all shadow-md hover:shadow-lg active:scale-95"
+              disabled={savingDetails}
+              className="bg-belims-blue text-white px-8 py-3 rounded font-bold hover:bg-belims-light transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              SAVE CHANGES
+              {savingDetails ? "SAVING..." : "SAVE CHANGES"}
             </button>
           </div>
         </form>

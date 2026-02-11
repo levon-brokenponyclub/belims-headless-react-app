@@ -144,6 +144,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
   );
   const [loadingSavedRates, setLoadingSavedRates] = useState(false);
 
+  // Single-step checkout state
+  const [editingAddress, setEditingAddress] = useState(true);
+  const [addressAutoPopulated, setAddressAutoPopulated] = useState(false);
+
   // Totals
   const subtotal = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
@@ -152,57 +156,75 @@ export const Checkout: React.FC<CheckoutProps> = ({
   const shippingCost = selectedShipping ? selectedShipping.total_price : 0;
   const total = subtotal + shippingCost;
 
-  // Load and fetch shipping rates for saved delivery location
+  // Auto-populate address from saved delivery location and fetch shipping rates
   useEffect(() => {
-    const fetchSavedLocationRates = async () => {
-      if (savedLocationRates.length > 0) return;
+    const initializeFromSavedLocation = async () => {
+      const { address } = readStoredAddress();
 
-      setLoadingSavedRates(true);
-      try {
-        // Use the new versioned storage format with fallback to legacy
-        const { address } = readStoredAddress();
-
-        if (!address || !address.city || !address.province) {
-          setSavedLocationRates([]);
-          setLoadingSavedRates(false);
-          return;
-        }
-
-        const rates = await getShippingRates({
-          destination_address: {
-            street: address.street,
-            city: address.city,
-            province: address.province,
-            postal_code: address.postalCode,
-            country: address.country,
-          },
-        });
-
-        let finalRates = rates;
-        if (!finalRates || finalRates.length === 0) {
-          finalRates = getFallbackShipping();
-        }
-
-        const classifiedRates = finalRates.map((rate: any) => ({
-          ...rate,
-          tier: classifyRate(rate, finalRates),
+      if (
+        address &&
+        address.city &&
+        address.province &&
+        !addressAutoPopulated
+      ) {
+        // Auto-populate customer address
+        setCustomer((prev) => ({
+          ...prev,
+          address: address.street || "",
+          city: address.city || "",
+          province: address.province || "",
+          postalCode: address.postalCode || "",
         }));
+        setAddressAutoPopulated(true);
+        setEditingAddress(false);
 
-        setSavedLocationRates(classifiedRates);
-      } catch (error) {
-        console.error("Failed to fetch saved location rates:", error);
-        setSavedLocationRates(
-          getFallbackShipping().map((rate: any) => ({
+        // Fetch shipping rates for this location
+        setLoadingSavedRates(true);
+        try {
+          const rates = await getShippingRates({
+            destination_address: {
+              street: address.street || "",
+              city: address.city,
+              province: address.province,
+              postal_code: address.postalCode || "",
+              country: address.country || "South Africa",
+            },
+          });
+
+          let finalRates = rates;
+          if (!finalRates || finalRates.length === 0) {
+            finalRates = getFallbackShipping();
+          }
+
+          const classifiedRates = finalRates.map((rate: any) => ({
+            ...rate,
+            tier: classifyRate(rate, finalRates),
+          }));
+
+          setSavedLocationRates(classifiedRates);
+          // Auto-select the fastest rate
+          const fastest = selectFastestRate(classifiedRates);
+          if (fastest) {
+            setSelectedShipping(fastest);
+          }
+        } catch (error) {
+          console.error("Failed to fetch saved location rates:", error);
+          const fallbackRates = getFallbackShipping().map((rate: any) => ({
             ...rate,
             tier: classifyRate(rate, getFallbackShipping()),
-          })),
-        );
-      } finally {
-        setLoadingSavedRates(false);
+          }));
+          setSavedLocationRates(fallbackRates);
+          const fastest = selectFastestRate(fallbackRates);
+          if (fastest) {
+            setSelectedShipping(fastest);
+          }
+        } finally {
+          setLoadingSavedRates(false);
+        }
       }
     };
 
-    fetchSavedLocationRates();
+    initializeFromSavedLocation();
   }, []);
 
   useEffect(() => {
@@ -390,7 +412,8 @@ export const Checkout: React.FC<CheckoutProps> = ({
         setSelectedShipping(fastest);
       }
 
-      setStep("shipping");
+      // Go directly to payment (single step checkout)
+      setStep("payment");
     } catch (err) {
       alert("Failed to get shipping rates");
     } finally {
@@ -476,13 +499,13 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
+      <div className="container px-4 mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           {step !== "success" && (
             <button
               onClick={handleBack}
-              className="p-2 hover:bg-gray-200 rounded-full transition"
+              className="p-2 hover:bg-gray-200 rounded-lg transition"
             >
               <ArrowLeft size={24} />
             </button>
@@ -498,7 +521,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
             {step === "details" && (
               <>
                 {/* Delivery/Pickup Toggle Card */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-gray-900">
                       Personal Details
@@ -581,6 +604,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           <h3 className="font-bold text-gray-900">
                             Shipping Address
                           </h3>
+
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -595,6 +619,28 @@ export const Checkout: React.FC<CheckoutProps> = ({
                             </span>
                           </label>
                         </div>
+
+                        {/* Condensed Address Display */}
+                        {addressAutoPopulated && !editingAddress && (
+                          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex justify-between items-center">
+                            <div className="text-sm text-gray-600">
+                              <p>{customer.address}</p>
+                              <p>
+                                {customer.city}, {customer.province}{" "}
+                                {customer.postalCode}
+                              </p>
+                            </div>
+                            {addressAutoPopulated && !editingAddress && (
+                              <button
+                                type="button"
+                                onClick={() => setEditingAddress(true)}
+                                className="text-sm font-semibold text-belims-blue hover:text-belims-navy transition mt-0"
+                              >
+                                Edit
+                              </button>
+                            )}
+                          </div>
+                        )}
 
                         {/* Account Creation Panel */}
                         {createAccount && (
@@ -652,8 +698,12 @@ export const Checkout: React.FC<CheckoutProps> = ({
                               address: e.target.value,
                             })
                           }
+                          style={{ display: editingAddress ? "block" : "none" }}
                         />
-                        <div className="grid grid-cols-3 gap-4">
+                        <div
+                          className="grid grid-cols-3 gap-4"
+                          style={{ display: editingAddress ? "grid" : "none" }}
+                        >
                           <input
                             required
                             placeholder="City"
@@ -701,10 +751,151 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       </>
                     )}
 
+                    {/* Shipping Options Section - Only for Delivery */}
+                    {deliveryType === "delivery" &&
+                      customer.address &&
+                      customer.city &&
+                      customer.province && (
+                        <div className="border-t border-gray-200 pt-6 mt-6">
+                          <h3 className="text-lg font-bold text-gray-900 mb-4">
+                            Choose Delivery Option
+                          </h3>
+                          {/* <p className="text-sm text-gray-600 mb-4">
+                            Delivering to{" "}
+                            <strong>
+                              {customer.city}, {customer.province}
+                            </strong>
+                          </p> */}
+
+                          {loadingSavedRates ? (
+                            <div className="flex items-center justify-center py-8">
+                              <Loader2
+                                className="animate-spin text-belims-blue"
+                                size={24}
+                              />
+                            </div>
+                          ) : savedLocationRates.length > 0 ||
+                            shippingRates.length > 0 ? (
+                            <>
+                              {/* Selected Shipping Pill */}
+                              {/* {selectedShipping && (
+                                <div className="flex items-center gap-2 bg-blue-50 border border-belims-blue px-4 py-2 rounded-full w-fit mb-4">
+                                  <Check
+                                    size={18}
+                                    className="text-belims-blue"
+                                  />
+                                  <span className="text-sm font-semibold text-belims-blue">
+                                    {selectedShipping.service_name} ·{" "}
+                                    {formatEta(
+                                      selectedShipping.expected_delivery_date,
+                                    )}
+                                  </span>
+                                </div>
+                              )} */}
+
+                              {/* Shipping Cards */}
+                              <div className="space-y-0 flex gap-6">
+                                {(savedLocationRates.length > 0
+                                  ? savedLocationRates
+                                  : shippingRates
+                                ).map((rate, idx) => {
+                                  const tier =
+                                    rate.tier ||
+                                    classifyRate(
+                                      rate,
+                                      savedLocationRates.length > 0
+                                        ? savedLocationRates
+                                        : shippingRates,
+                                    );
+                                  const isSelected =
+                                    selectedShipping?.service_name ===
+                                    rate.service_name;
+                                  const isFastest =
+                                    fastestRate?.service_name ===
+                                    rate.service_name;
+
+                                  return (
+                                    <div
+                                      key={idx}
+                                      onClick={() => handleShippingSelect(rate)}
+                                      className={`border p-4 py-6 rounded w-full cursor-pointer transition-all flex justify-between items-center ${
+                                        isSelected
+                                          ? "border-belims-blue bg-blue-50"
+                                          : isFastest
+                                            ? "border-orange-300 bg-orange-50"
+                                            : "border-gray-200 hover:border-belims-blue hover:bg-gray-50"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3 flex-1">
+                                        {/* Radio Button */}
+                                        <div className="flex-shrink-0">
+                                          <div
+                                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                              isSelected
+                                                ? "border-belims-blue bg-belims-blue"
+                                                : "border-gray-300 bg-white"
+                                            }`}
+                                          >
+                                            {isSelected && (
+                                              <div className="w-2 h-2 rounded-full bg-white" />
+                                            )}
+                                          </div>
+                                        </div>
+                                        {/* <Truck
+                                          size={24}
+                                          className={
+                                            isSelected
+                                              ? "text-belims-blue"
+                                              : "text-gray-400"
+                                          }
+                                        /> */}
+                                        <div>
+                                          <div className="font-bold text-gray-900 flex items-center gap-2">
+                                            {rate.service_name}
+                                            {tier === "Express" && (
+                                              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                                                <Zap size={12} /> Faster
+                                              </span>
+                                            )}
+                                            {tier === "Economy" && (
+                                              <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                                Budget
+                                              </span>
+                                            )}
+                                          </div>
+                                          {/* <div className="text-xs text-gray-500 mt-1">
+                                            {formatEta(
+                                              rate.expected_delivery_date,
+                                            )}
+                                          </div> */}
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="font-bold text-lg text-gray-900">
+                                          {CURRENCY_SYMBOL}
+                                          {rate.total_price.toFixed(2)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-gray-500 text-center py-8">
+                              No shipping options available.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                     <button
-                      disabled={loading}
+                      disabled={
+                        loading ||
+                        (deliveryType === "delivery" && !selectedShipping)
+                      }
                       type="submit"
-                      className="w-full bg-orange-500 text-white font-bold p-4 rounded-lg hover:bg-orange-600 transition flex justify-center items-center gap-2 mt-6"
+                      className="w-full bg-red-600 text-white font-semibold text-base font-heading p-4 rounded hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex justify-center items-center gap-2 mt-6"
                     >
                       {loading ? (
                         <>
@@ -713,10 +904,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                         </>
                       ) : (
                         <>
-                          {deliveryType === "delivery"
-                            ? "Choose Delivery Option"
-                            : "Proceed to Payment"}
-                          {deliveryType === "delivery" && <Truck size={20} />}
+                          Proceed to Payment <CreditCard size={20} />
                         </>
                       )}
                     </button>
@@ -725,131 +913,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
               </>
             )}
 
-            {step === "shipping" && (
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">
-                    Choose Delivery Option
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    Delivering to{" "}
-                    <strong>
-                      {customer.city}, {customer.province}
-                    </strong>
-                  </p>
-                </div>
-
-                {/* Selected Shipping Pill */}
-                {selectedShipping && (
-                  <div className="flex items-center gap-2 bg-blue-50 border border-belims-blue px-4 py-2 rounded-full w-fit">
-                    <Check size={18} className="text-belims-blue" />
-                    <span className="text-sm font-semibold text-belims-blue">
-                      {selectedShipping.service_name} ·{" "}
-                      {formatEta(selectedShipping.expected_delivery_date)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Shipping Cards */}
-                <div className="space-y-3">
-                  {shippingRates.map((rate, idx) => {
-                    const tier = rate.tier || classifyRate(rate, shippingRates);
-                    const isSelected =
-                      selectedShipping?.service_name === rate.service_name;
-                    const isFastest =
-                      fastestRate?.service_name === rate.service_name;
-
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() => handleShippingSelect(rate)}
-                        className={`border-2 p-4 rounded-lg cursor-pointer transition-all flex justify-between items-center ${
-                          isSelected
-                            ? "border-belims-blue bg-blue-50"
-                            : isFastest
-                              ? "border-orange-300 bg-orange-50"
-                              : "border-gray-200 hover:border-belims-blue hover:bg-gray-50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          {/* Radio Button Checkbox */}
-                          <div className="flex-shrink-0">
-                            <div
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                isSelected
-                                  ? "border-belims-blue bg-belims-blue"
-                                  : "border-gray-300 bg-white"
-                              }`}
-                            >
-                              {isSelected && (
-                                <div className="w-2 h-2 rounded-full bg-white" />
-                              )}
-                            </div>
-                          </div>
-                          <Truck
-                            size={24}
-                            className={
-                              isSelected ? "text-belims-blue" : "text-gray-400"
-                            }
-                          />
-                          <div>
-                            <div className="font-bold text-gray-900 flex items-center gap-2">
-                              {rate.service_name}
-                              {tier === "Express" && (
-                                <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
-                                  <Zap size={12} /> Faster
-                                </span>
-                              )}
-                              {tier === "Economy" && (
-                                <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                                  Budget
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {formatEta(rate.expected_delivery_date)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-lg text-gray-900">
-                            {CURRENCY_SYMBOL}
-                            {rate.total_price.toFixed(2)}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {shippingRates.length === 0 && (
-                    <p className="text-gray-500 text-center py-8">
-                      No shipping options available.
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  disabled={!selectedShipping || loading}
-                  onClick={() => setStep("payment")}
-                  className="w-full bg-orange-500 text-white font-bold p-4 rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex justify-center items-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 size={20} className="animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      Continue to Payment <CreditCard size={20} />
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-
             {step === "payment" &&
               (isReturnFlow ? (
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 space-y-6">
                   <h2 className="text-xl font-bold text-gray-900">
                     Verifying Payment
                   </h2>
@@ -872,7 +938,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                   )}
                 </div>
               ) : (
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 space-y-6">
                   <h2 className="text-xl font-bold text-gray-900">
                     Review & Payment
                   </h2>
@@ -933,7 +999,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
               ))}
 
             {step === "success" && (
-              <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center space-y-6">
+              <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 text-center space-y-6">
                 <div className="bg-green-100 text-green-600 w-24 h-24 rounded-full flex items-center justify-center mx-auto">
                   <Check size={48} />
                 </div>
@@ -958,7 +1024,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
           {/* RIGHT COLUMN: Cart Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 sticky top-6 space-y-6">
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 sticky top-6 space-y-6">
               <h3 className="text-xl font-bold text-gray-900">Order Summary</h3>
 
               {/* Cart Items */}
@@ -999,91 +1065,6 @@ export const Checkout: React.FC<CheckoutProps> = ({
                   </button>
                 </div>
               </div>
-
-              {/* Saved Location Delivery Options */}
-              {savedLocationRates.length > 0 && step === "details" && (
-                <div className="space-y-3 border-t border-gray-200 pt-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-gray-900">
-                      Available Delivery
-                    </h4>
-                    <span className="text-xs text-gray-500">
-                      {(() => {
-                        const { address } = readStoredAddress();
-                        return address
-                          ? `${address.city}, ${address.province}`
-                          : "";
-                      })()}
-                    </span>
-                  </div>
-
-                  {loadingSavedRates ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2
-                        className="animate-spin text-belims-blue"
-                        size={20}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {savedLocationRates.slice(0, 3).map((rate, idx) => {
-                        const tier =
-                          rate.tier || classifyRate(rate, savedLocationRates);
-                        const isSelected =
-                          selectedShipping?.service_name === rate.service_name;
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => setSelectedShipping(rate)}
-                            className={`w-full flex items-center justify-between p-2 rounded-lg border-2 transition-all cursor-pointer ${
-                              isSelected
-                                ? "border-belims-blue bg-blue-50"
-                                : "border-gray-200 bg-gray-50 hover:border-belims-blue"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`${isSelected ? "text-belims-blue" : "text-gray-400"}`}
-                              >
-                                {isSelected ? (
-                                  <Check size={14} />
-                                ) : (
-                                  <Truck size={14} />
-                                )}
-                              </div>
-                              <div className="text-left">
-                                <div className="text-xs font-semibold text-gray-900 flex items-center gap-1">
-                                  {tier === "Express" && (
-                                    <Zap
-                                      size={10}
-                                      className="text-orange-600"
-                                    />
-                                  )}
-                                  {rate.service_name}
-                                  {tier === "Economy" && (
-                                    <span className="text-[8px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
-                                      Budget
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[10px] text-gray-500">
-                                  {formatEta(rate.expected_delivery_date)}
-                                </div>
-                              </div>
-                            </div>
-                            <div
-                              className={`text-xs font-bold ${isSelected ? "text-belims-blue" : "text-gray-900"}`}
-                            >
-                              {CURRENCY_SYMBOL}
-                              {rate.total_price.toFixed(2)}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Totals */}
               <div className="space-y-3 border-t border-gray-200 pt-4">

@@ -182,3 +182,41 @@ export interface PriceMatchResult {
   analysis: string;
   sources: { title: string; uri: string }[];
 }
+
+export interface Order {
+  id: string;
+  order_number: string;
+  date_created: string;
+  status:
+    | "pending"
+    | "processing"
+    | "on-hold"
+    | "completed"
+    | "cancelled"
+    | "refunded"
+    | "failed";
+  total: string;
+  currency: string;
+  line_items: OrderLineItem[];
+  shipping_address: ShippingAddress;
+  billing_address: ShippingAddress;
+  payment_method: string;
+  shipping_lines: ShippingLine[];
+}
+
+export interface OrderLineItem {
+  id: string;
+  product_id: string;
+  name: string;
+  quantity: number;
+  price: string;
+  total: string;
+  image?: string;
+}
+
+export interface ShippingLine {
+  id: string;
+  method_title: string;
+  method_id: string;
+  total: string;
+}

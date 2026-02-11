@@ -36,6 +36,54 @@ export function getApiBaseUrl(): string {
 
 const BASE_URL = getApiBaseUrl();
 
+type CacheEntry<T> = {
+  expiresAt: number;
+  promise: Promise<T>;
+};
+
+const GET_CACHE_TTL_MS = 60_000;
+const getCache = new Map<string, CacheEntry<unknown>>();
+
+export const cachedGetJson = async <T>(
+  url: string,
+  options: RequestInit = {},
+): Promise<T> => {
+  const cached = getCache.get(url);
+  const now = Date.now();
+
+  if (cached && cached.expiresAt > now) {
+    return cached.promise as Promise<T>;
+  }
+
+  const requestPromise = fetch(url, {
+    ...options,
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        const responseText = await response.text();
+        throw new Error(
+          `Request failed: ${response.status} ${response.statusText} ${responseText.substring(0, 200)}`,
+        );
+      }
+      return response.json() as Promise<T>;
+    })
+    .catch((error) => {
+      getCache.delete(url);
+      throw error;
+    });
+
+  getCache.set(url, {
+    expiresAt: now + GET_CACHE_TTL_MS,
+    promise: requestPromise,
+  });
+  return requestPromise;
+};
+
 /**
  * Fetch Products from WooCommerce via custom API
  */
@@ -51,22 +99,7 @@ export const fetchProducts = async (category?: string): Promise<Product[]> => {
     const url = params.toString() ? `${endpoint}?${params}` : endpoint;
     console.log(`Fetching products from: ${url}`);
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include", // Include cookies for CORS requests
-    });
-
-    if (!response.ok) {
-      console.error(`API Error: ${response.status} ${response.statusText}`);
-      const responseText = await response.text();
-      console.error("Response:", responseText.substring(0, 200));
-      throw new Error(`Failed to fetch products: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await cachedGetJson<any[]>(url);
 
     // Data is already formatted by our custom plugin!
     // But we need to resolve deals
@@ -85,20 +118,7 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
     const url = `${BASE_URL}/products?featured=true`;
     console.log(`Fetching featured products from: ${url}`);
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      console.error(`API Error: ${response.status} ${response.statusText}`);
-      throw new Error(`Failed to fetch featured products: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await cachedGetJson<any[]>(url);
     return (data as any[]).map(enrichProductWithDeals);
   } catch (error) {
     console.error("Belims API Error:", error);
@@ -114,20 +134,7 @@ export const fetchCategories = async (): Promise<Category[]> => {
     const url = `${BASE_URL}/categories`;
     console.log(`Fetching categories from: ${url}`);
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      console.error(`API Error: ${response.status} ${response.statusText}`);
-      throw new Error("Failed to fetch categories");
-    }
-
-    return await response.json();
+    return await cachedGetJson<Category[]>(url);
   } catch (error) {
     console.error("Belims API Error:", error);
     return [];
@@ -152,5 +159,30 @@ export const createOrder = async (orderData: any) => {
   } catch (error) {
     console.error("Create Order Error:", error);
     throw error;
+  }
+};
+
+/**
+ * Fetch Customer Orders via custom API
+ */
+export const fetchCustomerOrders = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/orders`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include", // Include cookies for authentication
+    });
+
+    if (!response.ok) {
+      console.error(`API Error: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch orders: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Fetch Orders Error:", error);
+    return [];
   }
 };

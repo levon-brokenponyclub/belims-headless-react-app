@@ -44,6 +44,8 @@ export const CollageGrid: React.FC = () => {
               className="ew040 f6zfz fsxqb wi6ww absolute inset-0 w-full h-full object-cover transform scale-100 group-hover:scale-105 transition-transform duration-700"
               alt={categories[0].title}
               src={categories[0].image}
+              loading="lazy"
+              decoding="async"
             />
             <div className="zc10g ttj7a ew040 f6zfz d1v3n gahlj safue absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
             <div className="zc10g v89yl xvofv dmkaq ovzaa cw2h6 hkfzp dib8x u059s absolute bottom-0 left-0 p-8 w-full flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -55,8 +57,8 @@ export const CollageGrid: React.FC = () => {
                   {categories[0].title}
                 </h3>
               </div>
-              <a
-                href="#"
+              <button
+                type="button"
                 className="dqghp vrbr6 q4imd cg6y5 qjmc5 mkn0h a2aqi flex items-center justify-center gap-2 bg-white/10 backdrop-blur-md px-6 py-3 rounded text-white font-bold hover:bg-white hover:text-black transition-all"
               >
                 Shop {categories[0].title}
@@ -75,7 +77,7 @@ export const CollageGrid: React.FC = () => {
                     strokeLinejoin="round"
                   ></path>
                 </svg>
-              </a>
+              </button>
             </div>
           </article>
 
@@ -90,6 +92,8 @@ export const CollageGrid: React.FC = () => {
                   className="ew040 f6zfz fsxqb wi6ww absolute inset-0 w-full h-full object-cover transform scale-100 group-hover:scale-110 transition-transform duration-700"
                   alt={cat.title}
                   src={cat.image}
+                  loading="lazy"
+                  decoding="async"
                 />
                 <div className="zc10g ttj7a ew040 f6zfz d1v3n gahlj safue absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors"></div>
                 <div className="zc10g v89yl xvofv dmkaq dib8x u059s absolute inset-0 p-6 flex flex-col justify-end">
@@ -101,8 +105,8 @@ export const CollageGrid: React.FC = () => {
                       {cat.title}
                     </h3>
                   </div>
-                  <a
-                    href="#"
+                  <button
+                    type="button"
                     className="dqghp vrbr6 q4imd cg6y5 qjmc5 mkn0h a2aqi flex items-center gap-1 text-white text-sm font-bold bg-white/10 backdrop-blur-sm self-start px-4 py-2 rounded hover:bg-white hover:text-black transition-all"
                   >
                     Shop {cat.title}
@@ -121,7 +125,7 @@ export const CollageGrid: React.FC = () => {
                         strokeLinejoin="round"
                       ></path>
                     </svg>
-                  </a>
+                  </button>
                 </div>
               </article>
             ))}

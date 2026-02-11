@@ -453,17 +453,12 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
       <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white flex flex-col animate-in slide-in-from-right-4 duration-200">
         {/* Header */}
-        <div className="p-5 border-b bg-white flex justify-between items-center">
+        <div className="p-4 bg-belims-blue text-white flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <MapPin className="text-belims-blue" size={18} />
-            <h3 className="text-lg font-bold text-gray-900 font-heading">
-              Delivery Location
-            </h3>
+            <MapPin size={20} />
+            <span className="font-bold font-heading">Delivery Location</span>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-          >
+          <button onClick={onClose} className="text-white hover:text-gray-200">
             <X size={24} />
           </button>
         </div>

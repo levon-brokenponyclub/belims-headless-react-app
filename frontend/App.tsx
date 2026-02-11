@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,7 +12,6 @@ import {
   useNavigate,
   useParams,
   useSearchParams,
-  useLocation,
 } from "react-router-dom";
 
 import { Header } from "./components/Header";
@@ -50,7 +55,7 @@ import { Product, CartItem, Store } from "./types";
 import {
   fetchProducts,
   fetchFeaturedProducts,
-  getApiBaseUrl,
+  fetchCategories,
 } from "./services/wooCommerceService";
 
 import {
@@ -507,7 +512,7 @@ const HomePage = ({
             </div>
 
             {isLoadingProducts ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {Array.from({ length: 4 }).map((_, index) => (
                   <div key={`featured-skel-${index}`}>
                     <SkeletonProductCard className="rounded border border-[#E0E0E0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.06)]" />
@@ -515,7 +520,7 @@ const HomePage = ({
                 ))}
               </div>
             ) : featuredDeals.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {featuredDeals.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -564,7 +569,7 @@ const HomePage = ({
             </div>
 
             {dealsOfTheDay.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {dealsOfTheDay.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -692,7 +697,7 @@ const HomePage = ({
             </div> */}
 
             {weeklyDeals.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {weeklyDeals.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -737,7 +742,7 @@ const HomePage = ({
             </div>
 
             {tradeSpecials.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {tradeSpecials.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -984,12 +989,12 @@ const HomePage = ({
                   <p className="text-sm text-gray-600 mb-3">
                     {project.description}
                   </p>
-                  <a
-                    href="#"
+                  <button
+                    type="button"
                     className="text-sm font-semibold text-belims-blue hover:text-belims-accent"
                   >
                     {project.linkText} →
-                  </a>
+                  </button>
                 </div>
               </div>
             ))}
@@ -1237,21 +1242,22 @@ export default function App() {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const hasLoadedProductsRef = useRef(false);
+  const hasLoadedCategoriesRef = useRef(false);
 
   useEffect(() => {
+    if (hasLoadedCategoriesRef.current) return;
+    hasLoadedCategoriesRef.current = true;
+
     const loadCategories = async () => {
       try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}/categories`);
-        if (response.ok) {
-          const categories = await response.json();
-          const childCategories = categories
-            .filter((cat: any) => cat.parent !== null)
-            .map((cat: any) => cat.name)
-            .sort();
-          if (childCategories.length > 0) {
-            setCategoryPills(["Top Deals", ...childCategories]);
-          }
+        const categories = await fetchCategories();
+        const childCategories = categories
+          .filter((cat: any) => cat.parent !== null)
+          .map((cat: any) => cat.name)
+          .sort();
+        if (childCategories.length > 0) {
+          setCategoryPills(["Top Deals", ...childCategories]);
         }
       } catch (error) {
         console.error("Failed to load categories:", error);
@@ -1266,9 +1272,22 @@ export default function App() {
       setCurrentUser(user);
     };
     checkAuth();
+
+    // Listen for user updates (e.g., from account details save)
+    const handleUserUpdate = () => {
+      checkAuth();
+    };
+    window.addEventListener("user-updated", handleUserUpdate);
+
+    return () => {
+      window.removeEventListener("user-updated", handleUserUpdate);
+    };
   }, []);
 
   useEffect(() => {
+    if (hasLoadedProductsRef.current) return;
+    hasLoadedProductsRef.current = true;
+
     const loadProducts = async () => {
       setIsLoadingProducts(true);
       try {
@@ -1405,13 +1424,8 @@ export default function App() {
 
 function MainApp(props) {
   const navigate = useNavigate();
-  const location = useLocation();
   const isAuthenticated = !!props.currentUser;
   const isTradeApproved = !!props.currentUser?.roles?.includes("contractor");
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [location.pathname]);
 
   const handleProductClick = (product: Product) => {
     navigate(`/product/${product.id}`);

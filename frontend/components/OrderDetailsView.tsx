@@ -49,13 +49,13 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
             Order #{orderNumber}
           </h1>
-          <a
-            href="#"
+          <button
+            type="button"
             className="hidden text-sm font-medium text-belims-blue hover:text-belims-light sm:block"
           >
             View invoice
             <span aria-hidden="true"> &rarr;</span>
-          </a>
+          </button>
         </div>
         <p className="text-sm text-gray-600">
           Order placed{" "}
@@ -63,13 +63,13 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
             {date}
           </time>
         </p>
-        <a
-          href="#"
+        <button
+          type="button"
           className="text-sm font-medium text-belims-blue hover:text-belims-light sm:hidden"
         >
           View invoice
           <span aria-hidden="true"> &rarr;</span>
-        </a>
+        </button>
       </div>
 
       {/* Products */}
@@ -90,13 +90,15 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
                     <img
                       src={item.image}
                       alt={item.name}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover object-center sm:h-full sm:w-full"
                     />
                   </div>
 
                   <div className="mt-6 sm:mt-0 sm:ml-6">
                     <h3 className="text-base font-medium text-gray-900">
-                      <a href="#">{item.name}</a>
+                      <button type="button">{item.name}</button>
                     </h3>
                     <p className="mt-2 text-sm font-medium text-gray-900">
                       {item.price}

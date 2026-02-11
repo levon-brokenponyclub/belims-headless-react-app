@@ -9,6 +9,10 @@ interface ProductCardProps {
   product: Product;
   addToCart: (product: Product) => void;
   onNotify?: (product: Product) => Promise<void> | void;
+  onBuyNow?: (product: Product) => void;
+  onCompare?: (product: Product) => void;
+  isAuthenticated?: boolean;
+  isTradeApproved?: boolean;
   className?: string;
   showDealName?: boolean;
   variant?: "default" | "flat" | "flat-horizontal";
@@ -211,7 +215,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         `relative flex h-full overflow-hidden ${
           isFlatHorizontal ? "flex-row" : "flex-col"
         }`,
-        isFlat ? "min-w-full max-w-full w-full" : "min-w-[310px] max-w-[310px]",
+        isFlat
+          ? "min-w-full max-w-full w-full"
+          : "w-full min-w-0 max-w-full lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]",
         isFlat
           ? "bg-white"
           : "rounded border border-[#E0E0E0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition-shadow hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]",
@@ -242,6 +248,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <img
             src={product.image}
             alt={product.name}
+            loading="lazy"
+            decoding="async"
             className="max-h-full max-w-full p-4 object-contain transition-transform duration-300 hover:scale-[1.03] mix-blend-multiply"
           />
         ) : (
@@ -289,7 +297,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             }`}
           >
             <div className="flex flex-col justify-between">
-              <div className="text-xs font-semibold text-[#565969] mb-2">
+              <div className="text-lgs font-semibold text-[#565969] mb-2">
                 Retail Price
               </div>
               <div className="text-[18px] font-bold text-[#04223E] py-1">
@@ -297,7 +305,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </div>
             </div>
             <div>
-              <div className="text-xs font-semibold text-[#565969] mb-2">
+              <div className="text-lgs font-semibold text-[#565969] mb-2">
                 Trade Price
               </div>
               <div className="text-[18px] font-bold text-belims-accent bg-belims-accent/10 inline-block rounded px-2 py-1">
@@ -351,7 +359,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <div className="mt-auto py-4">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
                 {/* Dominant price */}
-                <span className="font-heading text-[20px] font-bold text-[#04223E]">
+                <span className="font-heading text-[18px] font-bold text-[#04223E]">
                   {formatMoney(displayPrice)}
                 </span>
 
@@ -373,9 +381,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               e.stopPropagation();
               addWithPriceMode(isTradeSpecial ? "trade" : "retail");
             }}
-            className={`mt-0 w-full rounded bg-[#04223E] font-heading text-sm font-semibold text-white transition-colors hover:bg-[#02172A] ${
-              isFlat ? "h-9" : "h-11"
-            }`}
+            className={`mt-0 w-full rounded bg-[#04223E] font-heading text-sm font-semibold text-white transition-colors ${
+              isTradeSpecial
+                ? "hover:bg-belims-accent"
+                : "hover:bg-[rgb(50_39_131_/_var(--tw-bg-opacity,1))]"
+            } ${isFlat ? "h-9" : "h-11"}`}
           >
             Add to cart
           </button>
@@ -390,7 +400,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 ? "bg-green-50 text-green-800 border border-green-200"
                 : notifyStatus === "error"
                   ? "bg-red-50 text-red-700 border border-red-200"
-                  : "bg-[#04223E] text-white hover:bg-[#02172A]",
+                  : "bg-[#04223E] text-white hover:bg-red-600",
               notifyStatus === "pending" ? "opacity-70 cursor-wait" : "",
             ].join(" ")}
           >

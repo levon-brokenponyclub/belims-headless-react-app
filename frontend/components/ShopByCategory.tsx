@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../types";
 import { ProductCard } from "./ProductCard";
 import { ArrowRight } from "lucide-react";
 import { CATEGORY_SLIDER_DATA } from "../constants";
-import { getApiBaseUrl } from "../services/wooCommerceService";
+import { fetchCategories } from "../services/wooCommerceService";
 import { SkeletonProductCard } from "./Skeleton";
 
 interface ShopByCategoryProps {
@@ -37,6 +37,8 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
   const navigate = useNavigate();
   const [categoryPills, setCategoryPills] = useState<string[]>(["On Sale"]);
   const [activeCategory, setActiveCategory] = useState("On Sale");
+  const [shouldPlayVideo, setShouldPlayVideo] = useState(false);
+  const hasLoadedCategoriesRef = useRef(false);
 
   console.log("ShopByCategory rendered, products count:", products.length);
 
@@ -49,14 +51,13 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
         return;
       }
 
-      try {
-        const baseUrl = getApiBaseUrl();
-        const url = `${baseUrl}/categories`;
-        console.log("Fetching categories from:", url);
+      if (hasLoadedCategoriesRef.current) return;
+      hasLoadedCategoriesRef.current = true;
 
-        const response = await fetch(url);
-        if (response.ok) {
-          const categories: Category[] = await response.json();
+      try {
+        console.log("Fetching categories from API cache");
+        const categories: Category[] = await fetchCategories();
+        if (categories.length > 0) {
           console.log("Fetched categories:", categories);
 
           // Get unique categories that actually exist in products
@@ -82,8 +83,6 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
           } else {
             console.warn("No matching categories found");
           }
-        } else {
-          console.error("Failed to fetch categories:", response.status);
         }
       } catch (error) {
         console.error("Failed to load categories:", error);
@@ -91,6 +90,29 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
     };
     loadCategories();
   }, [products]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const startPlayback = () => setShouldPlayVideo(true);
+    let idleHandle: number | null = null;
+    let timeoutHandle: number | null = null;
+
+    if ("requestIdleCallback" in window) {
+      idleHandle = (window as any).requestIdleCallback(startPlayback);
+    } else {
+      timeoutHandle = window.setTimeout(startPlayback, 1500);
+    }
+
+    return () => {
+      if (idleHandle !== null && "cancelIdleCallback" in window) {
+        (window as any).cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle !== null) {
+        window.clearTimeout(timeoutHandle);
+      }
+    };
+  }, []);
 
   // Get slider content based on active category
   const currentSliderContent =
@@ -185,17 +207,31 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
           {/* Left: Category Hero Video */}
           <div className="hidden lg:block w-full lg:w-1/3 xl:w-1/5 rounded overflow-hidden relative group shadow-md h-[360px] lg:h-[420px]">
             <video
-              autoPlay
+              autoPlay={shouldPlayVideo}
               muted
               loop
               playsInline
+              preload="none"
+              poster="/images/development/hero-paint-block.jpg"
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             >
-              <source
-                src="https://ecommerce-power-tools.myshopify.com/cdn/shop/videos/c/vp/368a24b1ebe4468c9182d31fd2b448bf/368a24b1ebe4468c9182d31fd2b448bf.HD-1080p-2.5Mbps-51036248.mp4?v=0"
-                type="video/mp4"
-              />
+              {shouldPlayVideo && (
+                <source
+                  src="https://ecommerce-power-tools.myshopify.com/cdn/shop/videos/c/vp/368a24b1ebe4468c9182d31fd2b448bf/368a24b1ebe4468c9182d31fd2b448bf.HD-1080p-2.5Mbps-51036248.mp4?v=0"
+                  type="video/mp4"
+                />
+              )}
             </video>
+            {!shouldPlayVideo && (
+              <button
+                type="button"
+                onClick={() => setShouldPlayVideo(true)}
+                className="absolute bottom-4 left-4 rounded-full bg-black/50 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm transition hover:bg-black/70"
+                aria-label="Play category video"
+              >
+                Play
+              </button>
+            )}
             <div className="absolute inset-0 bg-black/60"></div>
             <div className="absolute inset-0 p-6 flex flex-col justify-center items-start text-center lg:text-left">
               <h3 className="text-1xl md:text-2xl font-bold text-white mb-4 font-heading leading-tight drop-shadow-lg">
