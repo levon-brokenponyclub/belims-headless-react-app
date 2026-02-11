@@ -104,6 +104,13 @@ class User_Endpoint {
             ],
         ]);
 
+        // Logout user
+        register_rest_route('belims/v1', '/users/logout', [
+            'methods' => 'POST',
+            'callback' => [__CLASS__, 'logout_user'],
+            'permission_callback' => '__return_true',
+        ]);
+
         // Admin: List all users
         register_rest_route('belims/v1', '/users', [
             'methods' => 'GET',
@@ -203,9 +210,11 @@ class User_Endpoint {
             );
         }
 
-        // Set auth cookie
+        // Set auth cookie with secure settings
+        wp_clear_auth_cookie();
         wp_set_current_user($user->ID);
-        wp_set_auth_cookie($user->ID);
+        wp_set_auth_cookie($user->ID, true); // true = remember me
+        do_action('wp_login', $user->user_login, $user);
 
         return rest_ensure_response([
             'success' => true,
@@ -239,7 +248,16 @@ class User_Endpoint {
      */
     public static function update_user_profile($request) {
         $user_id = get_current_user_id();
-        $user = wp_get_current_user();
+        
+        if (!$user_id) {
+            return new WP_Error(
+                'not_authenticated',
+                'User is not authenticated',
+                ['status' => 401]
+            );
+        }
+
+        $user = get_userdata($user_id);
 
         // Update user data
         $userdata = ['ID' => $user_id];
@@ -279,6 +297,19 @@ class User_Endpoint {
         return rest_ensure_response([
             'exists' => (bool) $exists,
             'email' => $email,
+        ]);
+    }
+
+    /**
+     * Logout user
+     */
+    public static function logout_user($request) {
+        wp_clear_auth_cookie();
+        wp_set_current_user(0);
+
+        return rest_ensure_response([
+            'success' => true,
+            'message' => 'Logged out successfully',
         ]);
     }
 

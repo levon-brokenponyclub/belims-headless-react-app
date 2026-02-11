@@ -310,12 +310,47 @@ class Belims_Products_Endpoint {
 
     /**
      * Get bundle candidates (related products) - sorted by relevance
+     * First checks for manually selected bundled products, then falls back to automatic candidates
      * Candidates are sorted by rating, then by price (ascending)
      */
     private function get_bundle_candidates($product) {
         $candidates = array();
         
-        // Get products from the same category
+        // First, check for manually selected bundled products
+        $manual_bundles = array();
+        if (class_exists('Belims_Bundled_Products')) {
+            $manual_bundles = Belims_Bundled_Products::get_bundled_products($product->get_id());
+        }
+        
+        // If we have manually selected bundled products, use those
+        if (!empty($manual_bundles)) {
+            foreach ($manual_bundles as $bundled_product) {
+                $bundled_wc_product = wc_get_product($bundled_product['id']);
+                
+                if ($bundled_wc_product && $bundled_wc_product->is_in_stock()) {
+                    $price_incl_vat = floatval($bundled_wc_product->get_price());
+                    $rating = floatval($bundled_wc_product->get_average_rating());
+                    
+                    $candidates[] = array(
+                        'id' => (string) $bundled_wc_product->get_id(),
+                        'name' => $bundled_wc_product->get_name(),
+                        'price' => $price_incl_vat,
+                        'regular_price' => $price_incl_vat,
+                        'image' => wp_get_attachment_url($bundled_wc_product->get_image_id()) ?: '',
+                        'rating' => $rating,
+                        'reviews' => intval($bundled_wc_product->get_review_count()),
+                        'stock' => intval($bundled_wc_product->get_stock_quantity()),
+                    );
+                }
+            }
+            
+            // Return manual bundles if we have any
+            if (!empty($candidates)) {
+                return $candidates;
+            }
+        }
+        
+        // Fall back to automatic candidates from same category
         $categories = wp_get_post_terms($product->get_id(), 'product_cat', array('fields' => 'ids'));
         
         if (empty($categories)) {

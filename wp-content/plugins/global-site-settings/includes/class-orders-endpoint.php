@@ -13,17 +13,103 @@ class Belims_Orders_Endpoint {
      * Register routes
      */
     public function register_routes() {
+        // Get customer orders (requires login)
+        register_rest_route('belims/v1', '/orders', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_customer_orders'),
+            'permission_callback' => 'is_user_logged_in',
+        ));
+
+        // Create order
         register_rest_route('belims/v1', '/orders', array(
             'methods' => 'POST',
             'callback' => array($this, 'create_order'),
             'permission_callback' => '__return_true',
         ));
 
+        // Get single order
         register_rest_route('belims/v1', '/orders/(?P<id>\d+)', array(
             'methods' => 'GET',
             'callback' => array($this, 'get_order'),
             'permission_callback' => '__return_true',
         ));
+    }
+
+    /**
+     * Get customer orders
+     */
+    public function get_customer_orders($request) {
+        $user_id = get_current_user_id();
+        
+        if (!$user_id) {
+            return new WP_Error('unauthorized', 'You must be logged in to view orders', array('status' => 401));
+        }
+
+        // Get customer orders
+        $customer_orders = wc_get_orders(array(
+            'customer_id' => $user_id,
+            'limit' => -1, // Get all orders
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ));
+
+        $orders = array();
+        foreach ($customer_orders as $order) {
+            // Get line items
+            $line_items = array();
+            foreach ($order->get_items() as $item_id => $item) {
+                $product = $item->get_product();
+                $line_items[] = array(
+                    'id' => $item_id,
+                    'product_id' => $item->get_product_id(),
+                    'name' => $item->get_name(),
+                    'quantity' => $item->get_quantity(),
+                    'price' => $item->get_subtotal(),
+                    'total' => $item->get_total(),
+                    'image' => $product ? wp_get_attachment_url($product->get_image_id()) : '',
+                );
+            }
+
+            // Get shipping lines
+            $shipping_lines = array();
+            foreach ($order->get_items('shipping') as $item_id => $item) {
+                $shipping_lines[] = array(
+                    'id' => $item_id,
+                    'method_title' => $item->get_method_title(),
+                    'method_id' => $item->get_method_id(),
+                    'total' => $item->get_total(),
+                );
+            }
+
+            // Format order data
+            $orders[] = array(
+                'id' => $order->get_id(),
+                'order_number' => $order->get_order_number(),
+                'date_created' => $order->get_date_created()->date('c'), // ISO 8601 format
+                'status' => $order->get_status(),
+                'total' => $order->get_total(),
+                'currency' => $order->get_currency(),
+                'line_items' => $line_items,
+                'shipping_address' => array(
+                    'street' => $order->get_shipping_address_1(),
+                    'city' => $order->get_shipping_city(),
+                    'province' => $order->get_shipping_state(),
+                    'postalCode' => $order->get_shipping_postcode(),
+                    'country' => $order->get_shipping_country(),
+                ),
+                'billing_address' => array(
+                    'street' => $order->get_billing_address_1(),
+                    'city' => $order->get_billing_city(),
+                    'province' => $order->get_billing_state(),
+                    'postalCode' => $order->get_billing_postcode(),
+                    'country' => $order->get_billing_country(),
+                ),
+                'payment_method' => $order->get_payment_method_title(),
+                'shipping_lines' => $shipping_lines,
+            );
+        }
+
+        return rest_ensure_response($orders);
     }
 
     /**
@@ -39,6 +125,12 @@ class Belims_Orders_Endpoint {
 
         try {
             $order = wc_create_order();
+
+            // Set customer ID if user is logged in
+            $user_id = get_current_user_id();
+            if ($user_id) {
+                $order->set_customer_id($user_id);
+            }
 
             // Add customer details
             $customer = $params['customer'];
