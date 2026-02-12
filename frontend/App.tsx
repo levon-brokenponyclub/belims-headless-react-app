@@ -1180,7 +1180,19 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const cartStorageKey = "belimsCartItems";
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = window.localStorage.getItem(cartStorageKey);
+      if (!stored) return [];
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn("Failed to restore cart from storage", error);
+      return [];
+    }
+  });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
   const [isPaintOpen, setIsPaintOpen] = useState(false);
@@ -1248,7 +1260,7 @@ export default function App() {
           typeof navigator !== "undefined" && !!navigator.geolocation,
       });
     }
-  }, []);
+  }, [cartStorageKey]);
 
   useEffect(() => {
     if (hasLoadedCategoriesRef.current) return;
@@ -1346,7 +1358,19 @@ export default function App() {
   const clearCart = useCallback(() => {
     setCartItems([]);
     setIsCartOpen(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(cartStorageKey);
+    }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(cartStorageKey, JSON.stringify(cartItems));
+    } catch (error) {
+      console.warn("Failed to persist cart to storage", error);
+    }
+  }, [cartItems, cartStorageKey]);
 
   const addToCompare = (product: Product) => {
     setComparisonList((prev) => {

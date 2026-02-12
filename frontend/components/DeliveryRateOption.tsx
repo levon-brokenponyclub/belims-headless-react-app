@@ -27,30 +27,30 @@ export const DeliveryRateOption: React.FC<DeliveryRateOptionProps> = ({
     <button
       type="button"
       onClick={() => onSelect(option.id)}
-      className={`flex items-center justify-between p-4 rounded-md border-2 transition-all text-left w-full ${
+      className={`flex items-center justify-between p-6 rounded-md border transition-all text-left w-full ${
         isSelected
-          ? "border-blue-600 bg-white"
-          : "border-gray-100 bg-white hover:border-blue-200"
+          ? "border-green-500 bg-[#dcfce796]"
+          : "border-gray-300 bg-white hover:border-gray-400"
       }`}
     >
       <div className="flex items-center gap-3 w-[75%]">
         {/* Selection Indicator (Left) */}
         <div
           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-            isSelected ? "border-blue-600" : "border-gray-300"
+            isSelected ? "border-green-500" : "border-green-500"
           }`}
         >
           {isSelected && (
-            <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-600" />
           )}
         </div>
 
         {/* Info */}
         <div>
-          <h4 className="font-bold text-gray-900 text-sm leading-tight">
+          <h4 className="font-semibold text-gray-900 text-[14px] leading-relaxed">
             {option.serviceName}
           </h4>
-          <p className="text-xs text-gray-500">{option.eta}</p>
+          <p className="text-sm text-gray-600">{option.eta}</p>
         </div>
 
         {/* Badge */}
@@ -63,7 +63,7 @@ export const DeliveryRateOption: React.FC<DeliveryRateOptionProps> = ({
       </div>
 
       {/* Price (Right) */}
-      <span className="text-xs font-bold text-gray-600 flex-shrink-0">
+      <span className="text-[14px] font-bold text-gray-900 flex-shrink-0">
         {option.isFree
           ? "FREE"
           : `${CURRENCY_SYMBOL}${option.price.toFixed(2)}`}

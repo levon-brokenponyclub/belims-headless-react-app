@@ -80,13 +80,23 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     const data = await response.json();
     if (!Array.isArray(data)) return [];
 
-    return data.map((entry: any) => ({
-      source: "nominatim",
-      place_id: entry.place_id,
-      lat: entry.lat,
-      lon: entry.lon,
-      description: entry.display_name,
-    }));
+    return data.map((entry: any) => {
+      const displayName = String(entry.display_name || "");
+      const parts = displayName
+        .split(",")
+        .map((part: string) => part.trim())
+        .filter(Boolean);
+
+      return {
+        source: "nominatim",
+        place_id: entry.place_id,
+        lat: entry.lat,
+        lon: entry.lon,
+        description: displayName,
+        mainText: parts[0] || displayName,
+        secondaryText: parts.slice(1).join(", "),
+      };
+    });
   };
 
   const resolveAddressFromCoordinates = async (
@@ -229,6 +239,8 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
             source: "google",
             place_id: prediction.place_id,
             description: prediction.description,
+            mainText: prediction.structured_formatting?.main_text,
+            secondaryText: prediction.structured_formatting?.secondary_text,
           })),
         );
         return;
@@ -305,10 +317,9 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
     const postalCode = getComponent("postal_code") || "";
 
-    const street =
-      [streetNumber, route, suburb].filter(Boolean).join(" ") ||
-      formattedParts[0] ||
-      "";
+    const street = streetNumber
+      ? [streetNumber, route, suburb].filter(Boolean).join(" ")
+      : formattedParts[0] || [route, suburb].filter(Boolean).join(" ");
 
     if (!city || !province) {
       return null;
@@ -597,6 +608,10 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   const handleSaveDetectedAddress = () => {
     if (!detectedLocationAddress) return;
     handleAddressSaved(detectedLocationAddress);
+    onClose();
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => window.location.reload(), 150);
+    }
   };
 
   const formatDetectedLocationLine = (address: ShippingAddress) => {
@@ -675,14 +690,14 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 pb-24">
+        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5 pb-24">
           {/* Fulfillment Toggle */}
           <div className="flex items-center justify-between border-b border-black/10 pb-4">
-            <div className="inline-flex w-full rounded-full bg-gray-100 p-1">
+            <div className="inline-flex w-full rounded-full bg-gray-50 border border-black/10 p-1">
               <button
                 type="button"
                 onClick={() => handleFulfillmentChange("delivery")}
-                className={`w-full px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                className={`w-full px-4 py-2 text-[13px] font-bold rounded-full transition-colors ${
                   fulfillmentType === "delivery"
                     ? "bg-belims-blue text-white"
                     : "text-gray-600 hover:text-gray-900"
@@ -693,7 +708,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleFulfillmentChange("pickup")}
-                className={`w-full px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                className={`w-full px-4 py-2 text-[13px] font-bold rounded-full transition-colors ${
                   fulfillmentType === "pickup"
                     ? "bg-belims-blue text-white"
                     : "text-gray-600 hover:text-gray-900"
@@ -719,7 +734,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               </h5>
               {isEditingDeliveryAddress ? (
                 <>
-                  <div className="space-y-0">
+                  <div className="space-y-3">
                     <label className="block mb-2 text-sm text-gray-900 text-center">
                       Enables us to provide delivery rates and availability for
                       your location
@@ -751,15 +766,17 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                     </div>
 
                     <div className="my-5 flex items-center gap-3">
-                      <div className="h-px flex-1 bg-gray-300" />
-                      <span className="text-xs text-gray-500">or</span>
-                      <div className="h-px flex-1 bg-gray-300" />
+                      <div className="h-px flex-1 bg-gray-500" />
+                      <span className="text-base text-gray-500 font-semibold">
+                        OR
+                      </span>
+                      <div className="h-px flex-1 bg-gray-500" />
                     </div>
 
                     <button
                       type="button"
                       onClick={requestLocationWithConsent}
-                      className="mt-1 flex w-full justify-center items-center gap-2 text-xs font-semibold text-belims-blue hover:text-belims-navy"
+                      className="mt-1 flex w-full justify-center items-center gap-2 text-base font-semibold text-belims-blue hover:text-belims-navy"
                     >
                       <MapPin size={14} /> Use my current location
                     </button>
@@ -781,7 +798,20 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                           onClick={() => handleSuggestionClick(suggestion)}
                           className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
                         >
-                          {suggestion.description}
+                          {suggestion.mainText ? (
+                            <div className="flex flex-col">
+                              <span className="text-sm text-gray-900">
+                                {suggestion.mainText}
+                              </span>
+                              {suggestion.secondaryText && (
+                                <span className="text-xs text-gray-500">
+                                  {suggestion.secondaryText}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            suggestion.description
+                          )}
                         </button>
                       ))}
                     </div>
@@ -805,7 +835,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsEditingDeliveryAddress(true)}
-                      className="w-full rounded border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50"
+                      className="w-full rounded bg-belims-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-belims-navy"
                     >
                       Edit Address
                     </button>

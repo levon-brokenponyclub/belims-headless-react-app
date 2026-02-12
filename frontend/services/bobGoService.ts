@@ -27,18 +27,25 @@ interface ShippingRate {
 const API_BASE_URL = "https://cms.belims.co.za/wp-json/belims/v1";
 
 // Development/fallback shipping options for local testing
-const DEV_ECONOMY_SHIPPING: ShippingRate = {
-  service_code: "dev_economy",
-  service_name: "Standard Shipping",
-  total_price: 65,
-  expected_delivery_date: "Tomorrow",
+const DEV_STANDARD_SHIPPING: ShippingRate = {
+  service_code: "dev_standard",
+  service_name: "Standard Delivery",
+  total_price: 75,
+  expected_delivery_date: "17 Feb - 19 Feb",
 };
 
-const DEV_EXPRESS_SHIPPING: ShippingRate = {
-  service_code: "dev_express",
-  service_name: "Express Shipping",
-  total_price: 117,
-  expected_delivery_date: "2 - 3 Days",
+const DEV_NEXT_DAY_SHIPPING: ShippingRate = {
+  service_code: "dev_next_day",
+  service_name: "Next Day Delivery",
+  total_price: 125,
+  expected_delivery_date: "16 Feb",
+};
+
+const DEV_SAME_DAY_SHIPPING: ShippingRate = {
+  service_code: "dev_same_day",
+  service_name: "Same Day Delivery",
+  total_price: 150,
+  expected_delivery_date: "13 Feb",
 };
 
 export const getShippingRates = async (
@@ -138,5 +145,5 @@ function isLocalhost(): boolean {
  * Get fallback shipping options for local development testing
  */
 export const getFallbackShipping = (): ShippingRate[] => {
-  return [DEV_ECONOMY_SHIPPING, DEV_EXPRESS_SHIPPING];
+  return [DEV_STANDARD_SHIPPING, DEV_NEXT_DAY_SHIPPING, DEV_SAME_DAY_SHIPPING];
 };

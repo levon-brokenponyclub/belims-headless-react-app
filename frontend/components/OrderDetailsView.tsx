@@ -136,10 +136,6 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
                     {shipping}
                   </span>
                 </li>
-                <li className="flex items-center justify-between">
-                  <span>Taxes</span>
-                  <span className="font-semibold text-gray-900">{tax}</span>
-                </li>
               </ul>
               <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-900">

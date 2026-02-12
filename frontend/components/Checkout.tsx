@@ -532,7 +532,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
               <ArrowLeft size={24} />
             </button>
           )}
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-2xl font-semibold text-gray-900">
             {step === "success" ? "Order Confirmed" : "Checkout"}
           </h1>
         </div>
@@ -644,7 +644,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
                         {/* Condensed Address Display */}
                         {addressAutoPopulated && !editingAddress && (
-                          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex justify-between items-center">
+                          <div className="bg-gray-50 p-4 rounded border border-gray-200 flex justify-between items-center">
                             <div className="text-sm text-gray-600">
                               <p>{customer.address}</p>
                               <p>
@@ -816,7 +816,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                               )} */}
 
                               {/* Shipping Cards */}
-                              <div className="space-y-0 flex gap-6">
+                              <div className="space-y-4">
                                 {(savedLocationRates.length > 0
                                   ? savedLocationRates
                                   : shippingRates
@@ -917,7 +917,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                         (deliveryType === "delivery" && !selectedShipping)
                       }
                       type="submit"
-                      className="w-full bg-red-600 text-white font-semibold text-base font-heading p-4 rounded hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex justify-center items-center gap-2 mt-6"
+                      className="w-full bg-red-600 text-white h-12 font-semibold text-base font-heading p-4 rounded hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex justify-center items-center gap-2 !mt-8"
                     >
                       {loading ? (
                         <>
@@ -925,9 +925,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           Loading...
                         </>
                       ) : (
-                        <>
-                          Proceed to Payment <CreditCard size={20} />
-                        </>
+                        <>Pay Now</>
                       )}
                     </button>
                   </form>
@@ -1046,7 +1044,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
           {/* RIGHT COLUMN: Cart Summary */}
           <div className="lg:col-span-1">
-            <div className="sticky top-6 space-y-5">
+            <div className="sticky top-[126px] space-y-5">
               <div className="bg-white rounded-lg border border-black/10 p-6 shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900">
                   Order Summary
@@ -1078,7 +1076,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                   ))}
                 </ul>
 
-                <div className="mt-5 space-y-2">
+                {/* <div className="mt-5 space-y-2">
                   <label className="text-xs text-gray-500">Promo Code</label>
                   <div className="flex gap-2">
                     <input
@@ -1092,7 +1090,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       Apply
                     </button>
                   </div>
-                </div>
+                </div> */}
               </div>
 
               <div className="bg-white rounded-lg border border-black/10 p-6 shadow-sm">
@@ -1119,12 +1117,6 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       {shippingCost > 0 || deliveryType === "delivery"
                         ? `${CURRENCY_SYMBOL}${shippingCost.toFixed(2)}`
                         : `${CURRENCY_SYMBOL}0.00`}
-                    </span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Taxes</span>
-                    <span className="font-semibold text-gray-900">
-                      {CURRENCY_SYMBOL}0.00
                     </span>
                   </li>
                 </ul>

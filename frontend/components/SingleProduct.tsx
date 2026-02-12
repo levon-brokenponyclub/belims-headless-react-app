@@ -243,7 +243,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     pricingInfo.tradeDealsInfo?.bestDeal?.type === "trade_special";
 
   const earliestDeliveryEta = useMemo(() => {
-    if (!deliveryRates.length) return "Today";
+    if (!deliveryRates.length) return "";
 
     const parsedDates = deliveryRates
       .map((rate) => parseEarliestDateFromEta(rate.expected_delivery_date))
@@ -257,7 +257,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     }
 
     const fallbackEta = formatEta(deliveryRates[0]?.expected_delivery_date);
-    return fallbackEta.replace(/^Estimated Arrival:\s*/i, "") || "Today";
+    return fallbackEta.replace(/^Estimated Arrival:\s*/i, "") || "";
   }, [deliveryRates]);
 
   // ✅ Trade logic:
@@ -1146,7 +1146,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             </div>
 
             {/* Pickup and Delivery Buttons */}
-            <div className="mb-4 border-b border-t border-gray-200 pt-6 pb-6">
+            <div className="mb-4 border-b border bg-gray-50 border-gray-200 py-6 px-5 rounded-lg">
               <div className="font-bold text-gray-900 font-heading text-lg  group-hover:text-belims-blue transition-colors mb-4">
                 Available pickup or delivery
               </div>
@@ -1201,7 +1201,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         <p>{deliveryRatesError}</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
                         {deliveryRates.map((rate, idx) => {
                           const tier = classifyRate(rate, deliveryRates);
                           const isSelected =

@@ -107,7 +107,9 @@ export const normalizeProvince = (value?: string | null): string => {
 };
 
 export const buildAddressLabel = (address: ShippingAddress): string => {
-  const parts = [address.city, address.province].filter(Boolean);
+  const parts = [address.street, address.city, address.province].filter(
+    Boolean,
+  );
   return parts.join(", ");
 };
 
