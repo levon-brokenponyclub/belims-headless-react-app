@@ -74,6 +74,23 @@ interface ShippingRate {
   tier?: ShippingTier;
 }
 
+const formatEtaDateLabel = (date: Date): string =>
+  date.toLocaleDateString("en-ZA", {
+    month: "short",
+    day: "numeric",
+  });
+
+const parseEarliestDateFromEta = (eta?: string | null): Date | null => {
+  if (!eta) return null;
+  const value = eta.trim();
+  if (!value) return null;
+
+  const [startRaw] = value.split(" - ");
+  const parsed = new Date(startRaw.trim());
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+};
+
 const classifyRate = (
   rate: ShippingRate,
   allRates: ShippingRate[],
@@ -90,29 +107,35 @@ const classifyRate = (
 };
 
 const formatEta = (dateStr?: string | null): string => {
-  if (!dateStr) return "Estimated delivery";
+  if (!dateStr) return "Estimated Arrival";
+  const value = dateStr.trim();
+  if (!value) return "Estimated Arrival";
 
-  // If it's already a human-readable string (not a date format), return it directly
-  if (
-    dateStr.includes("Tomorrow") ||
-    dateStr.includes("Days") ||
-    dateStr.includes("day") ||
-    dateStr.includes("Today")
-  ) {
-    return dateStr;
-  }
-
-  try {
-    const date = new Date(dateStr);
-    if (!date || Number.isNaN(date.getTime())) return "Estimated delivery";
-    return `Arrives ${date.toLocaleDateString("en-ZA", {
-      weekday: "short",
+  const formatDate = (input: string) => {
+    const parsed = new Date(input);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toLocaleDateString("en-ZA", {
       month: "short",
       day: "numeric",
-    })}`;
-  } catch {
-    return "Estimated delivery";
+    });
+  };
+
+  if (value.includes(" - ")) {
+    const [startRaw, endRaw] = value.split(" - ").map((part) => part.trim());
+    const start = formatDate(startRaw);
+    const end = formatDate(endRaw);
+
+    if (start && end) {
+      return start === end
+        ? `Estimated Arrival: ${start}`
+        : `Estimated Arrival: ${start} - ${end}`;
+    }
   }
+
+  const single = formatDate(value);
+  if (single) return `Estimated Arrival: ${single}`;
+
+  return value;
 };
 
 export const SingleProduct: React.FC<SingleProductProps> = ({
@@ -218,6 +241,24 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   const isTradeSpecial =
     pricingInfo.tradeDealsInfo?.bestDeal?.type === "trade_special";
+
+  const earliestDeliveryEta = useMemo(() => {
+    if (!deliveryRates.length) return "Today";
+
+    const parsedDates = deliveryRates
+      .map((rate) => parseEarliestDateFromEta(rate.expected_delivery_date))
+      .filter((date): date is Date => Boolean(date));
+
+    if (parsedDates.length > 0) {
+      const earliestDate = new Date(
+        Math.min(...parsedDates.map((date) => date.getTime())),
+      );
+      return formatEtaDateLabel(earliestDate);
+    }
+
+    const fallbackEta = formatEta(deliveryRates[0]?.expected_delivery_date);
+    return fallbackEta.replace(/^Estimated Arrival:\s*/i, "") || "Today";
+  }, [deliveryRates]);
 
   // ✅ Trade logic:
   // - If trade approved & trade special => ALWAYS trade price (no toggle needed)
@@ -1125,7 +1166,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 delivery={{
                   type: "delivery",
                   available: product.stock,
-                  eta: "Today",
+                  eta: earliestDeliveryEta,
                   price:
                     deliveryRates.length > 0 ? deliveryRates[0].total_price : 0,
                   isFree:

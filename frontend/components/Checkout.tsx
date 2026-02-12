@@ -87,9 +87,9 @@ function selectFastestRate(rates: ShippingRate[]): ShippingRate | null {
 }
 
 function formatEta(dateStr?: string): string {
-  if (!dateStr) return "Estimated delivery";
+  if (!dateStr) return "Estimated Arrival";
   const value = dateStr.trim();
-  if (!value) return "Estimated delivery";
+  if (!value) return "Estimated Arrival";
 
   const formatDate = (input: string) => {
     const parsed = new Date(input);
@@ -106,12 +106,14 @@ function formatEta(dateStr?: string): string {
     const end = formatDate(endRaw);
 
     if (start && end) {
-      return start === end ? `Arrives ${start}` : `Arrives ${start} - ${end}`;
+      return start === end
+        ? `Estimated Arrival: ${start}`
+        : `Estimated Arrival: ${start} - ${end}`;
     }
   }
 
   const single = formatDate(value);
-  if (single) return `Arrives ${single}`;
+  if (single) return `Estimated Arrival: ${single}`;
 
   return value;
 }

@@ -545,7 +545,7 @@ export const TrackingProgressCard = ({
             <div className="mt-3 text-gray-500">Courier</div>
             <div className="font-bold text-gray-900">{courier}</div>
 
-            <div className="mt-3 text-gray-500">Estimated delivery</div>
+            <div className="mt-3 text-gray-500">Estimated Arrival</div>
             <div className="font-bold text-gray-900 tabular-nums">
               {etaText}
             </div>
