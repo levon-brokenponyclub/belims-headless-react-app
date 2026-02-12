@@ -64,6 +64,7 @@ export const Archive: React.FC<ArchiveProps> = ({
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     category ? [category] : [],
   );
+  const [sidebarSearch, setSidebarSearch] = useState("");
 
   // Filter data from API
   const [rangeFilters, setRangeFilters] = useState<FilterOption[]>([]);
@@ -482,6 +483,13 @@ export const Archive: React.FC<ArchiveProps> = ({
     : null;
   const subcategories = activeCategoryNode?.children || [];
   const categoryList = category ? subcategories : CATEGORY_TREE;
+  const filteredCategoryList = useMemo(() => {
+    const query = sidebarSearch.trim().toLowerCase();
+    if (!query) return categoryList;
+    return categoryList.filter((sub) =>
+      sub.label.toLowerCase().includes(query),
+    );
+  }, [categoryList, sidebarSearch]);
 
   return (
     <div className="shopify-section section-collection-template bg-white">
@@ -563,6 +571,23 @@ export const Archive: React.FC<ArchiveProps> = ({
                   </div>
                 </div>
 
+                <div className="pb-5">
+                  <label className="relative block">
+                    <span className="sr-only">Search filters</span>
+                    <Search
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    />
+                    <input
+                      type="search"
+                      value={sidebarSearch}
+                      onChange={(e) => setSidebarSearch(e.target.value)}
+                      placeholder="Search categories"
+                      className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                    />
+                  </label>
+                </div>
+
                 <style>
                   {`
                   .plp-radio {
@@ -621,7 +646,7 @@ export const Archive: React.FC<ArchiveProps> = ({
 
                 <form className="facet-filters-form">
                   {/* Category List */}
-                  {categoryList.length > 0 && (
+                  {filteredCategoryList.length > 0 && (
                     <div className="py-4">
                       <details className="group" open>
                         <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-gray-900 font-heading text-base  group-hover:text-belims-blue transition-colors">
@@ -630,7 +655,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                         </summary>
                         <div className="mt-5">
                           <ul className="space-y-3">
-                            {categoryList.map((sub) => (
+                            {filteredCategoryList.map((sub) => (
                               <li
                                 key={sub.id}
                                 className="flex items-center justify-between gap-3"
@@ -665,6 +690,12 @@ export const Archive: React.FC<ArchiveProps> = ({
                       </details>
                     </div>
                   )}
+                  {filteredCategoryList.length === 0 &&
+                    categoryList.length > 0 && (
+                      <div className="py-4 text-sm text-gray-500">
+                        No matching categories.
+                      </div>
+                    )}
 
                   {/* Availability Filter */}
                   <div className="py-4 border-t border-gray-100">

@@ -269,9 +269,17 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                 const mapped = mapNominatimAddress(data);
 
                 if (!mapped || !mapped.city || !mapped.province) {
+                  // Partial address detected - populate form fields for manual completion
+                  if (mapped) {
+                    setManualStreet(mapped.street || "");
+                    setManualCity(mapped.city || "");
+                    setManualPostalCode(mapped.postalCode || "");
+                    setManualProvince(mapped.province || "");
+                  }
                   setErrorMessage(
-                    "Unable to detect a full address. Please enter it manually.",
+                    "Unable to detect a full address. Please complete the details below.",
                   );
+                  setLoading(false);
                   return;
                 }
 
@@ -282,9 +290,14 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                     normalizedProvince as (typeof PROVINCES)[number],
                   )
                 ) {
+                  // Valid city but invalid province - populate form for manual completion
+                  setManualStreet(mapped.street || "");
+                  setManualCity(mapped.city || "");
+                  setManualPostalCode(mapped.postalCode || "");
                   setErrorMessage(
-                    "Please select a South African address with a valid province.",
+                    "Please select a valid South African province to complete the address.",
                   );
+                  setLoading(false);
                   return;
                 }
 
@@ -297,6 +310,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
                 setInput(address.label || buildAddressLabel(address));
                 localStorage.setItem("fulfillmentType", "delivery");
+                setLoading(false);
                 onAddressSelect(address);
                 onClose();
               } else {
@@ -306,8 +320,9 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               clearTimeout(timeoutId);
               console.error("Reverse geocoding error:", fetchError);
               setErrorMessage(
-                "Unable to detect your address. Please enter it manually.",
+                "Unable to detect your address. Please enter it manually below.",
               );
+              setLoading(false);
             }
           } catch (error) {
             console.error("Position callback error:", error);
@@ -326,7 +341,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           } else if (error.code === error.TIMEOUT) {
             errorMessage += "Location request timed out.";
           }
-          setErrorMessage(errorMessage + " Please enter your address.");
+          setErrorMessage(errorMessage + " Please enter your address below.");
           setLoading(false);
         },
         {
@@ -453,18 +468,23 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
       <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white flex flex-col animate-in slide-in-from-right-4 duration-200">
         {/* Header */}
-        <div className="p-4 bg-belims-blue text-white flex justify-between items-center">
-          <div className="flex items-center gap-2">
+        <div className="p-4 bg-belims-blue text-white flex justify-between items-center h-16">
+          <div className="flex items-center gap-3">
             <MapPin size={20} />
-            <span className="font-bold font-heading">Delivery Location</span>
+            <span className="font-bold font-heading text-base">
+              Delivery Location
+            </span>
           </div>
-          <button onClick={onClose} className="text-white hover:text-gray-200">
+          <button
+            onClick={onClose}
+            className="text-white hover:text-gray-200 transition-colors p-1"
+          >
             <X size={24} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 pb-24">
           {/* Fulfillment Toggle */}
           <div className="flex items-center justify-between">
             <div className="inline-flex rounded-full bg-gray-100 p-1">
@@ -626,30 +646,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                   {errorMessage}
                 </div>
               )}
-
-              <button
-                onClick={handleSaveManualAddress}
-                className="w-full bg-belims-blue text-white px-4 py-2 rounded text-sm font-bold hover:bg-belims-light transition-colors"
-              >
-                Save Address
-              </button>
-
-              {/* Development Testing: Reset Address Button */}
-              <button
-                onClick={() => {
-                  localStorage.removeItem("deliveryAddressV2");
-                  localStorage.removeItem("deliveryAddress");
-                  setManualStreet("");
-                  setManualCity("");
-                  setManualPostalCode("");
-                  setManualProvince("");
-                  setErrorMessage(null);
-                  onAddressSelect(null);
-                }}
-                className="w-full bg-gray-400 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-gray-500 transition-colors"
-              >
-                Reset Address (Dev Testing)
-              </button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -748,13 +744,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                   </div>
                 )}
               </div>
-
-              <button
-                onClick={handlePickupSave}
-                className="w-full bg-belims-blue text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-belims-light transition-colors"
-              >
-                Save Pickup Store
-              </button>
             </div>
           )}
 
@@ -763,6 +752,53 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               Your location is saved automatically when you select or enter your
               address.
             </p>
+          )}
+        </div>
+
+        {/* Footer with Buttons */}
+        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 space-y-3">
+          {errorMessage && fulfillmentType === "delivery" && (
+            <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {errorMessage}
+            </div>
+          )}
+          {errorMessage && fulfillmentType === "pickup" && (
+            <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {errorMessage}
+            </div>
+          )}
+
+          {fulfillmentType === "delivery" ? (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  localStorage.removeItem("deliveryAddressV2");
+                  localStorage.removeItem("deliveryAddress");
+                  setManualStreet("");
+                  setManualCity("");
+                  setManualPostalCode("");
+                  setManualProvince("");
+                  setErrorMessage(null);
+                  onAddressSelect(null);
+                }}
+                className="px-4 py-2.5 rounded border border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                onClick={handleSaveManualAddress}
+                className="px-4 py-2.5 rounded bg-belims-blue text-white text-sm font-semibold hover:bg-belims-navy transition-colors"
+              >
+                Save Address
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handlePickupSave}
+              className="w-full px-4 py-2.5 rounded bg-belims-blue text-white text-sm font-semibold hover:bg-belims-navy transition-colors"
+            >
+              Save Pickup Store
+            </button>
           )}
         </div>
       </div>

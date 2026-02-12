@@ -39,6 +39,7 @@ import { BrandStrip } from "./components/BrandStrip";
 import { AuthPage } from "./components/AuthPage";
 import { AccountPage } from "./components/AccountPage";
 import { Toast } from "./components/Toast";
+import { LocationPermissionModal } from "./components/LocationPermissionModal";
 import {
   Skeleton,
   SkeletonLine,
@@ -1226,6 +1227,8 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
   const [isPaintOpen, setIsPaintOpen] = useState(false);
+  const [isLocationPermissionModalOpen, setIsLocationPermissionModalOpen] =
+    useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => {
     // Temporarily disabled - onboarding won't show on site load
     return false;
@@ -1247,6 +1250,48 @@ export default function App() {
   } | null>(null);
   const hasLoadedProductsRef = useRef(false);
   const hasLoadedCategoriesRef = useRef(false);
+  const hasPromptedLocationRef = useRef(false);
+
+  // Show location permission modal on app load
+  useEffect(() => {
+    if (hasPromptedLocationRef.current) return;
+    hasPromptedLocationRef.current = true;
+
+    const hasAsked = localStorage.getItem("locationPermissionAsked");
+    const hasDenied = localStorage.getItem("locationPermissionDenied");
+    const savedAddress = localStorage.getItem("deliveryAddressV2");
+
+    // Show if:
+    // 1. We haven't asked before
+    // 2. They haven't explicitly denied
+    // 3. They don't already have a saved address (new visitor)
+    // 4. Browser supports geolocation
+    const shouldShow =
+      !hasAsked &&
+      !hasDenied &&
+      !savedAddress &&
+      typeof navigator !== "undefined" &&
+      navigator.geolocation;
+
+    if (shouldShow) {
+      // Delay showing the modal slightly to let the page load
+      const timer = setTimeout(() => {
+        console.log("[LocationPermission] Showing modal");
+        setIsLocationPermissionModalOpen(true);
+        localStorage.setItem("locationPermissionAsked", "true");
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    } else {
+      console.log("[LocationPermission] Skipping modal", {
+        hasAsked,
+        hasDenied,
+        savedAddress,
+        hasGeolocation:
+          typeof navigator !== "undefined" && !!navigator.geolocation,
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (hasLoadedCategoriesRef.current) return;
@@ -1396,6 +1441,8 @@ export default function App() {
         setIsPaintOpen={setIsPaintOpen}
         isOnboardingOpen={isOnboardingOpen}
         setIsOnboardingOpen={setIsOnboardingOpen}
+        isLocationPermissionModalOpen={isLocationPermissionModalOpen}
+        setIsLocationPermissionModalOpen={setIsLocationPermissionModalOpen}
         selectedStore={selectedStore}
         setSelectedStore={setSelectedStore}
         userType={userType}
@@ -1577,6 +1624,19 @@ function MainApp(props) {
         }
         addToCart={props.addToCart}
       />
+
+      {props.isLocationPermissionModalOpen && (
+        <LocationPermissionModal
+          isOpen={props.isLocationPermissionModalOpen}
+          onClose={() => props.setIsLocationPermissionModalOpen(false)}
+          onAddressDetected={(address) => {
+            props.showToast(
+              "Location detected! We've saved your delivery address.",
+              "success",
+            );
+          }}
+        />
+      )}
 
       {props.isLocatorOpen && (
         <StoreLocator

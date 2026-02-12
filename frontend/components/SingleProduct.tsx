@@ -692,20 +692,20 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             } flex flex-col relative z-30`}
             style={{ paddingLeft: "0" }}
           >
-            <div
+            {/* <div
               className={`bundleContainer w-full transition-all duration-500 ease-out absolute bottom-0 overflow-hidden z-[9999] pr-3 ${
                 showLeftBundle
                   ? "max-h-[420px] opacity-100 translate-y-0 mb-4"
                   : "max-h-0 opacity-0 translate-y-6 mb-0 pointer-events-none"
               }`}
-            >
-              {/* Product Bundle Section - Shows on scroll */}
-              <BundledProducts
+            > */}
+            {/* Product Bundle Section - Shows on scroll */}
+            {/* <BundledProducts
                 product={product}
                 allProducts={allProducts}
                 addToCart={addToCart}
               />
-            </div>
+            </div> */}
 
             {/* Image Container */}
             <div className="flex-1 bg-[#F9F9F9] relative group cursor-zoom-in overflow-hidden flex flex-col">
