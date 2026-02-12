@@ -751,7 +751,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             {/* Image Container */}
             <div className="flex-1 bg-[#F9F9F9] relative group cursor-zoom-in overflow-hidden flex flex-col">
               {/* Main Image */}
-              <div className="w-full h-full flex items-center justify-center p-6 pl-0">
+              <div className="w-full h-[280px] md:h-full flex items-center justify-center p-6 pl-0">
                 <img
                   src={mainImage}
                   alt={product.name}
@@ -852,13 +852,23 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         </button>
                       </div>
 
-                      <button
-                        onClick={handleAddToCart}
-                        disabled={product.stock === 0}
-                        className="flex-1 bg-belims-blue text-white font-bold text-sm h-11 rounded hover:bg-red-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        {product.stock > 0 ? "Add to cart" : "Out of Stock"}
-                      </button>
+                      <div className="flex flex-1 gap-2">
+                        <button
+                          onClick={handleAddToCart}
+                          disabled={product.stock === 0}
+                          className="flex-1 bg-belims-blue text-white font-bold text-sm h-11 rounded hover:bg-red-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {product.stock > 0 ? "Add to cart" : "Out of Stock"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleBuyNowAction}
+                          disabled={product.stock === 0}
+                          className="flex-1 h-11 rounded border-2 border-[#322783] bg-transparent text-[#322783] font-bold text-sm transition-all hover:bg-red-600 hover:border-red-600 hover:text-white active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          Buy Now
+                        </button>
+                      </div>
 
                       {/* <button
                         onClick={handleBuyNowAction}
@@ -876,7 +886,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           </div>
 
           {/* RIGHT COLUMN */}
-          <div className="w-full lg:w-[54%] flex flex-col gap-3 py-10 pb-3 bg-white z-11 relative">
+          <div className="w-full lg:w-[54%] flex flex-col gap-3 pt-0 md:pt-10 pb-3 bg-white z-11 relative">
             {/* Header Info */}
             <div>
               <div className="mb-4">
@@ -964,13 +974,23 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                     </button>
                   </div>
 
-                  <button
-                    onClick={handleAddToCart}
-                    disabled={product.stock === 0}
-                    className="flex-1 bg-belims-blue text-white font-semibold text-base h-12 rounded hover:bg-red-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {product.stock > 0 ? "Add to cart" : "Out of Stock"}
-                  </button>
+                  <div className="flex flex-1 gap-3">
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={product.stock === 0}
+                      className="flex-1 bg-belims-blue text-white font-semibold text-base h-12 rounded hover:bg-red-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {product.stock > 0 ? "Add to cart" : "Out of Stock"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBuyNowAction}
+                      disabled={product.stock === 0}
+                      className="flex-1 h-12 rounded border-2 border-[#322783] bg-transparent text-[#322783] font-semibold text-base transition-all hover:bg-red-600 hover:border-red-600 hover:text-white active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      Buy Now
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1256,18 +1276,18 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             </div>
 
             {/* Policies */}
-            <div className="space-y-3">
+            <div className="space-y-0">
               {/* 15-Days Return Policy */}
-              <div className="border border-gray-200 rounded overflow-hidden">
+              <div className="border-b border-gray-200 rounded overflow-hidden">
                 <button
                   onClick={() =>
                     setExpandedPolicy(
                       expandedPolicy === "return" ? null : "return",
                     )
                   }
-                  className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors text-left group"
+                  className="w-full flex items-center justify-between p-4 px-0 bg-white transition-colors text-left group"
                 >
-                  <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
+                  <span className="font-semibold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
                     15-Days Return Policy
                   </span>
                   <ChevronRight
@@ -1276,9 +1296,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   />
                 </button>
                 {expandedPolicy === "return" && (
-                  <div className="p-4 bg-white border-t border-gray-200 animate-fadeIn">
+                  <div className="pb-4 px-0 bg-white animate-fadeIn">
                     <div
-                      className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                      className="text-[13px] text-gray-600 leading-relaxed prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{
                         __html:
                           ecommercePolicies?.return_policy || "Loading...",
@@ -1289,16 +1309,16 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               </div>
 
               {/* Change of Mind Return */}
-              <div className="border border-gray-200 rounded overflow-hidden">
+              <div className="border-b border-gray-200 rounded overflow-hidden">
                 <button
                   onClick={() =>
                     setExpandedPolicy(
                       expandedPolicy === "change_mind" ? null : "change_mind",
                     )
                   }
-                  className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors text-left group"
+                  className="w-full flex items-center justify-between p-4 px-0 bg-white transition-colors text-left group"
                 >
-                  <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
+                  <span className="font-semibold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
                     Change of Mind Return
                   </span>
                   <ChevronRight
@@ -1307,9 +1327,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   />
                 </button>
                 {expandedPolicy === "change_mind" && (
-                  <div className="p-4 bg-white border-t border-gray-200 animate-fadeIn">
+                  <div className="pb-4 px-0 bg-white animate-fadeIn">
                     <div
-                      className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                      className="text-[13px] text-gray-600 leading-relaxed prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{
                         __html:
                           ecommercePolicies?.change_of_mind || "Loading...",
@@ -1320,16 +1340,16 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               </div>
 
               {/* Warranty */}
-              <div className="border border-gray-200 rounded overflow-hidden">
+              <div className="border-b border-gray-200 rounded overflow-hidden">
                 <button
                   onClick={() =>
                     setExpandedPolicy(
                       expandedPolicy === "warranty" ? null : "warranty",
                     )
                   }
-                  className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors text-left group"
+                  className="w-full flex items-center justify-between p-4 px-0 bg-white transition-colors text-left group"
                 >
-                  <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
+                  <span className="font-semibold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
                     Warranty
                   </span>
                   <ChevronRight
@@ -1338,9 +1358,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   />
                 </button>
                 {expandedPolicy === "warranty" && (
-                  <div className="p-4 bg-white border-t border-gray-200 animate-fadeIn">
+                  <div className="pb-4 px-0 bg-white animate-fadeIn">
                     <div
-                      className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                      className="text-[13px] text-gray-600 leading-relaxed prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{
                         __html: ecommercePolicies?.warranty || "Loading...",
                       }}
@@ -1350,16 +1370,16 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               </div>
 
               {/* Delivery and Shipping */}
-              <div className="border border-gray-200 rounded overflow-hidden">
+              <div className="border-b border-gray-200 rounded overflow-hidden">
                 <button
                   onClick={() =>
                     setExpandedPolicy(
                       expandedPolicy === "shipping" ? null : "shipping",
                     )
                   }
-                  className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors text-left group"
+                  className="w-full flex items-center justify-between p-4 px-0 bg-white transition-colors text-left group"
                 >
-                  <span className="font-bold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
+                  <span className="font-semibold text-gray-900 font-heading group-hover:text-belims-blue transition-colors">
                     Delivery and Shipping
                   </span>
                   <ChevronRight
@@ -1368,9 +1388,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   />
                 </button>
                 {expandedPolicy === "shipping" && (
-                  <div className="p-4 bg-white border-t border-gray-200 animate-fadeIn">
+                  <div className="pb-4 px-0 bg-white animate-fadeIn">
                     <div
-                      className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                      className="text-[13px] text-gray-600 leading-relaxed prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{
                         __html: ecommercePolicies?.shipping || "Loading...",
                       }}
@@ -1379,7 +1399,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 )}
               </div>
             </div>
-            <div className="border rounded border-gray-200 bg-gray-100 py-6 mt-4">
+
+            <div className="py-3 mt-4">
               <div className="mb-0 centered-flex gap-2">
                 {/* Payment & Security */}
                 <div className="flex flex-wrap justify-center gap-3 mb-0">
@@ -1553,13 +1574,23 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 </button>
               </div>
 
-              <button
-                onClick={handleAddToCart}
-                disabled={product.stock === 0}
-                className="bg-belims-blue text-white font-bold text-sm h-11 px-6 rounded hover:bg-red-600 transition-all w-[160px] active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap"
-              >
-                {product.stock > 0 ? "Add to cart" : "Out of Stock"}
-              </button>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={product.stock === 0}
+                  className="flex-1 bg-belims-blue text-white font-bold text-sm h-11 px-10 rounded hover:bg-red-600 transition-all active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {product.stock > 0 ? "Add to cart" : "Out of Stock"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBuyNowAction}
+                  disabled={product.stock === 0}
+                  className="flex-1 h-11 px-10 rounded border-2 border-[#322783] bg-transparent text-[#322783] font-bold text-sm transition-all hover:bg-red-600 hover:border-red-600 hover:text-white active:scale-95 font-heading flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap"
+                >
+                  Buy Now
+                </button>
+              </div>
             </div>
 
             {/* <button

@@ -49,14 +49,14 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
           type="button"
           onClick={() => !loading && onSelect?.("pickup")}
           disabled={loading}
-          className={`flex items-start gap-3 p-4 rounded-md border transition-all text-left ${
+          className={`flex items-start gap-3 p-3 md:p-4 rounded-md border transition-all text-left ${
             selectedType === "pickup"
               ? "border-belims-accent bg-white"
               : "border-gray-400 bg-white hover:border-belims-accent/50"
           } ${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
         >
           <div
-            className={`flex items-center justify-center w-10 h-10 rounded-full border transition-colors flex-shrink-0 ${
+            className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full border transition-colors flex-shrink-0 ${
               selectedType === "pickup"
                 ? "bg-belims-accent text-white border-belims-accent"
                 : "bg-gray-50 text-gray-900 border-gray-100"
@@ -65,7 +65,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
             <MapPin size={20} strokeWidth={1.5} />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900 text-[15px] mb-1">
+            <h3 className="font-semibold text-gray-900 text-base md:text-[15px] mb-1">
               Pickup
             </h3>
             <p
@@ -108,14 +108,14 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
           type="button"
           onClick={() => !loading && onSelect?.("delivery")}
           disabled={loading}
-          className={`flex items-start gap-3 p-4 rounded-md border transition-all text-left ${
+          className={`flex items-start gap-3 p-3 md:p-4 rounded-md border transition-all text-left ${
             selectedType === "delivery"
               ? "border-belims-accent bg-white"
               : "border-gray-400 bg-white hover:border-belims-accent/50"
           } ${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
         >
           <div
-            className={`flex items-center justify-center w-10 h-10 rounded-full border transition-colors flex-shrink-0 ${
+            className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full border transition-colors flex-shrink-0 ${
               selectedType === "delivery"
                 ? "bg-belims-accent text-white border-belims-accent"
                 : "bg-gray-50 text-gray-900 border-gray-100"
@@ -125,7 +125,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="font-semibold text-gray-900 text-[15px] mb-1">
+              <h3 className="font-semibold text-gray-900 text-base md:text-[15px] mb-1">
                 Delivery
               </h3>
               {!showDeliveryPrompt && selectedType === "delivery" && (
@@ -152,7 +152,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
 
             {showDeliveryPrompt ? (
               <div className="flex flex-col gap-1">
-                <p className="text-[12px] leading-5 mb-2 text-gray-600">
+                <p className="text-[12px] leading-5 mb-0 text-gray-600">
                   No delivery location set
                 </p>
                 <span

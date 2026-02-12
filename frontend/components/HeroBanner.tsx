@@ -76,15 +76,15 @@ const HeroBanner: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-[#09111D] via-[#09111D]/50 to-transparent"></div>
               </div>
 
-              <div className="relative z-10 w-full lg:w-4/5 py-6 px-5 md:p-12 lg:p-16 flex flex-col items-center text-center md:items-start md:text-left">
-                <span className="block text-sm font-bold uppercase tracking-wider text-belims-accent mb-4 md:text-base">
+              <div className="relative z-10 w-full lg:w-4/5 py-8 px-5 md:p-12 lg:p-16 flex flex-col items-center text-center md:items-start md:text-left">
+                <span className="block text-base font-bold uppercase tracking-wider text-belims-accent mb-2 lg:mb-4 md:text-base">
                   Partner with Belims
                 </span>
-                <h1 className="mb-3 font-heading text-lg font-semibold text-white sm:text-5xl md:mb-6 md:text-4xl">
+                <h1 className="mb-3 font-heading text-xl font-semibold text-white sm:text-5xl md:mb-6 md:text-4xl">
                   Trade pricing that <br className="hidden md:block" /> works as
                   hard as you do
                 </h1>
-                <p className="mb-5 max-w-[480px] font-body text-sm text-gray-300 opacity-90 leading-relaxed md:mb-8 md:text-lg">
+                <p className="mb-5 max-w-[480px] font-body text-base text-gray-300 opacity-90 leading-relaxed md:mb-8 md:text-lg">
                   Get access to exclusive trade-only rates, expert support, and
                   logistical advantages designed to keep your projects on track
                   and your business growing.
@@ -112,13 +112,13 @@ const HeroBanner: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4 sm:flex">
                   <a
                     href="/trade/deals"
-                    className="inline-flex h-9 w-full items-center justify-center rounded bg-belims-accent px-3 text-xs font-bold text-white transition-all hover:bg-blue-700 shadow-md sm:h-11 sm:w-auto sm:px-8 sm:text-base"
+                    className="inline-flex h-[42px] w-full items-center justify-center rounded-sm lg:rounded bg-belims-accent px-3 text-sm font-semibold text-white transition-all hover:bg-blue-700 shadow-md sm:h-11 sm:w-auto sm:px-8 sm:text-base"
                   >
                     View Trade Deals
                   </a>
                   <a
                     href="/trade/register"
-                    className="inline-flex h-9 w-full items-center justify-center rounded px-3 text-xs font-bold text-white border backdrop-blur-sm transition-all hover:bg-white hover:text-belims-blue sm:h-11 sm:w-auto sm:px-8 sm:text-base"
+                    className="inline-flex h-[42px] w-full items-center justify-center rounded-sm lg:rounded px-3 text-sm font-semibold text-white border backdrop-blur-sm transition-all hover:bg-white hover:text-belims-blue sm:h-11 sm:w-auto sm:px-8 sm:text-base"
                   >
                     Apply for Trade Account
                   </a>
@@ -130,9 +130,9 @@ const HeroBanner: React.FC = () => {
           {/* Secondary Promo Cards - 4cols on LG */}
           <div className="lg:col-span-4 grid grid-cols-2 gap-4 md:gap-6 lg:gap-8 lg:flex lg:flex-col">
             {/* Daily Deals Card - Top Right */}
-            <div className="relative h-full bg-belims-blue rounded-lg overflow-hidden shadow-sm flex items-center p-3 md:p-5 min-h-0 md:min-h-[200px] lg:min-h-[240px]">
+            <div className="relative h-full bg-belims-blue rounded-lg overflow-hidden shadow-sm flex items-center p-4 md:p-5 min-h-0 md:min-h-[200px] lg:min-h-[240px]">
               <div className="z-10 w-full flex flex-col items-center text-center gap-2 lg:gap-4">
-                <h3 className="text-lg lg:text-xl font-semibold lg:font-bold text-white font-heading letterspacing-tight">
+                <h3 className="text-[18px] lg:text-xl font-semibold lg:font-bold text-white font-heading letterspacing-tight">
                   Daily deals
                 </h3>
                 {/* <p className="text-base text-white leading-relaxed">
@@ -148,7 +148,7 @@ const HeroBanner: React.FC = () => {
                 </div>
                 <a
                   href="/collections/all"
-                  className="inline-flex h-9 lg:h-11 items-center justify-center rounded bg-red-600 px-8 text-xs lg:text-base font-bold text-white transition-color hover:bg-red-700 shadow-md"
+                  className="inline-flex h-[42px] lg:h-11 items-center justify-center rounded-sm lg:rounded bg-red-600 px-8 text-sm lg:text-base font-semibold text-white transition-color hover:bg-red-700 shadow-md"
                 >
                   Shop Now
                 </a>
@@ -169,16 +169,16 @@ const HeroBanner: React.FC = () => {
 
               <div className="relative z-10 w-full p-4 md:p-8">
                 <div className="max-w-[300px] flex flex-col items-center text-center md:items-start md:text-left">
-                  <h3 className="mb-2 text-lg font-bold text-white font-heading letterspacing-tight md:text-xl">
+                  <h3 className="mb-2 text-[18px] font-semibold text-white font-heading letterspacing-tight md:text-xl">
                     Need inspiration?
                   </h3>
-                  <p className="mb-3 lg:mb-6 text-xs text-white leading-relaxed max-w-[280px] md:text-base">
+                  <p className="mb-3 lg:mb-6 text-[13px] text-balance text-white max-w-[280px] md:text-base">
                     Describe your mood or space, and let our AI suggest the
                     perfect paint palette.
                   </p>
                   <a
                     href="/paint-assistant"
-                    className="inline-flex h-9 items-center justify-center rounded bg-belims-blue px-8 text-xs font-bold text-white transition-color hover:bg-red-700 shadow-md md:h-11 md:text-base"
+                    className="inline-flex h-[42px] items-center justify-center rounded-sm lg:rounded bg-belims-blue px-8 text-sm font-semibold text-white transition-color hover:bg-red-700 shadow-md md:h-11 md:text-base"
                   >
                     Try It Now
                   </a>
