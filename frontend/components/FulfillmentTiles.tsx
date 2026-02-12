@@ -79,16 +79,24 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
               {pickup.available === 1 ? "item" : "items"} available
             </p>
             {selectedType === "pickup" && (
-              <button
-                type="button"
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSchedulePickup?.();
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSchedulePickup?.();
+                  }
+                }}
                 className="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-800 underline"
               >
                 Schedule Pickup
-              </button>
+              </span>
             )}
           </div>
         </button>
@@ -121,16 +129,24 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                 Delivery
               </h3>
               {!showDeliveryPrompt && selectedType === "delivery" && (
-                <button
-                  type="button"
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
                     onSetDeliveryLocation?.();
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onSetDeliveryLocation?.();
+                    }
+                  }}
                   className="text-[10px] font-bold text-blue-600 hover:text-blue-800 underline"
                 >
                   Change
-                </button>
+                </span>
               )}
             </div>
 
@@ -139,16 +155,24 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                 <p className="text-[10px] leading-4 text-gray-500">
                   No delivery location set
                 </p>
-                <button
-                  type="button"
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
                     onSetDeliveryLocation?.();
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onSetDeliveryLocation?.();
+                    }
+                  }}
                   className="text-[10px] font-bold text-blue-600 hover:text-blue-800 text-left"
                 >
                   Set your location
-                </button>
+                </span>
               </div>
             ) : (
               <div className="text-[10px] leading-4">

@@ -961,13 +961,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               </div>
             </div>
           )}
-
-          {/* {fulfillmentType === "delivery" && isEditingDeliveryAddress && (
-            <p className="text-xs text-gray-500 text-center">
-              Your location is saved automatically when you select or enter your
-              address.
-            </p>
-          )} */}
         </div>
 
         {/* Footer with Buttons */}
