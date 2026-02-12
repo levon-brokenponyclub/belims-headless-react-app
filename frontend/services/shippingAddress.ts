@@ -30,6 +30,34 @@ const PROVINCE_ALIASES: Record<string, string> = {
   "Mpumalanga Province": "Mpumalanga",
   "Northern Cape Province": "Northern Cape",
   "Western Cape Province": "Western Cape",
+  GP: "Gauteng",
+  WC: "Western Cape",
+  EC: "Eastern Cape",
+  FS: "Free State",
+  LP: "Limpopo",
+  MP: "Mpumalanga",
+  NC: "Northern Cape",
+  NW: "North West",
+  gp: "Gauteng",
+  wc: "Western Cape",
+  ec: "Eastern Cape",
+  fs: "Free State",
+  lp: "Limpopo",
+  mp: "Mpumalanga",
+  nc: "Northern Cape",
+  nw: "North West",
+};
+
+const ISO_PROVINCE_CODES: Record<string, string> = {
+  EC: "Eastern Cape",
+  FS: "Free State",
+  GP: "Gauteng",
+  KZN: "KwaZulu-Natal",
+  LP: "Limpopo",
+  MP: "Mpumalanga",
+  NC: "Northern Cape",
+  NW: "North West",
+  WC: "Western Cape",
 };
 
 export const normalizeProvince = (value?: string | null): string => {
@@ -37,20 +65,45 @@ export const normalizeProvince = (value?: string | null): string => {
   const trimmed = value.trim();
   if (!trimmed) return "";
 
-  const alias = PROVINCE_ALIASES[trimmed];
+  const exactMatch = PROVINCES.find(
+    (province) => province.toLowerCase() === trimmed.toLowerCase(),
+  );
+  if (exactMatch) return exactMatch;
+
+  const isoMatch = trimmed.match(/^ZA-([A-Z]{2,3})$/i);
+  if (isoMatch) {
+    const isoCode = isoMatch[1].toUpperCase();
+    if (ISO_PROVINCE_CODES[isoCode]) {
+      return ISO_PROVINCE_CODES[isoCode];
+    }
+  }
+
+  const alias =
+    PROVINCE_ALIASES[trimmed] || PROVINCE_ALIASES[trimmed.toLowerCase()];
   if (alias) return alias;
 
   const cleaned = trimmed
     .replace(/\s+Province$/i, "")
-    .replace(/-/g, " ")
+    .replace(/[-–—]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-  const directMatch = PROVINCES.find(
-    (province) => province.toLowerCase() === cleaned.toLowerCase(),
+  const directMatch = PROVINCES.find((province) => {
+    const normalizedProvince = province
+      .replace(/[-–—]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+    return normalizedProvince === cleaned.toLowerCase();
+  });
+
+  if (directMatch) return directMatch;
+
+  const containsMatch = PROVINCES.find((province) =>
+    cleaned.toLowerCase().includes(province.toLowerCase()),
   );
 
-  return directMatch || "";
+  return containsMatch || "";
 };
 
 export const buildAddressLabel = (address: ShippingAddress): string => {
@@ -109,9 +162,23 @@ export const mapNominatimAddress = (data: any): ShippingAddress | null => {
     address.county ||
     "";
 
-  const province = normalizeProvince(
+  let province = normalizeProvince(
     address.state || address.province || address.state_district,
   );
+
+  if (!province) {
+    province = normalizeProvince(address["ISO3166-2-lvl4"]);
+  }
+
+  if (!province && typeof data?.display_name === "string") {
+    const displayNameLower = data.display_name.toLowerCase();
+    const matchedProvince = PROVINCES.find((candidate) =>
+      displayNameLower.includes(candidate.toLowerCase()),
+    );
+    if (matchedProvince) {
+      province = matchedProvince;
+    }
+  }
 
   const postalCode = address.postcode || "";
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { CheckCircle, XCircle, AlertCircle, Loader } from "lucide-react";
+import { AlertCircle, Loader } from "lucide-react";
 import { getApiBaseUrl } from "../services/wooCommerceService";
 import { OrderDetailsView } from "./OrderDetailsView";
 
@@ -39,9 +39,22 @@ interface OrderDetails {
   total_tax?: string;
   line_items?: Array<{
     id: number;
+    product_id?: number;
     name: string;
     quantity: number;
     total: string;
+    category?: string;
+    categories?: Array<{
+      id?: number;
+      name?: string;
+      slug?: string;
+    }>;
+    meta_data?: Array<{
+      key?: string;
+      value?: unknown;
+      display_key?: string;
+      display_value?: unknown;
+    }>;
   }>;
 }
 
@@ -193,10 +206,6 @@ export const OrderConfirmation: React.FC = () => {
     );
   }
 
-  const isSuccess =
-    paymentStatus === "complete" ||
-    order.status === "processing" ||
-    order.status === "completed";
   const orderNumber = order.order_number || order.id;
   const orderDate = order.date_created
     ? new Date(order.date_created)
@@ -230,12 +239,58 @@ export const OrderConfirmation: React.FC = () => {
   // If we have fewer than 3 lines, pad it
   while (billingAddr.length < 3) billingAddr.push("");
 
+  const resolveCategory = (item: {
+    category?: string;
+    categories?: Array<{ name?: string }>;
+    meta_data?: Array<{
+      key?: string;
+      value?: unknown;
+      display_value?: unknown;
+    }>;
+  }) => {
+    if (item.category && item.category.trim()) return item.category;
+
+    const categoryNames = (item.categories || [])
+      .map((cat) => cat.name?.trim())
+      .filter((name): name is string => Boolean(name));
+    if (categoryNames.length > 0) return categoryNames.join(", ");
+
+    const categoryMeta = (item.meta_data || []).find((meta) => {
+      const key = (meta.key || "").toLowerCase();
+      return key.includes("category") || key.includes("product_cat");
+    });
+
+    const metaValue = categoryMeta?.display_value ?? categoryMeta?.value;
+
+    if (typeof metaValue === "string" && metaValue.trim()) return metaValue;
+    if (Array.isArray(metaValue)) {
+      const values = metaValue
+        .map((entry) => {
+          if (typeof entry === "string") return entry.trim();
+          if (
+            entry &&
+            typeof entry === "object" &&
+            "name" in entry &&
+            typeof (entry as { name?: unknown }).name === "string"
+          ) {
+            return ((entry as { name: string }).name || "").trim();
+          }
+          return "";
+        })
+        .filter(Boolean);
+      if (values.length > 0) return values.join(", ");
+    }
+
+    return "Uncategorized";
+  };
+
   const itemsMapped = lineItems.map((item) => ({
     id: item.id,
     name: item.name,
     price: `${order.currency === "ZAR" ? "R" : order.currency || "$"} ${item.total}`,
     quantity: item.quantity,
     description: "Standard hardware item",
+    category: resolveCategory(item),
     image: "https://via.placeholder.com/150", // Placeholder
     status:
       order.status === "processing"
@@ -250,47 +305,7 @@ export const OrderConfirmation: React.FC = () => {
   }));
 
   return (
-    <div className="bg-white">
-      {/* Success Banner */}
-      <div className="container mx-auto px-4 mt-8">
-        <div
-          className={`p-6 rounded-lg border-2 ${
-            isSuccess
-              ? "bg-green-50 border-green-200"
-              : "bg-yellow-50 border-yellow-200"
-          }`}
-        >
-          <div className="flex items-start gap-4">
-            {isSuccess ? (
-              <CheckCircle className="text-green-600 flex-shrink-0" size={32} />
-            ) : (
-              <AlertCircle
-                className="text-yellow-600 flex-shrink-0"
-                size={32}
-              />
-            )}
-            <div>
-              <h1
-                className={`text-2xl font-bold mb-2 ${
-                  isSuccess ? "text-green-900" : "text-yellow-900"
-                }`}
-              >
-                {isSuccess ? "Payment Received!" : "Order Pending"}
-              </h1>
-              <p
-                className={`text-lg ${
-                  isSuccess ? "text-green-700" : "text-yellow-700"
-                }`}
-              >
-                {isSuccess
-                  ? `Thank you for your order! Your payment has been confirmed.`
-                  : `Your order has been created and is awaiting payment confirmation.`}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="bg-gray-50">
       <OrderDetailsView
         orderNumber={orderNumberStr}
         date={formattedDate}
@@ -306,31 +321,6 @@ export const OrderConfirmation: React.FC = () => {
           expires: "xx / xx",
         }}
       />
-
-      <div className="container mx-auto px-4 pb-16">
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-          <h3 className="font-bold text-gray-900 mb-3">Questions?</h3>
-          <p className="text-gray-600 mb-4">
-            If you have any questions about your order, please don't hesitate to
-            contact our customer support team.
-          </p>
-          <div className="flex gap-4">
-            <a
-              href="mailto:support@belims.com"
-              className="text-belims-blue font-bold hover:underline"
-            >
-              Email Support
-            </a>
-            <span className="text-gray-300">|</span>
-            <a
-              href="tel:+27-11-123-4567"
-              className="text-belims-blue font-bold hover:underline"
-            >
-              Call Us
-            </a>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

@@ -51,6 +51,7 @@ import {
 import HeroBanner from "./components/HeroBanner";
 import { CountdownTimer } from "./components/CountdownTimer";
 import CollageGrid from "./components/CollageGrid";
+import ProjectInspiration from "./components/ProjectInspiration";
 import { getCurrentUser, UserData, logoutUser } from "./services/authService";
 
 import { Product, CartItem, Store } from "./types";
@@ -64,7 +65,6 @@ import {
   STORES,
   HERO_SLIDES,
   CATEGORY_PILLS,
-  PROJECT_IDEAS,
   CATEGORY_SLIDER_DATA,
 } from "./constants";
 
@@ -961,50 +961,7 @@ const HomePage = ({
         </div>
       </section>
 
-      {/* Project Inspiration */}
-      <section className="mb-16" aria-label="Project inspiration">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-end mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 font-heading">
-                Get the job done
-              </h2>
-              <p className="text-gray-500 text-sm mt-1">
-                Curated essentials for common home and trade projects
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {PROJECT_IDEAS.map((project) => (
-              <div
-                key={project.id}
-                className="bg-white border border-gray-200 rounded-lg overflow-hidden"
-              >
-                <img
-                  src={project.image}
-                  alt={project.title}
-                  className="h-40 w-full object-cover"
-                />
-                <div className="p-4">
-                  <h3 className="font-bold text-gray-900 mb-2">
-                    {project.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    {project.description}
-                  </p>
-                  <button
-                    type="button"
-                    className="text-sm font-semibold text-belims-blue hover:text-belims-accent"
-                  >
-                    {project.linkText} →
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <ProjectInspiration />
 
       {/* Lifestyle Section */}
       <section

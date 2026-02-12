@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 
 interface OrderItem {
@@ -7,6 +8,7 @@ interface OrderItem {
   price: string;
   quantity: number;
   description: string;
+  category?: string;
   image: string;
   status: string;
   statusDate: string;
@@ -42,218 +44,179 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
   billingAddress,
   payment,
 }) => {
+  const navigate = useNavigate();
+
   return (
-    <main className="mx-auto max-w-7xl px-4 pt-16 pb-24 sm:px-6 sm:pt-24 lg:px-8 lg:pb-32">
-      <div className="space-y-2 px-4 sm:flex sm:items-baseline sm:justify-between sm:space-y-0 sm:px-0">
-        <div className="flex sm:items-baseline sm:space-x-4">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Order #{orderNumber}
-          </h1>
-          <button
-            type="button"
-            className="hidden text-sm font-medium text-belims-blue hover:text-belims-light sm:block"
-          >
-            View invoice
-            <span aria-hidden="true"> &rarr;</span>
-          </button>
-        </div>
-        <p className="text-sm text-gray-600">
-          Order placed{" "}
-          <time dateTime={date} className="font-medium text-gray-900">
-            {date}
-          </time>
-        </p>
-        <button
-          type="button"
-          className="text-sm font-medium text-belims-blue hover:text-belims-light sm:hidden"
-        >
-          View invoice
-          <span aria-hidden="true"> &rarr;</span>
-        </button>
-      </div>
+    <main className="bg-gray-50">
+      <div className="container mx-auto px-4 py-10 lg:py-16">
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr]">
+          <section className="bg-white rounded-lg border border-black/10 p-8 flex flex-col items-center text-center shadow-sm">
+            <div className="h-16 w-16 rounded-full bg-green-50 border border-green-200 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-full bg-green-500 flex items-center justify-center text-white">
+                <Check size={28} strokeWidth={3} />
+              </div>
+            </div>
+            <h1 className="mt-6 text-2xl font-semibold text-gray-900">
+              Thank You For Your Order!
+            </h1>
+            <p className="mt-2 text-sm text-gray-600 max-w-sm">
+              Your order has been successfully placed. We have sent a
+              confirmation to your email.
+            </p>
+            <div className="mt-8 w-full max-w-sm space-y-3">
+              <button
+                type="button"
+                onClick={() => navigate("/shop")}
+                className="w-full rounded bg-belims-blue px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-belims-blue/90 transition-colors"
+              >
+                Continue Shopping
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="w-full rounded border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Back to home
+              </button>
+            </div>
+          </section>
 
-      {/* Products */}
-      <section aria-labelledby="products-heading" className="mt-6">
-        <h2 id="products-heading" className="sr-only">
-          Products purchased
-        </h2>
+          <section className="space-y-5">
+            <div className="bg-white rounded-lg border border-black/10 p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Order Summary
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Your Order ID:{" "}
+                    <span className="text-gray-900">#{orderNumber}</span>
+                  </p>
+                </div>
+                <p className="text-xs text-gray-500">{date}</p>
+              </div>
 
-        <div className="space-y-8">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="border-t border-b border-gray-200 bg-white shadow-sm sm:rounded-lg sm:border"
-            >
-              <div className="px-4 py-6 sm:px-6 lg:grid lg:grid-cols-12 lg:gap-x-8 lg:p-8">
-                <div className="sm:flex lg:col-span-7">
-                  <div className="aspect-h-1 aspect-w-1 w-full shrink-0 overflow-hidden rounded-lg sm:aspect-none sm:h-40 sm:w-40">
+              <ul className="mt-5 divide-y divide-gray-100">
+                {items.map((item) => (
+                  <li key={item.id} className="flex items-center gap-4 py-4">
                     <img
                       src={item.image}
                       alt={item.name}
                       loading="lazy"
                       decoding="async"
-                      className="h-full w-full object-cover object-center sm:h-full sm:w-full"
+                      className="h-14 w-14 rounded-lg object-cover bg-gray-100"
                     />
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900 line-clamp-1">
+                        {item.name}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                        {item.category || "Uncategorized"}
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900 mt-1">
+                        {item.price}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-                  <div className="mt-6 sm:mt-0 sm:ml-6">
-                    <h3 className="text-base font-medium text-gray-900">
-                      <button type="button">{item.name}</button>
-                    </h3>
-                    <p className="mt-2 text-sm font-medium text-gray-900">
-                      {item.price}
-                    </p>
-                    <p className="mt-3 text-sm text-gray-500">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 lg:col-span-5 lg:mt-0">
-                  <dl className="grid grid-cols-2 gap-x-6 text-sm">
-                    <div>
-                      <dt className="font-medium text-gray-900">
-                        Delivery address
-                      </dt>
-                      <dd className="mt-3 text-gray-500">
-                        <span className="block">{item.address[0]}</span>
-                        <span className="block">{item.address[1]}</span>
-                        <span className="block">{item.address[2]}</span>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="font-medium text-gray-900">
-                        Shipping updates
-                      </dt>
-                      <dd className="mt-3 space-y-3 text-gray-500">
-                        <p>{item.email}</p>
-                        <p>{item.phone}</p>
-                        <button
-                          type="button"
-                          className="font-medium text-belims-blue hover:text-belims-light"
-                        >
-                          Edit
-                        </button>
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 px-4 py-6 sm:px-6 lg:p-8">
-                <h4 className="sr-only">Status</h4>
-                <p className="text-sm font-medium text-gray-900">
-                  {item.status} on{" "}
-                  <time dateTime={item.statusDate}>{item.statusDate}</time>
-                </p>
-                <div className="mt-6" aria-hidden="true">
-                  <div className="overflow-hidden rounded-full bg-gray-200">
-                    <div
-                      className="h-2 rounded-full bg-belims-blue"
-                      style={{
-                        width:
-                          item.status === "Delivered"
-                            ? "100%"
-                            : item.status === "Shipped"
-                              ? "75%"
-                              : item.status === "Processing"
-                                ? "50%"
-                                : item.status === "Order placed"
-                                  ? "25%"
-                                  : item.status === "Preparing to ship"
-                                    ? "37.5%"
-                                    : "12.5%",
-                      }}
-                    />
-                  </div>
-                  <div className="mt-6 hidden grid-cols-4 text-sm font-medium text-gray-600 sm:grid">
-                    <div className="text-belims-blue">Order placed</div>
-                    <div
-                      className={`text-center ${item.status === "Processing" || item.status === "Shipped" || item.status === "Delivered" ? "text-belims-blue" : ""}`}
-                    >
-                      Processing
-                    </div>
-                    <div
-                      className={`text-center ${item.status === "Shipped" || item.status === "Delivered" ? "text-belims-blue" : ""}`}
-                    >
-                      Shipped
-                    </div>
-                    <div
-                      className={`text-right ${item.status === "Delivered" ? "text-belims-blue" : ""}`}
-                    >
-                      Delivered
-                    </div>
-                  </div>
-                </div>
+            <div className="bg-white rounded-lg border border-black/10 p-6 shadow-sm">
+              <ul className="space-y-3 text-sm text-gray-600">
+                <li className="flex items-center justify-between">
+                  <span>Subtotal</span>
+                  <span className="font-semibold text-gray-900">
+                    {subtotal}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Shipping</span>
+                  <span className="font-semibold text-gray-900">
+                    {shipping}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Taxes</span>
+                  <span className="font-semibold text-gray-900">{tax}</span>
+                </li>
+              </ul>
+              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-900">
+                  Total
+                </span>
+                <span className="text-base font-semibold text-gray-900">
+                  {total}
+                </span>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* Billing */}
-      <section aria-labelledby="summary-heading" className="mt-16">
-        <h2 id="summary-heading" className="sr-only">
-          Billing Summary
-        </h2>
-
-        <div className="bg-gray-50 px-4 py-6 sm:rounded-lg sm:px-6 lg:grid lg:grid-cols-12 lg:gap-x-8 lg:px-8 lg:py-8">
-          <dl className="grid grid-cols-2 gap-x-6 text-sm lg:col-span-7">
-            <div>
-              <dt className="font-medium text-gray-900">Billing address</dt>
-              <dd className="mt-3 text-gray-500">
-                <span className="block">{billingAddress[0]}</span>
-                <span className="block">{billingAddress[1]}</span>
-                <span className="block">{billingAddress[2]}</span>
-              </dd>
-            </div>
-            <div>
-              <dt className="font-medium text-gray-900">Payment information</dt>
-              <dd className="mt-3 flex">
-                <div className="shrink-0">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="bg-white rounded-lg border border-black/10 p-5 shadow-sm">
+                <div className="h-9 w-9 rounded-lg bg-gray-100 text-gray-700 flex items-center justify-center">
                   <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
                     aria-hidden="true"
-                    width={36}
-                    height={24}
-                    viewBox="0 0 36 24"
-                    className="h-6 w-auto"
                   >
-                    <rect width={36} height={24} rx={4} fill="#224DBA" />
                     <path
-                      d="M10.925 15.673H8.874l-1.538-6c-.073-.276-.228-.52-.456-.635A6.575 6.575 0 005 8.403v-.231h3.304c.456 0 .798.347.855.75l.798 4.328 2.05-5.078h1.994l-3.076 7.5zm4.216 0h-1.937L14.8 8.172h1.937l-1.595 7.5zm4.101-5.422c.057-.404.399-.635.798-.635a3.54 3.54 0 011.88.346l.342-1.615A4.808 4.808 0 0020.496 8c-1.88 0-3.248 1.039-3.248 2.481 0 1.097.969 1.673 1.653 2.02.74.346 1.025.577.968.923 0 .519-.57.75-1.139.75a4.795 4.795 0 01-1.994-.462l-.342 1.616a5.48 5.48 0 002.108.404c2.108.057 3.418-.981 3.418-2.539 0-1.962-2.678-2.077-2.678-2.942zm9.457 5.422L27.16 8.172h-1.652a.858.858 0 00-.798.577l-2.848 6.924h1.994l.398-1.096h2.45l.228 1.096h1.766zm-2.905-5.482l.57 2.827h-1.596l1.026-2.827z"
-                      fill="#fff"
+                      d="M15.085 9.47001C15.085 11.1738 13.7038 12.555 12 12.555C10.2962 12.555 8.91504 11.1738 8.91504 9.47001C8.91504 7.76621 10.2962 6.38501 12 6.38501C13.7038 6.38501 15.085 7.76621 15.085 9.47001Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M18.7219 9.47206C18.7219 14.6995 14.7426 19.1274 12.9155 20.885C12.4055 21.3756 11.629 21.3766 11.1176 20.8874C9.28193 19.1315 5.27783 14.7019 5.27783 9.47206C5.27783 5.75957 8.2874 2.75 11.9999 2.75C15.7124 2.75 18.7219 5.75957 18.7219 9.47206Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     />
                   </svg>
                 </div>
-                <div className="ml-4">
-                  <p className="text-gray-900">{payment.type}</p>
-                  <p className="text-gray-600">Ending with {payment.last4}</p>
-                  <p className="text-gray-600">Expires {payment.expires}</p>
+                <h4 className="mt-3 text-sm font-semibold text-gray-900">
+                  Shipping Address
+                </h4>
+                <p className="mt-2 text-xs text-gray-600">
+                  {billingAddress.filter(Boolean).join(" ")}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg border border-black/10 p-5 shadow-sm">
+                <div className="h-9 w-9 rounded-lg bg-gray-100 text-gray-700 flex items-center justify-center">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M4 8H18.5C19.3284 8 20 8.67157 20 9.5V18.5C20 19.3284 19.3284 20 18.5 20H5.5C4.67157 20 4 19.3284 4 18.5V8ZM4 8V5.5C4 4.67157 4.67157 4 5.5 4H16C16.8284 4 17.5 4.67157 17.5 5.5V8M20 12H16.75C15.9216 12 15.25 12.6716 15.25 13.5V14.5C15.25 15.3284 15.9216 16 16.75 16H20"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </div>
-              </dd>
+                <h4 className="mt-3 text-sm font-semibold text-gray-900">
+                  Payment Info
+                </h4>
+                <p className="mt-2 text-xs text-gray-600">
+                  {payment.type} Ending {payment.last4}
+                  <br />
+                  Expires {payment.expires}
+                </p>
+              </div>
             </div>
-          </dl>
-
-          <dl className="mt-8 divide-y divide-gray-200 text-sm lg:col-span-5 lg:mt-0">
-            <div className="flex items-center justify-between pb-4">
-              <dt className="text-gray-600">Subtotal</dt>
-              <dd className="font-medium text-gray-900">{subtotal}</dd>
-            </div>
-            <div className="flex items-center justify-between py-4">
-              <dt className="text-gray-600">Shipping</dt>
-              <dd className="font-medium text-gray-900">{shipping}</dd>
-            </div>
-            <div className="flex items-center justify-between py-4">
-              <dt className="text-gray-600">Tax</dt>
-              <dd className="font-medium text-gray-900">{tax}</dd>
-            </div>
-            <div className="flex items-center justify-between pt-4">
-              <dt className="font-medium text-gray-900">Order total</dt>
-              <dd className="font-medium text-belims-blue">{total}</dd>
-            </div>
-          </dl>
+          </section>
         </div>
-      </section>
+      </div>
     </main>
   );
 };

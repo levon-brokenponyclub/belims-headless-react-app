@@ -8,7 +8,6 @@ import {
   normalizeProvince,
   PROVINCES,
   readStoredAddress,
-  saveStoredAddress,
 } from "../services/shippingAddress";
 
 interface DeliveryLocationModalProps {
@@ -19,6 +18,8 @@ interface DeliveryLocationModalProps {
   currentStore?: Store | null;
   onStoreSelect?: (store: Store | null) => void;
 }
+
+const LOCATION_PERMISSION_CHOICE_KEY = "locationPermissionChoice";
 
 export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   isOpen,
@@ -35,12 +36,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   const [legacyLabel, setLegacyLabel] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Manual form fields state
-  const [manualStreet, setManualStreet] = useState("");
-  const [manualCity, setManualCity] = useState("");
-  const [manualPostalCode, setManualPostalCode] = useState("");
-  const [manualProvince, setManualProvince] = useState("");
-
   const [fulfillmentType, setFulfillmentType] = useState<"delivery" | "pickup">(
     "delivery",
   );
@@ -49,13 +44,85 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   const [selectedPickupStoreId, setSelectedPickupStoreId] = useState<
     string | null
   >(null);
+  const [showLocationConsentModal, setShowLocationConsentModal] =
+    useState(false);
+  const [detectedLocationAddress, setDetectedLocationAddress] =
+    useState<ShippingAddress | null>(null);
+  const [savedDeliveryAddress, setSavedDeliveryAddress] =
+    useState<ShippingAddress | null>(null);
+  const [isEditingDeliveryAddress, setIsEditingDeliveryAddress] =
+    useState(true);
+
+  const findProvinceInText = (value?: string | null) => {
+    if (!value) return "";
+    const direct = normalizeProvince(value);
+    if (direct) return direct;
+
+    const lower = value.toLowerCase();
+    const matched = PROVINCES.find((candidate) =>
+      lower.includes(candidate.toLowerCase()),
+    );
+    return matched || "";
+  };
+
+  const fetchNominatimSuggestions = async (query: string) => {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&countrycodes=za&addressdetails=1&limit=6&q=${encodeURIComponent(query)}`,
+      {
+        headers: {
+          "User-Agent": "Belims-Store",
+        },
+      },
+    );
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    if (!Array.isArray(data)) return [];
+
+    return data.map((entry: any) => ({
+      source: "nominatim",
+      place_id: entry.place_id,
+      lat: entry.lat,
+      lon: entry.lon,
+      description: entry.display_name,
+    }));
+  };
+
+  const resolveAddressFromCoordinates = async (
+    lat: number,
+    lon: number,
+  ): Promise<ShippingAddress | null> => {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
+      {
+        headers: {
+          "User-Agent": "Belims-Store",
+        },
+      },
+    );
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    const mapped = mapNominatimAddress(data);
+    if (!mapped || !mapped.city || !mapped.province) return null;
+
+    return {
+      ...mapped,
+      province: normalizeProvince(mapped.province),
+      country: "ZA",
+      label: mapped.label || buildAddressLabel(mapped),
+    };
+  };
 
   useEffect(() => {
     if (isOpen) {
       const storedFulfillment = localStorage.getItem("fulfillmentType");
-      const { legacyLabel: storedLegacy } = readStoredAddress();
-      const currentLabel = currentAddress
-        ? currentAddress.label || buildAddressLabel(currentAddress)
+      const { address: storedAddress, legacyLabel: storedLegacy } =
+        readStoredAddress();
+      const initialAddress = currentAddress || storedAddress;
+      const currentLabel = initialAddress
+        ? initialAddress.label || buildAddressLabel(initialAddress)
         : storedLegacy || "";
 
       if (storedFulfillment === "pickup" || storedFulfillment === "delivery") {
@@ -68,6 +135,9 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       setInput(currentLabel);
       setSuggestions([]);
       setErrorMessage(null);
+      setDetectedLocationAddress(null);
+      setSavedDeliveryAddress(initialAddress || null);
+      setIsEditingDeliveryAddress(!initialAddress);
       setStoreSearch("");
       setStoreList(STORES);
       setSelectedPickupStoreId(currentStore?.id || null);
@@ -89,10 +159,34 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     }
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setShowLocationConsentModal(false);
+      setDetectedLocationAddress(null);
+    }
+  }, [isOpen]);
+
+  const requestLocationWithConsent = () => {
+    setShowLocationConsentModal(true);
+  };
+
+  const handleConsentAllow = async () => {
+    localStorage.setItem(LOCATION_PERMISSION_CHOICE_KEY, "allowed");
+    setShowLocationConsentModal(false);
+    setErrorMessage(null);
+    await handleDetectLocation();
+  };
+
+  const handleConsentDeny = () => {
+    localStorage.setItem(LOCATION_PERMISSION_CHOICE_KEY, "denied");
+    setShowLocationConsentModal(false);
+  };
+
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInput(value);
     setErrorMessage(null);
+    setDetectedLocationAddress(null);
 
     if (value.length < 2) {
       setSuggestions([]);
@@ -104,7 +198,8 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     try {
       const win = window as any;
       if (!win.google?.maps?.places) {
-        setSuggestions([]);
+        const fallbackSuggestions = await fetchNominatimSuggestions(value);
+        setSuggestions(fallbackSuggestions);
         return;
       }
 
@@ -128,10 +223,27 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         });
       });
 
-      setSuggestions(predictions);
+      if (predictions.length > 0) {
+        setSuggestions(
+          predictions.map((prediction) => ({
+            source: "google",
+            place_id: prediction.place_id,
+            description: prediction.description,
+          })),
+        );
+        return;
+      }
+
+      const fallbackSuggestions = await fetchNominatimSuggestions(value);
+      setSuggestions(fallbackSuggestions);
     } catch (error) {
       console.error("Autocomplete error:", error);
-      setErrorMessage("Unable to load address suggestions.");
+      try {
+        const fallbackSuggestions = await fetchNominatimSuggestions(value);
+        setSuggestions(fallbackSuggestions);
+      } catch {
+        setErrorMessage("Unable to load address suggestions.");
+      }
     } finally {
       setLoading(false);
     }
@@ -143,22 +255,60 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       components.find((component: any) => component.types.includes(type))
         ?.long_name;
 
+    const formattedAddress =
+      typeof place.formatted_address === "string"
+        ? place.formatted_address
+        : "";
+    const formattedParts = formattedAddress
+      .split(",")
+      .map((part: string) => part.trim())
+      .filter(Boolean);
+
+    const findProvinceInText = (parts: string[]) => {
+      for (const part of parts) {
+        const normalized = normalizeProvince(part);
+        if (normalized) return normalized;
+      }
+      return "";
+    };
+
     const streetNumber = getComponent("street_number");
     const route = getComponent("route");
     const suburb =
       getComponent("sublocality") ||
       getComponent("sublocality_level_1") ||
       getComponent("neighborhood");
-    const city =
+    let city =
       getComponent("locality") ||
       getComponent("administrative_area_level_2") ||
-      getComponent("postal_town");
-    const province = normalizeProvince(
+      getComponent("postal_town") ||
+      getComponent("administrative_area_level_3") ||
+      getComponent("sublocality") ||
+      getComponent("sublocality_level_1");
+
+    let province = normalizeProvince(
       getComponent("administrative_area_level_1"),
     );
+
+    if (!province) {
+      province = findProvinceInText(formattedParts);
+    }
+
+    if (!city && formattedParts.length > 0) {
+      const provinceIndex = formattedParts.findIndex(
+        (part: string) => normalizeProvince(part).length > 0,
+      );
+      if (provinceIndex > 0) {
+        city = formattedParts[provinceIndex - 1];
+      }
+    }
+
     const postalCode = getComponent("postal_code") || "";
 
-    const street = [streetNumber, route, suburb].filter(Boolean).join(" ");
+    const street =
+      [streetNumber, route, suburb].filter(Boolean).join(" ") ||
+      formattedParts[0] ||
+      "";
 
     if (!city || !province) {
       return null;
@@ -181,10 +331,34 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   const handleSuggestionClick = async (suggestion: any) => {
     setLoading(true);
     setErrorMessage(null);
+    setInput(suggestion.description || "");
+    setSuggestions([]);
+
     try {
+      if (
+        suggestion.source === "nominatim" &&
+        suggestion.lat &&
+        suggestion.lon
+      ) {
+        const address = await resolveAddressFromCoordinates(
+          Number(suggestion.lat),
+          Number(suggestion.lon),
+        );
+
+        if (!address) {
+          setErrorMessage(
+            "Please select an address with a valid city and province.",
+          );
+          return;
+        }
+
+        handleAddressSaved(address);
+        return;
+      }
+
       const win = window as any;
       if (!win.google?.maps?.places) {
-        setErrorMessage("Google Places is not available.");
+        setErrorMessage("Address service is unavailable. Please try again.");
         return;
       }
 
@@ -211,18 +385,34 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       });
 
       const address = buildAddressFromPlace(details);
-      if (!address) {
+
+      let resolvedAddress = address;
+      if (!resolvedAddress && details?.geometry?.location) {
+        const latValue =
+          typeof details.geometry.location.lat === "function"
+            ? details.geometry.location.lat()
+            : details.geometry.location.lat;
+        const lonValue =
+          typeof details.geometry.location.lng === "function"
+            ? details.geometry.location.lng()
+            : details.geometry.location.lng;
+
+        if (typeof latValue === "number" && typeof lonValue === "number") {
+          resolvedAddress = await resolveAddressFromCoordinates(
+            latValue,
+            lonValue,
+          );
+        }
+      }
+
+      if (!resolvedAddress) {
         setErrorMessage(
           "Please select an address with a valid city and province.",
         );
         return;
       }
 
-      setInput(address.label || buildAddressLabel(address));
-      setSuggestions([]);
-      localStorage.setItem("fulfillmentType", "delivery");
-      onAddressSelect(address);
-      onClose();
+      handleAddressSaved(resolvedAddress);
     } catch (error) {
       console.error("Place details error:", error);
       setErrorMessage("Unable to read address details. Try another address.");
@@ -268,34 +458,58 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                 const data = await response.json();
                 const mapped = mapNominatimAddress(data);
 
-                if (!mapped || !mapped.city || !mapped.province) {
-                  // Partial address detected - populate form fields for manual completion
+                const provinceFallback =
+                  findProvinceInText(mapped?.province) ||
+                  findProvinceInText(data?.address?.state) ||
+                  findProvinceInText(data?.address?.province) ||
+                  findProvinceInText(data?.address?.region) ||
+                  findProvinceInText(data?.address?.county) ||
+                  findProvinceInText(data?.address?.state_district) ||
+                  findProvinceInText(data?.display_name);
+
+                const cityFallback =
+                  mapped?.city ||
+                  data?.address?.city ||
+                  data?.address?.town ||
+                  data?.address?.village ||
+                  data?.address?.municipality ||
+                  data?.address?.suburb ||
+                  "";
+
+                if (!mapped || !cityFallback || !provinceFallback) {
+                  // Partial address detected - populate search input for quick refinement
                   if (mapped) {
-                    setManualStreet(mapped.street || "");
-                    setManualCity(mapped.city || "");
-                    setManualPostalCode(mapped.postalCode || "");
-                    setManualProvince(mapped.province || "");
+                    const fallbackLabel =
+                      mapped.label ||
+                      [mapped.street, mapped.city].filter(Boolean).join(", ") ||
+                      "";
+                    if (fallbackLabel) {
+                      setInput(fallbackLabel);
+                    }
                   }
                   setErrorMessage(
-                    "Unable to detect a full address. Please complete the details below.",
+                    "Unable to detect a full address. Please search and select your address above.",
                   );
                   setLoading(false);
                   return;
                 }
 
-                const normalizedProvince = normalizeProvince(mapped.province);
+                const normalizedProvince = normalizeProvince(provinceFallback);
                 if (
                   !normalizedProvince ||
                   !PROVINCES.includes(
                     normalizedProvince as (typeof PROVINCES)[number],
                   )
                 ) {
-                  // Valid city but invalid province - populate form for manual completion
-                  setManualStreet(mapped.street || "");
-                  setManualCity(mapped.city || "");
-                  setManualPostalCode(mapped.postalCode || "");
+                  const fallbackLabel =
+                    mapped.label ||
+                    [mapped.street, mapped.city].filter(Boolean).join(", ") ||
+                    "";
+                  if (fallbackLabel) {
+                    setInput(fallbackLabel);
+                  }
                   setErrorMessage(
-                    "Please select a valid South African province to complete the address.",
+                    "Detected address needs a valid province. Please search and select your address above.",
                   );
                   setLoading(false);
                   return;
@@ -303,16 +517,17 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
                 const address: ShippingAddress = {
                   ...mapped,
+                  city: cityFallback,
                   province: normalizedProvince,
                   country: "ZA",
                   label: mapped.label || buildAddressLabel(mapped),
                 };
 
                 setInput(address.label || buildAddressLabel(address));
+                setSuggestions([]);
                 localStorage.setItem("fulfillmentType", "delivery");
                 setLoading(false);
-                onAddressSelect(address);
-                onClose();
+                setDetectedLocationAddress(address);
               } else {
                 throw new Error(`API returned ${response.status}`);
               }
@@ -320,13 +535,15 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               clearTimeout(timeoutId);
               console.error("Reverse geocoding error:", fetchError);
               setErrorMessage(
-                "Unable to detect your address. Please enter it manually below.",
+                "Unable to detect your address. Please search and select it above.",
               );
               setLoading(false);
             }
           } catch (error) {
             console.error("Position callback error:", error);
-            setErrorMessage("An error occurred. Please enter your address.");
+            setErrorMessage(
+              "An error occurred. Please search your address above.",
+            );
             setLoading(false);
           }
         },
@@ -334,6 +551,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           console.error("Geolocation error:", error);
           let errorMessage = "Unable to detect your location. ";
           if (error.code === error.PERMISSION_DENIED) {
+            localStorage.setItem(LOCATION_PERMISSION_CHOICE_KEY, "denied");
             errorMessage +=
               "Please enable location permission in your browser settings.";
           } else if (error.code === error.POSITION_UNAVAILABLE) {
@@ -341,7 +559,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           } else if (error.code === error.TIMEOUT) {
             errorMessage += "Location request timed out.";
           }
-          setErrorMessage(errorMessage + " Please enter your address below.");
+          setErrorMessage(errorMessage + " Please search your address above.");
           setLoading(false);
         },
         {
@@ -361,61 +579,34 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     setInput("");
     setSuggestions([]);
     setErrorMessage(null);
+    setDetectedLocationAddress(null);
+    setSavedDeliveryAddress(null);
+    setIsEditingDeliveryAddress(true);
     onAddressSelect(null);
   };
 
-  const handleSaveManualAddress = () => {
-    setErrorMessage(null);
-
-    // Validate required fields
-    if (!manualStreet.trim()) {
-      setErrorMessage("Please enter a street address.");
-      return;
-    }
-    if (!manualCity.trim()) {
-      setErrorMessage("Please enter a city.");
-      return;
-    }
-    if (!manualProvince.trim()) {
-      setErrorMessage("Please select a province.");
-      return;
-    }
-
-    // Validate province - check if it's already in PROVINCES or needs normalization
-    let validatedProvince = manualProvince;
-    if (!PROVINCES.includes(manualProvince as (typeof PROVINCES)[number])) {
-      // Try normalizing if not already canonical
-      const normalizedProvince = normalizeProvince(manualProvince);
-      if (
-        !normalizedProvince ||
-        !PROVINCES.includes(normalizedProvince as (typeof PROVINCES)[number])
-      ) {
-        setErrorMessage("Please select a valid South African province.");
-        return;
-      }
-      validatedProvince = normalizedProvince;
-    }
-
-    // Create address object
-    const address: ShippingAddress = {
-      street: manualStreet.trim(),
-      city: manualCity.trim(),
-      province: validatedProvince,
-      postalCode: manualPostalCode.trim(),
-      country: "ZA",
-    };
-
-    // Save address and notify parent
-    saveStoredAddress(address);
+  const handleAddressSaved = (address: ShippingAddress) => {
     localStorage.setItem("fulfillmentType", "delivery");
     onAddressSelect(address);
+    setSavedDeliveryAddress(address);
+    setDetectedLocationAddress(null);
+    setInput(address.label || buildAddressLabel(address));
+    setIsEditingDeliveryAddress(false);
+  };
 
-    // Clear form and close modal
-    setManualStreet("");
-    setManualCity("");
-    setManualPostalCode("");
-    setManualProvince("");
-    onClose();
+  const handleSaveDetectedAddress = () => {
+    if (!detectedLocationAddress) return;
+    handleAddressSaved(detectedLocationAddress);
+  };
+
+  const formatDetectedLocationLine = (address: ShippingAddress) => {
+    const parts = [
+      address.street || address.city,
+      address.city,
+      address.postalCode,
+      "South Africa",
+    ].filter(Boolean);
+    return parts.join(", ");
   };
 
   const handleFulfillmentChange = (type: "delivery" | "pickup") => {
@@ -486,12 +677,12 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 pb-24">
           {/* Fulfillment Toggle */}
-          <div className="flex items-center justify-between">
-            <div className="inline-flex rounded-full bg-gray-100 p-1">
+          <div className="flex items-center justify-between border-b border-black/10 pb-4">
+            <div className="inline-flex w-full rounded-full bg-gray-100 p-1">
               <button
                 type="button"
                 onClick={() => handleFulfillmentChange("delivery")}
-                className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                className={`w-full px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
                   fulfillmentType === "delivery"
                     ? "bg-belims-blue text-white"
                     : "text-gray-600 hover:text-gray-900"
@@ -502,7 +693,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleFulfillmentChange("pickup")}
-                className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                className={`w-full px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
                   fulfillmentType === "pickup"
                     ? "bg-belims-blue text-white"
                     : "text-gray-600 hover:text-gray-900"
@@ -511,135 +702,159 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                 Pickup
               </button>
             </div>
-            {fulfillmentType === "pickup" && (
+            {/* {fulfillmentType === "pickup" && (
               <button
                 type="button"
                 className="flex items-center gap-2 text-xs font-semibold text-belims-blue hover:text-belims-navy"
               >
                 <Map size={14} /> Map View
               </button>
-            )}
+            )} */}
           </div>
 
           {fulfillmentType === "delivery" ? (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold text-gray-600">
-                  Enter street address or suburb
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="relative flex-1">
-                    <Search
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      placeholder="Search delivery address"
-                      value={input}
-                      onChange={handleInputChange}
-                      className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-full text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
-                    />
-                    {input && (
-                      <button
-                        type="button"
-                        onClick={handleClearLocation}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDetectLocation}
-                  className="flex items-center gap-2 text-xs font-semibold text-belims-blue hover:text-belims-navy"
-                >
-                  <MapPin size={14} /> Use my current location
-                </button>
-              </div>
+              <h5 className="text-center text-base font-semibold text-gray-900">
+                Delivery Location
+              </h5>
+              {isEditingDeliveryAddress ? (
+                <>
+                  <div className="space-y-0">
+                    <label className="block mb-2 text-sm text-gray-900 text-center">
+                      Enables us to provide delivery rates and availability for
+                      your location
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <Search
+                          size={16}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          placeholder="Search delivery address"
+                          value={input}
+                          onChange={handleInputChange}
+                          className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-full text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
+                        />
+                        {input && (
+                          <button
+                            type="button"
+                            onClick={handleClearLocation}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
-              {loading && (
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <Loader size={14} className="animate-spin" />
-                  Finding address suggestions...
-                </div>
-              )}
+                    <div className="my-5 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-gray-300" />
+                      <span className="text-xs text-gray-500">or</span>
+                      <div className="h-px flex-1 bg-gray-300" />
+                    </div>
 
-              {suggestions.length > 0 && (
-                <div className="rounded-lg border border-gray-200 divide-y overflow-hidden">
-                  {suggestions.map((suggestion) => (
                     <button
-                      key={suggestion.place_id}
                       type="button"
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
+                      onClick={requestLocationWithConsent}
+                      className="mt-1 flex w-full justify-center items-center gap-2 text-xs font-semibold text-belims-blue hover:text-belims-navy"
                     >
-                      {suggestion.description}
+                      <MapPin size={14} /> Use my current location
                     </button>
-                  ))}
-                </div>
+                  </div>
+
+                  {loading && (
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <Loader size={14} className="animate-spin" />
+                      Finding address suggestions...
+                    </div>
+                  )}
+
+                  {suggestions.length > 0 && (
+                    <div className="rounded-lg border border-gray-200 divide-y overflow-hidden">
+                      {suggestions.map((suggestion, index) => (
+                        <button
+                          key={`${suggestion.source || "google"}-${suggestion.place_id || index}`}
+                          type="button"
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
+                        >
+                          {suggestion.description}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                savedDeliveryAddress && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 space-y-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        Delivery location
+                      </h3>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Delivery location selected for your device
+                      </p>
+                      <p className="text-sm text-gray-900 mt-2">
+                        {formatDetectedLocationLine(savedDeliveryAddress)}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingDeliveryAddress(true)}
+                      className="w-full rounded border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50"
+                    >
+                      Edit Address
+                    </button>
+
+                    <p className="text-xs text-gray-500">
+                      *Confirmation of your delivery address will ensure best
+                      product availability and order delivery
+                    </p>
+                  </div>
+                )
               )}
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Street Address
-                </label>
-                <input
-                  type="text"
-                  placeholder="123 Main Street"
-                  value={manualStreet}
-                  onChange={(e) => setManualStreet(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
-                />
-              </div>
+              {detectedLocationAddress && (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 space-y-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Delivery location
+                    </h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Delivery location selected for your device
+                    </p>
+                    <p className="text-sm text-gray-900 mt-2">
+                      {formatDetectedLocationLine(detectedLocationAddress)}
+                    </p>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Johannesburg"
-                    value={manualCity}
-                    onChange={(e) => setManualCity(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    Postal Code
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="2000"
-                    value={manualPostalCode}
-                    onChange={(e) => setManualPostalCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={handleSaveDetectedAddress}
+                      className="rounded bg-belims-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-belims-navy"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDetectedLocationAddress(null)}
+                      className="rounded border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50"
+                    >
+                      Edit address
+                    </button>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Province
-                </label>
-                <select
-                  value={manualProvince}
-                  onChange={(e) => setManualProvince(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue bg-white"
-                >
-                  <option value="">Select province</option>
-                  {PROVINCES.map((province) => (
-                    <option key={province} value={province}>
-                      {province}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <p className="text-xs text-gray-500">
+                    *Confirmation of your delivery address will ensure best
+                    product availability and order delivery
+                  </p>
+                </div>
+              )}
 
               {errorMessage && (
                 <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -747,21 +962,16 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
             </div>
           )}
 
-          {fulfillmentType === "delivery" && (
+          {/* {fulfillmentType === "delivery" && isEditingDeliveryAddress && (
             <p className="text-xs text-gray-500 text-center">
               Your location is saved automatically when you select or enter your
               address.
             </p>
-          )}
+          )} */}
         </div>
 
         {/* Footer with Buttons */}
         <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 space-y-3">
-          {errorMessage && fulfillmentType === "delivery" && (
-            <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-              {errorMessage}
-            </div>
-          )}
           {errorMessage && fulfillmentType === "pickup" && (
             <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
               {errorMessage}
@@ -769,27 +979,22 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           )}
 
           {fulfillmentType === "delivery" ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <button
                 onClick={() => {
                   localStorage.removeItem("deliveryAddressV2");
                   localStorage.removeItem("deliveryAddress");
-                  setManualStreet("");
-                  setManualCity("");
-                  setManualPostalCode("");
-                  setManualProvince("");
                   setErrorMessage(null);
+                  setInput("");
+                  setSuggestions([]);
+                  setDetectedLocationAddress(null);
+                  setSavedDeliveryAddress(null);
+                  setIsEditingDeliveryAddress(true);
                   onAddressSelect(null);
                 }}
                 className="px-4 py-2.5 rounded border border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 transition-colors"
               >
                 Reset
-              </button>
-              <button
-                onClick={handleSaveManualAddress}
-                className="px-4 py-2.5 rounded bg-belims-blue text-white text-sm font-semibold hover:bg-belims-navy transition-colors"
-              >
-                Save Address
               </button>
             </div>
           ) : (
@@ -802,6 +1007,44 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           )}
         </div>
       </div>
+
+      {showLocationConsentModal && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 px-6">
+          <div className="w-full max-w-sm rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 h-9 w-9 rounded-lg bg-blue-50 text-belims-blue flex items-center justify-center">
+                <MapPin size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Allow location access?
+                </h3>
+                <p className="mt-1 text-xs text-gray-600">
+                  We use your location to auto-fill your delivery address and
+                  show accurate delivery options.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={handleConsentDeny}
+                className="rounded border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50"
+              >
+                Deny
+              </button>
+              <button
+                type="button"
+                onClick={handleConsentAllow}
+                className="rounded bg-belims-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-belims-navy"
+              >
+                Allow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

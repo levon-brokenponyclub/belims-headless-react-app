@@ -88,12 +88,32 @@ function selectFastestRate(rates: ShippingRate[]): ShippingRate | null {
 
 function formatEta(dateStr?: string): string {
   if (!dateStr) return "Estimated delivery";
-  try {
-    const date = new Date(dateStr);
-    return `Arrives ${date.toLocaleDateString("en-ZA", { month: "short", day: "numeric" })}`;
-  } catch {
-    return "Estimated delivery";
+  const value = dateStr.trim();
+  if (!value) return "Estimated delivery";
+
+  const formatDate = (input: string) => {
+    const parsed = new Date(input);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toLocaleDateString("en-ZA", {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  if (value.includes(" - ")) {
+    const [startRaw, endRaw] = value.split(" - ").map((part) => part.trim());
+    const start = formatDate(startRaw);
+    const end = formatDate(endRaw);
+
+    if (start && end) {
+      return start === end ? `Arrives ${start}` : `Arrives ${start} - ${end}`;
+    }
   }
+
+  const single = formatDate(value);
+  if (single) return `Arrives ${single}`;
+
+  return value;
 }
 
 export const Checkout: React.FC<CheckoutProps> = ({
@@ -521,9 +541,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
             {step === "details" && (
               <>
                 {/* Delivery/Pickup Toggle Card */}
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                <div className="bg-white p-6 rounded-lg border border-black/10">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">
+                    <h2 className="text-lg font-semibold text-gray-900">
                       Personal Details
                     </h2>
                     <div className="flex gap-2 bg-gray-100 p-1 rounded-full">
@@ -555,7 +575,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       <input
                         required
                         placeholder="First Name"
-                        className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                        className="border border-gray-200 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
                         value={customer.firstName}
                         onChange={(e) =>
                           setCustomer({
@@ -567,7 +587,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       <input
                         required
                         placeholder="Last Name"
-                        className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                        className="border border-gray-200 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
                         value={customer.lastName}
                         onChange={(e) =>
                           setCustomer({
@@ -581,7 +601,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       required
                       type="email"
                       placeholder="Email Address"
-                      className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                      className="border border-gray-200 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
                       value={customer.email}
                       onChange={(e) =>
                         setCustomer({ ...customer, email: e.target.value })
@@ -590,7 +610,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     <input
                       required
                       placeholder="Phone Number"
-                      className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                      className="border border-gray-200 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
                       value={customer.phone}
                       onChange={(e) =>
                         setCustomer({ ...customer, phone: e.target.value })
@@ -601,7 +621,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     {deliveryType === "delivery" && (
                       <>
                         <div className="flex items-center justify-between pt-4">
-                          <h3 className="font-bold text-gray-900">
+                          <h3 className="text-lg font-semibold text-gray-900">
                             Shipping Address
                           </h3>
 
@@ -660,7 +680,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                   required={createAccount}
                                   type="text"
                                   placeholder="Choose a username"
-                                  className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                                  className="border border-gray-300 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
                                   value={accountUsername}
                                   onChange={(e) =>
                                     setAccountUsername(e.target.value)
@@ -676,7 +696,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                   required={createAccount}
                                   type="password"
                                   placeholder="Minimum 8 characters"
-                                  className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                                  className="border border-gray-300 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
                                   value={accountPassword}
                                   onChange={(e) =>
                                     setAccountPassword(e.target.value)
@@ -690,7 +710,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                         <input
                           required
                           placeholder="Street Address"
-                          className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                          className="border border-gray-200 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
                           value={customer.address}
                           onChange={(e) =>
                             setCustomer({
@@ -707,7 +727,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           <input
                             required
                             placeholder="City"
-                            className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                            className="border border-gray-200 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
                             value={customer.city}
                             onChange={(e) =>
                               setCustomer({ ...customer, city: e.target.value })
@@ -715,7 +735,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           />
                           <select
                             required
-                            className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                            className="border border-gray-200 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
                             value={customer.province}
                             onChange={(e) =>
                               setCustomer({
@@ -738,7 +758,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           <input
                             required
                             placeholder="Postal Code"
-                            className="border border-gray-200 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                            className="border border-gray-200 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
                             value={customer.postalCode}
                             onChange={(e) =>
                               setCustomer({
@@ -757,7 +777,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       customer.city &&
                       customer.province && (
                         <div className="border-t border-gray-200 pt-6 mt-6">
-                          <h3 className="text-lg font-bold text-gray-900 mb-4">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">
                             Choose Delivery Option
                           </h3>
                           {/* <p className="text-sm text-gray-600 mb-4">
@@ -863,11 +883,11 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                               </span>
                                             )}
                                           </div>
-                                          {/* <div className="text-xs text-gray-500 mt-1">
+                                          <div className="text-xs text-gray-500 mt-1">
                                             {formatEta(
                                               rate.expected_delivery_date,
                                             )}
-                                          </div> */}
+                                          </div>
                                         </div>
                                       </div>
                                       <div className="text-right">
@@ -1024,77 +1044,93 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
           {/* RIGHT COLUMN: Cart Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 sticky top-6 space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">Order Summary</h3>
+            <div className="sticky top-6 space-y-5">
+              <div className="bg-white rounded-lg border border-black/10 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Order Summary
+                </h3>
 
-              {/* Cart Items */}
-              <div className="space-y-3 max-h-[250px] overflow-y-auto border-b border-gray-200 pb-4">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <div className="flex gap-2 flex-1">
-                      <div className="w-6 h-6 bg-gray-100 border border-gray-300 rounded text-xs flex items-center justify-center font-bold text-gray-700">
-                        {item.quantity}
+                <ul className="mt-5 divide-y divide-gray-100 max-h-[320px] overflow-y-auto">
+                  {cartItems.map((item) => (
+                    <li key={item.id} className="flex items-center gap-4 py-4">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-14 w-14 rounded-lg object-cover bg-gray-100"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-semibold text-gray-900 line-clamp-1">
+                          {item.name}
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                          {item.category || "Uncategorized"} · {item.quantity}x
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900 mt-1">
+                          {CURRENCY_SYMBOL}
+                          {(item.price * item.quantity).toFixed(2)}
+                        </p>
                       </div>
-                      <span className="truncate max-w-[150px] text-gray-700">
-                        {item.name}
-                      </span>
-                    </div>
-                    <div className="font-semibold text-gray-900">
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-5 space-y-2">
+                  <label className="text-xs text-gray-500">Promo Code</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter code"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      className="flex-1 rounded border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
+                    />
+                    <button className="rounded border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50">
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg border border-black/10 p-6 shadow-sm">
+                <ul className="space-y-3 text-sm text-gray-600">
+                  <li className="flex items-center justify-between">
+                    <span>Subtotal</span>
+                    <span className="font-semibold text-gray-900">
                       {CURRENCY_SYMBOL}
-                      {(item.price * item.quantity).toFixed(2)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Promo Code */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-700">
-                  Promo Code
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter code"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    className="flex-1 border border-gray-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-belims-blue focus:border-transparent"
-                  />
-                  <button className="bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 transition text-sm">
-                    Apply
-                  </button>
-                </div>
-              </div>
-
-              {/* Totals */}
-              <div className="space-y-3 border-t border-gray-200 pt-4">
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Subtotal</span>
-                  <span>
-                    {CURRENCY_SYMBOL}
-                    {subtotal.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm text-gray-600">
-                  <div className="flex flex-col">
-                    <span>
-                      {deliveryType === "delivery" ? "Delivery" : "Pickup"}
+                      {subtotal.toFixed(2)}
                     </span>
-                    {selectedShipping && (
-                      <span className="text-xs text-gray-500 font-medium">
-                        {selectedShipping.service_name}
+                  </li>
+                  <li className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span>
+                        {deliveryType === "delivery" ? "Shipping" : "Pickup"}
                       </span>
-                    )}
-                  </div>
-                  <span className="font-semibold">
-                    {shippingCost > 0 || deliveryType === "delivery"
-                      ? `${CURRENCY_SYMBOL}${shippingCost.toFixed(2)}`
-                      : `${CURRENCY_SYMBOL}0.00`}
+                      {selectedShipping && (
+                        <span className="text-xs text-gray-500">
+                          {selectedShipping.service_name}
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-semibold text-gray-900">
+                      {shippingCost > 0 || deliveryType === "delivery"
+                        ? `${CURRENCY_SYMBOL}${shippingCost.toFixed(2)}`
+                        : `${CURRENCY_SYMBOL}0.00`}
+                    </span>
+                  </li>
+                  <li className="flex items-center justify-between">
+                    <span>Taxes</span>
+                    <span className="font-semibold text-gray-900">
+                      {CURRENCY_SYMBOL}0.00
+                    </span>
+                  </li>
+                </ul>
+                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-900">
+                    Total
                   </span>
-                </div>
-                <div className="flex justify-between font-bold text-lg text-gray-900 border-t border-gray-200 pt-3 mt-3">
-                  <span>Total</span>
-                  <span>
+                  <span className="text-base font-semibold text-gray-900">
                     {CURRENCY_SYMBOL}
                     {total.toFixed(2)}
                   </span>

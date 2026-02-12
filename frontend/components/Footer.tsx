@@ -185,10 +185,14 @@ export const Footer = () => {
 
         {/* Newsletter Section */}
         <div className="border-t border-white/30 pt-8 pb-8">
-          <div className="max-w-md mb-4">
-            <h4 className="font-semibold text-white mb-3 font-heading uppercase text-base">
-              Newsletter
+          <div className="max-w-xl mx-auto mb-4 items-center text-center">
+            <h4 className="font-semibold centered text-white mb-3 font-heading uppercase text-lg">
+              Build Better with Belims
             </h4>
+            <p className="text-white text-base mb-4 centered">
+              Subscribe to receive product updates, exclusive deals, and expert
+              renovation tips.{" "}
+            </p>
             <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
               <input
                 type="email"
@@ -218,7 +222,7 @@ export const Footer = () => {
           </div>
 
           {/* Social Media */}
-          <div className="flex gap-4 items-center mt-6">
+          {/* <div className="flex gap-4 items-center mt-6">
             <a
               href="https://facebook.com/belims"
               target="_blank"
@@ -255,7 +259,7 @@ export const Footer = () => {
             >
               <Linkedin size={24} />
             </a>
-          </div>
+          </div> */}
         </div>
 
         {/* Footer Bottom */}

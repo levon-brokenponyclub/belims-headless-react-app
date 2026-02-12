@@ -128,9 +128,9 @@ const HeroBanner: React.FC = () => {
           </div>
 
           {/* Secondary Promo Cards - 4cols on LG */}
-          <div className="lg:col-span-4 flex flex-col gap-6 md:gap-8">
+          <div className="lg:col-span-4 grid grid-cols-2 gap-4 md:gap-6 lg:gap-8 lg:flex lg:flex-col">
             {/* Daily Deals Card - Top Right */}
-            <div className="relative flex-1 bg-belims-blue rounded-lg overflow-hidden shadow-sm flex items-center p-3 md:p-5">
+            <div className="relative h-full bg-belims-blue rounded-lg overflow-hidden shadow-sm flex items-center p-3 md:p-5 min-h-[200px] lg:min-h-[240px]">
               <div className="z-10 w-full flex flex-col items-center text-center gap-4">
                 <h3 className="text-xl font-bold text-white font-heading letterspacing-tight">
                   Daily deals
@@ -156,7 +156,7 @@ const HeroBanner: React.FC = () => {
             </div>
 
             {/* Tool Servicing Card - Bottom Right */}
-            <div className="relative flex-1 bg-[#F3F4F6] rounded-lg overflow-hidden flex items-center min-h-[150px] lg:min-h-[260px] shadow-sm">
+            <div className="relative h-full bg-[#F3F4F6] rounded-lg overflow-hidden flex items-center min-h-[200px] lg:min-h-[260px] shadow-sm">
               {/* Background Image */}
               <div className="absolute inset-0">
                 <img

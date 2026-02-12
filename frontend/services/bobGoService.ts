@@ -88,6 +88,13 @@ export const getShippingRates = async (
       let expected: string | undefined;
       if (min && max) {
         expected = min === max ? min : `${min} - ${max}`;
+      } else {
+        expected =
+          rate.delivery_time ||
+          rate.estimated_delivery ||
+          rate.eta ||
+          rate.transit_time ||
+          undefined;
       }
 
       return {

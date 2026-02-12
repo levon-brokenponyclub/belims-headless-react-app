@@ -88,9 +88,9 @@ export function BrandStrip() {
       className="mb-16 bg-belims-blue border-y border-black/5"
       aria-label="Trusted brands"
     >
-      <div className="container mx-auto px-4 py-12 md:py-14">
+      <div className="container mx-auto px-4 py-14 pb-16 md:py-14 md:pb-16">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="font-heading text-h3 text-white">Shop by brand</h3>
+          <h3 className="font-heading text-h3 text-white">Trusted brands</h3>
 
           <div className="flex items-center gap-2">
             <button
@@ -136,7 +136,7 @@ export function BrandStrip() {
           aria-roledescription="carousel"
         >
           <div
-            className="flex transition-transform duration-300 ease-out"
+            className="-mx-2 flex transition-transform duration-300 ease-out"
             style={{ transform: `translateX(-${translatePct}%)` }}
           >
             {BRANDS.map((brand) => (
@@ -150,7 +150,7 @@ export function BrandStrip() {
                   href={brand.url}
                   aria-label={`Shop ${brand.name}`}
                   className={[
-                    "group flex flex-col items-center gap-3",
+                    "group flex flex-col items-center gap-2",
                     "rounded-lg bg-white px-4 py-5",
                     "border border-black/10",
                     "shadow-[0_1px_2px_rgba(16,24,40,0.06)]",
@@ -177,7 +177,7 @@ export function BrandStrip() {
           </div>
         </div>
 
-        <div className="mt-6 flex justify-center gap-2">
+        {/* <div className="mt-6 flex justify-center gap-2">
           {Array.from({ length: maxIndex + 1 }).map((_, i) => (
             <button
               key={i}
@@ -190,7 +190,7 @@ export function BrandStrip() {
               ].join(" ")}
             />
           ))}
-        </div>
+        </div> */}
       </div>
     </section>
   );

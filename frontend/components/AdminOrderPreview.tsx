@@ -15,6 +15,7 @@ export const AdminOrderPreview: React.FC = () => {
         name: "Nomad Tumbler",
         price: "$35.00",
         quantity: 1,
+        category: "Drinkware",
         description:
           "This durable and portable insulated tumbler will keep your beverage at the perfect temperature during your next adventure.",
         image:
@@ -30,6 +31,7 @@ export const AdminOrderPreview: React.FC = () => {
         name: "Minimalist Wristwatch",
         price: "$149.00",
         quantity: 1,
+        category: "Accessories",
         description:
           "This contemporary wristwatch has a clean, minimalist look and high quality components.",
         image:
