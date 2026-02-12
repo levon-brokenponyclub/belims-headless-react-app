@@ -94,7 +94,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             onClick={() => setActiveTab("cart")}
             className={`flex-1 py-3 font-semibold text-sm transition ${
               activeTab === "cart"
-                ? "text-belims-blue border-b-2 border-belims-blue"
+                ? "text-belims-blue bg-gray-100"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
@@ -104,7 +104,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             onClick={() => setActiveTab("recommendations")}
             className={`flex-1 py-3 font-semibold text-sm transition ${
               activeTab === "recommendations"
-                ? "text-belims-blue border-b-2 border-belims-blue"
+                ? "text-belims-blue bg-gray-100"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
@@ -132,7 +132,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             height: 6px;
             border-radius: 999px;
             background: #e5e7eb;
-            overflow: hidden;
+            overflow: visible;
           }
 
           .tmcore-fsb-progress-bar::before {
@@ -142,6 +142,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             width: var(--fsb-percent);
             background: #f97316;
             transform-origin: left;
+            border-radius: 999px;
           }
 
           .tmcore-fsb--animate .tmcore-fsb-progress-bar::before {
@@ -149,7 +150,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           }
 
           .tmcore-fsb--animate .tmcore-fsb-icon {
-            animation: fsb-pop 0.5s ease-out;
+            animation: fsb-icon-slide 0.8s ease-out;
           }
 
           @keyframes fsb-fill {
@@ -161,12 +162,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             }
           }
 
-          @keyframes fsb-pop {
+          @keyframes fsb-icon-slide {
             0% {
-              transform: translateY(-50%) scale(0.85);
+              left: 0%;
+              transform: translate(-50%, -50%) scale(0.9);
             }
             100% {
-              transform: translateY(-50%) scale(1);
+              left: var(--fsb-icon-left, 0%);
+              transform: translate(-50%, -50%) scale(1);
             }
           }
 
@@ -176,23 +179,24 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             left: var(--fsb-icon-left, 0%);
             top: 50%;
             transform: translate(-50%, -50%);
-            color: #d36b00;
-            width: 30px;
-            height: 30px;
+            color: #fff;
+            width: 26px;
+            height: 26px;
             border-radius: 999px;
-            background: #fff7e6;
-            border: 1px solid #f3e3c7;
+            background: #f97316;
+            border: 1px solid #f97316;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: left 0.6s ease-out;
+            transition: left 0.8s ease-out;
+            padding:6px;
           }
 
           .tmcore-fsb-message {
             font-weight: 400;
             font-size: 13px;
             text-align: center;
-            margin-top:10px;
+            margin-top:20px;
           }
 
           .tmcore-fsb-message .price {
@@ -268,7 +272,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <>
               {/* Cart Items */}
               {items.length === 0 ? (
-                <div className="h-full flex items-center justify-center p-8 text-center">
+                <div className="h-full flex items-center justify-between p-8 text-center">
                   <div>
                     <ShoppingBag
                       size={48}
@@ -283,51 +287,66 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="p-4 space-y-4">
+                <div className="p-4 space-y-5">
                   {items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex gap-4 pb-4 border-b last:border-b-0"
+                      className="flex items-stretch justify-between gap-4 pb-5 border-b border-dashed last:border-b-0"
                     >
-                      <img
-                        src={item.image || "/placeholder.png"}
-                        alt={item.name}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-20 h-20 object-cover rounded"
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 text-sm">
-                          {item.name}
-                        </h3>
-                        <p className="text-belims-blue font-bold text-sm mt-1">
+                      <div className="flex items-start gap-4 min-w-0">
+                        <div className="h-20 w-20 rounded border border-gray-100 bg-[#F9F9F9] overflow-hidden flex-shrink-0 p-2">
+                          <img
+                            src={item.image || "/placeholder.png"}
+                            alt={item.name}
+                            loading="lazy"
+                            decoding="async"
+                            className="h-full w-full object-cover mix-blend-multiply"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">
+                            {item.name}
+                          </h3>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                            <span>{item.category || "Product"}</span>
+                            <span className="h-1 w-1 rounded-full bg-gray-300" />
+                            <span>{item.quantity}x</span>
+                          </div>
+                          <div className="mt-3 inline-flex items-center overflow-hidden rounded border border-gray-200 bg-white">
+                            <button
+                              onClick={() => updateQuantity(item.id, -1)}
+                              className="h-7 w-7 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                            >
+                              {" "}
+                              <Minus size={16} />{" "}
+                            </button>{" "}
+                            <div className="h-7 w-8 flex items-center justify-center text-sm font-semibold text-gray-900 border-x border-gray-200">
+                              {" "}
+                              {item.quantity}{" "}
+                            </div>{" "}
+                            <button
+                              onClick={() => updateQuantity(item.id, 1)}
+                              className="h-7 w-7 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+                            >
+                              {" "}
+                              <Plus size={16} />{" "}
+                            </button>{" "}
+                          </div>{" "}
+                        </div>{" "}
+                      </div>
+                      <div className="flex flex-col items-end gap-3 justify-between">
+                        <p className="text-sm font-semibold text-gray-900">
                           {CURRENCY_SYMBOL}
                           {item.price.toFixed(2)}
                         </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <button
-                            onClick={() => updateQuantity(item.id, -1)}
-                            className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50"
-                          >
-                            <Minus size={14} />
-                          </button>
-                          <span className="w-8 text-center font-semibold text-sm">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => updateQuantity(item.id, 1)}
-                            className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50"
-                          >
-                            <Plus size={14} />
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="h-9 w-9 rounded border border-red-200 text-red-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 flex items-center justify-center"
+                          aria-label={`Remove ${item.name} from cart`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        className="text-red-500 hover:text-red-700 p-1"
-                      >
-                        <Trash2 size={16} />
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -341,7 +360,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   {recommendedProducts.map((product) => (
                     <div
                       key={product.id}
-                      className="border rounded-lg overflow-hidden hover:shadow-lg transition"
+                      className="border rounded overflow-hidden hover:shadow-lg transition"
                     >
                       <img
                         src={product.images?.[0] || "/placeholder.png"}
@@ -388,59 +407,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <button
               type="button"
               onClick={() => setOrderSummaryOpen((prev) => !prev)}
-              className="relative -top-4 flex w-full flex-col items-center focus:outline-none"
+              className="relative -top-2 flex w-full flex-col items-center focus:outline-none"
             >
-              <div className="relative -top-4 w-full">
-                <div className="absolute mx-auto flex w-full justify-center">
-                  <svg
-                    width="67"
-                    height="31"
-                    viewBox="0 0 67 31"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g clipPath="url(#clip0_cart_summary)">
-                      <mask
-                        id="path-1-outside-cart"
-                        maskUnits="userSpaceOnUse"
-                        x="3.5"
-                        y="1"
-                        width="62"
-                        height="61"
-                        fill="black"
-                      >
-                        <rect
-                          fill="white"
-                          x="3.5"
-                          y="1"
-                          width="62"
-                          height="61"
-                        />
-                        <path d="M4.5 32C4.5 15.4315 17.9315 2 34.5 2C51.0685 2 64.5 15.4315 64.5 32C64.5 48.5685 51.0685 62 34.5 62C17.9315 62 4.5 48.5685 4.5 32Z"></path>
-                      </mask>
-                      <path
-                        d="M4.5 32C4.5 15.4315 17.9315 2 34.5 2C51.0685 2 64.5 15.4315 64.5 32C64.5 48.5685 51.0685 62 34.5 62C17.9315 62 4.5 48.5685 4.5 32Z"
-                        fill="#FCFCFC"
-                      ></path>
-                      <path
-                        d="M3.5 31.5C3.5 14.6553 17.1553 1 34 1H35C51.8447 1 65.5 14.6553 65.5 31.5L63.5 32C63.5 15.9837 50.5163 3 34.5 3C18.4837 3 5.5 15.9837 5.5 32L3.5 31.5ZM64.5 62H4.5H64.5ZM34 62C17.1553 62 3.5 48.3447 3.5 31.5C3.5 14.6553 17.1553 1 34 1L34.5 3C18.4837 3 5.5 15.9837 5.5 32C5.5 48.5685 18.4837 62 34.5 62H34ZM35 1C51.8447 1 65.5 14.6553 65.5 31.5C65.5 48.3447 51.8447 62 35 62H34.5C50.5163 62 63.5 48.5685 63.5 32C63.5 15.9837 50.5163 3 34.5 3L35 1Z"
-                        fill="#040404"
-                        fillOpacity="0.1"
-                        mask="url(#path-1-outside-cart)"
-                      ></path>
-                    </g>
-                    <defs>
-                      <clipPath id="clip0_cart_summary">
-                        <rect
-                          width="64"
-                          height="17"
-                          fill="white"
-                          transform="matrix(1 0 0 -1 1.5 17)"
-                        ></rect>
-                      </clipPath>
-                    </defs>
-                  </svg>
-                </div>
+              <div className="relative -top-8 w-full">
                 <div
                   className={`absolute w-full top-2 mx-auto flex justify-center transition-all duration-300 ${
                     orderSummaryOpen ? "rotate-180" : "rotate-0"
@@ -448,9 +417,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
+                    width="32"
+                    height="32"
                     fill="currentColor"
+                    className="bg-gray-100 p-1 rounded-full"
                     viewBox="0 0 256 256"
                   >
                     <path d="M213.66,165.66a8,8,0,0,1-11.32,0L128,91.31,53.66,165.66a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,0l80,80A8,8,0,0,1,213.66,165.66Z"></path>
