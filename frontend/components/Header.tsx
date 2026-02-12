@@ -119,9 +119,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
   const [activeMegaCategory, setActiveMegaCategory] =
     useState<CategoryNode | null>(null);
-  const [expandedMobileCategory, setExpandedMobileCategory] = useState<
-    string | null
-  >(null);
+  const [mobileCategoryStack, setMobileCategoryStack] = useState<
+    CategoryNode[]
+  >([]);
 
   const computeFulfillmentType = (
     stored: string | null,
@@ -252,7 +252,7 @@ export const Header: React.FC<HeaderProps> = ({
     setMobileMenuOpen((prev) => {
       const next = !prev;
       if (!next) {
-        setExpandedMobileCategory(null);
+        setMobileCategoryStack([]);
       }
       return next;
     });
@@ -260,7 +260,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
-    setExpandedMobileCategory(null);
+    setMobileCategoryStack([]);
   };
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -305,6 +305,24 @@ export const Header: React.FC<HeaderProps> = ({
     navigate(`/shop/${encodeURIComponent(category)}`);
     setIsMegaMenuOpen(false);
     setMobileMenuOpen(false);
+  };
+
+  const openMobileCategory = (category: CategoryNode) => {
+    if (!category.children || category.children.length === 0) {
+      handleCategorySelect(category.label);
+      setMobileCategoryStack([]);
+      return;
+    }
+    setMobileCategoryStack((prev) => [...prev, category]);
+  };
+
+  const closeMobileCategoryPanel = () => {
+    setMobileCategoryStack((prev) => prev.slice(0, -1));
+  };
+
+  const handleMobileCategorySelect = (label: string) => {
+    handleCategorySelect(label);
+    setMobileCategoryStack([]);
   };
 
   const handleShopAll = () => {
@@ -924,102 +942,87 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto bg-gray-50">
-              {/* Mobile Store Selector */}
-              <div
-                className="bg-white p-4 mb-2 border-b border-gray-100"
-                onClick={() => {
-                  toggleStoreLocator();
-                  closeMobileMenu();
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <MapPin className="text-belims-blue mt-1" size={20} />
-                  <div>
-                    <div className="text-xs text-gray-500">Your Store</div>
-                    <div className="font-bold text-belims-blue text-sm font-heading">
-                      {selectedStore ? selectedStore.name : "Select Store"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Mobile Paint Assistant */}
-              <div
-                className="bg-white p-4 mb-2 border-b border-gray-100"
-                onClick={() => {
-                  onOpenPaintAssistant();
-                  closeMobileMenu();
-                }}
-              >
-                <div className="flex items-center gap-2 text-belims-accent font-bold font-heading">
-                  <Sparkles size={18} /> Paint Assistant
-                </div>
-              </div>
-
-              {/* Mobile Track Your Order */}
-              <div
-                className="bg-white p-4 mb-2 border-b border-gray-100"
-                onClick={() => {
-                  onOpenTrackOrder();
-                  closeMobileMenu();
-                }}
-              >
-                <div className="flex items-center gap-2 text-belims-blue font-bold font-heading">
-                  <Truck size={18} /> Track Your Order
-                </div>
-              </div>
-
               <div className="bg-white py-2">
                 <div className="px-4 py-3 font-bold text-lg border-b border-gray-100 font-heading">
                   Departments
                 </div>
-                {categoryTree.map((cat: CategoryNode) => {
-                  const isExpanded = expandedMobileCategory === cat.id;
-                  return (
-                    <div key={cat.id} className="border-b border-gray-100">
-                      <button
-                        className="w-full px-4 py-3 flex justify-between items-center text-gray-700 font-semibold"
-                        onClick={() =>
-                          setExpandedMobileCategory(isExpanded ? null : cat.id)
-                        }
-                      >
-                        {cat.label}
-                        <ChevronDown
-                          size={16}
-                          className={`${isExpanded ? "rotate-0" : "-rotate-90"} text-gray-400 transition-transform`}
-                        />
-                      </button>
-                      {isExpanded &&
-                        cat.children &&
-                        cat.children.length > 0 && (
-                          <div className="bg-gray-50">
-                            {cat.children.map((sub) => (
-                              <div
-                                key={sub.id}
-                                className="px-6 py-2 border-t border-gray-100"
-                              >
-                                <div className="text-sm font-semibold text-gray-800">
-                                  {sub.label}
-                                </div>
-                                {sub.children && sub.children.length > 0 && (
-                                  <div className="mt-1 flex flex-col gap-1 text-sm text-gray-600">
-                                    {sub.children.map((child) => (
-                                      <span
-                                        key={child.id}
-                                        className="pl-2 py-0.5"
-                                      >
-                                        {child.label}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
+                <div className="relative overflow-x-hidden">
+                  <div
+                    className="flex transition-transform duration-300"
+                    style={{
+                      transform: `translateX(-${mobileCategoryStack.length * 100}%)`,
+                    }}
+                  >
+                    {[null, ...mobileCategoryStack].map((panelNode, index) => {
+                      const panelLabel = panelNode
+                        ? panelNode.label
+                        : "Departments";
+                      const panelItems = panelNode
+                        ? panelNode.children || []
+                        : categoryTree;
+
+                      return (
+                        <div
+                          key={panelNode ? panelNode.id : "root"}
+                          className="min-w-full"
+                        >
+                          {index > 0 && (
+                            <div className="border-b border-gray-100 bg-white">
+                              <div className="flex items-center justify-between px-4 py-2">
+                                <button
+                                  className="text-sm font-semibold text-gray-600"
+                                  onClick={closeMobileCategoryPanel}
+                                >
+                                  Back
+                                </button>
+                                <span className="w-10" />
                               </div>
+                              <div className="px-4 py-2 bg-gray-100 text-sm font-bold text-gray-900 font-heading">
+                                {panelLabel}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="bg-white">
+                            {panelNode ? (
+                              <button
+                                className="w-full text-left px-4 py-3 border-b border-gray-100 text-sm font-semibold text-belims-blue"
+                                onClick={() =>
+                                  handleMobileCategorySelect(panelNode.label)
+                                }
+                              >
+                                View all {panelNode.label}
+                              </button>
+                            ) : (
+                              <button
+                                className="w-full text-left px-4 py-3 border-b border-gray-100 text-sm font-semibold text-belims-blue"
+                                onClick={handleShopAll}
+                              >
+                                Shop All
+                              </button>
+                            )}
+
+                            {panelItems.map((item) => (
+                              <button
+                                key={item.id}
+                                className="w-full px-4 py-3 flex justify-between items-center text-gray-700 font-semibold border-b border-gray-100"
+                                onClick={() => openMobileCategory(item)}
+                              >
+                                {item.label}
+                                {item.children && item.children.length > 0 ? (
+                                  <ChevronDown
+                                    size={16}
+                                    className="-rotate-90 text-gray-400 transition-transform"
+                                  />
+                                ) : null}
+                              </button>
                             ))}
                           </div>
-                        )}
-                    </div>
-                  );
-                })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               <div className="bg-white mt-2 py-2">

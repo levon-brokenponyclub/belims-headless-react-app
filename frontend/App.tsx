@@ -32,6 +32,7 @@ import { AdminOrderPreview } from "./components/AdminOrderPreview";
 import { AdminAccountPreview } from "./components/AdminAccountPreview";
 import { Archive } from "./components/Archive";
 import { RecentlyViewed } from "./components/RecentlyViewed";
+import { FeaturedGrid } from "./components/FeaturedGrid";
 import { ShopByCategory } from "./components/ShopByCategory";
 import { TrackOrderPage } from "./components/TrackOrderPage";
 import { BrandStrip } from "./components/BrandStrip";
@@ -274,6 +275,8 @@ const HomePage = ({
   return (
     <>
       <HeroBanner />
+
+      <FeaturedGrid />
 
       <ShopByCategory
         products={products}
@@ -555,10 +558,10 @@ const HomePage = ({
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <CountdownTimer
+                {/* <CountdownTimer
                   targetDate={new Date(new Date().setHours(23, 59, 59, 999))}
                   label="Hurry up! Offer ends in"
-                />
+                /> */}
                 <a
                   href="/deals"
                   className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block whitespace-nowrap"
@@ -608,7 +611,7 @@ const HomePage = ({
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                {(() => {
+                {/* {(() => {
                   const now = new Date();
                   const dayOfWeek = now.getDay();
                   const daysUntilSunday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
@@ -648,7 +651,7 @@ const HomePage = ({
                       </span>
                     </div>
                   );
-                })()}
+                })()} */}
                 <a
                   href="/deals/weekly"
                   className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block whitespace-nowrap"
@@ -742,7 +745,7 @@ const HomePage = ({
             </div>
 
             {tradeSpecials.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {tradeSpecials.map((product) => (
                   <ProductCard
                     key={product.id}

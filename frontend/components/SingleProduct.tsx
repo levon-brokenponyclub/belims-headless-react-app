@@ -1543,7 +1543,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             <h3 className="text-2xl font-bold text-gray-900 font-heading mb-8">
               How about these
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {allProducts
                 .filter(
                   (p) => p.id !== product.id && p.category === product.category,
@@ -1600,7 +1600,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               <h3 className="text-2xl font-bold text-gray-900 font-heading mb-8">
                 Frequently bought together
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {recommendedProducts.map((p) => (
                   <div key={p.id}>
                     <ProductCard product={p} addToCart={addToCart} />

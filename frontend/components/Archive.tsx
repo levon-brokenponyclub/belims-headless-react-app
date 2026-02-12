@@ -1093,8 +1093,8 @@ export const Archive: React.FC<ArchiveProps> = ({
               <ul
                 className={`grid ${
                   viewMode === "list"
-                    ? "grid-cols-1 gap-6"
-                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6"
+                    ? "grid-cols-2 gap-6"
+                    : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6"
                 }`}
               >
                 {Array.from({ length: 8 }).map((_, index) => (
@@ -1107,8 +1107,8 @@ export const Archive: React.FC<ArchiveProps> = ({
               <ul
                 className={`grid ${
                   viewMode === "list"
-                    ? "grid-cols-1 gap-4"
-                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-5"
+                    ? "grid-cols-2 sm-grid-cols-1 gap-4"
+                    : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-5"
                 }`}
               >
                 {filteredProducts.map((product) => (
