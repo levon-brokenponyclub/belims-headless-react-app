@@ -21,6 +21,7 @@ import { StoreLocator } from "./components/StoreLocator";
 import { PaintAssistant } from "./components/PaintAssistant";
 import { SingleProduct } from "./components/SingleProduct";
 import { MobileBottomNav } from "./components/MobileBottomNav";
+import { SearchModal } from "./components/SearchModal";
 /* import { FreeShippingWidget } from "./components/FreeShippingWidget"; */
 import { OnboardingWizard } from "./components/OnboardingWizard";
 import { PriceMatchModal } from "./components/PriceMatchModal";
@@ -1198,6 +1199,7 @@ export default function App() {
   const [isPaintOpen, setIsPaintOpen] = useState(false);
   const [isLocationPermissionModalOpen, setIsLocationPermissionModalOpen] =
     useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => {
     // Temporarily disabled - onboarding won't show on site load
     return false;
@@ -1424,6 +1426,8 @@ export default function App() {
         setIsOnboardingOpen={setIsOnboardingOpen}
         isLocationPermissionModalOpen={isLocationPermissionModalOpen}
         setIsLocationPermissionModalOpen={setIsLocationPermissionModalOpen}
+        isSearchModalOpen={isSearchModalOpen}
+        setIsSearchModalOpen={setIsSearchModalOpen}
         selectedStore={selectedStore}
         setSelectedStore={setSelectedStore}
         userType={userType}
@@ -1619,6 +1623,15 @@ function MainApp(props) {
         />
       )}
 
+      {props.isSearchModalOpen && (
+        <SearchModal
+          isOpen={props.isSearchModalOpen}
+          onClose={() => props.setIsSearchModalOpen(false)}
+          products={props.products}
+          onCompare={props.addToCompare}
+        />
+      )}
+
       {props.isLocatorOpen && (
         <StoreLocator
           currentStore={props.selectedStore}
@@ -1685,7 +1698,10 @@ function MainApp(props) {
         />
       )}
 
-      <MobileBottomNav />
+      <MobileBottomNav
+        onSearch={() => props.setIsSearchModalOpen(true)}
+        onCart={() => props.setIsCartOpen(true)}
+      />
     </div>
   );
 }

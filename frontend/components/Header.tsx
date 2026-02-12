@@ -195,6 +195,31 @@ export const Header: React.FC<HeaderProps> = ({
     selectedStore,
   ]);
 
+  useEffect(() => {
+    const handleOpenMobileMenu = () => setMobileMenuOpen(true);
+    const handleOpenAccountPanel = () => setIsAccountPanelOpen(true);
+
+    window.addEventListener(
+      "belims:open-mobile-menu",
+      handleOpenMobileMenu as EventListener,
+    );
+    window.addEventListener(
+      "belims:open-account-panel",
+      handleOpenAccountPanel as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "belims:open-mobile-menu",
+        handleOpenMobileMenu as EventListener,
+      );
+      window.removeEventListener(
+        "belims:open-account-panel",
+        handleOpenAccountPanel as EventListener,
+      );
+    };
+  }, []);
+
   const deliveryLabel = deliveryAddress
     ? deliveryAddress.label || buildAddressLabel(deliveryAddress)
     : legacyDeliveryLabel || "";

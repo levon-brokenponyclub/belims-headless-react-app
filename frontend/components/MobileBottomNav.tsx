@@ -1,7 +1,17 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Home, Search, LayoutGrid, ShoppingCart, User } from "lucide-react";
 
-export const MobileBottomNav: React.FC = () => {
+interface MobileBottomNavProps {
+  onSearch?: () => void;
+  onCart?: () => void;
+}
+
+export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
+  onSearch,
+  onCart,
+}) => {
+  const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(true);
   const [stickyBarVisible, setStickyBarVisible] = useState(false);
   const lastScrollY = useRef(0);
@@ -48,18 +58,19 @@ export const MobileBottomNav: React.FC = () => {
 
   return (
     <div
-      className={`lg:hidden fixed left-1/2 -translate-x-1/2 z-[100] w-full max-w-lg px-4 transition-all duration-300 ${
+      className={`lg:hidden fixed left-1/2 -translate-x-1/2 z-[100] w-full max-w-lg px-6 transition-all duration-300 ${
         isVisible ? "translate-y-0" : "translate-y-[80px]"
       } ${stickyBarVisible ? "bottom-[77px]" : "bottom-4"}`}
     >
-      <div className="h-16 bg-white/90 backdrop-blur-lg border border-gray-200 rounded-full shadow-2xl flex items-center justify-between px-2">
+      <div className="h-12 bg-white/70 backdrop-blur-xl border border-gray-200 rounded-lg shadow-2xl flex items-center justify-between px-2">
         {/* Home */}
         <div className="relative group flex-1 flex justify-center">
           <button
             type="button"
             className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
+            onClick={() => navigate("/")}
           >
-            <Home className="w-6 h-6 text-gray-500 group-hover:text-belims-blue transition-colors" />
+            <Home className="w-5 h-5 text-gray-500 group-hover:text-belims-blue transition-colors" />
             <span className="sr-only">Home</span>
           </button>
           <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
@@ -73,8 +84,9 @@ export const MobileBottomNav: React.FC = () => {
           <button
             type="button"
             className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
+            onClick={onSearch}
           >
-            <Search className="w-6 h-6 text-gray-500 group-hover:text-belims-blue transition-colors" />
+            <Search className="w-5 h-5 text-gray-500 group-hover:text-belims-blue transition-colors" />
             <span className="sr-only">Search</span>
           </button>
           <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
@@ -88,8 +100,11 @@ export const MobileBottomNav: React.FC = () => {
           <button
             type="button"
             className="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-red-600 transition-colors"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("belims:open-mobile-menu"))
+            }
           >
-            <LayoutGrid className="w-6 h-6 text-white" />
+            <LayoutGrid className="w-5 h-5 text-white" />
             <span className="sr-only">Departments</span>
           </button>
           <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
@@ -103,8 +118,9 @@ export const MobileBottomNav: React.FC = () => {
           <button
             type="button"
             className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
+            onClick={onCart}
           >
-            <ShoppingCart className="w-6 h-6 text-gray-500 group-hover:text-belims-blue transition-colors" />
+            <ShoppingCart className="w-5 h-5 text-gray-500 group-hover:text-belims-blue transition-colors" />
             <span className="sr-only">Cart</span>
           </button>
           <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
@@ -118,8 +134,11 @@ export const MobileBottomNav: React.FC = () => {
           <button
             type="button"
             className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("belims:open-account-panel"))
+            }
           >
-            <User className="w-6 h-6 text-gray-500 group-hover:text-belims-blue transition-colors" />
+            <User className="w-5 h-5 text-gray-500 group-hover:text-belims-blue transition-colors" />
             <span className="sr-only">Account</span>
           </button>
           <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
