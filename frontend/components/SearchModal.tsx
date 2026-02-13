@@ -168,7 +168,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
       <div
         data-state={isOpen && !isClosing ? "open" : "closed"}
-        className={`group lg:hidden fixed bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-3xl flex flex-col items-center mx-auto max-w-4xl border-t border-x border-slate-100 shadow-2xl h-[80vh] overflow-hidden transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`group lg:hidden fixed bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-3xl flex flex-col items-center mx-auto max-w-4xl border-t border-x border-slate-100 shadow-2xl h-[80vh] overflow-hidden gap-4 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isOpen && !isClosing ? "translate-y-0" : "translate-y-full"
         }`}
       >
@@ -181,120 +181,120 @@ export const SearchModal: React.FC<SearchModalProps> = ({
           <span className="w-12 h-1.5 bg-slate-300 rounded-full" />
         </button>
 
-        <div className="w-full px-4 pb-6">
-          <div className="flex items-center gap-3 py-3">
-            <h2 className="font-bold font-heading text-base text-belims-blue">
-              Search
-            </h2>
-          </div>
-
-          <form
-            onSubmit={handleSearchSubmit}
-            className="relative flex items-center bg-white border-b border-gray-200"
-          >
-            <div className="relative h-full hidden sm:block">
-              <button
-                type="button"
-                onClick={() =>
-                  setIsSearchCategoryDropdownOpen(!isSearchCategoryDropdownOpen)
-                }
-                className="h-full py-3 pl-4 pr-3 text-gray-700 text-[12px] font-bold border-r border-gray-200 flex items-center gap-2 hover:bg-gray-50 bg-gray-50 transition-colors uppercase tracking-tight"
-                style={{ minWidth: "150px" }}
-              >
-                <span className="truncate max-w-[100px]">{searchCategory}</span>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform duration-200 text-gray-400 ${
-                    isSearchCategoryDropdownOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-
-              {isSearchCategoryDropdownOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setIsSearchCategoryDropdownOpen(false)}
+        <div className="w-full px-0 pb-0 h-full flex flex-col gap-0 justify-between">
+          <div className="px-4">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="relative flex items-center bg-white border rounded-full border-gray-200 overflow-hidden"
+            >
+              <div className="relative h-full hidden sm:block">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setIsSearchCategoryDropdownOpen(
+                      !isSearchCategoryDropdownOpen,
+                    )
+                  }
+                  className="h-full py-3 pl-4 pr-3 text-gray-700 text-[12px] font-bold border-r border-gray-200 flex items-center gap-2 hover:bg-gray-50 bg-gray-50 transition-colors uppercase tracking-tight"
+                  style={{ minWidth: "150px" }}
+                >
+                  <span className="truncate max-w-[100px]">
+                    {searchCategory}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 text-gray-400 ${
+                      isSearchCategoryDropdownOpen ? "rotate-180" : ""
+                    }`}
                   />
-                  <div className="absolute top-[calc(100%+8px)] left-0 w-64 bg-white rounded-xl border border-gray-200 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="px-4 pb-2 mb-2 border-b border-gray-100">
-                      <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">
-                        Shop by Category
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchCategory("All Departments");
-                        setIsSearchCategoryDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-5 py-2.5 text-sm transition-colors flex items-center justify-between group ${
-                        searchCategory === "All Departments"
-                          ? "bg-belims-blue text-white"
-                          : "hover:bg-gray-50 text-gray-700"
-                      }`}
-                    >
-                      All Departments
-                      <ChevronRight
-                        size={14}
-                        className={
-                          searchCategory === "All Departments"
-                            ? "text-white/50"
-                            : "text-gray-300 group-hover:text-belims-blue"
-                        }
-                      />
-                    </button>
-                    {categoryTree.map((cat) => (
+                </button>
+
+                {isSearchCategoryDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsSearchCategoryDropdownOpen(false)}
+                    />
+                    <div className="absolute top-[calc(100%+8px)] left-0 w-64 bg-white rounded-xl border border-gray-200 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="px-4 pb-2 mb-2 border-b border-gray-100">
+                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">
+                          Shop by Category
+                        </span>
+                      </div>
                       <button
-                        key={cat.id}
                         type="button"
                         onClick={() => {
-                          setSearchCategory(cat.label);
+                          setSearchCategory("All Departments");
                           setIsSearchCategoryDropdownOpen(false);
                         }}
                         className={`w-full text-left px-5 py-2.5 text-sm transition-colors flex items-center justify-between group ${
-                          searchCategory === cat.label
+                          searchCategory === "All Departments"
                             ? "bg-belims-blue text-white"
                             : "hover:bg-gray-50 text-gray-700"
                         }`}
                       >
-                        {cat.label}
+                        All Departments
                         <ChevronRight
                           size={14}
                           className={
-                            searchCategory === cat.label
+                            searchCategory === "All Departments"
                               ? "text-white/50"
                               : "text-gray-300 group-hover:text-belims-blue"
                           }
                         />
                       </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+                      {categoryTree.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            setSearchCategory(cat.label);
+                            setIsSearchCategoryDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-5 py-2.5 text-sm transition-colors flex items-center justify-between group ${
+                            searchCategory === cat.label
+                              ? "bg-belims-blue text-white"
+                              : "hover:bg-gray-50 text-gray-700"
+                          }`}
+                        >
+                          {cat.label}
+                          <ChevronRight
+                            size={14}
+                            className={
+                              searchCategory === cat.label
+                                ? "text-white/50"
+                                : "text-gray-300 group-hover:text-belims-blue"
+                            }
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
 
-            <input
-              type="text"
-              placeholder="Search everything at Belims..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setIsSearchCategoryDropdownOpen(false)}
-              className="flex-1 py-3 px-0 text-black text-base focus:outline-none font-medium placeholder:text-gray-400"
-              autoFocus
-            />
-            <button
-              type="submit"
-              className="mr-2 bg-belims-blue p-2.5 rounded-full text-white hover:bg-belims-navy transition-all hover:scale-105 active:scale-95"
-            >
-              <Search size={18} />
-            </button>
-          </form>
+              <input
+                type="text"
+                placeholder="Search everything at Belims..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchCategoryDropdownOpen(false)}
+                className="flex-1 py-3 px-4 text-black text-base focus:outline-none font-medium placeholder:text-gray-400"
+                autoFocus
+              />
+              <button
+                type="submit"
+                className="mr-2 bg-belims-blue p-2.5 rounded-full text-white hover:bg-belims-navy transition-all hover:scale-105 active:scale-95"
+              >
+                <Search size={18} />
+              </button>
+            </form>
+          </div>
 
           {searchResults &&
             (searchResults.categories.length > 0 ||
               searchResults.products.length > 0) && (
-              <div className="rounded-xl border border-gray-200 overflow-hidden mt-4 shadow-sm">
+              <div className="h-full flex flex-col gap-0 justify-between">
                 <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
                   <div className="flex items-center gap-2">
                     <button
@@ -364,7 +364,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                   )}
 
                   {activeSearchTab === "products" && (
-                    <div className="p-3">
+                    <div className="p-0">
                       {searchResults.products.length > 0 ? (
                         searchResults.products.map((p) => (
                           <div
@@ -419,7 +419,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 <div className="p-3 bg-gray-50 border-t text-center">
                   <button
                     onClick={() => handleSearchSubmit()}
-                    className="text-sm font-bold text-belims-blue hover:underline flex items-center justify-center gap-1 w-full"
+                    className="mt-0 w-full rounded bg-belims-blue font-heading text-sm font-semibold text-white transition-colors hover:bg-red-600 h-11 flex items-center justify-center gap-1 w-full"
                   >
                     View all results <ArrowRight size={14} />
                   </button>
