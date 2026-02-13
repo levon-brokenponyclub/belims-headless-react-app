@@ -116,6 +116,9 @@ export const Header: React.FC<HeaderProps> = ({
     categories: SearchCategoryResult[];
     products: Product[];
   } | null>(null);
+  const [activeSearchTab, setActiveSearchTab] = useState<
+    "products" | "categories"
+  >("products");
   const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
   const [activeMegaCategory, setActiveMegaCategory] =
     useState<CategoryNode | null>(null);
@@ -306,6 +309,11 @@ export const Header: React.FC<HeaderProps> = ({
           p.category.toLowerCase().includes(lowerQuery),
       );
       setSearchResults({ categories: matchedCats, products: matchedProds });
+      if (matchedProds.length === 0 && matchedCats.length > 0) {
+        setActiveSearchTab("categories");
+      } else if (matchedProds.length > 0 && matchedCats.length === 0) {
+        setActiveSearchTab("products");
+      }
     } else {
       setSearchResults(null);
     }
@@ -491,80 +499,127 @@ export const Header: React.FC<HeaderProps> = ({
             {searchResults &&
               (searchResults.categories.length > 0 ||
                 searchResults.products.length > 0) && (
-                <div className="absolute top-full left-0 right-0 bg-white rounded-lg  mt-2 border border-gray-200 overflow-hidden z-50">
-                  {searchResults.categories.length > 0 && (
-                    <div className="p-2 bg-gray-50">
-                      <h4 className="text-xs font-bold text-gray-500 uppercase px-2 mb-1 font-heading">
-                        Categories
-                      </h4>
-                      {searchResults.categories.map((c) => (
-                        <div
-                          key={c.id}
-                          className="px-2 py-1.5 hover:bg-white hover:text-belims-blue cursor-pointer rounded text-sm font-medium"
-                          onClick={() => handleCategorySelect(c.label)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span>{c.label}</span>
-                            <ChevronDown
-                              size={12}
-                              className="-rotate-90 text-gray-300"
-                            />
-                          </div>
-                          <div className="text-[11px] text-gray-500 font-normal truncate">
-                            {c.fullPath}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {searchResults.products.length > 0 && (
-                    <div className="p-2">
-                      <h4 className="text-xs font-bold text-gray-500 uppercase px-2 mb-1 mt-1 font-heading">
+                <div className="absolute top-full left-0 right-0 bg-white rounded-xl mt-2 border border-gray-200 overflow-hidden z-50 shadow-xl">
+                  <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSearchTab("products")}
+                        className={`px-3 py-1.5 text-xs font-bold uppercase tracking-[1px] rounded-full border transition-colors ${
+                          activeSearchTab === "products"
+                            ? "bg-belims-blue text-white border-belims-blue"
+                            : "bg-white text-gray-500 border-gray-200 hover:text-belims-blue"
+                        }`}
+                      >
                         Products
-                      </h4>
-                      {searchResults.products.map((p) => (
-                        <div
-                          key={p.id}
-                          className="px-2 py-2 hover:bg-gray-50 cursor-pointer rounded flex gap-3 items-center group"
-                          onClick={() => handleProductSelect(p)}
-                        >
-                          <img
-                            src={p.image}
-                            className="w-10 h-10 object-contain rounded bg-white border border-gray-100"
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold text-gray-800 truncate font-heading group-hover:text-belims-blue">
-                              {p.name}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {p.category}
-                            </div>
-                          </div>
-                          <div className="text-sm font-bold text-belims-blue">
-                            {CURRENCY_SYMBOL}
-                            {p.price.toFixed(2)}
-                          </div>
-
-                          {/* Add Compare Button to Search Results */}
-                          {onCompare && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onCompare(p);
-                              }}
-                              className="p-1.5 rounded-full hover:bg-belims-blue hover:text-white text-gray-400 transition-colors ml-2"
-                              title="Compare"
-                            >
-                              <Scale size={16} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                        <span className="ml-2 text-[10px] font-bold">
+                          {searchResults.products.length}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSearchTab("categories")}
+                        className={`px-3 py-1.5 text-xs font-bold uppercase tracking-[1px] rounded-full border transition-colors ${
+                          activeSearchTab === "categories"
+                            ? "bg-belims-blue text-white border-belims-blue"
+                            : "bg-white text-gray-500 border-gray-200 hover:text-belims-blue"
+                        }`}
+                      >
+                        Categories
+                        <span className="ml-2 text-[10px] font-bold">
+                          {searchResults.categories.length}
+                        </span>
+                      </button>
                     </div>
-                  )}
+                    <div className="text-[11px] font-semibold text-gray-400">
+                      {searchResults.products.length +
+                        searchResults.categories.length}{" "}
+                      results
+                    </div>
+                  </div>
+
+                  <div className="max-h-[360px] overflow-y-auto">
+                    {activeSearchTab === "categories" && (
+                      <div className="p-3 bg-gray-50">
+                        {searchResults.categories.length > 0 ? (
+                          searchResults.categories.map((c) => (
+                            <div
+                              key={c.id}
+                              className="px-3 py-2.5 hover:bg-white hover:text-belims-blue cursor-pointer rounded-lg text-sm font-semibold transition-colors"
+                              onClick={() => handleCategorySelect(c.label)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span>{c.label}</span>
+                                <ChevronDown
+                                  size={12}
+                                  className="-rotate-90 text-gray-300"
+                                />
+                              </div>
+                              <div className="text-[11px] text-gray-500 font-normal truncate">
+                                {c.fullPath}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-3 py-6 text-sm text-gray-400 text-center">
+                            No categories found
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {activeSearchTab === "products" && (
+                      <div className="p-3">
+                        {searchResults.products.length > 0 ? (
+                          searchResults.products.map((p) => (
+                            <div
+                              key={p.id}
+                              className="px-3 py-3 hover:bg-gray-50 cursor-pointer rounded-lg flex gap-3 items-center group"
+                              onClick={() => handleProductSelect(p)}
+                            >
+                              <img
+                                src={p.image}
+                                className="w-11 h-11 object-contain rounded bg-white border border-gray-100"
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-bold text-gray-900 truncate font-heading group-hover:text-belims-blue">
+                                  {p.name}
+                                </div>
+                                <div className="text-xs text-gray-500 truncate">
+                                  {p.category}
+                                </div>
+                              </div>
+                              <div className="text-sm font-bold text-belims-blue">
+                                {CURRENCY_SYMBOL}
+                                {p.price.toFixed(2)}
+                              </div>
+
+                              {onCompare && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onCompare(p);
+                                  }}
+                                  className="p-1.5 rounded-full hover:bg-belims-blue hover:text-white text-gray-400 transition-colors ml-2"
+                                  title="Compare"
+                                >
+                                  <Scale size={16} />
+                                </button>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-3 py-6 text-sm text-gray-400 text-center">
+                            No products found
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="p-3 bg-gray-50 border-t text-center">
                     <button
                       onClick={() => handleSearchSubmit()}
