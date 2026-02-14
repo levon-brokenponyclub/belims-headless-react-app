@@ -145,6 +145,14 @@ export interface Category {
   subcategories: string[];
 }
 
+export interface WooCommerceCategory {
+  id: number | string;
+  name: string;
+  slug: string;
+  parent: string | number | null;
+  count: number;
+}
+
 export interface CategoryNode {
   id: string;
   label: string;

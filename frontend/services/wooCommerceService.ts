@@ -1,4 +1,4 @@
-import { Product, Category } from "../types";
+import { Product, WooCommerceCategory } from "../types";
 import { enrichProductWithDeals } from "./dealService";
 
 /**
@@ -129,12 +129,12 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
 /**
  * Fetch Categories from WooCommerce via custom API
  */
-export const fetchCategories = async (): Promise<Category[]> => {
+export const fetchCategories = async (): Promise<WooCommerceCategory[]> => {
   try {
     const url = `${BASE_URL}/categories`;
     console.log(`Fetching categories from: ${url}`);
 
-    return await cachedGetJson<Category[]>(url);
+    return await cachedGetJson<WooCommerceCategory[]>(url);
   } catch (error) {
     console.error("Belims API Error:", error);
     return [];

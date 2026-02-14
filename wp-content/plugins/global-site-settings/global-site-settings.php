@@ -70,6 +70,7 @@ function global_site_settings_init() {
         'includes/acf-field-groups.php',
         'includes/class-products-endpoint.php',
         'includes/class-categories-endpoint.php',
+        'includes/class-ai-settings-endpoint.php',
         'includes/class-orders-endpoint.php',
         'includes/class-user-endpoint.php', // User registration & management
         'includes/class-user-admin-page.php', // User management admin UI
@@ -352,6 +353,7 @@ function global_site_settings_register_endpoints() {
     $classes = [
         'Belims_Products_Endpoint',
         'Belims_Categories_Endpoint',
+        'Belims_AI_Settings_Endpoint',
         'Belims_Orders_Endpoint',
         'User_Endpoint', // User registration & management
         'Belims_FTG_Sync_Endpoint',
@@ -2065,26 +2067,50 @@ function global_site_settings_main_page() {
                         <h2 class="bpc-card-title">AI Services</h2>
                         <p class="bpc-card-description">Configure AI-powered features and integrations.</p>
                     </div>
-                    
+                    <?php
+                    $ai_enabled = function_exists('get_field') ? (bool) get_field('gemini_enabled', 'option') : false;
+                    $ai_key = function_exists('get_field') ? get_field('gemini_api_key', 'option') : '';
+                    $ai_key_set = !empty($ai_key);
+                    ?>
+
                     <div style="background: #f0edff; border-left: 4px solid #7c3aed; padding: 15px 20px; border-radius: 6px; margin-bottom: 20px;">
                         <p style="margin: 0; color: #5b21b6;">
                             <strong>🤖 AI Services:</strong><br>
-                            AI-powered features are coming soon.
+                            Configure Gemini access for AI recommendations and assistants.
                         </p>
                     </div>
-                    
-                    <h3>Planned AI Features:</h3>
-                    <ul>
-                        <li><strong>Product Description Generation</strong> - Auto-generate SEO-friendly descriptions</li>
-                        <li><strong>Image Recognition</strong> - Auto-tag and categorize product images</li>
-                        <li><strong>Smart Search</strong> - Semantic search with natural language</li>
-                        <li><strong>Chatbot Support</strong> - AI-powered customer service</li>
-                        <li><strong>Recommendation Engine</strong> - Personalized product recommendations</li>
-                    </ul>
-                    
-                    <p style="color: #64748b; font-style: italic; margin-top: 30px;">
-                        AI integrations will be available in future updates. Stay tuned!
-                    </p>
+
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                            <strong>Status:</strong>
+                            <span style="margin-left: 6px; color: <?php echo $ai_enabled ? '#166534' : '#991b1f'; ?>;">
+                                <?php echo $ai_enabled ? 'Enabled' : 'Disabled'; ?>
+                            </span>
+                        </div>
+                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;">
+                            <strong>API Key:</strong>
+                            <span style="margin-left: 6px; color: <?php echo $ai_key_set ? '#166534' : '#991b1f'; ?>;">
+                                <?php echo $ai_key_set ? 'Set' : 'Missing'; ?>
+                            </span>
+                        </div>
+                    </div>
+
+                    <?php
+                    if (function_exists('acf_form')) {
+                        acf_form(array(
+                            'post_id' => 'options',
+                            'fields' => array(
+                                'field_belims_gemini_enabled',
+                                'field_belims_gemini_api_key',
+                                'field_belims_ai_feature_toggles',
+                            ),
+                            'return' => '',
+                            'submit_value' => 'Save AI Settings',
+                        ));
+                    } else {
+                        echo '<p>Please install and activate Advanced Custom Fields PRO.</p>';
+                    }
+                    ?>
                 </div>
             </div>
 

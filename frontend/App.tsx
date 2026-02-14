@@ -24,6 +24,7 @@ import { MobileBottomNav } from "./components/MobileBottomNav";
 import { SearchModal } from "./components/SearchModal";
 /* import { FreeShippingWidget } from "./components/FreeShippingWidget"; */
 import { OnboardingWizard } from "./components/OnboardingWizard";
+import { AiAssistant } from "./components/AiAssistant.tsx";
 import { PriceMatchModal } from "./components/PriceMatchModal";
 import { ComparisonModal } from "./components/ComparisonModal";
 import { Footer } from "./components/Footer";
@@ -1206,6 +1207,7 @@ export default function App() {
     // const hasSeen = localStorage.getItem("hasSeenOnboarding");
     // return !hasSeen;
   });
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [userType, setUserType] = useState<"personal" | "business">("personal");
   const [comparisonList, setComparisonList] = useState<Product[]>([]);
@@ -1424,6 +1426,8 @@ export default function App() {
         setIsPaintOpen={setIsPaintOpen}
         isOnboardingOpen={isOnboardingOpen}
         setIsOnboardingOpen={setIsOnboardingOpen}
+        isAiAssistantOpen={isAiAssistantOpen}
+        setIsAiAssistantOpen={setIsAiAssistantOpen}
         isLocationPermissionModalOpen={isLocationPermissionModalOpen}
         setIsLocationPermissionModalOpen={setIsLocationPermissionModalOpen}
         isSearchModalOpen={isSearchModalOpen}
@@ -1477,6 +1481,7 @@ function MainApp(props) {
         onOpenPaintAssistant={() => props.setIsPaintOpen(true)}
         onOpenTrackOrder={() => navigate("/track-order")}
         onOpenOnboarding={() => props.setIsOnboardingOpen(true)}
+        onOpenAiAssistant={() => props.setIsAiAssistantOpen(true)}
         onCompare={props.addToCompare}
         products={props.products}
         currentUser={props.currentUser}
@@ -1662,6 +1667,18 @@ function MainApp(props) {
             props.setIsOnboardingOpen(false);
             localStorage.setItem("hasSeenOnboarding", "true");
           }}
+          onNavigateToProduct={handleProductClick}
+          addToCart={props.addToCart}
+          onBuyNow={props.handleBuyNow}
+          onCompare={props.addToCompare}
+          isAuthenticated={isAuthenticated}
+          isTradeApproved={isTradeApproved}
+        />
+      )}
+
+      {props.isAiAssistantOpen && (
+        <AiAssistant
+          onClose={() => props.setIsAiAssistantOpen(false)}
           onNavigateToProduct={handleProductClick}
           addToCart={props.addToCart}
           onBuyNow={props.handleBuyNow}

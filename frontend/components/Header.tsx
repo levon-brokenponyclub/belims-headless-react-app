@@ -71,6 +71,7 @@ interface HeaderProps {
   onOpenPaintAssistant: () => void;
   onOpenTrackOrder: () => void;
   onOpenOnboarding: () => void;
+  onOpenAiAssistant: () => void;
   onCompare?: (product: Product) => void;
   products?: Product[];
   currentUser: UserData | null;
@@ -86,6 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPaintAssistant,
   onOpenTrackOrder,
   onOpenOnboarding,
+  onOpenAiAssistant,
   onCompare,
   products = [],
   currentUser,
@@ -1202,13 +1204,15 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   Paint Assistant
                 </button>
-                <Link
-                  to="/ai-helper"
-                  onClick={() => setIsServicesPanelOpen(false)}
-                  className="w-full px-4 py-3 flex justify-between items-center text-gray-700 font-semibold border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                <button
+                  onClick={() => {
+                    setIsServicesPanelOpen(false);
+                    onOpenAiAssistant();
+                  }}
+                  className="w-full px-4 py-3 flex justify-between items-center text-gray-700 font-semibold border-b border-gray-100 hover:bg-gray-50 transition-colors text-left"
                 >
                   AI Helper
-                </Link>
+                </button>
               </div>
             </div>
           </div>

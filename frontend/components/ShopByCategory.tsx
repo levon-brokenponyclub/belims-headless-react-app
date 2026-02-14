@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Product } from "../types";
+import { Product, WooCommerceCategory } from "../types";
 import { ProductCard } from "./ProductCard";
 import { ArrowRight } from "lucide-react";
 import { CATEGORY_SLIDER_DATA } from "../constants";
@@ -15,14 +15,6 @@ interface ShopByCategoryProps {
   onCompare: (product: Product) => void;
   isAuthenticated?: boolean;
   isTradeApproved?: boolean;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  slug: string;
-  parent: string | null;
-  count: number;
 }
 
 export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
@@ -56,7 +48,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
 
       try {
         console.log("Fetching categories from API cache");
-        const categories: Category[] = await fetchCategories();
+        const categories: WooCommerceCategory[] = await fetchCategories();
         if (categories.length > 0) {
           console.log("Fetched categories:", categories);
 
@@ -96,12 +88,12 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
 
     const startPlayback = () => setShouldPlayVideo(true);
     let idleHandle: number | null = null;
-    let timeoutHandle: number | null = null;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
     if ("requestIdleCallback" in window) {
       idleHandle = (window as any).requestIdleCallback(startPlayback);
     } else {
-      timeoutHandle = window.setTimeout(startPlayback, 1500);
+      timeoutHandle = globalThis.setTimeout(startPlayback, 1500);
     }
 
     return () => {
@@ -109,7 +101,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
         (window as any).cancelIdleCallback(idleHandle);
       }
       if (timeoutHandle !== null) {
-        window.clearTimeout(timeoutHandle);
+        globalThis.clearTimeout(timeoutHandle);
       }
     };
   }, []);
