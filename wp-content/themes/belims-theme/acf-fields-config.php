@@ -280,6 +280,62 @@ acf_add_local_field_group(array(
                 ),
             ),
         ),
+        array(
+            'key' => 'field_expert_contact',
+            'label' => 'Expert Contact Block',
+            'name' => 'expert_contact',
+            'type' => 'group',
+            'instructions' => 'Details for the Ask an expert block on product pages',
+            'sub_fields' => array(
+                array(
+                    'key' => 'field_expert_name',
+                    'label' => 'Expert Name',
+                    'name' => 'expert_name',
+                    'type' => 'text',
+                    'default_value' => 'Support Expert',
+                ),
+                array(
+                    'key' => 'field_expert_title',
+                    'label' => 'Expert Title',
+                    'name' => 'expert_title',
+                    'type' => 'text',
+                    'default_value' => 'Ask an expert!',
+                ),
+                array(
+                    'key' => 'field_expert_avatar',
+                    'label' => 'Expert Avatar',
+                    'name' => 'expert_avatar',
+                    'type' => 'image',
+                    'return_format' => 'array',
+                    'preview_size' => 'thumbnail',
+                    'library' => 'all',
+                ),
+                array(
+                    'key' => 'field_expert_video_chat_url',
+                    'label' => 'Video Chat URL',
+                    'name' => 'expert_video_chat_url',
+                    'type' => 'url',
+                ),
+                array(
+                    'key' => 'field_expert_chat_url',
+                    'label' => 'Chat URL',
+                    'name' => 'expert_chat_url',
+                    'type' => 'url',
+                ),
+                array(
+                    'key' => 'field_expert_email',
+                    'label' => 'Expert Email',
+                    'name' => 'expert_email',
+                    'type' => 'email',
+                ),
+                array(
+                    'key' => 'field_expert_phone',
+                    'label' => 'Expert Phone',
+                    'name' => 'expert_phone',
+                    'type' => 'text',
+                ),
+            ),
+        ),
     ),
     'location' => array(
         array(

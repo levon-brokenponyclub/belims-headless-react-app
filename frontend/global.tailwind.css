@@ -1,6 +1,178 @@
-@tailwind components;
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&display=swap");
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   @LAYER BASE - Global Type & Element Defaults
+   ============================================ */
+@layer base {
+  /* CSS Custom Properties for semantic colors */
+  :root {
+    --color-canvas: #f9f9f9;
+    --color-surface: #ffffff;
+    --color-ink: #322783;
+    --color-muted: #565969;
+    --color-soft: #ecf0f1;
+    --color-subtle: #e0e0e0;
+    --color-brand: #312883;
+    --color-accent: #f97316;
+    --color-red-muted: #c4301c;
+    --color-grey: #111111;
+    --color-grey-light: #ededed;
+    --color-grey-medium: #666666;
+  }
+
+  /* Page & Body Reset */
+  body {
+    @apply font-sans text-base;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+  }
+
+  /* Headings - Consistent Type Hierarchy */
+  h1 {
+    @apply text-h1 font-heading font-bold leading-tight;
+    color: var(--color-ink);
+  }
+
+  h2 {
+    @apply text-h2 font-heading font-bold leading-tight;
+    color: var(--color-ink);
+  }
+
+  h3 {
+    @apply text-h3 font-heading font-semibold leading-tight;
+    color: var(--color-ink);
+  }
+
+  h4 {
+    @apply text-h4 font-heading font-semibold leading-tight;
+    color: var(--color-ink);
+  }
+
+  h5 {
+    @apply text-h5 font-heading font-semibold;
+    color: var(--color-ink);
+  }
+
+  h6 {
+    @apply text-h6 font-heading font-semibold;
+    color: var(--color-ink);
+  }
+
+  /* Link defaults */
+  a {
+    color: var(--color-ink);
+    @apply transition-colors duration-200;
+  }
+
+  a:hover {
+    color: var(--color-brand);
+  }
+
+  /* Form inputs reset */
+  input,
+  textarea,
+  select {
+    @apply font-sans text-base;
+  }
+}
+
+/* ============================================
+   @LAYER COMPONENTS - Reusable UI Primitives
+   ============================================ */
 @layer components {
+  /* ---- BUTTONS ---- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-bold min-h-12 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed capitalize;
+    border-radius: 10rem;
+    color: var(--color-ink);
+    font-size: 15px;
+  }
+
+  .btn-primary {
+    @apply btn border-0 text-white;
+    background-color: var(--color-brand);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-ink);
+  }
+
+  .btn-primary:focus {
+    outline-color: var(--color-brand);
+  }
+
+  .btn-outline {
+    @apply btn;
+    background-color: white;
+    border: 1px solid var(--color-surface);
+    color: var(--color-grey);
+    padding: 0rem 1rem;
+  }
+
+  .btn-outline:hover {
+    background-color: var(--color-surface);
+    border-color: var(--color-grey-light);
+    color: var(--color-grey);
+  }
+
+  .btn-outline:focus {
+    outline-color: var(--color-brand);
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent;
+    color: var(--color-ink);
+  }
+
+  .btn-ghost:hover {
+    background-color: var(--color-soft);
+  }
+
+  .btn-ghost:focus {
+    outline-color: var(--color-brand);
+  }
+
+  /* ---- FORM INPUTS ---- */
+  .input {
+    @apply h-12 w-full font-sans text-base px-4 border transition-all duration-200 focus:outline-none focus:ring-2 focus:border-transparent;
+    border-radius: 10rem;
+    background-color: white;
+    border-color: var(--color-subtle);
+    color: var(--color-ink);
+  }
+
+  .input::placeholder {
+    color: var(--color-muted);
+  }
+
+  .input:focus {
+    border-color: transparent;
+    outline-color: var(--color-brand);
+  }
+
+  /* ---- ICON BUTTONS ---- */
+  .icon-btn {
+    @apply inline-flex items-center justify-center h-10 w-10 border transition-all duration-200 focus:outline-none focus:ring-2;
+    border-radius: 10rem;
+    background-color: white;
+    border-color: var(--color-subtle);
+    color: var(--color-ink);
+  }
+
+  .icon-btn:hover {
+    background-color: var(--color-soft);
+    color: var(--color-brand);
+  }
+
+  .icon-btn:focus {
+    outline-color: var(--color-brand);
+  }
+
+  /* ---- LEGACY CLASSES (backwards compatibility) ---- */
   .header-signin {
     @apply items-start text-left;
   }

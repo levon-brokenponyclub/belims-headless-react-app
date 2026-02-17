@@ -11,7 +11,7 @@ import {
   LayoutGrid,
   List,
 } from "lucide-react";
-import { CATEGORY_TREE } from "../categoryTree";
+import { CATEGORY_TREE, initializeCategoryTree } from "../categoryTree";
 import { getApiBaseUrl } from "../services/wooCommerceService";
 import { SkeletonProductCard } from "./Skeleton";
 
@@ -27,6 +27,7 @@ interface ArchiveProps {
   isLoadingProducts?: boolean;
   category?: string; // The selected category slug or name
   brand?: string; // The selected brand
+  range?: string; // The selected range
   searchQuery?: string;
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
@@ -40,6 +41,7 @@ export const Archive: React.FC<ArchiveProps> = ({
   isLoadingProducts = false,
   category,
   brand,
+  range,
   searchQuery,
   addToCart,
   onBuyNow,
@@ -53,7 +55,10 @@ export const Archive: React.FC<ArchiveProps> = ({
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const categorySliderWidth = useWindowWidth();
+  const [categorySliderIndex, setCategorySliderIndex] = useState(0);
   const showSkeletons = isLoadingProducts;
+  const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
 
   // Additional local filters
   const [filterInStock, setFilterInStock] = useState(false);
@@ -92,6 +97,20 @@ export const Archive: React.FC<ArchiveProps> = ({
     fetchFilters();
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    initializeCategoryTree()
+      .then((tree) => {
+        if (isMounted) setCategoryTree(tree);
+      })
+      .catch(() => {
+        if (isMounted) setCategoryTree([]);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Dynamic Facet Data
   const uniqueBrands = useMemo(() => {
     const brands = new Set<string>();
@@ -106,6 +125,10 @@ export const Archive: React.FC<ArchiveProps> = ({
   useEffect(() => {
     setSelectedCategories(category ? [category] : []);
   }, [category]);
+
+  useEffect(() => {
+    setSelectedRanges(range ? [range] : []);
+  }, [range]);
 
   const dealTypeOptions = [
     { id: "sale", label: "Sale" },
@@ -167,9 +190,29 @@ export const Archive: React.FC<ArchiveProps> = ({
     return null;
   };
 
+  const findParentCategoryNode = (
+    targetLabel: string,
+    nodes: CategoryNode[],
+    parent: CategoryNode | null = null,
+  ): CategoryNode | null => {
+    for (const node of nodes) {
+      if (node.label.toLowerCase() === targetLabel.toLowerCase()) {
+        return parent;
+      }
+      if (node.children) {
+        const match = findParentCategoryNode(targetLabel, node.children, node);
+        if (match) return match;
+      }
+    }
+    return null;
+  };
+
   // Filter Logic
   const filteredProducts = useMemo(() => {
     let filtered = [...products];
+    const activeCategoryTree = categoryTree.length
+      ? categoryTree
+      : CATEGORY_TREE;
 
     // 1. Filter by Category (Multi-select, Recursive)
     if (selectedCategories.length > 0) {
@@ -179,7 +222,7 @@ export const Archive: React.FC<ArchiveProps> = ({
       const validCategories = new Set<string>();
 
       selectedCategories.forEach((selected) => {
-        const matches = getCategoryMatches(selected, CATEGORY_TREE);
+        const matches = getCategoryMatches(selected, activeCategoryTree);
         if (matches.length > 0) {
           matches.forEach((match) => validCategories.add(match.toLowerCase()));
         }
@@ -218,12 +261,32 @@ export const Archive: React.FC<ArchiveProps> = ({
       );
     }
 
-    // 4. Filter by Price
+    // 4. Filter by Range
+    if (selectedRanges.length > 0) {
+      const normalizedRanges = selectedRanges.map((r) => r.toLowerCase());
+      filtered = filtered.filter((p) => {
+        const rangeValue =
+          p.acf?.range || p.acf?.range_slug || p.acf?.range_label;
+        if (rangeValue) {
+          return normalizedRanges.some((r) =>
+            String(rangeValue).toLowerCase().includes(r),
+          );
+        }
+        if (p.tags && p.tags.length > 0) {
+          return p.tags.some((tag) =>
+            normalizedRanges.some((r) => tag.toLowerCase().includes(r)),
+          );
+        }
+        return false;
+      });
+    }
+
+    // 5. Filter by Price
     filtered = filtered.filter(
       (p) => p.price >= priceRange[0] && p.price <= priceRange[1],
     );
 
-    // 4.5 Additional Facets
+    // 5.5 Additional Facets
     if (filterInStock && !filterBackOrder) {
       filtered = filtered.filter((p) => p.stock > 0);
     }
@@ -240,7 +303,7 @@ export const Archive: React.FC<ArchiveProps> = ({
       });
     }
 
-    // 5. Sort
+    // 6. Sort
     switch (sortBy) {
       case "price-asc":
         filtered.sort((a, b) => a.price - b.price);
@@ -267,6 +330,7 @@ export const Archive: React.FC<ArchiveProps> = ({
     selectedDealTypes,
     selectedFacetBrands,
     selectedCategories,
+    categoryTree,
   ]);
 
   const productCategoryCounts = useMemo(() => {
@@ -281,6 +345,9 @@ export const Archive: React.FC<ArchiveProps> = ({
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    const activeCategoryTree = categoryTree.length
+      ? categoryTree
+      : CATEGORY_TREE;
 
     const tallyNode = (node: CategoryNode): number => {
       const key = node.label.toLowerCase();
@@ -297,9 +364,9 @@ export const Archive: React.FC<ArchiveProps> = ({
       return total;
     };
 
-    CATEGORY_TREE.forEach((node) => tallyNode(node));
+    activeCategoryTree.forEach((node) => tallyNode(node));
     return counts;
-  }, [productCategoryCounts]);
+  }, [productCategoryCounts, categoryTree]);
 
   const brandCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -349,6 +416,237 @@ export const Archive: React.FC<ArchiveProps> = ({
         ? `Search: "${searchQuery}"`
         : "All Products";
 
+  const activeCategoryTree = categoryTree.length ? categoryTree : CATEGORY_TREE;
+
+  const categoryContextNode = useMemo(() => {
+    if (!category) return null;
+    const matched = findCategoryNode(category, activeCategoryTree);
+    if (matched?.children && matched.children.length > 0) {
+      return matched;
+    }
+    return findParentCategoryNode(category, activeCategoryTree);
+  }, [category, activeCategoryTree]);
+
+  const categorySliderItems = useMemo(() => {
+    const baseNodes = categoryContextNode?.children?.length
+      ? categoryContextNode.children
+      : category
+        ? []
+        : activeCategoryTree;
+    const labels = baseNodes.map((node) => node.label);
+    const unique = Array.from(new Set(labels));
+    return [
+      "Sale",
+      ...unique.filter((label) => label.toLowerCase() !== "sale"),
+    ];
+  }, [categoryContextNode, category, activeCategoryTree]);
+
+  const categoryMedia: Record<
+    string,
+    { icon: string; lifestyle: string; slider: string }
+  > = {
+    "Fasteners and Adhesives": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/nut.svg",
+      lifestyle: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8",
+      slider: "https://pngimg.com/uploads/screw/screw_PNG40.png",
+    },
+    Adhesives: {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/droplet.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581092918484-8313f08e01c7",
+      slider: "https://pngimg.com/uploads/glue/glue_PNG23.png",
+    },
+    "General Purpose Adhesive": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/paint-bucket.svg",
+      lifestyle: "https://images.unsplash.com/photo-1607400201515-c2c41cbe4c3b",
+      slider: "https://pngimg.com/uploads/glue/glue_PNG34.png",
+    },
+    Nails: {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/hammer.svg",
+      lifestyle: "https://images.unsplash.com/photo-1567789884554-0b844b597180",
+      slider: "https://pngimg.com/uploads/nail/nail_PNG40.png",
+    },
+    "Nail-in Anchors": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/anchor.svg",
+      lifestyle: "https://images.unsplash.com/photo-1603791440384-56cd371ee9a7",
+      slider: "https://pngimg.com/uploads/screw/screw_PNG30.png",
+    },
+    "Tape and Seal Strips": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/scissors.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc",
+      slider: "https://pngimg.com/uploads/tape/tape_PNG27.png",
+    },
+    "General Purpose Tapes": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/scissors.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc",
+      slider: "https://pngimg.com/uploads/tape/tape_PNG20.png",
+    },
+    "Outdoor Garden and Patio": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/leaf.svg",
+      lifestyle: "https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e",
+      slider: "https://pngimg.com/uploads/chainsaw/chainsaw_PNG14.png",
+    },
+    "Gardening Tools": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/shovel.svg",
+      lifestyle: "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2",
+      slider: "https://pngimg.com/uploads/shovel/shovel_PNG29.png",
+    },
+    Chainsaws: {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/zap.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581578731548-c64695cc6952",
+      slider: "https://pngimg.com/uploads/chainsaw/chainsaw_PNG9.png",
+    },
+    "Garden Cordless Power Tools": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/battery.svg",
+      lifestyle: "https://images.unsplash.com/photo-1621600411688-4be93c5f5b21",
+      slider: "https://pngimg.com/uploads/drill/drill_PNG143.png",
+    },
+    "Garden Spray Bottles": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/spray-can.svg",
+      lifestyle: "https://images.unsplash.com/photo-1589927986089-35812388d1f4",
+      slider: "https://pngimg.com/uploads/spray/spray_PNG10.png",
+    },
+    "Safety and Protective Wear": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/hard-hat.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581092160607-ee22621dd758",
+      slider: "https://pngimg.com/uploads/gloves/gloves_PNG8024.png",
+    },
+    "Safety Equipment": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/shield.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581092335397-9583eb92d232",
+      slider: "https://pngimg.com/uploads/helmet/helmet_PNG37.png",
+    },
+    Gloves: {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/hand.svg",
+      lifestyle: "https://images.unsplash.com/photo-1607013407627-6ee814329547",
+      slider: "https://pngimg.com/uploads/gloves/gloves_PNG8030.png",
+    },
+    "Tools and Machinery": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/drill.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
+      slider: "https://pngimg.com/uploads/drill/drill_PNG143.png",
+    },
+    "Drill Accessories": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/settings.svg",
+      lifestyle: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8",
+      slider: "https://pngimg.com/uploads/drill/drill_PNG132.png",
+    },
+    "Chucks and Keys": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/settings-2.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
+      slider: "https://pngimg.com/uploads/drill/drill_PNG109.png",
+    },
+    "Electrical Hand Tools": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/plug.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
+      slider: "https://pngimg.com/uploads/tools/tools_PNG62.png",
+    },
+    "Staple Guns and Staples": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/paperclip.svg",
+      lifestyle: "https://images.unsplash.com/photo-1590080875852-ba44f83ff2c1",
+      slider: "https://pngimg.com/uploads/tools/tools_PNG73.png",
+    },
+    "Grinding Accessories": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/disc.svg",
+      lifestyle: "https://images.unsplash.com/photo-1604147706283-8d7b3dfd3c4e",
+      slider: "https://pngimg.com/uploads/grinder/grinder_PNG21.png",
+    },
+    "Abrasive Grinding Disc": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/disc.svg",
+      lifestyle: "https://images.unsplash.com/photo-1604147706283-8d7b3dfd3c4e",
+      slider: "https://pngimg.com/uploads/disc/disc_PNG5.png",
+    },
+    "Hand Tools": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/hammer.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
+      slider: "https://pngimg.com/uploads/tools/tools_PNG21.png",
+    },
+    Pliers: {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/scissors.svg",
+      lifestyle: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8",
+      slider: "https://pngimg.com/uploads/pliers/pliers_PNG32.png",
+    },
+    "Screwdrivers and Allen Keys": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/tool.svg",
+      lifestyle: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8",
+      slider: "https://pngimg.com/uploads/screwdriver/screwdriver_PNG46.png",
+    },
+    Wrenches: {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/wrench.svg",
+      lifestyle: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8",
+      slider: "https://pngimg.com/uploads/wrench/wrench_PNG33.png",
+    },
+    Machinery: {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/factory.svg",
+      lifestyle: "https://images.unsplash.com/photo-1513828583688-c52646db42da",
+      slider:
+        "https://pngimg.com/uploads/pressure_washer/pressure_washer_PNG9.png",
+    },
+    "Pressure Washer": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/droplet.svg",
+      lifestyle: "https://images.unsplash.com/photo-1513828583688-c52646db42da",
+      slider:
+        "https://pngimg.com/uploads/pressure_washer/pressure_washer_PNG11.png",
+    },
+    "Power Tools": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/zap.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
+      slider: "https://pngimg.com/uploads/drill/drill_PNG143.png",
+    },
+    Drills: {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/drill.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
+      slider: "https://pngimg.com/uploads/drill/drill_PNG135.png",
+    },
+    Grinders: {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/disc.svg",
+      lifestyle: "https://images.unsplash.com/photo-1604147706283-8d7b3dfd3c4e",
+      slider: "https://pngimg.com/uploads/grinder/grinder_PNG16.png",
+    },
+    Saws: {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/activity.svg",
+      lifestyle: "https://images.unsplash.com/photo-1603791440384-56cd371ee9a7",
+      slider: "https://pngimg.com/uploads/saw/saw_PNG24.png",
+    },
+    "Water Tanks and Filtration": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/droplet.svg",
+      lifestyle: "https://images.unsplash.com/photo-1564419320408-38e24e0383ef",
+      slider: "https://pngimg.com/uploads/water_tank/water_tank_PNG15.png",
+    },
+    "Water Storage": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/database.svg",
+      lifestyle: "https://images.unsplash.com/photo-1564419320408-38e24e0383ef",
+      slider: "https://pngimg.com/uploads/water_tank/water_tank_PNG18.png",
+    },
+    "Water Tank Pumps": {
+      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/droplet.svg",
+      lifestyle: "https://images.unsplash.com/photo-1581093458791-9d42f6c90c77",
+      slider: "https://pngimg.com/uploads/pump/pump_PNG40.png",
+    },
+  };
+
+  const categorySlidesPerView = useMemo(() => {
+    if (categorySliderWidth >= 1280) return 6;
+    if (categorySliderWidth >= 1024) return 5;
+    if (categorySliderWidth >= 768) return 4;
+    return 3;
+  }, [categorySliderWidth]);
+
+  const categorySliderMaxIndex = Math.max(
+    0,
+    categorySliderItems.length - categorySlidesPerView,
+  );
+
+  useEffect(() => {
+    setCategorySliderIndex((prev) => Math.min(prev, categorySliderMaxIndex));
+  }, [categorySliderMaxIndex]);
+
+  const categorySliderPrev = () =>
+    setCategorySliderIndex((i) => (i <= 0 ? categorySliderMaxIndex : i - 1));
+  const categorySliderNext = () =>
+    setCategorySliderIndex((i) => (i >= categorySliderMaxIndex ? 0 : i + 1));
+  const categoryTranslatePct =
+    (categorySliderIndex * 100) / categorySlidesPerView;
+
   const toggleBrand = (b: string) => {
     if (selectedFacetBrands.includes(b)) {
       setSelectedFacetBrands((prev) => prev.filter((x) => x !== b));
@@ -379,6 +677,11 @@ export const Archive: React.FC<ArchiveProps> = ({
     } else {
       setSelectedDealTypes((prev) => [...prev, type]);
     }
+  };
+
+  const openChatBot = () => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new Event("belims:open-chat"));
   };
 
   const toggleCategory = (categoryLabel: string) => {
@@ -494,12 +797,9 @@ export const Archive: React.FC<ArchiveProps> = ({
   return (
     <div className="shopify-section section-collection-template bg-white">
       {/* Breadcrumb Section */}
-      <nav
-        className="border-b border-gray-200 bg-gray-50"
-        aria-label="Breadcrumb"
-      >
+      <nav className=" bg-white" aria-label="Breadcrumb">
         <div className="container mx-auto px-4 py-3">
-          <ol className="flex items-center space-x-2 text-sm text-gray-500">
+          <ol className="flex items-center space-x-2 text-base text-grey">
             <li>
               <Link
                 to="/"
@@ -514,39 +814,121 @@ export const Archive: React.FC<ArchiveProps> = ({
             {brand && (
               <>
                 <li>
-                  <span className="font-medium text-gray-900">{brand}</span>
+                  <span className="font-base text-grey">{brand}</span>
                 </li>
               </>
             )}
             {category && (
               <>
                 <li>
-                  <span className="font-medium text-gray-900">{category}</span>
+                  <span className="font-base text-grey">{category}</span>
                 </li>
               </>
             )}
             {!category && !brand && (
               <li>
-                <span className="font-medium text-gray-900">Shop</span>
+                <span className="font-base text-grey">Shop</span>
               </li>
             )}
           </ol>
         </div>
       </nav>
 
-      {/* Main Collection Text (Hero) */}
-      <div className="collection-hero bg-gray-100 border-b border-gray-200 mb-10">
-        <div className="container mx-auto px-4 py-16">
-          <h1 className="text-3xl font-bold text-gray-900 font-heading">
-            {title}
-          </h1>
-          <p className="text-gray-700 text-base max-w-2xl leading-loose">
-            {brand
-              ? `Explore our premium selection of ${brand} tools and equipment. Designed for professionals.`
-              : `Browse our extensive collection of ${title.toLowerCase()}. Find the perfect tools for your next project.`}
-          </p>
-        </div>
-      </div>
+      {categorySliderItems.length > 0 && (
+        <section className="bg-white border-b border-gray-100">
+          <div className="container mx-auto px-4 py-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Explore categories
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {categoryContextNode?.label
+                    ? `Browse ${categoryContextNode.label} subcategories.`
+                    : "Browse popular categories."}
+                </p>
+              </div>
+              <div
+                className={`items-center gap-2 ${
+                  categorySliderMaxIndex > 0 ? "flex" : "hidden"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={categorySliderPrev}
+                  aria-label="Previous categories"
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={categorySliderNext}
+                  aria-label="Next categories"
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+
+            <div
+              className="relative overflow-hidden"
+              aria-roledescription="carousel"
+            >
+              <div
+                className="-mx-3 flex transition-transform duration-500 ease-out"
+                style={{ transform: `translateX(-${categoryTranslatePct}%)` }}
+              >
+                {categorySliderItems.map((label) => {
+                  const isSale = label.toLowerCase() === "sale";
+                  const media = categoryMedia[label];
+                  return (
+                    <div
+                      key={label}
+                      className="shrink-0 px-3"
+                      style={{ width: `${100 / categorySlidesPerView}%` }}
+                    >
+                      <Link
+                        to={`/shop/${encodeURIComponent(label)}`}
+                        className="group flex flex-col items-center text-center"
+                      >
+                        <span
+                          className={`relative flex items-center justify-center overflow-hidden rounded-full text-sm font-semibold uppercase tracking-tight ${
+                            isSale
+                              ? "bg-belims-accent text-white"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                          style={{ width: "80px", height: "80px" }}
+                        >
+                          {isSale ? (
+                            "Sale"
+                          ) : media?.icon ? (
+                            <img
+                              src={media.icon}
+                              alt=""
+                              className="relative z-10 h-8 w-8 object-contain"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : (
+                            <span className="relative z-10">
+                              {label.slice(0, 2)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-3 text-sm font-semibold text-gray-900">
+                          {label}
+                        </span>
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="container mx-auto px-4 pb-12">
         <div className="flex flex-col lg:flex-row gap-8">
@@ -1142,7 +1524,38 @@ export const Archive: React.FC<ArchiveProps> = ({
                     : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-5"
                 }`}
               >
-                {filteredProducts.map((product) => (
+                <li className="grid__item">
+                  <div className="relative h-full min-h-[320px] rounded border border-[#E0E0E0] overflow-hidden bg-[#0c1b2a]">
+                    <div
+                      className="absolute inset-0 bg-cover bg-no-repeat"
+                      style={{
+                        backgroundImage:
+                          "url(/images/development/18920_d0e420f0-fd13-40c8-b17d-c5423b3805ac.webp)",
+                        backgroundPosition: "center top",
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/30" />
+                    <div className="relative z-[1] flex h-full flex-col items-center text-center px-6 pt-8 pb-6">
+                      <h3 className="text-white text-3xl font-bold font-heading">
+                        Expert Help & Advice
+                      </h3>
+                      <p className="mt-3 text-lg font-semibold text-white/90 max-w-[260px]">
+                        Find the right tools, best prices, and fastest delivery.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={openChatBot}
+                        className="group relative mt-auto h-12 w-full overflow-hidden rounded-pill bg-white text-gray-900 transition-colors"
+                      >
+                        <span className="absolute inset-0 origin-left scale-x-0 bg-gray-900 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                        <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
+                          Get Started
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </li>
+                {filteredProducts.slice(1).map((product) => (
                   <li key={product.id} className="grid__item">
                     <ProductCard
                       product={product}
@@ -1302,3 +1715,17 @@ export const Archive: React.FC<ArchiveProps> = ({
     </div>
   );
 };
+
+function useWindowWidth() {
+  const [width, setWidth] = useState<number>(() =>
+    typeof window === "undefined" ? 1024 : window.innerWidth,
+  );
+
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return width;
+}

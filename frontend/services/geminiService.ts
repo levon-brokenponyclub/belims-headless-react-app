@@ -189,7 +189,16 @@ export const getPaintRecommendations = async (
 export const getPersonalizedRecommendations = async (
   userType: "personal" | "business",
   projectDescription: string,
+  inventory?: Product[],
 ): Promise<Product[]> => {
+  const inventoryProducts =
+    inventory && inventory.length > 0 ? inventory : ALL_PRODUCTS;
+
+  if (inventoryProducts.length === 0) {
+    console.warn("No inventory available for recommendations.");
+    return [];
+  }
+
   try {
     // Check if API key is available
     const client = await getAiClient();
@@ -206,13 +215,15 @@ export const getPersonalizedRecommendations = async (
         userType === "business" ||
         projectDescription.toLowerCase().includes("construction")
       ) {
-        const powerTools = ALL_PRODUCTS.filter(
+        const powerTools = inventoryProducts.filter(
           (p) => p.category === "Power Tools",
         );
-        const handTools = ALL_PRODUCTS.filter(
+        const handTools = inventoryProducts.filter(
           (p) => p.category === "Hand Tools",
         );
-        const safety = ALL_PRODUCTS.filter((p) => p.category === "Safety Gear");
+        const safety = inventoryProducts.filter(
+          (p) => p.category === "Safety Gear",
+        );
 
         switch (timeVariation) {
           case 0:
@@ -234,7 +245,7 @@ export const getPersonalizedRecommendations = async (
       } else {
         // For personal projects, mix categories
         const randomStart = timeVariation * 2;
-        baseProducts = ALL_PRODUCTS.slice(randomStart, randomStart + 3);
+        baseProducts = inventoryProducts.slice(randomStart, randomStart + 3);
       }
 
       // Shuffle for more variety and ensure we have 3 products
@@ -243,7 +254,7 @@ export const getPersonalizedRecommendations = async (
 
       // If we don't have enough, fill with random products
       if (result.length < 3) {
-        const remaining = ALL_PRODUCTS.filter((p) => !result.includes(p));
+        const remaining = inventoryProducts.filter((p) => !result.includes(p));
         result.push(...remaining.slice(0, 3 - result.length));
       }
 
@@ -251,7 +262,7 @@ export const getPersonalizedRecommendations = async (
     }
 
     // Create a lightweight inventory context
-    const inventoryContext = ALL_PRODUCTS.map((p) => ({
+    const inventoryContext = inventoryProducts.map((p) => ({
       id: p.id,
       name: p.name,
       category: p.category,
@@ -287,20 +298,20 @@ export const getPersonalizedRecommendations = async (
       const recommendations = JSON.parse(response.text) as AIRecommendation[];
       // Map back to full product objects
       const results = recommendations
-        .map((rec) => ALL_PRODUCTS.find((p) => p.id === rec.productId))
+        .map((rec) => inventoryProducts.find((p) => p.id === rec.productId))
         .filter((p) => p !== undefined) as Product[];
 
       // If AI fails to match enough, fallback to defaults
       if (results.length < 3) {
-        return ALL_PRODUCTS.slice(0, 3);
+        return inventoryProducts.slice(0, 3);
       }
       return results.slice(0, 3);
     }
 
-    return ALL_PRODUCTS.slice(0, 3);
+    return inventoryProducts.slice(0, 3);
   } catch (error) {
     console.error("AI Personalization Error:", error);
-    return ALL_PRODUCTS.slice(0, 3); // Fallback
+    return inventoryProducts.slice(0, 3); // Fallback
   }
 };
 

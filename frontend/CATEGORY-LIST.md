@@ -1,0 +1,60 @@
+# Live Category Tree (WooCommerce)
+
+- Fasteners and Adhesives
+  - Adhesives
+    - General Purpose Adhesive
+  - Nails
+    - Nail-in Anchors
+    - Nails
+  - Tape and Seal Strips
+    - General Purpose Tapes
+- Outdoor Garden and Patio
+  - Gardening Tools
+    - Chainsaws
+    - Garden Cordless Power Tools
+    - Garden Spray Bottles
+- Safety and Protective Wear
+  - Safety Equipment
+    - Gloves
+- Tools and Machinery
+  - Drill Accessories
+    - Chucks and Keys
+  - Electrical Hand Tools
+    - Staple Guns and Staples
+  - Grinding Accessories
+    - Abrasive Grinding Disc
+  - Hand Tools
+    - Bolt Cutters and Tin Snip
+    - Chisels and Crowbar
+    - Levels and Accessories
+    - Pliers
+    - Saws and Accessories
+    - Screwdrivers and Allen Keys
+    - Spanners and Sockets
+    - Trowels Hawk and Float
+    - Wrenches
+  - Machinery
+    - Pressure Washer
+  - Measuring And Marking Tools
+    - Measuring Tools
+  - None
+  - Power Tools
+    - Cordless Tools Batt and Acc
+    - Drills
+    - Grinders
+    - Hobby Tools
+    - Planers
+    - Sander
+    - Saws
+    - Soldering
+  - Saws Accessories
+    - Cut off Discs
+    - Jigsaw and Bandsaw Blades
+  - Shop By Tool Application
+    - Plumbing Tools
+  - Tool Sets
+    - Rivetters and Rivets
+- Uncategorized
+- Water Tanks and Filtration
+  - Water Storage
+    - Water Tank Pumps

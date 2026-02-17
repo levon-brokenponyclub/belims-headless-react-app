@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { CartItem, Product, ShippingAddress } from "../types";
-import { CURRENCY_SYMBOL } from "../constants";
+import { CartItem, Product, ShippingAddress, Store } from "../types";
+import { CURRENCY_SYMBOL, STORES } from "../constants";
 import {
   getShippingRates,
   getFallbackShipping,
@@ -13,6 +13,7 @@ import {
   verifyPayment,
 } from "../services/paymentService";
 import { registerUser } from "../services/authService";
+import { getApiBaseUrl } from "../services/wooCommerceService";
 import {
   ArrowLeft,
   Check,
@@ -27,6 +28,7 @@ interface CheckoutProps {
   cartItems: CartItem[];
   onBack: () => void;
   onClearCart: () => void;
+  onSchedulePickup?: () => void;
 }
 
 type CheckoutStep = "details" | "shipping" | "payment" | "success";
@@ -49,6 +51,11 @@ interface ShippingRate {
   total_price: number;
   expected_delivery_date?: string;
   tier?: ShippingTier;
+}
+
+interface PickupSchedule {
+  date: string;
+  time: string;
 }
 
 // Helper Functions
@@ -117,11 +124,161 @@ function formatEta(dateStr?: string): string {
 
   return value;
 }
+const dayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+const parseTimeToMinutes = (value?: string) => {
+  if (!value) return null;
+  const [hours, minutes] = value.split(":").map((part) => Number(part));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+};
+
+const formatTimeLabel = (value?: string) => {
+  if (!value) return "";
+  const [hoursValue, minutesValue] = value.split(":").map(Number);
+  if (Number.isNaN(hoursValue) || Number.isNaN(minutesValue)) return value;
+  const suffix = hoursValue >= 12 ? "pm" : "am";
+  const normalizedHours = hoursValue % 12 || 12;
+  if (minutesValue === 0) {
+    return `${normalizedHours}${suffix}`;
+  }
+  return `${normalizedHours}:${String(minutesValue).padStart(2, "0")}${suffix}`;
+};
+
+const getNextOpenDay = (
+  hours: NonNullable<Store["hours"]>,
+  startIndex: number,
+) => {
+  for (let offset = 1; offset <= 7; offset += 1) {
+    const index = (startIndex + offset) % 7;
+    const dayKey = dayKeys[index];
+    const dayHours = hours[dayKey];
+    if (!dayHours || dayHours.closed) continue;
+    if (!dayHours.open || !dayHours.close) continue;
+    return { index, dayHours };
+  }
+  return null;
+};
+
+const getPickupStatus = (store?: Store | null) => {
+  if (!store?.hours) return null;
+  const now = new Date();
+  const dayKey = dayKeys[now.getDay()];
+  const dayHours = store.hours[dayKey];
+
+  if (!dayHours || dayHours.closed) {
+    const nextOpen = getNextOpenDay(store.hours, now.getDay());
+    if (nextOpen) {
+      const isTomorrow = nextOpen.index === (now.getDay() + 1) % 7;
+      const nextLabel = isTomorrow
+        ? "opens tomorrow"
+        : `opens ${dayLabels[nextOpen.index]}`;
+      return {
+        label: "Closed",
+        detail: `${nextLabel} ${formatTimeLabel(nextOpen.dayHours.open)}`,
+        isOpen: false,
+      };
+    }
+    return { label: "Closed", isOpen: false };
+  }
+
+  const openMinutes = parseTimeToMinutes(dayHours.open);
+  const closeMinutes = parseTimeToMinutes(dayHours.close);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  if (openMinutes === null || closeMinutes === null) {
+    return { label: "Closed", isOpen: false };
+  }
+
+  const breakStartMinutes = parseTimeToMinutes(dayHours.breakStart);
+  const breakEndMinutes = parseTimeToMinutes(dayHours.breakEnd);
+
+  if (
+    breakStartMinutes !== null &&
+    breakEndMinutes !== null &&
+    nowMinutes >= breakStartMinutes &&
+    nowMinutes < breakEndMinutes
+  ) {
+    return {
+      label: "Closed",
+      detail: `reopens ${formatTimeLabel(dayHours.breakEnd)}`,
+      isOpen: false,
+    };
+  }
+
+  if (nowMinutes < openMinutes) {
+    return {
+      label: "Closed",
+      detail: `opens ${formatTimeLabel(dayHours.open)}`,
+      isOpen: false,
+    };
+  }
+
+  if (nowMinutes >= closeMinutes) {
+    const nextOpen = getNextOpenDay(store.hours, now.getDay());
+    if (nextOpen) {
+      const isTomorrow = nextOpen.index === (now.getDay() + 1) % 7;
+      const nextLabel = isTomorrow
+        ? "opens tomorrow"
+        : `opens ${dayLabels[nextOpen.index]}`;
+      return {
+        label: "Closed",
+        detail: `${nextLabel} ${formatTimeLabel(nextOpen.dayHours.open)}`,
+        isOpen: false,
+      };
+    }
+    return { label: "Closed", isOpen: false };
+  }
+
+  if (nowMinutes >= closeMinutes - 60) {
+    return {
+      label: "Open",
+      detail: `closing soon - closing at ${formatTimeLabel(dayHours.close)}`,
+      isOpen: true,
+    };
+  }
+
+  return {
+    label: "Open",
+    detail: `closing at ${formatTimeLabel(dayHours.close)}`,
+    isOpen: true,
+  };
+};
+
+const formatScheduledPickup = (dateValue: string, timeValue: string) => {
+  const parsed = new Date(`${dateValue}T${timeValue}`);
+  if (Number.isNaN(parsed.getTime())) {
+    return `${dateValue} at ${timeValue}`;
+  }
+  const dayLabel = parsed.toLocaleDateString("en-ZA", { weekday: "long" });
+  const dateLabel = parsed.toLocaleDateString("en-ZA", {
+    day: "2-digit",
+    month: "short",
+  });
+  return `${dayLabel} ${dateLabel} at ${timeValue}`;
+};
+
+const getStoredPickupDistance = (storeId?: string) => {
+  if (!storeId || typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("selectedPickupStoreDistance");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: string; distance?: number };
+    if (parsed?.id === storeId && typeof parsed.distance === "number") {
+      return parsed.distance;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
 
 export const Checkout: React.FC<CheckoutProps> = ({
   cartItems,
   onBack,
   onClearCart,
+  onSchedulePickup,
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -138,6 +295,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
   );
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("delivery");
   const [promoCode, setPromoCode] = useState("");
+  const [pickupStore, setPickupStore] = useState<Store | null>(null);
+  const [pickupSchedule, setPickupSchedule] = useState<PickupSchedule | null>(
+    null,
+  );
 
   // Account Creation State
   const [createAccount, setCreateAccount] = useState(false);
@@ -177,6 +338,17 @@ export const Checkout: React.FC<CheckoutProps> = ({
   );
   const shippingCost = selectedShipping ? selectedShipping.total_price : 0;
   const total = subtotal + shippingCost;
+  const pickupStatus = getPickupStatus(pickupStore);
+  const scheduledLabel = pickupSchedule
+    ? formatScheduledPickup(pickupSchedule.date, pickupSchedule.time)
+    : null;
+  const pickupTone = pickupStatus?.isOpen
+    ? "text-green-600"
+    : pickupStatus?.isOpen === false
+      ? "text-red-600"
+      : "text-gray-500";
+  const pickupDistance =
+    pickupStore?.distance ?? getStoredPickupDistance(pickupStore?.id);
 
   // Auto-populate address from saved delivery location and fetch shipping rates
   useEffect(() => {
@@ -248,6 +420,250 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
     initializeFromSavedLocation();
   }, []);
+
+  useEffect(() => {
+    const storedFulfillment = localStorage.getItem("fulfillmentType");
+    const pickupSelected =
+      localStorage.getItem("pickupStoreSelected") === "true";
+    if (storedFulfillment === "pickup" && pickupSelected) {
+      setDeliveryType("pickup");
+    }
+
+    const rawStore = localStorage.getItem("selectedPickupStore");
+    if (rawStore) {
+      try {
+        const parsed = JSON.parse(rawStore) as Store;
+        if (parsed?.id && parsed?.name) {
+          setPickupStore(parsed);
+        }
+      } catch {
+        setPickupStore(null);
+      }
+    }
+
+    if (!rawStore && pickupSelected) {
+      const defaultStore = STORES.find((store) => store.id === "umzinto");
+      if (defaultStore) setPickupStore(defaultStore);
+    }
+
+    const rawSchedule = localStorage.getItem("pickupSchedule");
+    if (rawSchedule) {
+      try {
+        const parsed = JSON.parse(rawSchedule) as PickupSchedule;
+        if (parsed?.date && parsed?.time) {
+          setPickupSchedule(parsed);
+        }
+      } catch {
+        setPickupSchedule(null);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!pickupStore || pickupStore.hours) return;
+    let isActive = true;
+    const apiBase = getApiBaseUrl();
+
+    const hydrateStoreHours = async () => {
+      try {
+        const response = await fetch(`${apiBase}/ecommerce-policies`);
+        const data = await response.json();
+        const rawStores = Array.isArray(data?.store_locations)
+          ? data.store_locations
+          : [];
+        const normalized = rawStores
+          .map((store: any, index: number) => {
+            const name = String(store?.name || "").trim();
+            const address = String(store?.address || "")
+              .replace(/\s*\n\s*/g, ", ")
+              .trim();
+            if (!name && !address) return null;
+            return {
+              id: String(store?.id || name || index + 1),
+              name: name || `Store ${index + 1}`,
+              address: address || "",
+              phone: store?.phone ? String(store.phone) : undefined,
+              mapUrl: store?.map_url ? String(store.map_url) : undefined,
+              latitude: Number.isNaN(Number(store?.latitude))
+                ? undefined
+                : Number(store?.latitude),
+              longitude: Number.isNaN(Number(store?.longitude))
+                ? undefined
+                : Number(store?.longitude),
+              hours: {
+                mon: {
+                  open: store?.mon_open,
+                  close: store?.mon_close,
+                  breakStart: store?.mon_break_start,
+                  breakEnd: store?.mon_break_end,
+                  closed: Boolean(store?.mon_closed),
+                  note: store?.mon_note,
+                },
+                tue: {
+                  open: store?.tue_open,
+                  close: store?.tue_close,
+                  breakStart: store?.tue_break_start,
+                  breakEnd: store?.tue_break_end,
+                  closed: Boolean(store?.tue_closed),
+                  note: store?.tue_note,
+                },
+                wed: {
+                  open: store?.wed_open,
+                  close: store?.wed_close,
+                  breakStart: store?.wed_break_start,
+                  breakEnd: store?.wed_break_end,
+                  closed: Boolean(store?.wed_closed),
+                  note: store?.wed_note,
+                },
+                thu: {
+                  open: store?.thu_open,
+                  close: store?.thu_close,
+                  breakStart: store?.thu_break_start,
+                  breakEnd: store?.thu_break_end,
+                  closed: Boolean(store?.thu_closed),
+                  note: store?.thu_note,
+                },
+                fri: {
+                  open: store?.fri_open,
+                  close: store?.fri_close,
+                  breakStart: store?.fri_break_start,
+                  breakEnd: store?.fri_break_end,
+                  closed: Boolean(store?.fri_closed),
+                  note: store?.fri_note,
+                },
+                sat: {
+                  open: store?.sat_open,
+                  close: store?.sat_close,
+                  breakStart: store?.sat_break_start,
+                  breakEnd: store?.sat_break_end,
+                  closed: Boolean(store?.sat_closed),
+                  note: store?.sat_note,
+                },
+                sun: {
+                  open: store?.sun_open,
+                  close: store?.sun_close,
+                  breakStart: store?.sun_break_start,
+                  breakEnd: store?.sun_break_end,
+                  closed: Boolean(store?.sun_closed),
+                  note: store?.sun_note,
+                },
+              },
+            } as Store;
+          })
+          .filter(Boolean) as Store[];
+        const matched = normalized.find(
+          (store) =>
+            store.id === pickupStore.id || store.name === pickupStore.name,
+        );
+        if (matched?.hours && isActive) {
+          const updatedStore = { ...pickupStore, hours: matched.hours };
+          setPickupStore(updatedStore);
+          localStorage.setItem(
+            "selectedPickupStore",
+            JSON.stringify(updatedStore),
+          );
+        }
+      } catch (error) {
+        console.error("Failed to sync pickup hours:", error);
+      }
+    };
+
+    hydrateStoreHours();
+
+    return () => {
+      isActive = false;
+    };
+  }, [pickupStore]);
+
+  useEffect(() => {
+    if (deliveryType !== "pickup") {
+      if (selectedShipping?.service_name === "Pickup") {
+        setSelectedShipping(null);
+      }
+      return;
+    }
+
+    setSelectedShipping({
+      service_name: "Pickup",
+      total_price: 0,
+      expected_delivery_date: "",
+    });
+  }, [deliveryType, selectedShipping?.service_name]);
+
+  useEffect(() => {
+    if (deliveryType !== "delivery") return;
+    if (!customer.address || !customer.city || !customer.province) return;
+    if (loadingSavedRates) return;
+
+    const existingRates =
+      savedLocationRates.length > 0 ? savedLocationRates : shippingRates;
+    if (existingRates.length > 0) {
+      if (!selectedShipping) {
+        const fastest = selectFastestRate(existingRates);
+        if (fastest) setSelectedShipping(fastest);
+      }
+      return;
+    }
+
+    let isActive = true;
+    const fetchRates = async () => {
+      setLoadingSavedRates(true);
+      try {
+        const rates = await getShippingRates({
+          destination_address: {
+            street: customer.address,
+            city: customer.city,
+            province: customer.province,
+            postal_code: customer.postalCode,
+            country: "ZA",
+          },
+        });
+
+        let finalRates = rates;
+        if (!finalRates || finalRates.length === 0) {
+          finalRates = getFallbackShipping();
+        }
+
+        const classifiedRates = finalRates.map((rate: any) => ({
+          ...rate,
+          tier: classifyRate(rate, finalRates),
+        }));
+
+        if (!isActive) return;
+        setSavedLocationRates(classifiedRates);
+        const fastest = selectFastestRate(classifiedRates);
+        if (fastest) setSelectedShipping(fastest);
+      } catch (error) {
+        if (!isActive) return;
+        console.error("Failed to fetch delivery rates:", error);
+        const fallbackRates = getFallbackShipping().map((rate: any) => ({
+          ...rate,
+          tier: classifyRate(rate, getFallbackShipping()),
+        }));
+        setSavedLocationRates(fallbackRates);
+        const fastest = selectFastestRate(fallbackRates);
+        if (fastest) setSelectedShipping(fastest);
+      } finally {
+        if (isActive) setLoadingSavedRates(false);
+      }
+    };
+
+    fetchRates();
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    deliveryType,
+    customer.address,
+    customer.city,
+    customer.province,
+    customer.postalCode,
+    loadingSavedRates,
+    savedLocationRates.length,
+    shippingRates.length,
+    selectedShipping,
+  ]);
 
   useEffect(() => {
     if (!returnOrderId) return;
@@ -619,6 +1035,64 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       }
                     />
 
+                    {deliveryType === "pickup" && (
+                      <div className="pt-4">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Pickup Details
+                        </h3>
+                        <div className="mt-3 bg-gray-50 p-4 rounded border border-gray-200 space-y-1">
+                          <p className="text-sm text-gray-900">
+                            Pickup at:{" "}
+                            <span className="font-bold">
+                              {pickupStore?.name || "Select a store"}
+                            </span>
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {scheduledLabel ? (
+                              <>Scheduled: {scheduledLabel}</>
+                            ) : pickupStatus ? (
+                              <>
+                                <span className={`${pickupTone} font-semibold`}>
+                                  {pickupStatus.label}
+                                </span>
+                                {pickupStatus.detail && (
+                                  <span className="text-gray-400">
+                                    {" "}
+                                    - {pickupStatus.detail}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-gray-500">Check hours</span>
+                            )}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-semibold">Distance:</span>{" "}
+                            {pickupDistance !== null &&
+                            pickupDistance !== undefined
+                              ? `${pickupDistance} km away from you`
+                              : "Unavailable"}
+                          </p>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => onSchedulePickup?.()}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                onSchedulePickup?.();
+                              }
+                            }}
+                            className="mt-2 text-[12px] font-bold text-red-600 hover:text-red-600"
+                          >
+                            {scheduledLabel
+                              ? "Change scheduled pickup"
+                              : "Schedule Pickup"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Conditional shipping address field */}
                     {deliveryType === "delivery" && (
                       <>
@@ -774,33 +1248,38 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     )}
 
                     {/* Shipping Options Section - Only for Delivery */}
-                    {deliveryType === "delivery" &&
-                      customer.address &&
-                      customer.city &&
-                      customer.province && (
-                        <div className="border-t border-gray-200 pt-6 mt-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                            Choose Delivery Option
-                          </h3>
-                          {/* <p className="text-sm text-gray-600 mb-4">
+                    {deliveryType === "delivery" && (
+                      <div className="border-t border-gray-200 pt-6 mt-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          Choose Delivery Option
+                        </h3>
+                        {!customer.address ||
+                        !customer.city ||
+                        !customer.province ? (
+                          <p className="text-gray-500 text-center py-8">
+                            Enter your delivery address to view options.
+                          </p>
+                        ) : (
+                          <>
+                            {/* <p className="text-sm text-gray-600 mb-4">
                             Delivering to{" "}
                             <strong>
                               {customer.city}, {customer.province}
                             </strong>
                           </p> */}
 
-                          {loadingSavedRates ? (
-                            <div className="flex items-center justify-center py-8">
-                              <Loader2
-                                className="animate-spin text-belims-blue"
-                                size={24}
-                              />
-                            </div>
-                          ) : savedLocationRates.length > 0 ||
-                            shippingRates.length > 0 ? (
-                            <>
-                              {/* Selected Shipping Pill */}
-                              {/* {selectedShipping && (
+                            {loadingSavedRates ? (
+                              <div className="flex items-center justify-center py-8">
+                                <Loader2
+                                  className="animate-spin text-belims-blue"
+                                  size={24}
+                                />
+                              </div>
+                            ) : savedLocationRates.length > 0 ||
+                              shippingRates.length > 0 ? (
+                              <>
+                                {/* Selected Shipping Pill */}
+                                {/* {selectedShipping && (
                                 <div className="flex items-center gap-2 bg-blue-50 border border-belims-blue px-4 py-2 rounded-full w-fit mb-4">
                                   <Check
                                     size={18}
@@ -815,55 +1294,57 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                 </div>
                               )} */}
 
-                              {/* Shipping Cards */}
-                              <div className="space-y-4">
-                                {(savedLocationRates.length > 0
-                                  ? savedLocationRates
-                                  : shippingRates
-                                ).map((rate, idx) => {
-                                  const tier =
-                                    rate.tier ||
-                                    classifyRate(
-                                      rate,
-                                      savedLocationRates.length > 0
-                                        ? savedLocationRates
-                                        : shippingRates,
-                                    );
-                                  const isSelected =
-                                    selectedShipping?.service_name ===
-                                    rate.service_name;
-                                  const isFastest =
-                                    fastestRate?.service_name ===
-                                    rate.service_name;
+                                {/* Shipping Cards */}
+                                <div className="space-y-4">
+                                  {(savedLocationRates.length > 0
+                                    ? savedLocationRates
+                                    : shippingRates
+                                  ).map((rate, idx) => {
+                                    const tier =
+                                      rate.tier ||
+                                      classifyRate(
+                                        rate,
+                                        savedLocationRates.length > 0
+                                          ? savedLocationRates
+                                          : shippingRates,
+                                      );
+                                    const isSelected =
+                                      selectedShipping?.service_name ===
+                                      rate.service_name;
+                                    const isFastest =
+                                      fastestRate?.service_name ===
+                                      rate.service_name;
 
-                                  return (
-                                    <div
-                                      key={idx}
-                                      onClick={() => handleShippingSelect(rate)}
-                                      className={`border p-4 py-6 rounded w-full cursor-pointer transition-all flex justify-between items-center ${
-                                        isSelected
-                                          ? "border-belims-blue bg-blue-50"
-                                          : isFastest
-                                            ? "border-orange-300 bg-orange-50"
-                                            : "border-gray-200 hover:border-belims-blue hover:bg-gray-50"
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-3 flex-1">
-                                        {/* Radio Button */}
-                                        <div className="flex-shrink-0">
-                                          <div
-                                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                              isSelected
-                                                ? "border-belims-blue bg-belims-blue"
-                                                : "border-gray-300 bg-white"
-                                            }`}
-                                          >
-                                            {isSelected && (
-                                              <div className="w-2 h-2 rounded-full bg-white" />
-                                            )}
+                                    return (
+                                      <div
+                                        key={idx}
+                                        onClick={() =>
+                                          handleShippingSelect(rate)
+                                        }
+                                        className={`border p-4 py-6 rounded w-full cursor-pointer transition-all flex justify-between items-center ${
+                                          isSelected
+                                            ? "border-belims-blue bg-blue-50"
+                                            : isFastest
+                                              ? "border-orange-300 bg-orange-50"
+                                              : "border-gray-200 hover:border-belims-blue hover:bg-gray-50"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-3 flex-1">
+                                          {/* Radio Button */}
+                                          <div className="flex-shrink-0">
+                                            <div
+                                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                                isSelected
+                                                  ? "border-belims-blue bg-belims-blue"
+                                                  : "border-gray-300 bg-white"
+                                              }`}
+                                            >
+                                              {isSelected && (
+                                                <div className="w-2 h-2 rounded-full bg-white" />
+                                              )}
+                                            </div>
                                           </div>
-                                        </div>
-                                        {/* <Truck
+                                          {/* <Truck
                                           size={24}
                                           className={
                                             isSelected
@@ -871,45 +1352,47 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                               : "text-gray-400"
                                           }
                                         /> */}
-                                        <div>
-                                          <div className="font-bold text-gray-900 flex items-center gap-2">
-                                            {rate.service_name}
-                                            {tier === "Express" && (
-                                              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
-                                                <Zap size={12} /> Faster
-                                              </span>
-                                            )}
-                                            {tier === "Economy" && (
-                                              <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                                                Budget
-                                              </span>
-                                            )}
+                                          <div>
+                                            <div className="font-bold text-gray-900 flex items-center gap-2">
+                                              {rate.service_name}
+                                              {tier === "Express" && (
+                                                <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                                                  <Zap size={12} /> Faster
+                                                </span>
+                                              )}
+                                              {tier === "Economy" && (
+                                                <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                                  Budget
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                              {formatEta(
+                                                rate.expected_delivery_date,
+                                              )}
+                                            </div>
                                           </div>
-                                          <div className="text-xs text-gray-500 mt-1">
-                                            {formatEta(
-                                              rate.expected_delivery_date,
-                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="font-bold text-lg text-gray-900">
+                                            {CURRENCY_SYMBOL}
+                                            {rate.total_price.toFixed(2)}
                                           </div>
                                         </div>
                                       </div>
-                                      <div className="text-right">
-                                        <div className="font-bold text-lg text-gray-900">
-                                          {CURRENCY_SYMBOL}
-                                          {rate.total_price.toFixed(2)}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </>
-                          ) : (
-                            <p className="text-gray-500 text-center py-8">
-                              No shipping options available.
-                            </p>
-                          )}
-                        </div>
-                      )}
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            ) : (
+                              <p className="text-gray-500 text-center py-8">
+                                No shipping options available.
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
 
                     <button
                       disabled={
@@ -1104,17 +1587,28 @@ export const Checkout: React.FC<CheckoutProps> = ({
                   </li>
                   <li className="flex items-center justify-between">
                     <div className="flex flex-col">
-                      <span>
-                        {deliveryType === "delivery" ? "Shipping" : "Pickup"}
-                      </span>
-                      {selectedShipping && (
-                        <span className="text-xs text-gray-500">
-                          {selectedShipping.service_name}
-                        </span>
+                      {deliveryType === "delivery" ? (
+                        <>
+                          <span>Shipping</span>
+                          {selectedShipping && (
+                            <span className="text-xs text-gray-500">
+                              {selectedShipping.service_name}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <span>Pickup</span>
+                          {pickupStore?.name && (
+                            <span className="text-xs text-gray-500">
+                              {pickupStore.name}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                     <span className="font-semibold text-gray-900">
-                      {shippingCost > 0 || deliveryType === "delivery"
+                      {deliveryType === "delivery"
                         ? `${CURRENCY_SYMBOL}${shippingCost.toFixed(2)}`
                         : `${CURRENCY_SYMBOL}0.00`}
                     </span>

@@ -17,15 +17,30 @@ export default {
     },
     extend: {
       // ============================================
-      // COLOR SYSTEM (Belims Premium)
+      // COLOR SYSTEM (Belims Premium + Semantic Aliases)
       // ============================================
       colors: {
-        "belims-blue": "#04223E",
+        // Semantic aliases (source of truth for UI)
+        canvas: "#F9F9F9", // page background
+        surface: "#FFFFFF", // cards / header background
+        ink: "#322783", // primary text
+        muted: "#565969", // secondary text
+        soft: "#ECF0F1", // subtle fills (chips, muted panels)
+        subtle: "#E0E0E0", // thin border color
+        brand: "#322783", // Belims primary blue
+        accent: "#F97316", // Belims orange
+        grey: "var(--color-grey)",
+        "grey-light": "var(--color-grey-light)",
+        "red-muted": "var(--color-red-muted)",
+        "grey-medium": "var(--color-grey-medium)",
+
+        // Legacy Belims palette (for backwards compatibility)
+        "belims-blue": "#322783",
         "belims-light": "#0B4AA2",
         "belims-accent": "#F97316",
         belims: {
           // Brand / primary
-          navy: "#04223E", // Primary CTA, headings, nav
+          navy: "#322783", // Primary CTA, headings, nav
           red: "#DF1119", // TRUE accent (badges, key highlights, errors)
           orange: "#F97316", // Optional — use sparingly (urgency only)
 
@@ -37,7 +52,7 @@ export default {
           border: "#E0E0E0",
 
           // Text
-          ink: "#04223E", // primary text
+          ink: "#322783", // primary text
           muted: "#565969", // secondary text
         },
 
@@ -64,79 +79,84 @@ export default {
       // TYPOGRAPHY SYSTEM - SINGLE SOURCE OF TRUTH
       // ============================================
       fontFamily: {
-        heading: ["Sora", "Inter", "system-ui", "sans-serif"],
-        body: ["Inter", "system-ui", "sans-serif"],
-        sans: ["Inter", "system-ui", "sans-serif"],
+        heading: ["Instrument Sans", "sans-serif"],
+        body: ["Instrument Sans", "sans-serif"],
+        sans: ["Instrument Sans", "sans-serif"],
       },
 
       fontWeight: {
-        normal: "400",
+        normal: "500",
         medium: "500",
         semibold: "600",
         bold: "700",
       },
 
       fontSize: {
-        xs: ["11px", { lineHeight: "16px", letterSpacing: "0.02em" }],
-        sm: ["12px", { lineHeight: "18px", letterSpacing: "0.01em" }],
-        base: ["14px", { lineHeight: "22px", letterSpacing: "0" }],
-        md: ["15px", { lineHeight: "24px", letterSpacing: "0" }],
-        lg: ["16px", { lineHeight: "26px", letterSpacing: "-0.01em" }],
+        xs: ["11px", { lineHeight: "1.6", letterSpacing: "0.02em" }],
+        sm: ["12px", { lineHeight: "1.6", letterSpacing: "0.01em" }],
+        base: ["15px", { lineHeight: "1.6", letterSpacing: "0" }],
+        md: ["15px", { lineHeight: "1.6", letterSpacing: "0" }],
+        lg: ["16px", { lineHeight: "1.6", letterSpacing: "-0.01em" }],
 
         h6: [
-          "14px",
-          { lineHeight: "20px", letterSpacing: "0.02em", fontWeight: "600" },
+          "25px",
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
         h5: [
-          "16px",
-          { lineHeight: "24px", letterSpacing: "0", fontWeight: "600" },
+          "29px",
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
         h4: [
-          "18px",
-          { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600" },
+          "35px",
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
         h3: [
-          "20px",
-          { lineHeight: "30px", letterSpacing: "-0.01em", fontWeight: "700" },
+          "45px",
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
         h2: [
-          "24px",
-          { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "700" },
+          "51px",
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
         h1: [
-          "32px",
-          { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" },
+          "64px",
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
 
         "display-sm": [
-          "36px",
-          { lineHeight: "44px", letterSpacing: "-0.02em", fontWeight: "700" },
+          "64px",
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
         "display-md": [
-          "42px",
-          { lineHeight: "52px", letterSpacing: "-0.03em", fontWeight: "700" },
+          "72px",
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
         "display-lg": [
-          "56px",
-          { lineHeight: "64px", letterSpacing: "-0.03em", fontWeight: "700" },
+          "88px",
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
 
         price: [
           "20px",
-          { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "700" },
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
         "price-lg": [
           "28px",
-          { lineHeight: "36px", letterSpacing: "-0.02em", fontWeight: "700" },
+          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
         ],
 
         label: [
           "11px",
-          { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" },
+          { lineHeight: "1.6", letterSpacing: "0.05em", fontWeight: "600" },
         ],
         button: [
-          "14px",
-          { lineHeight: "20px", letterSpacing: "0", fontWeight: "600" },
+          "15px",
+          {
+            lineHeight: "1.6",
+            letterSpacing: "0",
+            fontWeight: "700",
+            textTransform: "capitalize",
+          },
         ],
       },
 
@@ -150,9 +170,22 @@ export default {
         widest: "0.1em",
       },
 
-      // (Optional) consistent premium shadow tokens
+      // Border radius
+      borderRadius: {
+        pill: "10rem",
+        block: "1rem",
+        sm: "0.5rem",
+      },
+
+      // Button defaults (sizing & styling)
+      maxHeight: {
+        "btn-height": "48px",
+      },
+
+      // Premium shadow tokens for cards and elevated states
       boxShadow: {
         card: "0 1px 2px rgba(16,24,40,0.06)",
+        pop: "0 8px 24px rgba(16,24,40,0.08)",
         float: "0 6px 18px rgba(16,24,40,0.08)",
       },
     },

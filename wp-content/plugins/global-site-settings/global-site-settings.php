@@ -74,7 +74,7 @@ function global_site_settings_init() {
         'includes/class-orders-endpoint.php',
         'includes/class-user-endpoint.php', // User registration & management
         'includes/class-user-admin-page.php', // User management admin UI
-        'includes/class-ecommerce-policies.php', // Ecommerce policies (Returns, Warranty, Shipping)
+        'includes/class-ecommerce-settings.php', // Ecommerce policies (Returns, Warranty, Shipping)
         'includes/class-bundled-products.php', // Bundled Products for WooCommerce
         // FTG Sync integration
         'includes/ftg-sync/class-ftg-api.php',
@@ -98,6 +98,38 @@ function global_site_settings_init() {
     add_action('init', 'global_site_settings_register_product_taxonomies');
 }
 add_action('plugins_loaded', 'global_site_settings_init');
+
+function global_site_settings_enqueue_maps_autocomplete() {
+    $maps_api_key = get_option('ecommerce_google_maps_api_key', '');
+    if ($maps_api_key === '') {
+        return;
+    }
+
+    $maps_url = add_query_arg(
+        array(
+            'key' => $maps_api_key,
+            'libraries' => 'places',
+            'loading' => 'async',
+            'callback' => 'globalSiteSettingsInitMapsAutocomplete',
+        ),
+        'https://maps.googleapis.com/maps/api/js'
+    );
+
+    wp_enqueue_script('global-site-settings-google-maps', $maps_url, array(), null, true);
+    wp_add_inline_script(
+        'global-site-settings-google-maps',
+        'window.globalSiteSettingsInitMapsAutocomplete = function() {' .
+            'if (typeof window._gssInitMaps === "function") {' .
+                'window._gssInitMaps();' .
+            '} else {' .
+                'window._gssMapsReady = true;' .
+            '}' .
+        '};',
+        'before'
+    );
+}
+
+add_action('admin_enqueue_scripts', 'global_site_settings_enqueue_maps_autocomplete');
 
 /**
  * Register custom user roles
@@ -532,9 +564,17 @@ function global_site_settings_main_page() {
         require_once $bobgo_file;
     }
 
+    // Handle dashboard toggles
+    if (isset($_POST['save_ftg_enabled_dashboard']) && check_admin_referer('save_ftg_enabled_dashboard_action', 'ftg_enabled_dashboard_nonce')) {
+        update_field('ftg_enabled', isset($_POST['ftg_enabled']) ? 1 : 0, 'option');
+    }
+    if (isset($_POST['save_bobgo_enabled_dashboard']) && check_admin_referer('save_bobgo_enabled_dashboard_action', 'bobgo_enabled_dashboard_nonce')) {
+        update_field('bobgo_enabled', isset($_POST['bobgo_enabled']) ? 1 : 0, 'option');
+    }
+
     // Integration statuses for dashboard summary
     $ftg_enabled = (bool) get_field('ftg_enabled', 'option');
-    $bobgo_enabled = !empty(get_option('bobgo_api_token', ''));
+    $bobgo_enabled = (bool) get_field('bobgo_enabled', 'option');
     
     // Load new dashboard template
     /* $dashboard_template = GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/dashboard-template.php';
@@ -668,55 +708,76 @@ function global_site_settings_main_page() {
                     
                     
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                    <div class="bpc-grid">
                         
-                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; display: grid; gap: 16px;">
+                        <div class="bpc-panel">
                             <div>
-                                <h4>White Label</h4>
-                                <p>White label & rebrand the WordPress admin area with the White Label module.</p> 
+                                <h4>Find The Gap</h4>
+                                <p>Enable product sync with Find The Gap</p>
                             </div>
-                            <div class="feature-status">
+                            <form method="post" action="" class="feature-status">
+                                <?php wp_nonce_field('save_ftg_enabled_dashboard_action', 'ftg_enabled_dashboard_nonce'); ?>
+                                <input type="hidden" name="save_ftg_enabled_dashboard" value="1" />
                                 <div class="status">
                                     <span>Status: </span>
                                     <span class="status-code" data-active-text="Active" data-inactive-text="Inactive">
-                                    <span class="active">Active</span>								</span>
+                                        <span class="<?php echo $ftg_enabled ? 'active' : 'inactive'; ?>">
+                                            <?php echo $ftg_enabled ? 'Active' : 'Inactive'; ?>
+                                        </span>
+                                    </span>
                                 </div>
                                 <div class="status-switch">
-                                    <label for="udb_is_active_white_label" class="toggle-switch">
-                                        <input type="checkbox" name="white_label" id="udb_is_active_white_label" checked="checked">
+                                    <label for="ftg-enabled-toggle-dashboard" class="toggle-switch">
+                                        <input type="checkbox" name="ftg_enabled" id="ftg-enabled-toggle-dashboard" value="1" <?php checked(1, $ftg_enabled); ?> />
                                         <div class="switch-track">
                                             <div class="switch-thumb"></div>
                                         </div>
                                     </label>
                                 </div>
-                            </div>
+                            </form>
                         </div>  
 
-                        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; display: grid; gap: 16px;">
+                        <div class="bpc-panel">
                             <div>
-                                <h4>White Label</h4>
-                                <p>White label & rebrand the WordPress admin area with the White Label module.</p> 
+                                <h4>BobGo Shipping</h4>
+                                <p>Enable shipping integration with BobGo.</p>
                             </div>
-                            <div class="feature-status">
+                            <form method="post" action="" class="feature-status">
+                                <?php wp_nonce_field('save_bobgo_enabled_dashboard_action', 'bobgo_enabled_dashboard_nonce'); ?>
+                                <input type="hidden" name="save_bobgo_enabled_dashboard" value="1" />
                                 <div class="status">
                                     <span>Status: </span>
                                     <span class="status-code" data-active-text="Active" data-inactive-text="Inactive">
-                                    <span class="active">Active</span>								</span>
+                                        <span class="<?php echo $bobgo_enabled ? 'active' : 'inactive'; ?>">
+                                            <?php echo $bobgo_enabled ? 'Active' : 'Inactive'; ?>
+                                        </span>
+                                    </span>
                                 </div>
                                 <div class="status-switch">
-                                    <label for="udb_is_active_white_label" class="toggle-switch">
-                                        <input type="checkbox" name="white_label" id="udb_is_active_white_label" checked="checked">
+                                    <label for="bobgo-enabled-toggle-dashboard" class="toggle-switch">
+                                        <input type="checkbox" name="bobgo_enabled" id="bobgo-enabled-toggle-dashboard" value="1" <?php checked(1, $bobgo_enabled); ?> />
                                         <div class="switch-track">
                                             <div class="switch-thumb"></div>
                                         </div>
                                     </label>
                                 </div>
-                            </div>
+                            </form>
                         </div>  
                     </div>
+
+                    <script>
+                    jQuery(document).ready(function($) {
+                        $('#ftg-enabled-toggle-dashboard').on('change', function() {
+                            $(this).closest('form').trigger('submit');
+                        });
+                        $('#bobgo-enabled-toggle-dashboard').on('change', function() {
+                            $(this).closest('form').trigger('submit');
+                        });
+                    });
+                    </script>
                     
                     <h3>Quick Actions</h3>
-                    <p>
+                    <p class="bpc-actions">
                         <button class="bpc-btn-primary" onclick="jQuery('.bpc-nav-item[data-tab=\'ftg-sync\']').click()">
                             Go to FTG Sync
                         </button>
@@ -1503,7 +1564,7 @@ function global_site_settings_main_page() {
                     $current_env = get_option('belims_frontend_environment', 'production');
                     ?>
                     
-                    <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div class="bpc-panel bpc-inline">
                         <div style="flex: 1;">
                             <div style="font-weight: 600; margin-bottom: 8px;">Active Environment: 
                                 <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; <?php echo $current_env === 'production' ? 'background: #d1fae5; color: #065f46;' : 'background: #fef3c7; color: #92400e;'; ?>">
@@ -1583,8 +1644,8 @@ function global_site_settings_main_page() {
                     $active_cors = !empty($cors_field) ? $cors_field : $cors_option;
                     
                     if (!empty($active_cors) || !empty($cors_field) || !empty($cors_option)) {
-                        echo '<div style="background: #f0f6fc; border-left: 4px solid #0969da; padding: 12px 16px; margin-bottom: 20px; border-radius: 6px;">';
-                        echo '<strong style="color: #0969da;">Current Active CORS Setting:</strong><br>';
+                        echo '<div class="bpc-callout bpc-callout--info" style="margin-bottom: 20px;">';
+                        echo '<strong>Current Active CORS Setting:</strong><br>';
                         if (!empty($cors_field)) {
                             echo '<code style="background: white; padding: 2px 6px; border-radius: 3px;">' . esc_html($cors_field) . '</code> <span style="color: #1a7f37;">(from ACF)</span>';
                         } elseif (!empty($cors_option)) {
@@ -1623,7 +1684,7 @@ function global_site_settings_main_page() {
                         <p class="bpc-card-description">Test and verify CORS configuration.</p>
                     </div>
 
-                    <div style="display: flex; gap: 15px; margin-bottom: 25px;">
+                    <div class="bpc-actions" style="margin-bottom: 25px;">
                         <button type="button" id="test-cors-config" class="bpc-btn-primary">
                             <span class="dashicons dashicons-shield" style="margin-top: 3px;"></span> Verify CORS
                         </button>
@@ -1746,7 +1807,7 @@ function global_site_settings_main_page() {
                     }
                     ?>
 
-                    <form method="post" action="" enctype="multipart/form-data" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <form method="post" action="" enctype="multipart/form-data" class="bpc-panel">
                         <?php wp_nonce_field('import_products_action', 'import_nonce'); ?>
                         
                         <div style="margin-bottom: 20px;">
@@ -1760,7 +1821,7 @@ function global_site_settings_main_page() {
                             </p>
                         </div>
 
-                        <div style="display: flex; gap: 10px; align-items: center;">
+                        <div class="bpc-actions">
                             <input type="submit" name="import_products" class="bpc-btn-primary" value="🚀 Import Products" />
                             <span style="color: #64748b; font-size: 13px;">
                                 Existing products updated, new products created as draft for review
@@ -1768,8 +1829,8 @@ function global_site_settings_main_page() {
                         </div>
                     </form>
 
-                    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px 20px; border-radius: 6px; margin-top: 20px;">
-                        <p style="margin: 0; color: #1e40af; font-size: 13px;">
+                    <div class="bpc-callout bpc-callout--info" style="margin-top: 20px;">
+                        <p style="margin: 0; font-size: 13px;">
                             <strong>ℹ️ How it works:</strong><br>
                             1. Prepare CSV with columns: SKU, Title, URL, Description, Status<br>
                             2. Upload the file above<br>
@@ -1829,7 +1890,7 @@ function global_site_settings_main_page() {
                     }
                     ?>
 
-                    <form method="post" action="" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <form method="post" action="" class="bpc-panel">
                         <?php wp_nonce_field('export_products_action', 'export_nonce'); ?>
                         
                         <p style="color: #64748b; font-size: 13px; margin-bottom: 15px;">
@@ -1865,8 +1926,8 @@ function global_site_settings_main_page() {
                     });
                     </script>
 
-                    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px 20px; border-radius: 6px; margin-top: 20px;">
-                        <p style="margin: 0; color: #1e40af; font-size: 13px;">
+                    <div class="bpc-callout bpc-callout--info" style="margin-top: 20px;">
+                        <p style="margin: 0; font-size: 13px;">
                             <strong>ℹ️ Export Details:</strong><br>
                             ✓ Includes all product SKUs and titles<br>
                             ✓ Exports full product descriptions<br>
@@ -1906,7 +1967,7 @@ function global_site_settings_main_page() {
                         </li>
                     </ul>
 
-                    <div style="display: flex; gap: 15px; margin-top: 25px;">
+                    <div class="bpc-actions" style="margin-top: 25px;">
                         <button type="button" id="test-wc-endpoints" class="bpc-btn-primary">
                             <span class="dashicons dashicons-rest-api" style="margin-top: 3px;"></span> Test Endpoints
                         </button>
@@ -2032,8 +2093,8 @@ function global_site_settings_main_page() {
                         <p class="bpc-card-description">Configure payment gateway integrations.</p>
                     </div>
                     
-                    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; border-radius: 6px; margin-bottom: 20px;">
-                        <p style="margin: 0; color: #92400e;">
+                    <div class="bpc-callout bpc-callout--warning" style="margin-bottom: 20px;">
+                        <p style="margin: 0;">
                             <strong>💳 Payment Gateway Configuration:</strong><br>
                             Payment gateways are managed through WooCommerce settings.
                         </p>
@@ -2049,7 +2110,7 @@ function global_site_settings_main_page() {
                         <li><strong>Other WooCommerce payment plugins</strong></li>
                     </ul>
                     
-                    <div style="margin-top: 20px;">
+                    <div class="bpc-actions" style="margin-top: 20px;">
                         <a href="<?php echo admin_url('admin.php?page=wc-settings&tab=checkout'); ?>" class="bpc-btn-primary">
                             Go to Payment Settings
                         </a>
@@ -2073,8 +2134,8 @@ function global_site_settings_main_page() {
                     $ai_key_set = !empty($ai_key);
                     ?>
 
-                    <div style="background: #f0edff; border-left: 4px solid #7c3aed; padding: 15px 20px; border-radius: 6px; margin-bottom: 20px;">
-                        <p style="margin: 0; color: #5b21b6;">
+                    <div class="bpc-callout bpc-callout--accent" style="margin-bottom: 20px;">
+                        <p style="margin: 0;">
                             <strong>🤖 AI Services:</strong><br>
                             Configure Gemini access for AI recommendations and assistants.
                         </p>

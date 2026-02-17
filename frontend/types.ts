@@ -8,6 +8,7 @@ export interface Product {
   price_excl_vat?: number;
   image: string;
   images?: string[]; // For gallery
+  video_url?: string; // Video URL for product gallery (local or external)
   rating: number;
   reviews: number;
   stock: number; // Current stock
@@ -132,6 +133,21 @@ export interface Store {
   name: string;
   address: string;
   distance?: number;
+  phone?: string;
+  latitude?: number;
+  longitude?: number;
+  mapUrl?: string;
+  hours?: Record<
+    string,
+    {
+      open?: string;
+      close?: string;
+      breakStart?: string;
+      breakEnd?: string;
+      closed?: boolean;
+      note?: string;
+    }
+  >;
 }
 
 export interface CartItem extends Product {

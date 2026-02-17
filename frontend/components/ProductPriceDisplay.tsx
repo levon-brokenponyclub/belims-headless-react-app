@@ -111,16 +111,16 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
 
   const headlineClass = useMemo(() => {
     if (dualMode || isTradeToggleActive) return "text-belims-accent";
-    if (deal && deal.price && deal.compareAtPrice) return "text-red-600";
-    return "text-gray-900";
+    if (deal && deal.price && deal.compareAtPrice) return "text-red-muted";
+    return "text-grey";
   }, [dualMode, isTradeToggleActive, deal]);
 
   return (
     <div className={className}>
       <div className="items-start gap-4">
-        <div className="flex justify-between">
+        <div className="flex justify-start gap-2">
           <div
-            className={`font-heading text-[28px] leading-tight font-bold ${headlineClass}`}
+            className={`font-heading text-[28px] font-bold ${headlineClass}`}
           >
             {formatMoney(dominantPrice)}
           </div>
@@ -168,15 +168,15 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
           ) : (
             <>
               {compareForNonTrade && (
-                <div className="mt-1 flex flex-wrap items-center gap-2 font-body text-sm text-gray-500">
+                <div className="flex flex-wrap items-center gap-2 font-body text-[18px] text-grey-medium">
                   <span className="line-through">
                     {formatMoney(compareForNonTrade)}
                   </span>
-                  {savings > 0 && (
+                  {/* {savings > 0 && (
                     <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-[12px] font-semibold text-gray-700">
                       Save {formatMoney(savings)}
                     </span>
-                  )}
+                  )} */}
                 </div>
               )}
             </>

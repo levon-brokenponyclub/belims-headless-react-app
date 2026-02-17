@@ -215,6 +215,17 @@ class Belims_Products_Endpoint {
             }
         }
 
+        // Get video URL from ACF
+        $video_url = '';
+        if (function_exists('get_field')) {
+            $video_url = get_field('video_url', $product->get_id());
+        }
+        
+        // Use test video for all products if no video is set (for testing)
+        if (empty($video_url)) {
+            $video_url = '/images/development/output_32s_50s_360p_under1_5mb.mp4';
+        }
+
         return array(
             'id' => (string) $product->get_id(),
             'name' => $product->get_name(),
@@ -226,6 +237,7 @@ class Belims_Products_Endpoint {
             'price_excl_vat' => $regular_price_excl_vat,
             'image' => $main_image ?: '',
             'images' => $images,
+            'video_url' => $video_url ?: '',
             'acf' => $acf_data,
             'rating' => floatval($product->get_average_rating()),
             'reviews' => intval($product->get_review_count()),
@@ -327,7 +339,7 @@ class Belims_Products_Endpoint {
             foreach ($manual_bundles as $bundled_product) {
                 $bundled_wc_product = wc_get_product($bundled_product['id']);
                 
-                if ($bundled_wc_product && $bundled_wc_product->is_in_stock()) {
+                if ($bundled_wc_product) {
                     $price_incl_vat = floatval($bundled_wc_product->get_price());
                     $rating = floatval($bundled_wc_product->get_average_rating());
                     

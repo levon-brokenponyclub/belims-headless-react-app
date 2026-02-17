@@ -16,22 +16,24 @@ interface DeliveryRateOptionProps {
   option: DeliveryRateOptionData;
   isSelected: boolean;
   onSelect: (id: string) => void;
+  className?: string;
 }
 
 export const DeliveryRateOption: React.FC<DeliveryRateOptionProps> = ({
   option,
   isSelected,
   onSelect,
+  className = "",
 }) => {
   return (
     <button
       type="button"
       onClick={() => onSelect(option.id)}
-      className={`flex items-center justify-between p-6 rounded-md border transition-all text-left w-full ${
+      className={`relative z-[1] flex items-center justify-between p-6 rounded-md border transition-all text-left w-full ${
         isSelected
           ? "border-green-500 bg-[#dcfce796]"
           : "border-gray-300 bg-white hover:border-gray-400"
-      }`}
+      } ${className}`}
     >
       <div className="flex items-center gap-3 w-[75%]">
         {/* Selection Indicator (Left) */}

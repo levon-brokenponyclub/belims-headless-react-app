@@ -23,6 +23,7 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
   addToCart,
 }) => {
   const [selectedBundleItems, setSelectedBundleItems] = useState<string[]>([]);
+  const maxBundleCount = 3;
 
   // Reset bundle selection when product changes
   useEffect(() => {
@@ -46,6 +47,48 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
     });
   };
 
+  const formatMoney = (value: number) =>
+    `${CURRENCY_SYMBOL}${value.toLocaleString("en-ZA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  const getStockIndicator = (stockLevel = 0) => {
+    if (stockLevel <= 0) {
+      return {
+        text: "Out of stock",
+        tone: "text-[#922c2c]",
+        dot: "bg-[#922c2c]",
+        light: "bg-[#f7e5e5]",
+      };
+    }
+
+    if (stockLevel <= 3) {
+      return {
+        text: `Only ${stockLevel} left`,
+        tone: "text-[#bd6b1b]",
+        dot: "bg-[#bd6b1b]",
+        light: "bg-[#f8e1cb]",
+      };
+    }
+
+    if (stockLevel <= 10) {
+      return {
+        text: "Low stock",
+        tone: "text-[#bd6b1b]",
+        dot: "bg-[#bd6b1b]",
+        light: "bg-[#f8e1cb]",
+      };
+    }
+
+    return {
+      text: "In stock",
+      tone: "text-[#337239]",
+      dot: "bg-[#337239]",
+      light: "bg-[#ddf0df]",
+    };
+  };
+
   // Determine bundle products
   let bundleProducts: BundleProduct[] = product.bundleCandidates || [];
 
@@ -64,7 +107,7 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
   }
 
   // Limit to a maximum of three bundle products
-  bundleProducts = bundleProducts.slice(0, 3);
+  bundleProducts = bundleProducts.slice(0, maxBundleCount);
 
   // Don't render if no bundle products
   if (!bundleProducts || bundleProducts.length === 0) {
@@ -87,6 +130,7 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
   const discount = getDiscount(totalCount);
   const discountedTotal = originalTotal * (1 - discount);
   const savings = originalTotal - discountedTotal;
+  const progress = Math.min(totalCount / maxBundleCount, 1) * 100;
 
   const handleAddBundleToCart = () => {
     // Add main product plus all selected bundle items to cart
@@ -97,119 +141,196 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
   };
 
   return (
-    <section className="p-0">
-      <div className="container mx-auto px-0">
-        <div className="w-full mx-auto relative">
-          {/* <h3 className="text-2xl font-bold text-gray-900 font-heading mb-8 text-center">
-            Buy more & save
-          </h3> */}
-          {discount > 0 && (
-            <div className="bg-red-500 z-30 text-white text-sm font-bold px-4 py-2 rounded absolute top-3 left-3">
-              {(discount * 100).toFixed(0)}% Discount
-            </div>
-          )}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-4">
-            {/* Products Row */}
-            <div className="flex items-center justify-center gap-3 mb-6 flex-wrap">
-              {/* Bundle Items */}
-              {bundleProducts.map((item, index) => (
-                <React.Fragment key={item.id}>
-                  {index > 0 && (
-                    <div className="text-2xl font-bold text-gray-400">+</div>
-                  )}
-                  <div
-                    onClick={() => toggleBundleItem(item.id)}
-                    className={`relative flex flex-col w-[155px] rounded border bg-white transition-all cursor-pointer ${
-                      selectedBundleItems.includes(item.id)
-                        ? "border-belims-blue ring-2 ring-belims-blue ring-opacity-50"
-                        : "border-[#E0E0E0] hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
-                    }`}
-                  >
-                    {/* Selection Indicator */}
-                    {selectedBundleItems.includes(item.id) && (
-                      <div className="absolute top-3 right-3 z-10 w-6 h-6 bg-belims-blue rounded-full flex items-center justify-center shadow-md">
-                        <svg
-                          className="w-4 h-4 text-white"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                    )}
+    <section className="py-10 bg-[#F5F691]">
+      <div className="container mx-auto px-4">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            {bundleProducts.map((item) => {
+              const isSelected = selectedBundleItems.includes(item.id);
+              const stockIndicator = getStockIndicator(item.stock ?? 0);
 
-                    {/* Image */}
-                    <div className="flex items-center justify-center bg-[#F9F9F9] h-22 p-4">
+              return (
+                <div
+                  key={item.id}
+                  className={`relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white transition-shadow shadow-[0_1px_2px_rgba(16,24,40,0.06)] hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)] ${
+                    isSelected
+                      ? "border-[#1f1f1f] ring-1 ring-[#1f1f1f]"
+                      : "border-grey-light"
+                  }`}
+                >
+                  <div className="relative flex h-56 items-center justify-center bg-grey-light p-6">
+                    {item.image ? (
                       <img
                         src={item.image}
                         alt={item.name}
-                        className="max-h-full max-w-full object-contain mix-blend-multiply"
                         loading="lazy"
                         decoding="async"
+                        className="absolute max-h-full max-w-full p-4 object-contain mix-blend-multiply"
                       />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center rounded bg-[#ECF0F1] text-sm text-[#565969]">
+                        No image
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-1 flex-col p-5">
+                    <div className="mb-1 text-[11px] uppercase text-[#676767]">
+                      {item.category || "Product"}
+                    </div>
+                    <div className="mb-2 line-clamp-2 font-heading text-[15px] font-semibold leading-[1.35] text-gray-900">
+                      {item.name}
                     </div>
 
-                    {/* Content */}
-                    <div className="flex flex-col p-3">
-                      {/* Category */}
-                      {/* <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#565969]">
-                        {item.category || "PRODUCT"}
-                      </div> */}
+                    <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase text-[#565969]">
+                      <span
+                        className={`flex h-4 w-4 items-center justify-center rounded-full ${stockIndicator.light}`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${stockIndicator.dot}`}
+                        />
+                      </span>
+                      <span className={stockIndicator.tone}>
+                        {stockIndicator.text}
+                      </span>
+                    </div>
 
-                      {/* Title */}
-                      <div className="line-clamp-2 font-heading font-semibold leading-[1.35] text-gray-900 hover:underline text-[12px] min-h-[45px] mt-0">
+                    <div className="mt-auto pb-4">
+                      <span className="font-heading text-[17px] font-semibold text-[#04223E] tracking-tight">
+                        {formatMoney(item.price || 0)}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleBundleItem(item.id)}
+                      className={`h-11 w-full rounded-full border text-sm font-semibold transition-colors ${
+                        isSelected
+                          ? "border-[#1f1f1f] bg-[#6b6b6b] text-white"
+                          : "border-[#1f1f1f] bg-white text-[#1f1f1f] hover:bg-[#1f1f1f] hover:text-white"
+                      }`}
+                    >
+                      {isSelected ? "Added to Bundle" : "Add to Bundle"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <aside className="h-fit lg:sticky lg:top-6">
+            <div className="rounded-2xl border-2 border-[#1f1f1f] bg-white p-6 shadow-sm">
+              <div className="text-xl font-heading font-semibold text-gray-900">
+                Bundle Contents
+              </div>
+              <p className="mt-1 text-sm text-[#565969]">
+                Add {maxBundleCount} products and save 10%.
+              </p>
+
+              <div className="mt-4 h-2 w-full rounded-full bg-[#E6E6E6]">
+                <div
+                  className="h-full rounded-full bg-[#1f1f1f] transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              <div className="mt-6 space-y-5">
+                {selectedBundleProducts.map((item) => (
+                  <div key={item.id} className="flex items-start gap-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#F0F0F0]">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-10 w-10 object-contain mix-blend-multiply"
+                        />
+                      ) : (
+                        <span className="text-xs text-[#565969]">No image</span>
+                      )}
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="line-clamp-2 text-[14px] font-semibold text-gray-900">
                         {item.name}
                       </div>
-
-                      {/* Price */}
-                      <div className="mt-auto">
-                        <div className="font-heading text-[15px] font-bold text-[#04223E]">
-                          {CURRENCY_SYMBOL}
-                          {item.price?.toFixed(2)}
-                        </div>
+                      <div className="mt-1 text-[14px] font-semibold text-[#D32A2A]">
+                        {formatMoney(item.price || 0)}
                       </div>
                     </div>
-                  </div>
-                </React.Fragment>
-              ))}
-            </div>
 
-            {/* Discount Badge & Pricing */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6 border-t border-gray-200">
-              <div className="gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-600">Total:</span>
-                  <span className="text-2xl font-bold text-gray-900">
-                    {CURRENCY_SYMBOL}
-                    {discountedTotal.toFixed(2)}
-                  </span>
-                  {discount > 0 && (
-                    <span className="text-lg text-gray-400 line-through">
-                      {CURRENCY_SYMBOL}
-                      {originalTotal.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-                {discount > 0 && (
-                  <div className="mt-0 text-left text-sm text-gray-600">
-                    Discount: {CURRENCY_SYMBOL}
-                    {savings.toFixed(2)}
+                    <button
+                      type="button"
+                      onClick={() => toggleBundleItem(item.id)}
+                      aria-label={`Remove ${item.name} from bundle`}
+                      className="mt-1 text-[#565969] hover:text-[#1f1f1f]"
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                        <line x1="10" y1="11" x2="10" y2="17" />
+                        <line x1="14" y1="11" x2="14" y2="17" />
+                      </svg>
+                    </button>
                   </div>
-                )}
+                ))}
+
+                {selectedBundleProducts.length < maxBundleCount &&
+                  Array.from({
+                    length: maxBundleCount - selectedBundleProducts.length,
+                  }).map((_, index) => (
+                    <div
+                      key={`bundle-placeholder-${index}`}
+                      className="flex items-start gap-4"
+                    >
+                      <div className="h-16 w-16 rounded-full bg-[#EDEDED]" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 w-3/4 rounded-full bg-[#E6E6E6]" />
+                        <div className="h-3 w-1/2 rounded-full bg-[#E6E6E6]" />
+                        <div className="h-3 w-2/3 rounded-full bg-[#E6E6E6]" />
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              <div className="mt-6 border-t border-[#E6E6E6] pt-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[15px] font-semibold text-gray-900">
+                    Total
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-semibold text-gray-900">
+                      {formatMoney(discountedTotal)}
+                    </span>
+                    {savings > 0 && (
+                      <span className="rounded border border-[#DF1119] px-2 py-0.5 text-[12px] font-semibold uppercase text-[#DF1119]">
+                        Save: {formatMoney(savings)}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <button
+                type="button"
                 onClick={handleAddBundleToCart}
-                className="bg-white border-2 border-gray-300 text-gray-900 font-bold px-6 py-3 rounded-lg hover:border-belims-blue hover:text-belims-blue transition-all whitespace-nowrap"
+                className="mt-4 h-12 w-full rounded-full bg-[#1f1f1f] font-heading text-sm font-semibold text-white transition-colors hover:bg-[#111111]"
               >
-                Add bundle to cart
+                Add all to Cart
               </button>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </section>

@@ -5,6 +5,11 @@ export const CURRENCY_SYMBOL = "R";
 
 export const STORES: Store[] = [
   {
+    id: "umzinto",
+    name: "Umzinto",
+    address: "Lot 12 of 284, Belims Centre, eMuzisweinto, 4200",
+  },
+  {
     id: "1",
     name: "Belims Sandton",
     address: "12 Rivonia Rd, Sandton",

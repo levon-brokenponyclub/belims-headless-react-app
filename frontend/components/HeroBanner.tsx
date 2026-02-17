@@ -1,6 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { Check } from "lucide-react";
-import { CountdownTimer } from "./CountdownTimer";
+import React, { useEffect, useMemo, useState } from "react";
+
+type Card = {
+  key: string;
+  href: string;
+  title: string;
+  description: string;
+  buttonText?: string; // optional now (middle uses 2 buttons)
+  imageSrc: string;
+  imageAlt: string;
+  videoMp4Src?: string;
+  videoHlsSrc?: string;
+  badge?: { line1: string; line2: string };
+};
 
 const HeroBanner: React.FC = () => {
   const [shouldPlayVideo, setShouldPlayVideo] = useState(false);
@@ -11,6 +22,7 @@ const HeroBanner: React.FC = () => {
     const startPlayback = () => setShouldPlayVideo(true);
     let idleHandle: number | null = null;
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
     const idleWindow = window as Window & {
       requestIdleCallback?: (callback: IdleRequestCallback) => number;
       cancelIdleCallback?: (handle: number) => void;
@@ -26,164 +38,231 @@ const HeroBanner: React.FC = () => {
       if (idleHandle !== null && idleWindow.cancelIdleCallback) {
         idleWindow.cancelIdleCallback(idleHandle);
       }
-      if (timeoutHandle !== null) {
-        clearTimeout(timeoutHandle);
-      }
+      if (timeoutHandle !== null) clearTimeout(timeoutHandle);
     };
   }, []);
 
+  const cards: Card[] = useMemo(
+    () => [
+      {
+        key: "orbital-sanders",
+        href: "/collections/orbital-sanders",
+        title: "Orbital Sanders",
+        description:
+          "Find the perfect orbital sander for all your cards like bodywork polishing, decorating and finishing work.",
+        buttonText: "Shop now",
+        imageSrc:
+          "https://athens-theme.myshopify.com/cdn/shop/files/athens-mosaic-05.jpg?v=1747139046&width=2840",
+        imageAlt: "Orbital sander",
+      },
+      {
+        key: "trade",
+        href: "/trade",
+        title: "Trade pricing that works as hard as you do",
+        description:
+          "Get access to exclusive trade-only rates, expert support, and logistical advantages designed to keep your projects on track and your business growing.",
+        imageSrc:
+          "https://athens-theme.myshopify.com/cdn/shop/files/athens-hero-02a.jpg?v=1747138637&width=2840",
+        imageAlt: "Trade tools",
+        videoHlsSrc:
+          "https://athens-theme.myshopify.com/cdn/shop/videos/c/vp/2d30e4d882bb45b9bb7dee5e078cb9d0/2d30e4d882bb45b9bb7dee5e078cb9d0.m3u8?v=0",
+        videoMp4Src:
+          "https://athens-theme.myshopify.com/cdn/shop/videos/c/vp/2d30e4d882bb45b9bb7dee5e078cb9d0/2d30e4d882bb45b9bb7dee5e078cb9d0.HD-720p-1.6Mbps-60607784.mp4?v=0",
+      },
+      {
+        key: "planers",
+        href: "/collections/planers",
+        title: "Planers",
+        description:
+          "Get the job done with much less effort with an affordable and powerful planer from top brands like Makita, Metabo and Dewalt.",
+        buttonText: "Shop now",
+        imageSrc:
+          "https://athens-theme.myshopify.com/cdn/shop/files/athens-mosaic-03.jpg?v=1747138889&width=2840",
+        imageAlt: "Planer tool",
+      },
+    ],
+    [],
+  );
+
   return (
-    <section className="bg-gray-200 py-6 md:py-8 lg:py-10">
-      <div className="container mx-auto px-3 lg:px-6 max-w-[1400px]">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-          {/* Main Trade Hero Block - 8cols on LG */}
-          <div className="lg:col-span-8">
-            <div className="relative h-full min-h-0 md:min-h-[500px] lg:h-[70vh] overflow-hidden rounded-lg bg-[#09111D] flex items-center shadow-lg">
-              {/* Background Video Overlay */}
-              <div className="absolute inset-0 opacity-90">
-                <video
-                  autoPlay={shouldPlayVideo}
-                  loop
-                  muted
-                  playsInline
-                  preload="none"
-                  poster="/images/development/midsection-worker-using-circular-saw-workshop.webp"
-                  className="h-full w-full object-cover"
-                >
-                  {shouldPlayVideo && (
-                    <source
-                      src="https://www.shutterstock.com/shutterstock/videos/3530100681/preview/stock-footage-helmet-worker-and-laughing-with-glasses-in-construction-safety-and-black-man-in-warehouse-face.webm"
-                      type="video/webm"
-                    />
-                  )}
-                  {/* Fallback Image */}
-                  <img
-                    src="/images/development/midsection-worker-using-circular-saw-workshop.webp"
-                    alt="Trade Professional"
-                    className="h-full w-full object-cover"
-                  />
-                </video>
-                {!shouldPlayVideo && (
-                  <button
-                    type="button"
-                    onClick={() => setShouldPlayVideo(true)}
-                    className="absolute bottom-6 left-6 rounded-full bg-black/50 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-black/70"
-                    aria-label="Play hero video"
-                  >
-                    Play
-                  </button>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#09111D] via-[#09111D]/50 to-transparent"></div>
-              </div>
+    <section className="bg-white py-6 md:py-8 lg:py-10">
+      <div className="container mx-auto max-w-[1400px] px-3 lg:px-6">
+        {/* Mobile: horizontal scroller. Desktop: 25/50/25 grid */}
+        <div className="-mx-3 px-3 lg:mx-0 lg:px-0">
+          <div className="overflow-x-auto lg:overflow-visible">
+            <div
+              className="
+                flex gap-4 md:gap-6
+                lg:grid lg:grid-cols-12 lg:gap-6
+                snap-x snap-mandatory
+                pb-2
+              "
+            >
+              {cards.map((card, idx) => {
+                const hasVideo = !!card.videoMp4Src || !!card.videoHlsSrc;
+                const isMiddle = idx === 1;
 
-              <div className="relative z-10 w-full lg:w-4/5 py-8 px-5 md:p-12 lg:p-16 flex flex-col items-center text-center md:items-start md:text-left">
-                <span className="block text-base font-bold uppercase tracking-wider text-belims-accent mb-2 lg:mb-4 md:text-base">
-                  Partner with Belims
-                </span>
-                <h1 className="mb-3 font-heading text-xl font-semibold text-white sm:text-5xl md:mb-6 md:text-4xl">
-                  Trade pricing that <br className="hidden md:block" /> works as
-                  hard as you do
-                </h1>
-                <p className="mb-5 max-w-[480px] font-body text-base text-gray-300 opacity-90 leading-relaxed md:mb-8 md:text-lg">
-                  Get access to exclusive trade-only rates, expert support, and
-                  logistical advantages designed to keep your projects on track
-                  and your business growing.
-                </p>
+                // 25% / 50% / 25% on lg+
+                const colSpan = isMiddle ? "lg:col-span-6" : "lg:col-span-3";
 
-                {/* Trade Benefits List */}
-                {/* <ul className="mb-10 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6">
-                  {[
-                    "Trade-only prices",
-                    "Bulk discounts",
-                    "Priority delivery",
-                    "Fast pickup",
-                    "Dedicated trade support",
-                  ].map((item) => (
-                    <li
-                      key={item}
-                      className="flex items-center text-gray-200 text-sm md:text-base"
-                    >
-                      <Check className="h-5 w-5 text-blue-500 mr-3 flex-shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul> */}
-
-                <div className="grid grid-cols-2 gap-4 sm:flex">
+                return (
                   <a
-                    href="/trade/deals"
-                    className="inline-flex h-[42px] w-full items-center justify-center rounded-sm lg:rounded bg-belims-accent px-3 text-sm font-semibold text-white transition-all hover:bg-blue-700 shadow-md sm:h-11 sm:w-auto sm:px-8 sm:text-base"
+                    key={card.key}
+                    href={card.href}
+                    className={`
+                      group relative
+                      ${colSpan}
+                      w-[88%] min-w-[88%] sm:w-[70%] sm:min-w-[70%] md:w-[52%] md:min-w-[52%]
+                      lg:w-auto lg:min-w-0
+                      h-[320px] sm:h-[360px] md:h-[420px] lg:h-[520px]
+                      overflow-hidden rounded-md
+                      bg-gray-900
+                      shadow-sm
+                      snap-start
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-belims-accent
+                    `}
+                    aria-label={card.title}
                   >
-                    View Trade Deals
-                  </a>
-                  <a
-                    href="/trade/register"
-                    className="inline-flex h-[42px] w-full items-center justify-center rounded-sm lg:rounded px-3 text-sm font-semibold text-white border backdrop-blur-sm transition-all hover:bg-white hover:text-belims-blue sm:h-11 sm:w-auto sm:px-8 sm:text-base"
-                  >
-                    Apply for Trade Account
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
+                    {/* Media */}
+                    <div className="absolute inset-0">
+                      <img
+                        src={card.imageSrc}
+                        alt={card.imageAlt}
+                        className="
+                          h-full w-full object-cover
+                          transition-transform duration-700
+                          group-hover:scale-[1.03]
+                        "
+                        loading="lazy"
+                      />
 
-          {/* Secondary Promo Cards - 4cols on LG */}
-          <div className="lg:col-span-4 grid grid-cols-2 gap-4 md:gap-6 lg:gap-8 lg:flex lg:flex-col">
-            {/* Daily Deals Card - Top Right */}
-            <div className="relative h-full bg-belims-blue rounded-lg overflow-hidden shadow-sm flex items-center p-4 md:p-5 min-h-0 md:min-h-[200px] lg:min-h-[240px]">
-              <div className="z-10 w-full flex flex-col items-center text-center gap-2 lg:gap-4">
-                <h3 className="text-[18px] lg:text-xl font-semibold lg:font-bold text-white font-heading letterspacing-tight">
-                  Daily deals
-                </h3>
-                {/* <p className="text-base text-white leading-relaxed">
-                  Fresh discounts daily.
-                </p> */}
-                <div className="origin-center scale-75 lg:scale-100">
-                  <CountdownTimer
-                    targetDate={new Date(new Date().setHours(23, 59, 59, 999))}
-                    label=""
-                    variant="inverse"
-                    hideDays={true}
-                  />
-                </div>
-                <a
-                  href="/collections/all"
-                  className="inline-flex h-[42px] lg:h-11 items-center justify-center rounded-sm lg:rounded bg-red-600 px-8 text-sm lg:text-base font-semibold text-white transition-color hover:bg-red-700 shadow-md"
-                >
-                  Shop Now
-                </a>
-              </div>
-            </div>
+                      {hasVideo && isMiddle && (
+                        <video
+                          className="absolute inset-0 h-full w-full object-cover"
+                          muted
+                          playsInline
+                          loop
+                          preload="none"
+                          autoPlay={shouldPlayVideo}
+                        >
+                          {shouldPlayVideo && card.videoHlsSrc && (
+                            <source
+                              type="application/x-mpegURL"
+                              src={card.videoHlsSrc}
+                            />
+                          )}
+                          {shouldPlayVideo && card.videoMp4Src && (
+                            <source type="video/mp4" src={card.videoMp4Src} />
+                          )}
+                        </video>
+                      )}
 
-            {/* Tool Servicing Card - Bottom Right */}
-            <div className="relative h-full bg-[#F3F4F6] rounded-lg overflow-hidden flex items-center min-h-0 md:min-h-[200px] lg:min-h-[260px] shadow-sm">
-              {/* Background Image */}
-              <div className="absolute inset-0">
-                <img
-                  src="/images/development/hero-paint-block.jpg"
-                  alt="Paint Inspiration"
-                  className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#222f42] via-[#222f42]/60 to-transparent"></div>
-              </div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent" />
+                      <div className="absolute inset-0 bg-black/10" />
+                    </div>
 
-              <div className="relative z-10 w-full p-4 md:p-8">
-                <div className="max-w-[300px] flex flex-col items-center text-center md:items-start md:text-left">
-                  <h3 className="mb-2 text-[18px] font-semibold text-white font-heading letterspacing-tight md:text-xl">
-                    Need inspiration?
-                  </h3>
-                  <p className="mb-3 lg:mb-6 text-[13px] text-balance text-white max-w-[280px] md:text-base">
-                    Describe your mood or space, and let our AI suggest the
-                    perfect paint palette.
-                  </p>
-                  <a
-                    href="/paint-assistant"
-                    className="inline-flex h-[42px] items-center justify-center rounded-sm lg:rounded bg-belims-blue px-8 text-sm font-semibold text-white transition-color hover:bg-red-700 shadow-md md:h-11 md:text-base"
-                  >
-                    Try It Now
+                    {/* Badge */}
+                    {card.badge && (
+                      <div className="absolute left-4 top-4 z-20 rounded-lg bg-[#0568ff] px-4 py-3 text-white shadow-sm">
+                        <div className="text-xs font-semibold leading-none opacity-95">
+                          {card.badge.line1}
+                        </div>
+                        <div className="mt-1 text-sm font-semibold leading-none">
+                          {card.badge.line2}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="relative z-10 flex h-full flex-col justify-end p-5 sm:p-6 md:p-7">
+                      <h3 className="text-2xl font-semibold tracking-tight text-white md:text-[28px]">
+                        {card.title}
+                      </h3>
+
+                      <p className="mt-2 max-w-[520px] text-sm leading-relaxed text-white/85 md:text-base">
+                        {card.description}
+                      </p>
+
+                      {/* Buttons */}
+                      {isMiddle ? (
+                        <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+                          <button
+                            type="button"
+                            className="
+                              inline-flex h-11 w-full items-center justify-center
+                              rounded-sm bg-belims-accent px-4
+                              text-sm font-semibold text-white
+                              shadow-sm transition
+                              hover:bg-blue-700
+                              sm:w-auto sm:px-8
+                            "
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.location.href = "/trade/deals";
+                            }}
+                          >
+                            View Trade Deals
+                          </button>
+
+                          <button
+                            type="button"
+                            className="
+                              inline-flex h-11 w-full items-center justify-center
+                              rounded-sm border-2 border-white bg-transparent px-4
+                              text-sm font-semibold text-white
+                              shadow-sm transition
+                              hover:bg-white hover:text-black
+                              sm:w-auto sm:px-8
+                            "
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.location.href = "/trade/register";
+                            }}
+                          >
+                            Apply for Trade Account
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-5">
+                          <span
+                            className="
+                              inline-flex h-11 items-center justify-center
+                              rounded-sm bg-belims-blue px-8
+                              font-semibold text-sm text-white
+                              shadow-sm transition
+                              group-hover:bg-red-600
+                            "
+                          >
+                            {card.buttonText}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Middle card video play affordance */}
+                    {isMiddle && hasVideo && !shouldPlayVideo && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShouldPlayVideo(true);
+                        }}
+                        className="
+                          absolute bottom-5 right-5 z-20
+                          rounded-full bg-black/45 px-4 py-2
+                          text-xs font-semibold text-white
+                          backdrop-blur-sm transition
+                          hover:bg-black/60
+                        "
+                        aria-label="Play background video"
+                      >
+                        Play
+                      </button>
+                    )}
                   </a>
-                </div>
-              </div>
+                );
+              })}
             </div>
           </div>
         </div>

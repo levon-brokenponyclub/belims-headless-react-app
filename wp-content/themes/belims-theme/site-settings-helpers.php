@@ -63,6 +63,23 @@ function get_store_locations() {
     return get_field('store_locations', 'option');
 }
 
+function get_expert_contact_settings() {
+    $acf_settings = get_field('expert_contact', 'option');
+    if (!empty($acf_settings)) {
+        return $acf_settings;
+    }
+
+    return array(
+        'expert_name' => get_option('ecommerce_expert_name', ''),
+        'expert_title' => get_option('ecommerce_expert_title', ''),
+        'expert_avatar_url' => get_option('ecommerce_expert_avatar_url', ''),
+        'expert_video_chat_url' => get_option('ecommerce_expert_video_chat_url', ''),
+        'expert_chat_url' => get_option('ecommerce_expert_chat_url', ''),
+        'expert_email' => get_option('ecommerce_expert_email', ''),
+        'expert_phone' => get_option('ecommerce_expert_phone', ''),
+    );
+}
+
 // Social Media
 function get_social_media_links() {
     return get_field('social_media', 'option');
@@ -152,7 +169,8 @@ function get_site_settings_for_api() {
             'free_shipping_threshold' => get_free_shipping_threshold(),
             'delivery_fee' => get_delivery_fee(),
             'express_delivery_fee' => get_express_delivery_fee(),
-            'store_locations' => get_store_locations()
+            'store_locations' => get_store_locations(),
+            'expert_contact' => get_expert_contact_settings()
         ),
         'social' => array(
             'links' => get_social_media_links(),

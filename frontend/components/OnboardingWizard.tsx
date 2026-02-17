@@ -19,6 +19,7 @@ import { Product } from "../types";
 import { ProductCard } from "./ProductCard";
 
 interface OnboardingWizardProps {
+  products: Product[];
   onClose: () => void;
   onNavigateToProduct: (product: Product) => void;
   addToCart: (product: Product) => void;
@@ -29,6 +30,7 @@ interface OnboardingWizardProps {
 }
 
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
+  products,
   onClose,
   onNavigateToProduct,
   addToCart,
@@ -171,7 +173,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
   const handleFinish = async () => {
     setLoading(true);
-    const results = await getPersonalizedRecommendations(userType, projectDesc);
+    const results = await getPersonalizedRecommendations(
+      userType,
+      projectDesc,
+      products,
+    );
     setRecommendations(results);
     setLoading(false);
     setStep(4); // Results view

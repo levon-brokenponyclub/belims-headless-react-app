@@ -25,6 +25,7 @@ import { SearchModal } from "./components/SearchModal";
 /* import { FreeShippingWidget } from "./components/FreeShippingWidget"; */
 import { OnboardingWizard } from "./components/OnboardingWizard";
 import { AiAssistant } from "./components/AiAssistant.tsx";
+import { BelimsChatbot } from "./src/features/chatbot/components/BelimsChatbot";
 import { PriceMatchModal } from "./components/PriceMatchModal";
 import { ComparisonModal } from "./components/ComparisonModal";
 import { Footer } from "./components/Footer";
@@ -35,25 +36,21 @@ import { AdminAccountPreview } from "./components/AdminAccountPreview";
 import { Archive } from "./components/Archive";
 import { RecentlyViewed } from "./components/RecentlyViewed";
 import { FeaturedGrid } from "./components/FeaturedGrid";
+import { FilterSearch } from "./components/FilterSearch";
 import { ShopByCategory } from "./components/ShopByCategory";
+import { DealsSection } from "./components/DealsSection";
+import { CategoryGrid } from "./components/CategoryGrid";
 import { TrackOrderPage } from "./components/TrackOrderPage";
 import { BrandStrip } from "./components/BrandStrip";
 import { AuthPage } from "./components/AuthPage";
 import { AccountPage } from "./components/AccountPage";
 import { Toast } from "./components/Toast";
-import { LocationPermissionModal } from "./components/LocationPermissionModal";
-import {
-  Skeleton,
-  SkeletonLine,
-  SkeletonImage,
-  SkeletonProductCard,
-  SkeletonDealCard,
-  SkeletonDealCardHorizontal,
-} from "./components/Skeleton";
+import { Skeleton, SkeletonLine, SkeletonImage } from "./components/Skeleton";
 import HeroBanner from "./components/HeroBanner";
 import { CountdownTimer } from "./components/CountdownTimer";
 import CollageGrid from "./components/CollageGrid";
 import ProjectInspiration from "./components/ProjectInspiration";
+import { PopularCategories } from "./components/PopularCategories";
 import { getCurrentUser, UserData, logoutUser } from "./services/authService";
 
 import { Product, CartItem, Store } from "./types";
@@ -61,6 +58,7 @@ import {
   fetchProducts,
   fetchFeaturedProducts,
   fetchCategories,
+  getApiBaseUrl,
 } from "./services/wooCommerceService";
 
 import {
@@ -152,9 +150,11 @@ const ArchivePage = ({
   const { categorySlug } = useParams();
   const [searchParams] = useSearchParams();
 
+  const categoryParam = searchParams.get("category") || undefined;
+  const rangeParam = searchParams.get("range") || undefined;
   const categoryLabel = categorySlug
     ? decodeURIComponent(categorySlug).replace(/-/g, " ")
-    : undefined;
+    : categoryParam;
 
   const brand = searchParams.get("brand") || undefined;
   const searchQuery = searchParams.get("search") || undefined;
@@ -165,6 +165,7 @@ const ArchivePage = ({
       isLoadingProducts={isLoadingProducts}
       category={categoryLabel}
       brand={brand}
+      range={rangeParam}
       searchQuery={searchQuery}
       addToCart={addToCart}
       onBuyNow={onBuyNow}
@@ -174,14 +175,6 @@ const ArchivePage = ({
     />
   );
 };
-
-type DealFilter =
-  | "all"
-  | "deal_of_day"
-  | "featured"
-  | "trade_special"
-  | "clearance"
-  | "weekly";
 
 const HomePage = ({
   products,
@@ -196,49 +189,7 @@ const HomePage = ({
   isTradeApproved,
 }) => {
   const navigate = useNavigate();
-  const [activeDealFilter, setActiveDealFilter] = useState<DealFilter>("all");
   const isTradeLoggedIn = !!isTradeApproved;
-  const showDealSkeletons = isLoadingProducts;
-
-  // Filter products for Deals of the Day
-  const dealsOfTheDay = useMemo(() => {
-    return products
-      .filter(
-        (product) =>
-          product.deals_resolved?.consumer?.bestDeal?.type === "deal_of_day",
-      )
-      .slice(0, 4);
-  }, [products]);
-
-  // Filter products for Featured Deals
-  const featuredDeals = useMemo(() => {
-    return products
-      .filter((product) => {
-        if (product.deals_resolved?.trade?.bestDeal?.type === "trade_special") {
-          return false;
-        }
-        // If we have a resolved deal, it's featured worthy
-        if (product.deals_resolved?.consumer?.bestDeal) return true;
-        // Fallback to standard WooCommerce sale price check or native featured flag
-        return (
-          (product.sale_price && parseFloat(String(product.sale_price)) > 0) ||
-          product.isFeatured
-        );
-      })
-      .sort((a, b) => {
-        // Sort by priority (lower is better/higher priority)
-        // Deal priorities: day(10), clearance(20), weekly(30), trade(40), sale(50)
-        // We assign arbitrary priority to native featured (e.g., 45) and generic sale (100)
-        const pA =
-          a.deals_resolved?.consumer?.bestDeal?.priority ??
-          (a.isFeatured ? 45 : 100);
-        const pB =
-          b.deals_resolved?.consumer?.bestDeal?.priority ??
-          (b.isFeatured ? 45 : 100);
-        return pA - pB;
-      })
-      .slice(0, 4);
-  }, [products]);
 
   // Filter products for Trade Specials
   const tradeSpecials = useMemo(() => {
@@ -251,35 +202,58 @@ const HomePage = ({
   }, [products]);
 
   // Filter products for Clearance
-  const clearanceDeals = useMemo(() => {
-    return products
-      .filter(
-        (product) =>
-          product.deals_resolved?.consumer?.bestDeal?.type === "clearance",
-      )
-      .slice(0, 4);
+
+  const brandOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach((product) => {
+      const brand = product.brand?.trim();
+      if (!brand) return;
+      counts[brand] = (counts[brand] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [products]);
 
-  // Filter products for Weekly Deals
-  const weeklyDeals = useMemo(() => {
-    return products
-      .filter(
-        (product) =>
-          product.deals_resolved?.consumer?.bestDeal?.type === "weekly_special",
-      )
-      .slice(0, 4);
+  const categoryOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach((product) => {
+      const category = product.category?.trim();
+      if (!category) return;
+      counts[category] = (counts[category] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [products]);
 
-  const shouldShowSection = (sectionType: DealFilter) => {
-    if (activeDealFilter === "all") return true;
-    return activeDealFilter === sectionType;
-  };
+  const rangeOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach((product) => {
+      const rawRange =
+        product.acf?.range_label ||
+        product.acf?.range ||
+        product.acf?.range_slug;
+      const range = rawRange ? String(rawRange).trim() : "";
+      if (!range) return;
+      counts[range] = (counts[range] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [products]);
 
   return (
     <>
+      <FeaturedGrid />
+
       <HeroBanner />
 
-      <FeaturedGrid />
+      {/* <FilterSearch
+        brands={brandOptions}
+        categories={categoryOptions}
+        ranges={rangeOptions}
+      /> */}
 
       <ShopByCategory
         products={products}
@@ -291,539 +265,68 @@ const HomePage = ({
         isTradeApproved={isTradeApproved}
       />
 
-      {/* Deal Filter Chips */}
-      <section
-        className=" bg-gray-50 border-t border-black/5 py-12 pb-0"
-        aria-label="Deal filters"
-      >
-        <div className="container mx-auto px-4 flex flex-col gap-4 md:flex-row md:gap-8 md:items-center">
-          <div className="mb-0">
-            <h2 className="text-2xl font-bold text-gray-900 font-heading">
-              {activeDealFilter === "all" ? "Browse all Deals" : "Browse Deals"}
-            </h2>
-          </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar">
-            {[
-              { key: "all", label: "All deals", hasProducts: true },
-              {
-                key: "deal_of_day",
-                label: "Deals of the day",
-                hasProducts: dealsOfTheDay.length > 0,
-              },
-              {
-                key: "weekly",
-                label: "Weekly deals",
-                hasProducts: weeklyDeals.length > 0,
-              },
-              {
-                key: "trade_special",
-                label: "Trade specials",
-                hasProducts: tradeSpecials.length > 0,
-              },
-              {
-                key: "clearance",
-                label: "Clearance",
-                hasProducts: clearanceDeals.length > 0,
-              },
-            ]
-              .filter((f) => f.hasProducts)
-              .map((filter) => (
-                <button
-                  key={filter.key}
-                  onClick={() => setActiveDealFilter(filter.key as DealFilter)}
-                  className={`px-4 h-9 rounded border font-semibold font-heading transition-colors whitespace-nowrap text-[13px] ${
-                    activeDealFilter === filter.key
-                      ? "bg-belims-blue text-white border-gray-100"
-                      : "bg-white text-[#64748b] border-gray-100 hover:bg-belims-blue hover:text-white"
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured + Daily + Weekly Deals Grid (All Deals View) */}
-      {activeDealFilter === "all" && (
-        <section
-          className="pt-6 pb-14 bg-gray-50 border-b border-black/5"
-          aria-label="Deals highlights"
-        >
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="flex flex-col rounded-lg border border-gray-200 bg-white p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <h2 className="font-heading text-lg font-bold text-gray-900">
-                      Deals of the day
-                    </h2>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Fresh discounts daily — expire at midnight.
-                    </p>
-                  </div>
-                  <a
-                    href="/deals"
-                    className="whitespace-nowrap text-xs font-semibold text-belims-blue hover:text-belims-accent"
-                  >
-                    View all →
-                  </a>
-                </div>
-                {showDealSkeletons ? (
-                  <div className="flex-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
-                    {Array.from({ length: 2 }).map((_, index) => (
-                      <SkeletonDealCard key={`deal-day-skel-${index}`} />
-                    ))}
-                  </div>
-                ) : dealsOfTheDay.length > 0 ? (
-                  <div className="flex-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
-                    {dealsOfTheDay.slice(0, 2).map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        addToCart={addToCart}
-                        className="min-w-full max-w-full w-full"
-                        variant="flat"
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center rounded-lg border border-gray-100 py-10 text-center text-gray-500">
-                    <p>No deals available today. Check back soon!</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col rounded-lg border border-gray-200 bg-white p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <h2 className="font-heading text-lg font-bold text-gray-900">
-                      Trade specials
-                    </h2>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Contractor pricing available — log in to purchase.
-                    </p>
-                  </div>
-                  <a
-                    href="/deals?type=trade_special"
-                    className="whitespace-nowrap text-xs font-semibold text-belims-blue hover:text-belims-accent"
-                  >
-                    View all →
-                  </a>
-                </div>
-                {showDealSkeletons ? (
-                  <div className="flex-1 flex flex-col divide-y divide-[#E0E0E0]">
-                    {Array.from({ length: 2 }).map((_, index) => (
-                      <div
-                        key={`trade-skel-${index}`}
-                        className="flex-1 flex flex-col justify-center py-4 first:pt-0 last:pb-0"
-                      >
-                        <SkeletonDealCardHorizontal />
-                      </div>
-                    ))}
-                  </div>
-                ) : tradeSpecials.length > 0 ? (
-                  <div className="flex-1 flex flex-col divide-y divide-[#E0E0E0]">
-                    {tradeSpecials.slice(0, 2).map((product) => (
-                      <div
-                        key={product.id}
-                        className="flex-1 flex flex-col justify-center py-4 first:pt-0 last:pb-0"
-                      >
-                        <ProductCard
-                          product={product}
-                          addToCart={addToCart}
-                          className="min-w-full max-w-full w-full"
-                          variant="flat-horizontal"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center rounded-lg border border-gray-100 py-10 text-center text-gray-500">
-                    <p>No trade specials currently.</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col rounded-lg border border-gray-200 bg-white p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <h2 className="font-heading text-lg font-bold text-gray-900">
-                      Weekly deals
-                    </h2>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Weekly savings across selected products.
-                    </p>
-                  </div>
-                  <a
-                    href="/deals/weekly"
-                    className="whitespace-nowrap text-xs font-semibold text-belims-blue hover:text-belims-accent"
-                  >
-                    View all →
-                  </a>
-                </div>
-                {showDealSkeletons ? (
-                  <div className="flex-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
-                    {Array.from({ length: 2 }).map((_, index) => (
-                      <SkeletonDealCard key={`weekly-skel-${index}`} />
-                    ))}
-                  </div>
-                ) : weeklyDeals.length > 0 ? (
-                  <div className="flex-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
-                    {weeklyDeals.slice(0, 2).map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        addToCart={addToCart}
-                        className="min-w-full max-w-full w-full"
-                        variant="flat"
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center rounded-lg border border-gray-100 py-10 text-center text-gray-500">
-                    <p>
-                      No weekly specials available right now. Check back soon!
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Featured Deals */}
-      {activeDealFilter !== "all" && shouldShowSection("featured") && (
-        <section
-          className="pt-6 pb-14 bg-gray-50 border-b border-black/5"
-          aria-label="Featured deals"
-        >
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-end mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 font-heading">
-                  On Sale
-                </h2>
-                <p className="text-gray-500 text-sm mt-1">
-                  Hand-picked savings across the store
-                </p>
-              </div>
-              <a
-                href="/deals"
-                className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
-              >
-                View all →
-              </a>
-            </div>
-
-            {isLoadingProducts ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={`featured-skel-${index}`}>
-                    <SkeletonProductCard className="rounded border border-[#E0E0E0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.06)]" />
-                  </div>
-                ))}
-              </div>
-            ) : featuredDeals.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {featuredDeals.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    addToCart={addToCart}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <p>No featured deals right now. Check back soon!</p>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Deals of the Day */}
-      {activeDealFilter !== "all" && shouldShowSection("deal_of_day") && (
-        <section
-          className="py-14 bg-belims-gray border-b border-black/5"
-          aria-label="Deals of the day"
-        >
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 font-heading">
-                  Deals of the day
-                </h2>
-                <p className="text-gray-500 text-sm mt-1">
-                  Fresh discounts daily — expire at midnight. While stocks last.
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                {/* <CountdownTimer
-                  targetDate={new Date(new Date().setHours(23, 59, 59, 999))}
-                  label="Hurry up! Offer ends in"
-                /> */}
-                <a
-                  href="/deals"
-                  className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block whitespace-nowrap"
-                >
-                  View all →
-                </a>
-              </div>
-            </div>
-
-            {dealsOfTheDay.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {dealsOfTheDay.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    addToCart={addToCart}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <p>No deals available today. Check back soon!</p>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
       {/* Collage Grid */}
       <CollageGrid />
 
-      {/* Weekly Deals */}
-      {activeDealFilter !== "all" && shouldShowSection("weekly") && (
-        <section
-          className="py-14  bg-belims-gray border-b border-black/5"
-          aria-label="Weekly deals and bulk savings"
-        >
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 font-heading">
-                  Weekly deals
-                </h2>
-                <p className="text-gray-500 text-sm mt-1">
-                  Weekly savings across selected products. — available until
-                  Sunday at midnight.
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                {/* {(() => {
-                  const now = new Date();
-                  const dayOfWeek = now.getDay();
-                  const daysUntilSunday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
-                  const sunday = new Date(now);
-                  sunday.setDate(now.getDate() + daysUntilSunday);
-                  sunday.setHours(23, 59, 59, 999);
+      <DealsSection
+        products={products}
+        isLoadingProducts={isLoadingProducts}
+        addToCart={addToCart}
+        onBuyNow={handleBuyNow}
+        onCompare={addToCompare}
+        isAuthenticated={isAuthenticated}
+        isTradeApproved={isTradeApproved}
+      />
 
-                  const timeRemaining = sunday.getTime() - now.getTime();
-                  const hoursRemaining = timeRemaining / (1000 * 60 * 60);
-
-                  const dayName = sunday.toLocaleDateString("en-US", {
-                    weekday: "long",
-                  });
-                  const date = sunday.toLocaleDateString("en-US", {
-                    day: "numeric",
-                    month: "long",
-                  });
-
-                  if (hoursRemaining < 24) {
-                    return (
-                      <div className="flex flex-col items-end">
-                        <CountdownTimer targetDate={sunday} label="Ends" />
-                        <span className="text-xs text-gray-500 mt-1">
-                          {dayName}, {date}
-                        </span>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="flex flex-col items-end">
-                      <span className="text-sm font-semibold text-gray-900">
-                        Deals End
-                      </span>
-                      <span className="text-xs text-gray-500 mt-1">
-                        {dayName}, {date}
-                      </span>
-                    </div>
-                  );
-                })()} */}
-                <a
-                  href="/deals/weekly"
-                  className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block whitespace-nowrap"
-                >
-                  All weekly deals →
-                </a>
-              </div>
-            </div>
-
-            {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <a
-                href="/deals/paint-week"
-                className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-6 hover:from-blue-600 hover:to-blue-700 transition-all"
-              >
-                <div className="text-sm font-semibold mb-1">This Week</div>
-                <div className="text-xl font-bold">Paint Week</div>
-                <div className="text-sm opacity-90 mt-2">Up to 30% off</div>
-              </a>
-
-              <a
-                href="/deals/power-tools"
-                className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg p-6 hover:from-orange-600 hover:to-orange-700 transition-all"
-              >
-                <div className="text-sm font-semibold mb-1">Limited Time</div>
-                <div className="text-xl font-bold">Power Tools</div>
-                <div className="text-sm opacity-90 mt-2">Save R200+</div>
-              </a>
-
-              <a
-                href="/deals/bulk-cement"
-                className="bg-gradient-to-br from-gray-700 to-gray-800 text-white rounded-lg p-6 hover:from-gray-800 hover:to-gray-900 transition-all"
-              >
-                <div className="text-sm font-semibold mb-1">Bulk Buy</div>
-                <div className="text-xl font-bold">Cement</div>
-                <div className="text-sm opacity-90 mt-2">10+ bags save 15%</div>
-              </a>
-
-              <a
-                href="/deals/trade-bundles"
-                className="bg-gradient-to-br from-green-600 to-green-700 text-white rounded-lg p-6 hover:from-green-700 hover:to-green-800 transition-all"
-              >
-                <div className="text-sm font-semibold mb-1">Trade Only</div>
-                <div className="text-xl font-bold">Bundles</div>
-                <div className="text-sm opacity-90 mt-2">Special pricing</div>
-              </a>
-            </div> */}
-
-            {weeklyDeals.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {weeklyDeals.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    addToCart={addToCart}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg">
-                <p>No weekly specials available right now. Check back soon!</p>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+      {/* Featured Category Spotlights */}
+      <CategoryGrid />
 
       {/* Trade Specials */}
-      {shouldShowSection("trade_special") && (
-        <section
-          className="py-14 bg-gray-50 border-t border-b border-black/5"
-          aria-label="Trade specials"
-        >
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-end mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 font-heading">
-                  Trade specials
-                </h2>
-                <p className="text-gray-500 text-sm mt-1">
-                  {isTradeLoggedIn
-                    ? "Exclusive contractor pricing for your account"
-                    : "Contractor pricing available — log in to purchase at trade rate"}
-                </p>
-              </div>
-              <a
-                href="/deals?type=trade_special"
-                className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
-              >
-                See all trade deals →
-              </a>
-            </div>
-
-            {tradeSpecials.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {tradeSpecials.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    addToCart={addToCart}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <p>No trade specials currently.</p>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Trade Essentials */}
       <section
-        className="bg-belims-gray border-y border-black/5"
-        aria-label="Trade essentials"
+        className="py-14 bg-gray-50 border-t border-b border-black/5"
+        aria-label="Trade specials"
       >
-        <div className="container mx-auto px-4 py-12 md:py-14">
-          <div className="flex justify-between items-end mb-8">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-end mb-6">
             <div>
-              <h2 className="font-heading text-h3 text-gray-900">
-                Trade essentials
+              <h2 className="text-xl font-bold text-gray-900 font-heading">
+                Trade specials
               </h2>
-              <p className="mt-2 font-body text-base text-gray-500">
-                Quick access for everyday jobs
+              <p className="text-gray-500 text-sm mt-1">
+                {isTradeLoggedIn
+                  ? "Exclusive contractor pricing for your account"
+                  : "Contractor pricing available — log in to purchase at trade rate"}
               </p>
             </div>
+            <a
+              href="/deals?type=trade_special"
+              className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
+            >
+              See all trade deals →
+            </a>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {[
-              { href: "/shop/ladders-trestles", label: "Ladders & Trestles" },
-              { href: "/shop/power-tools", label: "Power Tools" },
-              { href: "/shop/fasteners", label: "Fasteners" },
-              { href: "/shop/sealants-adhesives", label: "Sealants" },
-              { href: "/shop/safety-wear", label: "Safety Wear" },
-            ].map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className={[
-                  "group relative block",
-                  "rounded-lg border border-black/10 bg-white",
-                  "p-5 shadow-[0_1px_2px_rgba(16,24,40,0.06)]",
-                  "transition-all duration-200",
-                  "hover:shadow-[0_8px_24px_rgba(16,24,40,0.08)]",
-                  "hover:-translate-y-0.5",
-                ].join(" ")}
-              >
-                {/* subtle red accent bar (Belims accent) */}
-                <span className="absolute left-0 top-0 h-1 w-10 rounded-br-lg bg-red-600" />
-
-                <div className="font-heading text-h5 text-gray-900 mb-3">
-                  {item.label}
-                </div>
-
-                <div className="inline-flex items-center gap-2 font-body text-sm font-semibold text-gray-500 transition-colors group-hover:text-belims-blue">
-                  Shop now <span aria-hidden>→</span>
-                </div>
-              </a>
-            ))}
-          </div>
+          {tradeSpecials.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {tradeSpecials.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  addToCart={addToCart}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <p>No trade specials currently.</p>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Brand Strip */}
-      <BrandStrip />
+      <PopularCategories />
 
-      {/* Featured Category Spotlights */}
-      <section className="mb-16" aria-label="Featured categories">
+      {/* <section className="mb-16" aria-label="Featured categories">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-end mb-6">
             <div>
@@ -961,12 +464,15 @@ const HomePage = ({
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
+
+      {/* Brand Strip */}
+      <BrandStrip />
 
       <ProjectInspiration />
 
       {/* Lifestyle Section */}
-      <section
+      {/*  <section
         className="mb-16 bg-gray-50 py-12"
         aria-label="Built for real projects"
       >
@@ -1009,10 +515,10 @@ const HomePage = ({
             />
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Seasonal Block */}
-      <section className="mb-16" aria-label="Seasonal essentials">
+      {/*  <section className="mb-16" aria-label="Seasonal essentials">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
@@ -1061,78 +567,7 @@ const HomePage = ({
             </div>
           </div>
         </div>
-      </section>
-
-      {/* SEO Categories */}
-      <section className="mb-16" aria-label="Popular categories">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold text-gray-900 font-heading mb-6">
-            Popular Categories
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <a
-              href="/shop/boards-sheeting"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Boards & Sheeting
-            </a>
-            <a
-              href="/shop/ceiling-accessories"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Ceiling Accessories
-            </a>
-            <a
-              href="/shop/tiles-adhesives"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Tiles & Adhesives
-            </a>
-            <a
-              href="/shop/window-film"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Window Film
-            </a>
-            <a
-              href="/shop/fasteners"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Fasteners
-            </a>
-            <a
-              href="/shop/power-tool-accessories"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Power Tool Accessories
-            </a>
-            <a
-              href="/shop/sealants"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Sealants
-            </a>
-            <a
-              href="/shop/safety-wear"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Safety Wear
-            </a>
-            <a
-              href="/shop/electrical-components"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Electrical Components
-            </a>
-            <a
-              href="/shop/plumbing-fittings"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Plumbing Fittings
-            </a>
-          </div>
-        </div>
-      </section>
+      </section> */}
 
       {/* Featured Products */}
       {/* <section className="mb-16">
@@ -1179,6 +614,14 @@ const HomePage = ({
 // ========== MAIN APP COMPONENT ==========
 
 export default function App() {
+  const getDefaultStore = (stores: Store[]) =>
+    stores.find((store) => store.name.toLowerCase().includes("umzinto")) ||
+    stores[0] ||
+    null;
+  const shouldSkipDefaultStore = () =>
+    import.meta.env.DEV &&
+    typeof window !== "undefined" &&
+    localStorage.getItem("devSkipDefaultStore") === "true";
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -1198,8 +641,6 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
   const [isPaintOpen, setIsPaintOpen] = useState(false);
-  const [isLocationPermissionModalOpen, setIsLocationPermissionModalOpen] =
-    useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => {
     // Temporarily disabled - onboarding won't show on site load
@@ -1208,7 +649,27 @@ export default function App() {
     // return !hasSeen;
   });
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
-  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [storeLocations, setStoreLocations] = useState<Store[]>([]);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(
+    shouldSkipDefaultStore() ? null : getDefaultStore(STORES),
+  );
+  const [pickupSchedule, setPickupSchedule] = useState<{
+    date: string;
+    time: string;
+  } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem("pickupSchedule");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { date?: string; time?: string };
+      if (parsed?.date && parsed?.time) {
+        return { date: parsed.date, time: parsed.time };
+      }
+    } catch (error) {
+      console.warn("Failed to restore pickup schedule", error);
+    }
+    return null;
+  });
   const [userType, setUserType] = useState<"personal" | "business">("personal");
   const [comparisonList, setComparisonList] = useState<Product[]>([]);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
@@ -1224,45 +685,43 @@ export default function App() {
   const hasLoadedProductsRef = useRef(false);
   const hasLoadedCategoriesRef = useRef(false);
   const hasPromptedLocationRef = useRef(false);
+  const hasLoadedStoresRef = useRef(false);
 
-  // Show location permission modal on app load
+  // Trigger browser permission prompt on app load
   useEffect(() => {
     if (hasPromptedLocationRef.current) return;
     hasPromptedLocationRef.current = true;
 
-    const hasAsked = localStorage.getItem("locationPermissionAsked");
-    const hasDenied = localStorage.getItem("locationPermissionDenied");
-    const savedAddress = localStorage.getItem("deliveryAddressV2");
-
-    // Show if:
-    // 1. We haven't asked before
-    // 2. They haven't explicitly denied
-    // 3. They don't already have a saved address (new visitor)
-    // 4. Browser supports geolocation
-    const shouldShow =
-      !hasAsked &&
-      !hasDenied &&
-      !savedAddress &&
-      typeof navigator !== "undefined" &&
-      navigator.geolocation;
+    const shouldShow = typeof window !== "undefined";
 
     if (shouldShow) {
-      // Delay showing the modal slightly to let the page load
-      const timer = setTimeout(() => {
-        console.log("[LocationPermission] Showing modal");
-        setIsLocationPermissionModalOpen(true);
-        localStorage.setItem("locationPermissionAsked", "true");
-      }, 1500);
+      const requestBrowserPermission = async () => {
+        if (!("geolocation" in navigator)) return;
+        if (
+          localStorage.getItem("locationPermissionGranted") === "true" ||
+          localStorage.getItem("locationPermissionDenied") === "true"
+        ) {
+          return;
+        }
+        try {
+          if ("permissions" in navigator && navigator.permissions?.query) {
+            const status = await navigator.permissions.query({
+              name: "geolocation" as PermissionName,
+            });
+            if (status.state !== "prompt") return;
+          }
+        } catch (error) {
+          console.warn("Failed to read geolocation permission", error);
+        }
 
-      return () => clearTimeout(timer);
-    } else {
-      console.log("[LocationPermission] Skipping modal", {
-        hasAsked,
-        hasDenied,
-        savedAddress,
-        hasGeolocation:
-          typeof navigator !== "undefined" && !!navigator.geolocation,
-      });
+        navigator.geolocation.getCurrentPosition(
+          () => {},
+          () => {},
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+        );
+      };
+
+      requestBrowserPermission();
     }
   }, [cartStorageKey]);
 
@@ -1288,6 +747,138 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (hasLoadedStoresRef.current) return;
+    hasLoadedStoresRef.current = true;
+
+    const loadStores = async () => {
+      try {
+        const apiBase = getApiBaseUrl();
+        const response = await fetch(`${apiBase}/ecommerce-policies`);
+        const data = await response.json();
+        const rawStores = Array.isArray(data?.store_locations)
+          ? data.store_locations
+          : [];
+        const normalized = rawStores
+          .map((store: any, index: number) => {
+            const name = String(store?.name || "").trim();
+            const address = String(store?.address || "")
+              .replace(/\s*\n\s*/g, ", ")
+              .trim();
+            if (!name && !address) return null;
+            const latitudeValue = Number(store?.latitude);
+            const longitudeValue = Number(store?.longitude);
+            return {
+              id: String(store?.id || name || index + 1),
+              name: name || `Store ${index + 1}`,
+              address: address || "",
+              phone: store?.phone ? String(store.phone) : undefined,
+              mapUrl: store?.map_url ? String(store.map_url) : undefined,
+              latitude: Number.isNaN(latitudeValue) ? undefined : latitudeValue,
+              longitude: Number.isNaN(longitudeValue)
+                ? undefined
+                : longitudeValue,
+              hours: {
+                mon: {
+                  open: store?.mon_open,
+                  close: store?.mon_close,
+                  breakStart: store?.mon_break_start,
+                  breakEnd: store?.mon_break_end,
+                  closed: Boolean(store?.mon_closed),
+                  note: store?.mon_note,
+                },
+                tue: {
+                  open: store?.tue_open,
+                  close: store?.tue_close,
+                  breakStart: store?.tue_break_start,
+                  breakEnd: store?.tue_break_end,
+                  closed: Boolean(store?.tue_closed),
+                  note: store?.tue_note,
+                },
+                wed: {
+                  open: store?.wed_open,
+                  close: store?.wed_close,
+                  breakStart: store?.wed_break_start,
+                  breakEnd: store?.wed_break_end,
+                  closed: Boolean(store?.wed_closed),
+                  note: store?.wed_note,
+                },
+                thu: {
+                  open: store?.thu_open,
+                  close: store?.thu_close,
+                  breakStart: store?.thu_break_start,
+                  breakEnd: store?.thu_break_end,
+                  closed: Boolean(store?.thu_closed),
+                  note: store?.thu_note,
+                },
+                fri: {
+                  open: store?.fri_open,
+                  close: store?.fri_close,
+                  breakStart: store?.fri_break_start,
+                  breakEnd: store?.fri_break_end,
+                  closed: Boolean(store?.fri_closed),
+                  note: store?.fri_note,
+                },
+                sat: {
+                  open: store?.sat_open,
+                  close: store?.sat_close,
+                  breakStart: store?.sat_break_start,
+                  breakEnd: store?.sat_break_end,
+                  closed: Boolean(store?.sat_closed),
+                  note: store?.sat_note,
+                },
+                sun: {
+                  open: store?.sun_open,
+                  close: store?.sun_close,
+                  breakStart: store?.sun_break_start,
+                  breakEnd: store?.sun_break_end,
+                  closed: Boolean(store?.sun_closed),
+                  note: store?.sun_note,
+                },
+              },
+            } as Store;
+          })
+          .filter(Boolean) as Store[];
+
+        const resolvedStores = normalized.length > 0 ? normalized : STORES;
+        setStoreLocations(resolvedStores);
+
+        if (shouldSkipDefaultStore()) {
+          setSelectedStore(null);
+          return;
+        }
+
+        const stored = localStorage.getItem("selectedPickupStore");
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored) as Store;
+            const matched = resolvedStores.find(
+              (store) => store.id === parsed.id,
+            );
+            if (matched) {
+              setSelectedStore(matched);
+              return;
+            }
+          } catch (error) {
+            console.warn("Failed to restore selected store", error);
+          }
+        }
+
+        setSelectedStore((prev) => {
+          if (prev && resolvedStores.some((store) => store.id === prev.id)) {
+            return prev;
+          }
+          return getDefaultStore(resolvedStores);
+        });
+      } catch (error) {
+        console.error("Failed to load store locations:", error);
+        setStoreLocations(STORES);
+      }
+    };
+
+    loadStores();
+  }, []);
+
+  useEffect(() => {
     const checkAuth = async () => {
       const user = await getCurrentUser();
       setCurrentUser(user);
@@ -1298,12 +889,61 @@ export default function App() {
     const handleUserUpdate = () => {
       checkAuth();
     };
+    const handleResetPickupStore = () => {
+      if (import.meta.env.DEV) {
+        setSelectedStore(null);
+      }
+    };
+    const handleEnableDefaultStore = () => {
+      if (!import.meta.env.DEV) return;
+      localStorage.removeItem("devSkipDefaultStore");
+      if (!storeLocations.length) return;
+      const defaultStore = getDefaultStore(storeLocations);
+      setSelectedStore(defaultStore);
+      if (defaultStore) {
+        localStorage.setItem(
+          "selectedPickupStore",
+          JSON.stringify(defaultStore),
+        );
+        localStorage.setItem("pickupStoreSelected", "true");
+      }
+    };
+    const handlePickupStoreUpdated = (event: Event) => {
+      const detail = (event as CustomEvent).detail as Store | undefined;
+      if (detail) {
+        setSelectedStore(detail);
+      }
+    };
     window.addEventListener("user-updated", handleUserUpdate);
+    window.addEventListener(
+      "belims:reset-pickup-store",
+      handleResetPickupStore,
+    );
+    window.addEventListener(
+      "belims:enable-default-store",
+      handleEnableDefaultStore,
+    );
+    window.addEventListener(
+      "belims:pickup-store-updated",
+      handlePickupStoreUpdated,
+    );
 
     return () => {
       window.removeEventListener("user-updated", handleUserUpdate);
+      window.removeEventListener(
+        "belims:reset-pickup-store",
+        handleResetPickupStore,
+      );
+      window.removeEventListener(
+        "belims:enable-default-store",
+        handleEnableDefaultStore,
+      );
+      window.removeEventListener(
+        "belims:pickup-store-updated",
+        handlePickupStoreUpdated,
+      );
     };
-  }, []);
+  }, [storeLocations]);
 
   useEffect(() => {
     if (hasLoadedProductsRef.current) return;
@@ -1428,12 +1068,13 @@ export default function App() {
         setIsOnboardingOpen={setIsOnboardingOpen}
         isAiAssistantOpen={isAiAssistantOpen}
         setIsAiAssistantOpen={setIsAiAssistantOpen}
-        isLocationPermissionModalOpen={isLocationPermissionModalOpen}
-        setIsLocationPermissionModalOpen={setIsLocationPermissionModalOpen}
         isSearchModalOpen={isSearchModalOpen}
         setIsSearchModalOpen={setIsSearchModalOpen}
         selectedStore={selectedStore}
         setSelectedStore={setSelectedStore}
+        storeLocations={storeLocations}
+        pickupSchedule={pickupSchedule}
+        setPickupSchedule={setPickupSchedule}
         userType={userType}
         setUserType={setUserType}
         addToCart={addToCart}
@@ -1551,6 +1192,7 @@ function MainApp(props) {
                 cartItems={props.cartItems}
                 onBack={() => navigate(-1)}
                 onClearCart={props.clearCart}
+                onSchedulePickup={() => props.setIsLocatorOpen(true)}
               />
             }
           />
@@ -1615,19 +1257,6 @@ function MainApp(props) {
         addToCart={props.addToCart}
       />
 
-      {props.isLocationPermissionModalOpen && (
-        <LocationPermissionModal
-          isOpen={props.isLocationPermissionModalOpen}
-          onClose={() => props.setIsLocationPermissionModalOpen(false)}
-          onAddressDetected={(address) => {
-            props.showToast(
-              "Location detected! We've saved your delivery address.",
-              "success",
-            );
-          }}
-        />
-      )}
-
       {props.isSearchModalOpen && (
         <SearchModal
           isOpen={props.isSearchModalOpen}
@@ -1640,7 +1269,16 @@ function MainApp(props) {
       {props.isLocatorOpen && (
         <StoreLocator
           currentStore={props.selectedStore}
+          stores={props.storeLocations}
+          pickupSchedule={props.pickupSchedule}
           onSelectStore={props.setSelectedStore}
+          onSaveSchedule={(date, time) => {
+            props.setPickupSchedule({ date, time });
+            localStorage.setItem(
+              "pickupSchedule",
+              JSON.stringify({ date, time }),
+            );
+          }}
           onClose={() => props.setIsLocatorOpen(false)}
         />
       )}
@@ -1663,6 +1301,7 @@ function MainApp(props) {
 
       {props.isOnboardingOpen && (
         <OnboardingWizard
+          products={props.products}
           onClose={() => {
             props.setIsOnboardingOpen(false);
             localStorage.setItem("hasSeenOnboarding", "true");
@@ -1678,6 +1317,7 @@ function MainApp(props) {
 
       {props.isAiAssistantOpen && (
         <AiAssistant
+          products={props.products}
           onClose={() => props.setIsAiAssistantOpen(false)}
           onNavigateToProduct={handleProductClick}
           addToCart={props.addToCart}
@@ -1714,6 +1354,8 @@ function MainApp(props) {
           onClose={() => props.setToast(null)}
         />
       )}
+
+      <BelimsChatbot />
 
       <MobileBottomNav
         onSearch={() => props.setIsSearchModalOpen(true)}
