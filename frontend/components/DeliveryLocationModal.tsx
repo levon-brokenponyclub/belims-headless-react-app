@@ -130,10 +130,69 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     });
   };
 
+  const mapGoogleGeocodeResult = (
+    result: google.maps.GeocoderResult,
+  ): ShippingAddress | null => {
+    const components = result.address_components || [];
+    const findComponent = (type: string) =>
+      components.find((component) =>
+        component.types.includes(
+          type as google.maps.GeocoderAddressComponentType,
+        ),
+      );
+
+    const streetNumber = findComponent("street_number")?.long_name || "";
+    const route = findComponent("route")?.long_name || "";
+    const city =
+      findComponent("locality")?.long_name ||
+      findComponent("sublocality")?.long_name ||
+      findComponent("administrative_area_level_2")?.long_name ||
+      "";
+    const province =
+      findComponent("administrative_area_level_1")?.long_name || "";
+    const postalCode = findComponent("postal_code")?.long_name || "";
+
+    const street = [streetNumber, route].filter(Boolean).join(" ").trim();
+    const normalizedProvince = normalizeProvince(province);
+
+    if (!city || !normalizedProvince) return null;
+
+    const address: ShippingAddress = {
+      street,
+      city,
+      province: normalizedProvince,
+      postalCode,
+      country: "ZA",
+    };
+
+    return {
+      ...address,
+      label: buildAddressLabel(address),
+    };
+  };
+
   const resolveAddressFromCoordinates = async (
     lat: number,
     lon: number,
   ): Promise<ShippingAddress | null> => {
+    const win = window as any;
+    if (win.google?.maps?.Geocoder) {
+      const geocoder = new win.google.maps.Geocoder();
+      const result = await new Promise<ShippingAddress | null>((resolve) => {
+        geocoder.geocode(
+          { location: { lat, lng: lon } },
+          (results: google.maps.GeocoderResult[] | null, status: string) => {
+            if (status === "OK" && results && results.length > 0) {
+              resolve(mapGoogleGeocodeResult(results[0]));
+              return;
+            }
+            resolve(null);
+          },
+        );
+      });
+      if (result) return result;
+    }
+
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
       {
@@ -731,9 +790,46 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         setLoading(false);
         return;
       }
-      const requestPosition = (options: PositionOptions) =>
+      const requestPosition = (
+        options: PositionOptions,
+        watchTimeoutMs?: number,
+      ) =>
         new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, options);
+          let watchId: number | null = null;
+          let timer: number | null = null;
+
+          const cleanup = () => {
+            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+            if (timer !== null) window.clearTimeout(timer);
+          };
+
+          const onSuccess = (position: GeolocationPosition) => {
+            cleanup();
+            resolve(position);
+          };
+
+          const onError = (error: GeolocationPositionError) => {
+            cleanup();
+            reject(error);
+          };
+
+          if (watchTimeoutMs && watchTimeoutMs > 0) {
+            watchId = navigator.geolocation.watchPosition(
+              onSuccess,
+              onError,
+              options,
+            );
+            timer = window.setTimeout(() => {
+              cleanup();
+              reject({
+                code: 3,
+                message: "Timed out",
+              } as GeolocationPositionError);
+            }, watchTimeoutMs);
+            return;
+          }
+
+          navigator.geolocation.getCurrentPosition(onSuccess, onError, options);
         });
 
       const resolvePosition = async (position: GeolocationPosition) => {
@@ -854,9 +950,9 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
       try {
         const position = await requestPosition({
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
+          enableHighAccuracy: false,
+          timeout: 12000,
+          maximumAge: 300000,
         });
         await resolvePosition(position);
       } catch (error: any) {
@@ -867,18 +963,83 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         if (canRetry) {
           try {
             const position = await requestPosition({
-              enableHighAccuracy: false,
-              timeout: 15000,
-              maximumAge: 60000,
+              enableHighAccuracy: true,
+              timeout: 20000,
+              maximumAge: 0,
             });
             await resolvePosition(position);
             return;
           } catch (retryError: any) {
             error = retryError;
           }
+
+          try {
+            const position = await requestPosition(
+              {
+                enableHighAccuracy: false,
+                maximumAge: 300000,
+              },
+              12000,
+            );
+            await resolvePosition(position);
+            return;
+          } catch (watchError: any) {
+            error = watchError;
+          }
         }
 
         console.error("Geolocation error:", error);
+        const ipFallback = async () => {
+          try {
+            const response = await fetch("https://ipapi.co/json/");
+            if (!response.ok) return null;
+            const data = await response.json();
+            const lat = Number(data?.latitude);
+            const lon = Number(data?.longitude);
+            const city = String(data?.city || "").trim();
+            const region = String(
+              data?.region || data?.region_code || "",
+            ).trim();
+
+            if (Number.isFinite(lat) && Number.isFinite(lon)) {
+              try {
+                const resolved = await resolveAddressFromCoordinates(lat, lon);
+                if (resolved?.city && resolved?.province) {
+                  return resolved;
+                }
+              } catch (resolveError) {
+                console.error("IP reverse geocode error:", resolveError);
+              }
+            }
+
+            if (city || region) {
+              const label = [city, region].filter(Boolean).join(", ");
+              return {
+                street: "",
+                city: city || "",
+                province: normalizeProvince(region) || region,
+                postalCode: "",
+                country: "ZA",
+                label,
+              } as ShippingAddress;
+            }
+          } catch (fallbackError) {
+            console.error("IP fallback error:", fallbackError);
+          }
+          return null;
+        };
+
+        const fallbackAddress = await ipFallback();
+        if (fallbackAddress) {
+          setInput(fallbackAddress.label || "");
+          setDetectedLocationAddress(fallbackAddress);
+          setLoading(false);
+          setErrorMessage(
+            "We could not access a precise location. Please confirm or refine your address above.",
+          );
+          return;
+        }
+
         let errorMessage = "Unable to detect your location. ";
         if (error?.code === error?.PERMISSION_DENIED) {
           errorMessage +=

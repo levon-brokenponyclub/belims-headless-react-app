@@ -314,7 +314,11 @@ export const PopularCategories: React.FC = () => {
     const featuredSlugs = new Set(featuredCategories.map((cat) => cat.slug));
     const rest = categoryPool.filter((cat) => !featuredSlugs.has(cat.slug));
     const list = rest.length >= 10 ? rest : [...rest, ...categoryPool];
-    return list.slice(0, 10);
+    const unique = new Map<string, WooCommerceCategory>();
+    list.forEach((cat) => {
+      if (!unique.has(cat.slug)) unique.set(cat.slug, cat);
+    });
+    return Array.from(unique.values()).slice(0, 10);
   }, [categoryPool, featuredCategories]);
 
   const scrollByAmount = () =>
@@ -432,35 +436,37 @@ export const PopularCategories: React.FC = () => {
             className="mt-4 flex items-center gap-4 overflow-x-auto no-scrollbar pb-2"
             aria-roledescription="carousel"
           >
-            {(isLoading ? fallbackCategories : sliderCategories).map((cat) => {
-              const media = categoryMedia[cat.name];
-              return (
-                <Link
-                  key={cat.slug}
-                  to={`/shop/${encodeURIComponent(cat.slug)}`}
-                  className="shrink-0 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F1F1F1]">
-                      {media?.slider || media?.icon ? (
-                        <img
-                          src={media?.slider || media?.icon}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          className="h-6 w-6 object-contain"
-                        />
-                      ) : (
-                        <span className="text-xs font-semibold text-gray-500">
-                          {cat.name.slice(0, 2)}
-                        </span>
-                      )}
+            {(isLoading ? fallbackCategories : sliderCategories).map(
+              (cat, index) => {
+                const media = categoryMedia[cat.name];
+                return (
+                  <Link
+                    key={`${cat.slug}-${index}`}
+                    to={`/shop/${encodeURIComponent(cat.slug)}`}
+                    className="shrink-0 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F1F1F1]">
+                        {media?.slider || media?.icon ? (
+                          <img
+                            src={media?.slider || media?.icon}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            className="h-6 w-6 object-contain"
+                          />
+                        ) : (
+                          <span className="text-xs font-semibold text-gray-500">
+                            {cat.name.slice(0, 2)}
+                          </span>
+                        )}
+                      </span>
+                      <span>{cat.name}</span>
                     </span>
-                    <span>{cat.name}</span>
-                  </span>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              },
+            )}
           </div>
         </div>
       </div>
