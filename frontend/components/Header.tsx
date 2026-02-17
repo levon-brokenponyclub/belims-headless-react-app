@@ -410,9 +410,9 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-[300] font-sans">
       <section className="w-full bg-surface border-b border-subtle">
         <div className="bg-brand text-white">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col gap-3 py-3 text-base md:flex-row md:items-center">
-              <div className="flex items-center gap-4 text-base font-normal">
+          <div className="container mx-auto px-0">
+            <div className="flex flex-col gap-3 py-0 text-base md:flex-row md:items-center md:py-3 md:px-4">
+              <div className="hidden md:flex items-center gap-4 text-base font-normal">
                 <Link to="/faq" className="hover:text-white/80">
                   Help Center
                 </Link>
@@ -428,38 +428,38 @@ export const Header: React.FC<HeaderProps> = ({
                 </Link>
               </div>
               <div className="md:ml-auto">
-                <div className="flex items-center divide-x divide-white/40 w-full md:w-auto">
+                <div className="grid grid-cols-2 divide-x divide-white/40 w-full md:flex md:items-center md:divide-x">
                   <button
                     type="button"
                     onClick={() => setIsDeliveryLocationModalOpen(true)}
-                    className="flex items-center gap-2 px-3"
+                    className="flex items-center gap-3 px-3 py-2 text-left w-full"
                   >
-                    <MapPin size={16} />
-                    <span className="text-left flex flex-col-2 gap-2 items-center">
-                      <span className="block text-[14px] text-white">
-                        Pickup from:
+                    <MapPin size={16} className="flex-shrink-0" />
+                    <span className="flex flex-col">
+                      <span className="text-[12px] text-white/80">
+                        Pickup from
                       </span>
-                      <span className="block text-[14px] font-semibold truncate">
+                      <span className="text-[14px] font-semibold text-white truncate">
                         {pickupLabel}
                       </span>
                     </span>
-                    <ChevronRight size={14} className="flex-shrink-0" />
+                    <ChevronRight size={14} className="flex-shrink-0 ml-auto" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsDeliveryLocationModalOpen(true)}
-                    className="flex items-center gap-2 px-3"
+                    className="flex items-center gap-3 px-3 py-2 text-left w-full"
                   >
-                    <Truck size={16} />
-                    <span className="text-left flex flex-col-2 gap-2 items-center">
-                      <span className="block text-[14px] text-white">
-                        Deliver to:
+                    <Truck size={16} className="flex-shrink-0" />
+                    <span className="flex flex-col">
+                      <span className="text-[12px] text-white/80">
+                        Deliver to
                       </span>
-                      <span className="block text-[14px] font-semibold leading-tight truncate">
+                      <span className="text-[14px] font-semibold text-white leading-tight truncate">
                         {deliveryLabelText}
                       </span>
                     </span>
-                    <ChevronRight size={14} className="flex-shrink-0" />
+                    <ChevronRight size={14} className="flex-shrink-0 ml-auto" />
                   </button>
                 </div>
               </div>
