@@ -835,9 +835,9 @@ export const Archive: React.FC<ArchiveProps> = ({
       </nav>
 
       {categorySliderItems.length > 0 && (
-        <section className="bg-white border-b border-gray-100">
-          <div className="container mx-auto px-4 py-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <section className="bg-white border-b border-gray-100 mb-6">
+          <div className="container mx-auto px-4 py-4 pb-8">
+            {/* <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
                   Explore categories
@@ -870,7 +870,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                   ›
                 </button>
               </div>
-            </div>
+            </div> */}
 
             <div
               className="relative overflow-hidden"

@@ -989,7 +989,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
       {/* Page layout */}
       <div className="bg-white">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 py-12 pt-0">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
             {/* LEFT COLUMN */}
             <div className="lg:col-span-7">
