@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
+import { formatCurrency } from "../utils/price";
 import { StockBar } from "./StockBar";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import { VideoPlayer } from "./VideoPlayer";
@@ -28,7 +29,7 @@ import {
 } from "../services/shippingAddress";
 import { RecentlyViewed } from "./RecentlyViewed";
 import { StoreLocator } from "./StoreLocator";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { ProductPriceDisplay } from "./ProductPriceDisplay";
 import { FulfillmentBlock } from "./FulfillmentBlock";
 import { DeliveryRateOption } from "./DeliveryRateOption";
@@ -196,6 +197,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const [showBottomCta, setShowBottomCta] = useState(false);
   const buyBoxRef = useRef<HTMLDivElement>(null);
 
+  // Frequently Bought With Slider
+  const frequentlyBoughtRailRef = useRef<HTMLDivElement | null>(null);
+  const [frequentlyBoughtRailWidth, setFrequentlyBoughtRailWidth] = useState(0);
+  const [frequentlyBoughtStepWidth, setFrequentlyBoughtStepWidth] = useState(0);
+  const [frequentlyBoughtIndex, setFrequentlyBoughtIndex] = useState(0);
+
   const pricingInfo = useMemo(() => {
     const tradeDealsInfo = product.deals_resolved?.trade;
     const tradePrice = tradeDealsInfo?.price;
@@ -267,17 +274,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
       const dealName = (activeDeal as any)?.deal_name || "";
       const amount = isTradeSpecial
-        ? `${CURRENCY_SYMBOL}${tradeSavings.toLocaleString("en-ZA", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`
-        : `${CURRENCY_SYMBOL}${Math.max(
-            0,
-            consumerCompareAt ? consumerCompareAt - consumerPrice : 0,
-          ).toLocaleString("en-ZA", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`;
+        ? formatCurrency(tradeSavings)
+        : formatCurrency(
+            Math.max(
+              0,
+              consumerCompareAt ? consumerCompareAt - consumerPrice : 0,
+            ),
+          );
       const pct = isTradeSpecial
         ? retailPrice > 0
           ? Math.round(
@@ -804,6 +807,50 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     if (fulfillmentType !== "pickup") return;
     hydratePickupDistances();
   }, [fulfillmentType, storeLocations]);
+
+  // Frequently Bought With Slider Logic
+  useEffect(() => {
+    if (!frequentlyBoughtRailRef.current) return;
+
+    const measure = () => {
+      const rail = frequentlyBoughtRailRef.current;
+      if (!rail) return;
+
+      setFrequentlyBoughtRailWidth(rail.clientWidth);
+
+      const children = Array.from(
+        rail.querySelectorAll<HTMLElement>("[data-fbw-slider-item]"),
+      );
+      if (children.length === 0) return;
+
+      if (children.length >= 2) {
+        const step = children[1].offsetLeft - children[0].offsetLeft;
+        setFrequentlyBoughtStepWidth(step > 0 ? step : children[0].offsetWidth);
+      } else {
+        setFrequentlyBoughtStepWidth(children[0].offsetWidth);
+      }
+    };
+
+    measure();
+
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(frequentlyBoughtRailRef.current);
+
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  const scrollToFrequentlyBoughtIndex = (nextIndex: number) => {
+    if (!frequentlyBoughtRailRef.current || !frequentlyBoughtStepWidth) return;
+    frequentlyBoughtRailRef.current.scrollTo({
+      left: nextIndex * frequentlyBoughtStepWidth,
+      behavior: "smooth",
+    });
+  };
+
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
   return (
@@ -1207,8 +1254,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                   Retail
                                 </div>
                                 <div className="mt-1 text-base font-bold text-gray-900 tabular-nums">
-                                  {CURRENCY_SYMBOL}
-                                  {pricingInfo.retailPrice.toFixed(2)}
+                                  {formatCurrency(pricingInfo.retailPrice)}
                                 </div>
                               </div>
                               <div className="relative flex flex-col items-center justify-center rounded bg-belims-blue p-3">
@@ -1216,8 +1262,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                   Trade
                                 </div>
                                 <div className="mt-1 text-base font-extrabold text-white tabular-nums">
-                                  {CURRENCY_SYMBOL}
-                                  {pricingInfo.tradePrice.toFixed(2)}
+                                  {formatCurrency(pricingInfo.tradePrice)}
                                 </div>
                               </div>
                               <div className="flex flex-col items-center justify-center">
@@ -1225,8 +1270,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                   Discount
                                 </div>
                                 <div className="mt-1 inline-flex items-center gap-1 rounded bg-green-100 border border-green-500 px-5 py-1 text-sm font-extrabold text-green-700 tabular-nums">
-                                  {CURRENCY_SYMBOL}
-                                  {pricingInfo.savings.toFixed(2)}
+                                  {formatCurrency(pricingInfo.savings)}
                                 </div>
                               </div>
                             </div>
@@ -1271,8 +1315,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                       Retail
                                     </div>
                                     <div className="mt-1 text-base font-bold text-gray-900 tabular-nums">
-                                      {CURRENCY_SYMBOL}
-                                      {pricingInfo.retailPrice.toFixed(2)}
+                                      {formatCurrency(pricingInfo.retailPrice)}
                                     </div>
                                   </div>
                                   <div className="relative flex flex-col items-center justify-center rounded-lg bg-orange-100 p-2">
@@ -1280,8 +1323,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                       Trade
                                     </div>
                                     <div className="mt-1 text-base font-extrabold text-orange-700 tabular-nums">
-                                      {CURRENCY_SYMBOL}
-                                      {pricingInfo.tradePrice.toFixed(2)}
+                                      {formatCurrency(pricingInfo.tradePrice)}
                                     </div>
 
                                     <div className="mt-2 inline-flex items-center rounded-full bg-belims-accent px-4 py-0.5 text-[10px] font-semibold text-white">
@@ -1293,8 +1335,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                       Save
                                     </div>
                                     <div className="mt-1 inline-flex items-center gap-1 rounded bg-green-100 border border-green-500 px-5 py-1 text-sm font-extrabold text-green-700 tabular-nums">
-                                      {CURRENCY_SYMBOL}
-                                      {pricingInfo.savings.toFixed(2)}
+                                      {formatCurrency(pricingInfo.savings)}
                                     </div>
                                   </div>
                                 </div>
@@ -1364,6 +1405,128 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   classifyRate={classifyRate}
                   formatEta={formatEta}
                 />
+
+                {/* Perfect Match With - Slider in Right Column */}
+                {(() => {
+                  const mainCategory =
+                    product.breadcrumbs?.find((b) => b.label !== "Shop")
+                      ?.label || product.category;
+
+                  let recommendedProducts: Product[] = [];
+
+                  if (
+                    product.cross_sell_ids &&
+                    product.cross_sell_ids.length > 0
+                  ) {
+                    const crossSellIds = product.cross_sell_ids;
+                    recommendedProducts = allProducts
+                      .filter((p) => crossSellIds.includes(p.id))
+                      .slice(0, 10);
+                  }
+
+                  if (recommendedProducts.length < 10) {
+                    const mainCategoryProducts = allProducts
+                      .filter((p) => {
+                        if (p.id === product.id) return false;
+                        if (recommendedProducts.some((rp) => rp.id === p.id))
+                          return false;
+                        return (p.breadcrumbs || []).some(
+                          (b) => b.label === mainCategory,
+                        );
+                      })
+                      .slice(0, 10 - recommendedProducts.length);
+
+                    recommendedProducts = [
+                      ...recommendedProducts,
+                      ...mainCategoryProducts,
+                    ];
+                  }
+
+                  if (recommendedProducts.length === 0) return null;
+
+                  const slidesPerView = Math.max(
+                    1,
+                    Math.floor(
+                      frequentlyBoughtRailWidth / frequentlyBoughtStepWidth,
+                    ),
+                  );
+                  const maxIndex = Math.max(
+                    0,
+                    recommendedProducts.length - slidesPerView,
+                  );
+                  const indicatorPct =
+                    maxIndex === 0
+                      ? 100
+                      : Math.min(100, (frequentlyBoughtIndex / maxIndex) * 100);
+
+                  const handleFrequentlyBoughtPrev = () => {
+                    const nextIndex =
+                      frequentlyBoughtIndex <= 0
+                        ? maxIndex
+                        : frequentlyBoughtIndex - 1;
+                    setFrequentlyBoughtIndex(nextIndex);
+                    scrollToFrequentlyBoughtIndex(nextIndex);
+                  };
+
+                  const handleFrequentlyBoughtNext = () => {
+                    const nextIndex =
+                      frequentlyBoughtIndex >= maxIndex
+                        ? 0
+                        : frequentlyBoughtIndex + 1;
+                    setFrequentlyBoughtIndex(nextIndex);
+                    scrollToFrequentlyBoughtIndex(nextIndex);
+                  };
+
+                  return (
+                    <div className="mt-8 pt-6 border-t border-gray-200">
+                      <div className="mb-6">
+                        <h3 className="text-lg font-semibold text-grey font-heading">
+                          Perfect Match With
+                        </h3>
+                      </div>
+
+                      {/* Slider Container - 100% width */}
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div
+                          ref={frequentlyBoughtRailRef}
+                          className="flex gap-3 overflow-x-auto no-scrollbar items-stretch snap-x snap-mandatory scroll-pl-0"
+                          aria-roledescription="carousel"
+                          onScroll={() => {
+                            if (
+                              !frequentlyBoughtRailRef.current ||
+                              !frequentlyBoughtStepWidth
+                            )
+                              return;
+                            const nextIndex = Math.round(
+                              frequentlyBoughtRailRef.current.scrollLeft /
+                                frequentlyBoughtStepWidth,
+                            );
+                            setFrequentlyBoughtIndex(
+                              Math.min(maxIndex, Math.max(0, nextIndex)),
+                            );
+                          }}
+                        >
+                          {recommendedProducts.map((p) => (
+                            <div
+                              key={p.id}
+                              className="flex-shrink-0 snap-start basis-[calc((100%-1.5rem)/3)] min-w-0"
+                              data-fbw-slider-item
+                            >
+                              <ProductCard
+                                product={p}
+                                addToCart={addToCart}
+                                className="h-full"
+                                customizations={
+                                  PRODUCT_CARD_PRESETS.perfectMatchCard
+                                }
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -1371,7 +1534,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             <div className="order-3 lg:order-3 lg:col-span-7">
               {/* Product Description */}
               <div className="mt-10 lg:mt-0">
-                <h3 className="text-2xl font-bold text-grey mb-3 border-b border-grey pb-3">
+                <h3 className="text-xl font-bold text-grey mb-3 border-b border-grey pb-3">
                   Product Description
                 </h3>
                 <div className="prose prose-sm max-w-none text-grey-medium text-base [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-grey [&_h3]:mt-4 [&_h3]:mb-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-grey [&_h4]:mt-3 [&_h4]:mb-2 [&_strong]:font-bold [&_strong]:text-grey [&_b]:font-bold [&_b]:text-grey [&_em]:italic [&_i]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:mb-3 [&_ul]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:mb-3 [&_ol]:mt-2 [&_li]:text-grey [&_li]:leading-relaxed [&_p]:mb-2 [&_p]:leading-relaxed [&_br]:content-[''] [&_table]:w-full [&_table]:border-collapse [&_table]:mb-3 [&_th]:border [&_th]:border-grey [&_th]:bg-grey [&_th]:p-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-grey [&_td]:p-2">
@@ -1435,10 +1598,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 {product.name}
               </div>
               <div className="text-base font-bold text-grey">
-                {CURRENCY_SYMBOL}
-                {(
-                  product.deals_resolved?.consumer?.price ?? product.price
-                ).toFixed(2)}
+                {formatCurrency(
+                  product.deals_resolved?.consumer?.price ?? product.price,
+                )}
               </div>
             </div>
           </div>
@@ -1603,66 +1765,17 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 .slice(0, 4)
                 .map((p) => (
                   <div key={p.id}>
-                    <ProductCard product={p} addToCart={addToCart} />
+                    <ProductCard
+                      product={p}
+                      addToCart={addToCart}
+                      customizations={PRODUCT_CARD_PRESETS.compactCard}
+                    />
                   </div>
                 ))}
             </div>
           </div>
         </section>
       )}
-
-      {/* Frequently Bought Together Section */}
-      {(() => {
-        const mainCategory =
-          product.breadcrumbs?.find((b) => b.label !== "Shop")?.label ||
-          product.category;
-
-        let recommendedProducts: Product[] = [];
-
-        if (product.cross_sell_ids && product.cross_sell_ids.length > 0) {
-          const crossSellIds = product.cross_sell_ids;
-          recommendedProducts = allProducts
-            .filter((p) => crossSellIds.includes(p.id))
-            .slice(0, 4);
-        }
-
-        if (recommendedProducts.length < 4) {
-          const mainCategoryProducts = allProducts
-            .filter((p) => {
-              if (p.id === product.id) return false;
-              if (recommendedProducts.some((rp) => rp.id === p.id))
-                return false;
-              return (p.breadcrumbs || []).some(
-                (b) => b.label === mainCategory,
-              );
-            })
-            .slice(0, 4 - recommendedProducts.length);
-
-          recommendedProducts = [
-            ...recommendedProducts,
-            ...mainCategoryProducts,
-          ];
-        }
-
-        if (recommendedProducts.length === 0) return null;
-
-        return (
-          <section className="py-12 bg-gray-50 border-t border-gray-200 mb-0">
-            <div className="container mx-auto px-4">
-              <h3 className="text-2xl font-bold text-gray-900 font-heading mb-8">
-                Frequently bought together
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {recommendedProducts.map((p) => (
-                  <div key={p.id}>
-                    <ProductCard product={p} addToCart={addToCart} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        );
-      })()}
 
       {/* Recently Viewed Section */}
       <RecentlyViewed

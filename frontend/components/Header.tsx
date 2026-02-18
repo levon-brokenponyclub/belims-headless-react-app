@@ -28,6 +28,7 @@ import { initializeCategoryTree } from "../categoryTree";
 import { logoutUser, UserData } from "../services/authService";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import { MegaMenu } from "./MegaMenu";
+import { SearchResults } from "./SearchResults";
 import {
   buildAddressLabel,
   readStoredAddress,
@@ -116,9 +117,6 @@ export const Header: React.FC<HeaderProps> = ({
     categories: SearchCategoryResult[];
     products: Product[];
   } | null>(null);
-  const [activeSearchTab, setActiveSearchTab] = useState<
-    "products" | "categories"
-  >("products");
   const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
   const [activeMegaCategory, setActiveMegaCategory] =
     useState<CategoryNode | null>(null);
@@ -336,11 +334,6 @@ export const Header: React.FC<HeaderProps> = ({
           p.category.toLowerCase().includes(lowerQuery),
       );
       setSearchResults({ categories: matchedCats, products: matchedProds });
-      if (matchedProds.length === 0 && matchedCats.length > 0) {
-        setActiveSearchTab("categories");
-      } else if (matchedProds.length > 0 && matchedCats.length === 0) {
-        setActiveSearchTab("products");
-      }
     } else {
       setSearchResults(null);
     }
@@ -709,6 +702,19 @@ export const Header: React.FC<HeaderProps> = ({
                   className="input flex-1 bg-transparent border-0 text-grey placeholder:text-grey/85 focus:ring-0 focus:outline-none focus:text-grey rounded-none"
                   aria-label="Search products"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSearchResults(null);
+                    }}
+                    className="px-3 text-grey text-sm font-bold hover:text-ink transition-colors"
+                    aria-label="Clear search"
+                  >
+                    Clear
+                  </button>
+                )}
                 <button
                   type="submit"
                   className="mr-1 icon-btn bg-grey-light text-grey border-0 hover:bg-ink"
@@ -718,154 +724,35 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </form>
 
-              {searchResults &&
-                (searchResults.categories.length > 0 ||
-                  searchResults.products.length > 0) && (
-                  <div className="absolute top-full left-0 right-0 bg-surface rounded-block mt-2 border border-subtle overflow-hidden z-50 shadow-pop">
-                    <div className="flex items-center justify-between px-4 py-3 bg-surface border-b border-subtle">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setActiveSearchTab("products")}
-                          className={`px-3 py-1.5 text-xs font-bold uppercase tracking-[1px] rounded-pill border transition-colors ${
-                            activeSearchTab === "products"
-                              ? "bg-brand text-white border-brand"
-                              : "bg-surface text-muted border-subtle hover:text-brand"
-                          }`}
-                        >
-                          Products
-                          <span className="ml-2 text-[10px] font-bold">
-                            {searchResults.products.length}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveSearchTab("categories")}
-                          className={`px-3 py-1.5 text-xs font-bold uppercase tracking-[1px] rounded-pill border transition-colors ${
-                            activeSearchTab === "categories"
-                              ? "bg-brand text-white border-brand"
-                              : "bg-surface text-muted border-subtle hover:text-brand"
-                          }`}
-                        >
-                          Categories
-                          <span className="ml-2 text-[10px] font-bold">
-                            {searchResults.categories.length}
-                          </span>
-                        </button>
-                      </div>
-                      <div className="text-[11px] font-semibold text-muted">
-                        {searchResults.products.length +
-                          searchResults.categories.length}{" "}
-                        results
-                      </div>
-                    </div>
-
-                    <div className="max-h-[360px] overflow-y-auto">
-                      {activeSearchTab === "categories" && (
-                        <div className="p-3 bg-soft">
-                          {searchResults.categories.length > 0 ? (
-                            searchResults.categories.map((c) => (
-                              <div
-                                key={c.id}
-                                className="px-3 py-2.5 hover:bg-surface hover:text-brand cursor-pointer rounded-sm text-sm font-semibold transition-colors"
-                                onClick={() => handleCategorySelect(c.label)}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span>{c.label}</span>
-                                  <ChevronDown
-                                    size={12}
-                                    className="-rotate-90 text-muted"
-                                  />
-                                </div>
-                                <div className="text-[11px] text-muted font-normal truncate">
-                                  {c.fullPath}
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="px-3 py-6 text-sm text-muted text-center">
-                              No categories found
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {activeSearchTab === "products" && (
-                        <div className="p-3">
-                          {searchResults.products.length > 0 ? (
-                            searchResults.products.map((p) => (
-                              <div
-                                key={p.id}
-                                className="px-3 py-3 hover:bg-soft cursor-pointer rounded-sm flex gap-3 items-center group"
-                                onClick={() => handleProductSelect(p)}
-                              >
-                                <img
-                                  src={p.image}
-                                  className="w-11 h-11 object-contain rounded-sm bg-surface border border-subtle"
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-bold text-ink truncate font-heading group-hover:text-brand">
-                                    {p.name}
-                                  </div>
-                                  <div className="text-xs text-muted truncate">
-                                    {p.category}
-                                  </div>
-                                </div>
-                                <div className="text-sm font-bold text-brand">
-                                  {CURRENCY_SYMBOL}
-                                  {p.price.toFixed(2)}
-                                </div>
-
-                                {onCompare && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onCompare(p);
-                                    }}
-                                    className="p-1.5 rounded-pill hover:bg-brand hover:text-white text-muted transition-colors ml-2"
-                                    title="Compare"
-                                  >
-                                    <Scale size={16} />
-                                  </button>
-                                )}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="px-3 py-6 text-sm text-muted text-center">
-                              No products found
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-3 bg-soft border-t border-subtle text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleSearchSubmit()}
-                        className="text-sm font-bold text-brand hover:underline flex items-center justify-center gap-1 w-full"
-                      >
-                        View all results <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </div>
-                )}
+              <SearchResults
+                searchResults={searchResults}
+                searchQuery={searchQuery}
+                onViewAllResults={() => handleSearchSubmit()}
+                onCategorySelect={handleCategorySelect}
+                onProductSelect={handleProductSelect}
+                addToCart={() => {}}
+                onBuyNow={() => {}}
+                onCompare={onCompare}
+                isAuthenticated={!!currentUser}
+                isTradeApproved={false}
+              />
             </div>
 
             <div className="hidden md:flex items-center gap-3 text-grey">
               <button
                 type="button"
-                className="group relative h-12 px-6 rounded-full bg-white text-gray-900 overflow-hidden transition-colors"
+                className="group relative h-12 rounded-full border border-white bg-white px-4 pl-1 overflow-hidden transition-colors hover:border-grey hover:text-white"
                 onClick={() => setIsAccountPanelOpen(true)}
               >
-                <span className="absolute inset-0 bg-gray-900 transform scale-x-0 origin-left transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
-                <div className="relative flex items-center gap-2 z-10 transition-colors group-hover:text-white">
-                  <User size={20} />
-                  <span className="font-heading font-semibold">
+                <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+                <div className="relative z-10 flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-grey-light transition-colors group-hover:bg-white">
+                    <User
+                      size={20}
+                      className="text-grey transition-colors group-hover:text-grey"
+                    />
+                  </span>
+                  <span className="text-base font-bold text-grey transition-colors group-hover:text-white">
                     {currentUser
                       ? currentUser.first_name || currentUser.username
                       : "Sign In/Register"}
@@ -878,7 +765,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="h-[48px] w-[48px] rounded-full flex items-center justify-center p-0 bg-grey-light relative"
                 onClick={toggleCart}
               >
-                <ShoppingBasket size={22} />
+                <ShoppingBasket size={20} strokeWidth={1.5} />
                 {cartCount > 0 && (
                   <span className="text-[10px] font-bold text-white bg-red-muted rounded-full absolute w-5 h-5 top-0.5 right-0.5 flex items-center justify-center leading-none">
                     {cartCount}

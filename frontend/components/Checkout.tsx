@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CartItem, Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
+import { formatCurrency } from "../utils/price";
 import {
   getShippingRates,
   getFallbackShipping,
@@ -1375,8 +1376,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                         </div>
                                         <div className="text-right">
                                           <div className="font-bold text-lg text-gray-900">
-                                            {CURRENCY_SYMBOL}
-                                            {rate.total_price.toFixed(2)}
+                                            {formatCurrency(rate.total_price)}
                                           </div>
                                         </div>
                                       </div>
@@ -1490,8 +1490,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       </>
                     ) : (
                       <>
-                        <CreditCard size={20} /> Pay {CURRENCY_SYMBOL}
-                        {total.toFixed(2)}
+                        <CreditCard size={20} /> Pay {formatCurrency(total)}
                       </>
                     )}
                   </button>
@@ -1551,8 +1550,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           {item.category || "Uncategorized"} · {item.quantity}x
                         </p>
                         <p className="text-sm font-semibold text-gray-900 mt-1">
-                          {CURRENCY_SYMBOL}
-                          {(item.price * item.quantity).toFixed(2)}
+                          {formatCurrency(item.price * item.quantity)}
                         </p>
                       </div>
                     </li>
@@ -1581,8 +1579,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                   <li className="flex items-center justify-between">
                     <span>Subtotal</span>
                     <span className="font-semibold text-gray-900">
-                      {CURRENCY_SYMBOL}
-                      {subtotal.toFixed(2)}
+                      {formatCurrency(subtotal)}
                     </span>
                   </li>
                   <li className="flex items-center justify-between">
@@ -1609,8 +1606,8 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     </div>
                     <span className="font-semibold text-gray-900">
                       {deliveryType === "delivery"
-                        ? `${CURRENCY_SYMBOL}${shippingCost.toFixed(2)}`
-                        : `${CURRENCY_SYMBOL}0.00`}
+                        ? formatCurrency(shippingCost)
+                        : formatCurrency(0)}
                     </span>
                   </li>
                 </ul>
@@ -1619,8 +1616,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     Total
                   </span>
                   <span className="text-base font-semibold text-gray-900">
-                    {CURRENCY_SYMBOL}
-                    {total.toFixed(2)}
+                    {formatCurrency(total)}
                   </span>
                 </div>
               </div>

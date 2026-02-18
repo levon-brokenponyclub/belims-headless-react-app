@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../types";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { SkeletonProductCard } from "./Skeleton";
 
 interface ShopByCategoryProps {
@@ -262,6 +262,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
                         isAuthenticated={isAuthenticated}
                         isTradeApproved={isTradeApproved}
                         className="h-full"
+                        customizations={PRODUCT_CARD_PRESETS.compactCard}
                       />
                     </div>
                   ))}

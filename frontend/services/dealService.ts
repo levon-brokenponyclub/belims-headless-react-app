@@ -1,4 +1,5 @@
 import { Product, Deal, DealResolvedInfo } from "../types";
+import { formatCurrency } from "../utils/price";
 
 // Helper: Normalize deals from product
 export function normalizeDealsFromProduct(product: any): Deal[] {
@@ -191,7 +192,7 @@ export function computeDealDisplay(
   } else if (deal.label_mode === "template" && deal.label_template) {
     label = deal.label_template
       .replace("{deal_name}", deal.deal_name || "")
-      .replace("{amount}", `R${amountOff.toFixed(0)}`)
+      .replace("{amount}", formatCurrency(amountOff))
       .replace("{percent_off}", `${percentOff}`);
   } else {
     // Auto

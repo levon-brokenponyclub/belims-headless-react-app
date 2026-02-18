@@ -22,7 +22,7 @@ export const ProductAccordions: React.FC<ProductAccordionsProps> = ({
           }
           className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
         >
-          <span className="text-2xl font-bold text-grey transition-colors">
+          <span className="text-xl font-semibold text-grey transition-colors">
             15-Days Return Policy
           </span>
           <ChevronRight
@@ -52,7 +52,7 @@ export const ProductAccordions: React.FC<ProductAccordionsProps> = ({
           }
           className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
         >
-          <span className="text-2xl font-bold text-grey transition-colors">
+          <span className="text-xl font-semibold text-grey transition-colors">
             Change of Mind Return
           </span>
           <ChevronRight
@@ -80,7 +80,7 @@ export const ProductAccordions: React.FC<ProductAccordionsProps> = ({
           }
           className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
         >
-          <span className="text-2xl font-bold text-grey transition-colors">
+          <span className="text-xl font-semibold text-grey transition-colors">
             Warranty
           </span>
           <ChevronRight
@@ -108,7 +108,7 @@ export const ProductAccordions: React.FC<ProductAccordionsProps> = ({
           }
           className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
         >
-          <span className="text-2xl font-bold text-grey transition-colors">
+          <span className="text-xl font-semibold  text-grey transition-colors">
             Delivery and Shipping
           </span>
           <ChevronRight

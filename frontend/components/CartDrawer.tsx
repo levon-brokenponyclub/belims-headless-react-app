@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { X, Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
 import { CartItem, Product } from "../types";
 import { FREE_SHIPPING_THRESHOLD, CURRENCY_SYMBOL } from "../constants";
+import { formatCurrency } from "../utils/price";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -49,7 +50,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const hasFreeShipping = remainingForFreeShip === 0;
   const freeShippingMessage = hasFreeShipping
     ? "You've unlocked FREE Delivery!"
-    : `Add items worth ${CURRENCY_SYMBOL}${remainingForFreeShip.toFixed(2)} for FREE Delivery!`;
+    : `Add items worth ${formatCurrency(remainingForFreeShip)} for FREE Delivery!`;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -135,13 +136,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         </div>
                         <div className="mt-2 flex items-center gap-2 text-sm font-semibold">
                           <span className="text-red-600">
-                            {CURRENCY_SYMBOL}
-                            {(product.price || 0).toFixed(2)}
+                            {formatCurrency(product.price || 0)}
                           </span>
                           {showStrike && (
                             <span className="text-gray-400 line-through text-xs">
-                              {CURRENCY_SYMBOL}
-                              {(product.regular_price || 0).toFixed(2)}
+                              {formatCurrency(product.regular_price || 0)}
                             </span>
                           )}
                         </div>
@@ -336,7 +335,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                           <span className="woocommerce-Price-currencySymbol">
                             {CURRENCY_SYMBOL}
                           </span>
-                          {remainingForFreeShip.toFixed(2)}
+                          {formatCurrency(remainingForFreeShip).replace(
+                            CURRENCY_SYMBOL,
+                            "",
+                          )}
                         </bdi>
                       </span>
                     </span>{" "}
@@ -411,8 +413,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     </div>
                     <div className="flex flex-col items-end gap-3 justify-between">
                       <p className="text-sm font-semibold text-gray-900">
-                        {CURRENCY_SYMBOL}
-                        {item.price.toFixed(2)}
+                        {formatCurrency(item.price)}
                       </p>
                       <button
                         onClick={() => removeItem(item.id)}
@@ -468,8 +469,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <div className="flex flex-row gap-1 items-center text-base font-bold text-gray-900">
                       <span>Total:</span>
                       <span className="text-gray-900">
-                        {CURRENCY_SYMBOL}
-                        {subtotal.toFixed(2)}
+                        {formatCurrency(subtotal)}
                       </span>
                     </div>
                   )}
@@ -502,8 +502,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       <div className="flex justify-between text-gray-700">
                         <span>Subtotal</span>
                         <span className="font-semibold">
-                          {CURRENCY_SYMBOL}
-                          {subtotal.toFixed(2)}
+                          {formatCurrency(subtotal)}
                         </span>
                       </div>
                       <div className="flex justify-between text-gray-700">
@@ -537,8 +536,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <div className="flex justify-between items-center text-lg font-bold">
                       <span>Total</span>
                       <span className="text-belims-blue">
-                        {CURRENCY_SYMBOL}
-                        {subtotal.toFixed(2)}
+                        {formatCurrency(subtotal)}
                       </span>
                     </div>
                   </div>

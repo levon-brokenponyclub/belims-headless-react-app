@@ -1,5 +1,5 @@
 import React from "react";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { CategoryNode, Product } from "../types";
 
 interface MegaMenuProps {
@@ -283,6 +283,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
                   product={product}
                   addToCart={() => {}}
                   className="h-full"
+                  customizations={PRODUCT_CARD_PRESETS.searchCard}
                 />
               ))
             ) : (

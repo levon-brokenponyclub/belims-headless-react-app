@@ -1,6 +1,6 @@
 import React from "react";
 import { Zap } from "lucide-react";
-import { CURRENCY_SYMBOL } from "../constants";
+import { formatCurrency } from "../utils/price";
 
 export interface DeliveryRateOptionData {
   id: string;
@@ -66,9 +66,7 @@ export const DeliveryRateOption: React.FC<DeliveryRateOptionProps> = ({
 
       {/* Price (Right) */}
       <span className="text-[14px] font-bold text-gray-900 flex-shrink-0">
-        {option.isFree
-          ? "FREE"
-          : `${CURRENCY_SYMBOL}${option.price.toFixed(2)}`}
+        {option.isFree ? "FREE" : formatCurrency(option.price)}
       </span>
     </button>
   );

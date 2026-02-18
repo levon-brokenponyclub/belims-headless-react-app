@@ -75,7 +75,7 @@ const HeroBanner: React.FC = () => {
         href: "/collections/planers",
         title: "Planers",
         description:
-          "Get the job done with much less effort with an affordable and powerful planer from top brands like Makita, Metabo and Dewalt.",
+          "Get the job done with much less effort with an affordable and powerful planer from top brands.",
         buttonText: "Shop now",
         imageSrc:
           "https://athens-theme.myshopify.com/cdn/shop/files/athens-mosaic-03.jpg?v=1747138889&width=2840",
@@ -169,30 +169,39 @@ const HeroBanner: React.FC = () => {
                       <div className="mt-5 grid grid-cols-2 gap-3">
                         <button
                           type="button"
-                          className="inline-flex h-11 w-full items-center justify-center rounded-sm bg-belims-accent px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                          className="group relative h-12 w-full overflow-hidden rounded-pill bg-belims-accent text-white transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
                             window.location.href = "/trade/deals";
                           }}
                         >
-                          View Trade Deals
+                          <span className="absolute inset-0 origin-left scale-x-0 bg-blue-700 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                          <span className="relative z-10 px-3 text-lg font-semibold font-heading transition-colors group-hover:text-white">
+                            View Trade Deals
+                          </span>
                         </button>
 
                         <button
                           type="button"
-                          className="inline-flex h-11 w-full items-center justify-center rounded-sm border-2 border-white bg-transparent px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-white hover:text-black"
+                          className="group relative h-12 w-full overflow-hidden rounded-pill border-2 border-white bg-transparent text-white transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
                             window.location.href = "/trade/register";
                           }}
                         >
-                          Apply for Trade Account
+                          <span className="absolute inset-0 origin-left scale-x-0 bg-white transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                          <span className="relative z-10 px-3 text-lg font-semibold font-heading transition-colors group-hover:text-black">
+                            Apply for Trade Account
+                          </span>
                         </button>
                       </div>
                     ) : (
                       <div className="mt-5">
-                        <span className="inline-flex h-11 items-center justify-center rounded-sm bg-belims-blue px-8 font-semibold text-sm text-white shadow-sm transition">
-                          {card.buttonText}
+                        <span className="group relative inline-flex h-11 items-center justify-center overflow-hidden rounded-pill bg-belims-blue px-12 text-white transition-colors">
+                          <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100 px-3" />
+                          <span className="relative z-10 font-heading font-bold text-base px-3 transition-colors group-hover:text-white">
+                            {card.buttonText}
+                          </span>
                         </span>
                       </div>
                     )}
@@ -371,11 +380,9 @@ const HeroBanner: React.FC = () => {
                           <button
                             type="button"
                             className="
-                              inline-flex h-11 w-full items-center justify-center
-                              rounded-sm bg-belims-accent px-4
-                              text-sm font-semibold text-white
-                              shadow-sm transition
-                              hover:bg-blue-700
+                              group relative h-12 w-full overflow-hidden
+                              rounded-pill bg-belims-accent
+                              text-white transition-colors
                               sm:w-auto sm:px-8
                             "
                             onClick={(e) => {
@@ -383,17 +390,18 @@ const HeroBanner: React.FC = () => {
                               window.location.href = "/trade/deals";
                             }}
                           >
-                            View Trade Deals
+                            <span className="absolute inset-0 origin-left scale-x-0 bg-belims-blue transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                            <span className="relative z-10 text-base font-semibold px-2 font-heading transition-colors group-hover:text-white">
+                              View Trade Deals
+                            </span>
                           </button>
 
                           <button
                             type="button"
                             className="
-                              inline-flex h-11 w-full items-center justify-center
-                              rounded-sm border-2 border-white bg-transparent px-4
-                              text-sm font-semibold text-white
-                              shadow-sm transition
-                              hover:bg-white hover:text-black
+                              group relative h-12 w-full overflow-hidden
+                              rounded-pill border-2 border-white bg-transparent
+                              text-white transition-colors
                               sm:w-auto sm:px-8
                             "
                             onClick={(e) => {
@@ -401,21 +409,25 @@ const HeroBanner: React.FC = () => {
                               window.location.href = "/trade/register";
                             }}
                           >
-                            Apply for Trade Account
+                            <span className="absolute inset-0 origin-left scale-x-0 bg-white transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                            <span className="relative z-10 text-base font-semibold px-5 font-heading transition-colors group-hover:text-black">
+                              Apply for Trade Account
+                            </span>
                           </button>
                         </div>
                       ) : (
                         <div className="mt-5">
                           <span
                             className="
-                              inline-flex h-11 items-center justify-center
-                              rounded-sm bg-belims-blue px-8
-                              font-semibold text-sm text-white
-                              shadow-sm transition
-                              group-hover:bg-red-600
+                              group relative inline-flex h-12 items-center justify-center
+                              overflow-hidden rounded-pill bg-belims-blue px-12
+                              text-white transition-colors
                             "
                           >
-                            {card.buttonText}
+                            <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                            <span className="relative z-10 font-heading font-semibold text-base transition-colors group-hover:text-white">
+                              {card.buttonText}
+                            </span>
                           </span>
                         </div>
                       )}
@@ -433,7 +445,7 @@ const HeroBanner: React.FC = () => {
                         className="
                           absolute bottom-5 right-5 z-20
                           rounded-full bg-black/45 px-4 py-2
-                          text-xs font-semibold text-white
+                          text-base font-bold text-white
                           backdrop-blur-sm transition
                           hover:bg-black/60
                         "

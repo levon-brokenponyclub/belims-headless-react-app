@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../types";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 
 interface TradeDealsProps {
   products: Product[];
@@ -79,6 +79,7 @@ export const TradeDeals: React.FC<TradeDealsProps> = ({
                     isAuthenticated={isAuthenticated}
                     isTradeApproved={isTradeApproved}
                     className="h-full"
+                    customizations={PRODUCT_CARD_PRESETS.compactCard}
                   />
                 ))}
               </div>
@@ -94,6 +95,7 @@ export const TradeDeals: React.FC<TradeDealsProps> = ({
                     isAuthenticated={isAuthenticated}
                     isTradeApproved={isTradeApproved}
                     className="h-full"
+                    customizations={PRODUCT_CARD_PRESETS.compactCard}
                   />
                 ))}
               </div>

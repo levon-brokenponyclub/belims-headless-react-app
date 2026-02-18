@@ -17,6 +17,7 @@ import { UserData, updateUserProfile } from "../services/authService";
 import { fetchCustomerOrders } from "../services/wooCommerceService";
 import { Order } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
+import { formatNumberWithSeparators } from "../utils/price";
 
 interface AccountPageProps {
   user: UserData | null;
@@ -199,7 +200,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <h3 className="font-bold text-gray-900">Account Balance</h3>
           </div>
           <p className="text-3xl font-extrabold text-belims-accent">
-            {CURRENCY_SYMBOL}0.00
+            {CURRENCY_SYMBOL}
+            {formatNumberWithSeparators(0)}
           </p>
         </div>
       </div>
@@ -245,7 +247,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                     <div className="hidden md:block">
                       <p className="text-sm font-medium text-gray-900">
                         {order.currency || "ZAR"}{" "}
-                        {parseFloat(order.total).toFixed(2)}
+                        {formatNumberWithSeparators(parseFloat(order.total))}
                       </p>
                       <p className="text-xs text-gray-500">
                         {order.line_items.length} item
@@ -318,7 +320,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                   <div className="text-left sm:text-right">
                     <p className="text-sm font-bold text-gray-900">
                       {order.currency || "ZAR"}{" "}
-                      {parseFloat(order.total).toFixed(2)}
+                      {formatNumberWithSeparators(parseFloat(order.total))}
                     </p>
                     <p className="text-xs text-gray-500">
                       {order.line_items.length} item

@@ -1,6 +1,7 @@
 import React from "react";
 import { ChatMessage, Product } from "../types";
 import { ChatProductCard } from "./ChatProductCard";
+import { formatCurrency } from "../../../../utils/price";
 
 interface ChatMessageItemProps {
   message: ChatMessage;
@@ -97,7 +98,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                       </div>
                       <div className="text-right">
                         <span className="font-bold block">
-                          ${tier.totalPrice.toFixed(2)}
+                          {formatCurrency(tier.totalPrice)}
                         </span>
                         {tier.savingsLabel && (
                           <span className="text-green-600 text-[10px]">

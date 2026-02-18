@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Product, CategoryNode } from "../types";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import {
   Filter,
   ChevronDown,
@@ -1572,6 +1572,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                       }
                       isAuthenticated={isAuthenticated}
                       isTradeApproved={isTradeApproved}
+                      customizations={PRODUCT_CARD_PRESETS.compactCard}
                     />
                   </li>
                 ))}

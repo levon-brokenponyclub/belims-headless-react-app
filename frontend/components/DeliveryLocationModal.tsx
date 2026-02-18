@@ -1082,9 +1082,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     if (!detectedLocationAddress) return;
     handleAddressSaved(detectedLocationAddress);
     onClose();
-    if (typeof window !== "undefined") {
-      window.setTimeout(() => window.location.reload(), 150);
-    }
   };
 
   const formatDetectedLocationLine = (address: ShippingAddress) => {

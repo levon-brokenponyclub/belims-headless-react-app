@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../types";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { SkeletonProductCard } from "./Skeleton";
 
-type DealTabKey = "deal_of_day" | "weekly" | "clearance";
+type DealTabKey = "deal_of_day" | "weekly" | "trade_deals";
 
 type DealTabConfig = {
   key: DealTabKey;
@@ -36,13 +36,13 @@ const DEAL_TABS: DealTabConfig[] = [
     linkLabel: "View weekly deals",
   },
   {
-    key: "clearance",
-    label: "Clearance",
-    title: "Clearance",
-    description: "Last-chance pricing on end-of-line items.",
+    key: "trade_deals",
+    label: "Trade Deals",
+    title: "Trade Deals",
+    description: "Exclusive trade pricing for approved trade accounts.",
     image: "/images/development/athens-mosaic-02d.webp",
-    link: "/deals?type=clearance",
-    linkLabel: "Shop clearance",
+    link: "/trade/deals",
+    linkLabel: "View trade deals",
   },
 ];
 
@@ -81,8 +81,8 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
         return consumerType === "weekly_special";
       }
 
-      if (activeTab === "clearance") {
-        return consumerType === "clearance";
+      if (activeTab === "trade_deals") {
+        return tradeType === "trade_special";
       }
 
       if (tradeType || consumerType) return true;
@@ -191,6 +191,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
         consumerType === "deal_of_day" ||
         consumerType === "weekly_special" ||
         consumerType === "clearance" ||
+        tradeType === "trade_special" ||
         (product.sale_price && parseFloat(String(product.sale_price)) > 0)
       );
     });
@@ -268,6 +269,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
                         isAuthenticated={isAuthenticated}
                         isTradeApproved={isTradeApproved}
                         className="h-full"
+                        customizations={PRODUCT_CARD_PRESETS.compactCard}
                       />
                     </div>
                   ))}

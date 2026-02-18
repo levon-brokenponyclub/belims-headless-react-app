@@ -11,6 +11,7 @@ import {
   Navigation,
   Star,
 } from "lucide-react";
+import { formatCurrency as formatCurrencyValue } from "../utils/price";
 import { Product } from "../types";
 
 interface ShippingOption {
@@ -169,7 +170,7 @@ export function ShippingCalculator({
     // Mock AI analysis
     const insights = [
       `Based on your location in ${location}, I recommend Express delivery - it typically arrives 1 day earlier than estimated due to efficient local routing.`,
-      `Your order value of R${value.toLocaleString()} qualifies for free shipping! Plus, standard delivery to your area usually arrives by 11 AM.`,
+      `Your order value of ${formatCurrencyValue(value)} qualifies for free shipping! Plus, standard delivery to your area usually arrives by 11 AM.`,
       `Weather forecast shows clear conditions this week - perfect timing for your paint project! Standard delivery will be right on schedule.`,
       `Pro tip: Orders placed before 2 PM today get same-day dispatch. Express delivery would have your paint ready for weekend projects!`,
     ];
@@ -178,7 +179,7 @@ export function ShippingCalculator({
   };
 
   const formatCurrency = (amount: number) =>
-    amount === 0 ? "FREE" : `R${amount}`;
+    amount === 0 ? "FREE" : formatCurrencyValue(amount);
 
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAddress(e.target.value);

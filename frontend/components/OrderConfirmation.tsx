@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { AlertCircle, Loader } from "lucide-react";
 import { getApiBaseUrl } from "../services/wooCommerceService";
 import { OrderDetailsView } from "./OrderDetailsView";
+import { formatNumberWithSeparators } from "../utils/price";
 
 interface OrderDetails {
   id: number;
@@ -287,7 +288,7 @@ export const OrderConfirmation: React.FC = () => {
   const itemsMapped = lineItems.map((item) => ({
     id: item.id,
     name: item.name,
-    price: `${order.currency === "ZAR" ? "R" : order.currency || "$"} ${item.total}`,
+    price: `${order.currency === "ZAR" ? "R" : order.currency || "$"} ${formatNumberWithSeparators(parseFloat(item.total || "0"))}`,
     quantity: item.quantity,
     description: "Standard hardware item",
     category: resolveCategory(item),
@@ -304,15 +305,21 @@ export const OrderConfirmation: React.FC = () => {
     phone: order.billing?.phone || "",
   }));
 
+  const currencyPrefix = order.currency === "ZAR" ? "R" : order.currency || "$";
+  const subtotalValue =
+    parseFloat(order.total) -
+    parseFloat(order.shipping_total || "0") -
+    parseFloat(order.total_tax || "0");
+
   return (
     <div className="bg-gray-50">
       <OrderDetailsView
         orderNumber={orderNumberStr}
         date={formattedDate}
-        total={`${order.currency === "ZAR" ? "R" : order.currency || "$"} ${order.total}`}
-        subtotal={`${order.currency === "ZAR" ? "R" : order.currency || "$"} ${(parseFloat(order.total) - parseFloat(order.shipping_total || "0") - parseFloat(order.total_tax || "0")).toFixed(2)}`}
-        shipping={`${order.currency === "ZAR" ? "R" : order.currency || "$"} ${order.shipping_total || "0.00"}`}
-        tax={`${order.currency === "ZAR" ? "R" : order.currency || "$"} ${order.total_tax || "0.00"}`}
+        total={`${currencyPrefix} ${formatNumberWithSeparators(parseFloat(order.total))}`}
+        subtotal={`${currencyPrefix} ${formatNumberWithSeparators(subtotalValue)}`}
+        shipping={`${currencyPrefix} ${formatNumberWithSeparators(parseFloat(order.shipping_total || "0"))}`}
+        tax={`${currencyPrefix} ${formatNumberWithSeparators(parseFloat(order.total_tax || "0"))}`}
         items={itemsMapped}
         billingAddress={billingAddr}
         payment={{

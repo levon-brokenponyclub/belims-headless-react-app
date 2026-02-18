@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { CategoryNode, Product } from "../types";
-import { CURRENCY_SYMBOL } from "../constants";
+import { formatCurrency } from "../utils/price";
 import { initializeCategoryTree } from "../categoryTree";
 
 interface SearchCategoryResult {
@@ -388,8 +388,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                               </div>
                             </div>
                             <div className="text-sm font-bold text-belims-blue">
-                              {CURRENCY_SYMBOL}
-                              {p.price.toFixed(2)}
+                              {formatCurrency(p.price)}
                             </div>
 
                             {onCompare && (
@@ -419,7 +418,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 <div className="p-3 bg-gray-50 border-t text-center">
                   <button
                     onClick={() => handleSearchSubmit()}
-                    className="mt-0 w-full rounded bg-belims-blue font-heading text-sm font-semibold text-white transition-colors hover:bg-red-600 h-11 flex items-center justify-center gap-1 w-full"
+                    className="mt-0 w-full rounded bg-belims-blue font-heading text-sm font-semibold text-white transition-colors hover:bg-red-600 h-11 flex items-center justify-center gap-1"
                   >
                     View all results <ArrowRight size={14} />
                   </button>
@@ -606,8 +605,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                             </div>
                           </div>
                           <div className="text-sm font-bold text-belims-blue">
-                            {CURRENCY_SYMBOL}
-                            {p.price.toFixed(2)}
+                            {formatCurrency(p.price)}
                           </div>
 
                           {onCompare && (

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Product } from "../types";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { getRecentlyViewed } from "../services/storageService";
 import { History } from "lucide-react";
 
@@ -57,6 +57,7 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
                 onCompare={onCompare}
                 isAuthenticated={isAuthenticated}
                 isTradeApproved={isTradeApproved}
+                customizations={PRODUCT_CARD_PRESETS.compactCard}
               />
             </div>
           ))}

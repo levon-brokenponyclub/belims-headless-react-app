@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { getPersonalizedRecommendations } from "../services/geminiService";
 import { Product } from "../types";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 
 interface OnboardingWizardProps {
   products: Product[];
@@ -234,6 +234,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                       className="h-full border-none shadow-md hover:shadow-xl ring-1 ring-black/5"
                       isAuthenticated={isAuthenticated}
                       isTradeApproved={isTradeApproved}
+                      customizations={PRODUCT_CARD_PRESETS.compactCard}
                     />
                   </div>
                 ))}

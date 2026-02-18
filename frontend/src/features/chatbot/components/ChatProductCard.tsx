@@ -1,5 +1,6 @@
 import React from "react";
 import { Product } from "../types";
+import { formatCurrency } from "../../../../utils/price";
 
 interface ChatProductCardProps {
   product: {
@@ -50,7 +51,7 @@ export const ChatProductCard: React.FC<ChatProductCardProps> = ({
       </h4>
       <div className="flex items-center justify-between mt-auto pt-2">
         <span className="font-bold text-gray-900">
-          ${product.price.toFixed(2)}
+          {formatCurrency(product.price)}
         </span>
         <button
           onClick={() => onAddToCart(product)}

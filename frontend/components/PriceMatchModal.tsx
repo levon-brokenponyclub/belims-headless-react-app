@@ -3,6 +3,7 @@ import { X, Search, ExternalLink, Loader2, AlertCircle } from "lucide-react";
 import { Product, PriceMatchResult } from "../types";
 import { findCompetitorPrices } from "../services/geminiService";
 import ReactMarkdown from "react-markdown";
+import { formatCurrency } from "../utils/price";
 
 interface PriceMatchModalProps {
   product: Product;
@@ -66,7 +67,7 @@ export const PriceMatchModal: React.FC<PriceMatchModalProps> = ({
               <div className="text-xs text-gray-500">{product.brand}</div>
               <h3 className="font-bold text-gray-900">{product.name}</h3>
               <div className="text-belims-blue font-bold font-heading">
-                Our Price: R{product.price.toLocaleString()}
+                Our Price: {formatCurrency(product.price)}
               </div>
             </div>
           </div>

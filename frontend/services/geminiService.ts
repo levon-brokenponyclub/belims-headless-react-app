@@ -5,6 +5,7 @@ import {
   Product,
   PriceMatchResult,
 } from "../types";
+import { formatCurrency } from "../utils/price";
 import { cachedGetJson, getApiBaseUrl } from "./wooCommerceService";
 import { FEATURED_PRODUCTS, DEALS_PRODUCTS } from "../constants";
 
@@ -411,8 +412,8 @@ export const findCompetitorPrices = async (
       const savings = isLowerPrice ? product.price - competitorPrice : 0;
 
       const analysis = isLowerPrice
-        ? `💰 **Price Alert**: Found lower price at **${selectedCompetitor.name}** - R${competitorPrice} (Save R${savings})\n\nOur Belims price: R${product.price}${selectedCompetitor.hasStock ? "\n\n✅ In stock at competitor" : "\n\n⚠️ Limited availability at competitor"}`
-        : `✅ **Great Value**: Our Belims price of R${product.price} is competitive!\n\n${selectedCompetitor.name}: R${competitorPrice}\n\nYou're getting excellent value with our current pricing.`;
+        ? `💰 **Price Alert**: Found lower price at **${selectedCompetitor.name}** - ${formatCurrency(competitorPrice)} (Save ${formatCurrency(savings)})\n\nOur Belims price: ${formatCurrency(product.price)}${selectedCompetitor.hasStock ? "\n\n✅ In stock at competitor" : "\n\n⚠️ Limited availability at competitor"}`
+        : `✅ **Great Value**: Our Belims price of ${formatCurrency(product.price)} is competitive!\n\n${selectedCompetitor.name}: ${formatCurrency(competitorPrice)}\n\nYou're getting excellent value with our current pricing.`;
 
       return {
         analysis: analysis,
@@ -431,7 +432,7 @@ export const findCompetitorPrices = async (
       model: "gemini-2.5-flash",
       contents: `Find current prices for "${product.name}" (SKU: ${product.sku}) in South Africa. 
       Search stores like Builders Warehouse, Makro, Leroy Merlin, and Takealot.
-      Our price is R${product.price}.
+      Our price is ${formatCurrency(product.price)}.
       
       Output a brief analysis comparing our price to found competitor prices. 
       State clearly if we are cheaper or more expensive.

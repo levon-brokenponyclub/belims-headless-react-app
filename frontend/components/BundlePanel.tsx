@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Check, ShoppingCart, Package } from "lucide-react";
 import { Product, BundleCandidate } from "../types";
-import { CURRENCY_SYMBOL } from "../constants";
+import { formatCurrency } from "../utils/price";
 
 interface BundlePanelProps {
   isOpen: boolean;
@@ -50,7 +50,7 @@ export const BundlePanel: React.FC<BundlePanelProps> = ({
   const handleBuyBundle = () => {
     // In a real app, this would add a "Grouped Product" or multiple items with metadata to cart
     alert(
-      `Added bundle with ${count} items to cart! Savings: ${CURRENCY_SYMBOL}${discountAmount.toFixed(2)}`,
+      `Added bundle with ${count} items to cart! Savings: ${formatCurrency(discountAmount)}`,
     );
     onClose();
   };
@@ -132,8 +132,7 @@ export const BundlePanel: React.FC<BundlePanelProps> = ({
                     {item.name}
                   </div>
                   <div className="text-xs text-gray-500 font-bold">
-                    {CURRENCY_SYMBOL}
-                    {item.price}
+                    {formatCurrency(item.price)}
                   </div>
                 </div>
               </div>
@@ -174,8 +173,8 @@ export const BundlePanel: React.FC<BundlePanelProps> = ({
               <div className="text-gray-500 text-sm">Bundle Total:</div>
               {discountAmount > 0 && (
                 <div className="text-xs text-green-600 font-bold">
-                  Savings: -{CURRENCY_SYMBOL}
-                  {discountAmount.toFixed(2)} ({Math.round(discountRate * 100)}
+                  Savings: -{formatCurrency(discountAmount)} (
+                  {Math.round(discountRate * 100)}
                   %)
                 </div>
               )}
@@ -183,13 +182,11 @@ export const BundlePanel: React.FC<BundlePanelProps> = ({
             <div className="text-right">
               {discountAmount > 0 && (
                 <div className="text-sm text-gray-400 line-through">
-                  {CURRENCY_SYMBOL}
-                  {subtotal.toLocaleString()}
+                  {formatCurrency(subtotal)}
                 </div>
               )}
               <div className="text-2xl font-bold text-gray-900 font-heading">
-                {CURRENCY_SYMBOL}
-                {total.toLocaleString()}
+                {formatCurrency(total)}
               </div>
             </div>
           </div>

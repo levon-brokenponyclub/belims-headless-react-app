@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Clock } from "lucide-react";
 import { Product, DealResolvedInfo } from "../types";
-import { CURRENCY_SYMBOL } from "../constants";
+import { formatCurrency } from "../utils/price";
 
 interface ProductPriceDisplayProps {
   product: Product;
@@ -24,11 +24,7 @@ interface ProductPriceDisplayProps {
   showDualTradePricing?: boolean;
 }
 
-const formatMoney = (value: number) =>
-  `${CURRENCY_SYMBOL}${value.toLocaleString("en-ZA", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+const formatMoney = (value: number) => formatCurrency(value);
 
 export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
   product,

@@ -1,7 +1,7 @@
 import React from "react";
 import { X, Check, Minus, ShoppingCart, Trash2, Scale } from "lucide-react";
 import { Product } from "../types";
-import { CURRENCY_SYMBOL } from "../constants";
+import { formatCurrency } from "../utils/price";
 
 interface ComparisonModalProps {
   products: Product[];
@@ -71,8 +71,7 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
                         {p.name}
                       </h3>
                       <div className="text-xl font-bold text-belims-blue font-heading mb-4">
-                        {CURRENCY_SYMBOL}
-                        {p.price.toLocaleString()}
+                        {formatCurrency(p.price)}
                       </div>
                       <button
                         onClick={() => addToCart(p)}

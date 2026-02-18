@@ -8,7 +8,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Store } from "../types";
-import { CURRENCY_SYMBOL } from "../constants";
+import { formatCurrency } from "../utils/price";
 
 export interface DeliveryAddress {
   street?: string;
@@ -222,7 +222,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
   const formatDeliveryPrice = (details?: SelectedDeliveryDetails | null) => {
     if (!details) return "";
     if (details.isFree || details.price === 0) return "FREE";
-    return `${CURRENCY_SYMBOL}${details.price.toFixed(2)}`;
+    return formatCurrency(details.price);
   };
   const handleDeliveryClick = () => {
     if (loading) return;
@@ -256,7 +256,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         {/* Pickup Option */}
         {pickup && (
           <button
@@ -266,7 +266,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
               onViewPickupDetails?.();
             }}
             disabled={loading}
-            className={`group flex items-start gap-3 p-3 md:p-6 rounded-xl border border-subtle transition-all text-left bg-white ${
+            className={`group flex items-start gap-3 p-3 md:p-4 rounded-lg border border-subtle transition-all text-left bg-white ${
               loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
             }`}
           >
@@ -408,7 +408,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
             type="button"
             onClick={handleDeliveryClick}
             disabled={loading}
-            className={`group flex items-start gap-3 p-3 md:p-6 rounded-xl border border-subtle transition-all text-left bg-white ${
+            className={`group flex items-start gap-3 p-3 md:p-4 rounded-lg border border-subtle transition-all text-left bg-white ${
               loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
             }`}
           >
@@ -445,24 +445,21 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                   <p className="text-[13px] mb-0 transition-colors text-grey-medium">
                     Enter your address to see available delivery rates and dates
                   </p>
-                  {/* <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSetDeliveryLocation?.();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onSetDeliveryLocation?.();
-                      }
-                    }}
-                    className="text-[12px] font-bold text-red-muted hover:text-red-muted text-left"
-                  >
-                    Set your location
-                  </span> */}
+                </div>
+              ) : loading ? (
+                <div className="flex flex-col gap-3">
+                  <div className="space-y-2">
+                    <div className="h-3 w-48 rounded-full bg-grey-light animate-pulse" />
+                    <div className="h-3 w-64 rounded-full bg-grey-light animate-pulse" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 w-40 rounded-full bg-grey-light animate-pulse" />
+                    <div className="h-3 w-32 rounded-full bg-grey-light animate-pulse" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 w-52 rounded-full bg-grey-light animate-pulse" />
+                    <div className="h-3 w-44 rounded-full bg-grey-light animate-pulse" />
+                  </div>
                 </div>
               ) : (
                 <div className="text-[13px] mb-1">
@@ -470,46 +467,40 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                     <span className="">Deliver to:</span>{" "}
                     {deliveryAddress?.street}, {deliveryAddress?.city}
                   </p>
-                  {loading ? (
-                    <p className="text-[13px] text-grey-medium mt-1">
-                      Checking dates...
-                    </p>
-                  ) : (
-                    normalizedEta && (
-                      <div className="mt-0">
-                        <p className="text-grey-medium text-[13px]">
-                          <span className="">Estimated Arrival:</span>{" "}
-                          {normalizedEta}
-                        </p>
-                        {selectedDeliveryDetails && (
-                          <div className="mt-1 flex items-center justify-between text-gray-900 text-[12px]">
-                            <span>
-                              <span className="font-semibold">
-                                Option Selected:
-                              </span>{" "}
-                              {selectedDeliveryDetails.name}
-                            </span>
+                  {normalizedEta && (
+                    <div className="mt-0">
+                      <p className="text-grey-medium text-[13px]">
+                        <span className="">Estimated Arrival:</span>{" "}
+                        {normalizedEta}
+                      </p>
+                      {selectedDeliveryDetails && (
+                        <div className="mt-1 flex items-center justify-between text-gray-900 text-[12px]">
+                          <span>
                             <span className="font-semibold">
-                              {formatDeliveryPrice(selectedDeliveryDetails)}
-                            </span>
-                          </div>
-                        )}
-                        {!loading && (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onOpenDeliveryOptions?.();
-                            }}
-                            className="mt-1 text-[13px] font-semibold text-grey-medium hover:underline"
-                          >
-                            {selectedDeliveryDetails
-                              ? "Change delivery option"
-                              : "View delivery options"}
-                          </button>
-                        )}
-                      </div>
-                    )
+                              Option Selected:
+                            </span>{" "}
+                            {selectedDeliveryDetails.name}
+                          </span>
+                          <span className="font-semibold">
+                            {formatDeliveryPrice(selectedDeliveryDetails)}
+                          </span>
+                        </div>
+                      )}
+                      {!loading && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onOpenDeliveryOptions?.();
+                          }}
+                          className="mt-1 text-[13px] font-semibold text-grey-medium hover:underline"
+                        >
+                          {selectedDeliveryDetails
+                            ? "Change delivery option"
+                            : "View delivery options"}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

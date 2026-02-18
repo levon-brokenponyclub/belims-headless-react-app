@@ -11,7 +11,7 @@ import {
   Eye,
 } from "lucide-react";
 import { Product } from "../types";
-import { CURRENCY_SYMBOL } from "../constants";
+import { formatCurrency } from "../utils/price";
 
 interface ProductCardProps {
   product: Product;
@@ -24,13 +24,83 @@ interface ProductCardProps {
   className?: string;
   showDealName?: boolean;
   variant?: "default" | "flat" | "flat-horizontal";
+  customizations?: ProductCardCustomizations;
 }
 
-const formatMoney = (value: number) =>
-  `${CURRENCY_SYMBOL}${value.toLocaleString("en-ZA", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+export type ProductCardElementKey =
+  | "badge"
+  | "category"
+  | "quickViewIcon"
+  | "quickViewButton"
+  | "dailyMarquee"
+  | "weeklyMarquee"
+  | "tradeMarquee"
+  | "lowStockMarquee";
+
+export interface ProductCardActionHelpers {
+  openQuickView: () => void;
+  closeQuickView: () => void;
+  addWithPriceMode: (mode: "retail" | "trade") => void;
+  handleNotify: (e?: React.MouseEvent) => Promise<void>;
+}
+
+export interface ProductCardActionOverride {
+  label?: string;
+  icon?: React.ReactNode;
+  className?: string;
+  ariaLabel?: string;
+  onClick?: (product: Product, helpers: ProductCardActionHelpers) => void;
+}
+
+export interface ProductCardSlots {
+  beforeImage?: (product: Product) => React.ReactNode;
+  afterImage?: (product: Product) => React.ReactNode;
+  beforeContent?: (product: Product) => React.ReactNode;
+  afterContent?: (product: Product) => React.ReactNode;
+}
+
+export interface ProductCardCustomizations {
+  hiddenElements?: ProductCardElementKey[];
+  imageBlockClassName?: string;
+  imageClassName?: string;
+  categoryText?: string | ((product: Product) => string);
+  actions?: {
+    quickViewIcon?: ProductCardActionOverride;
+    quickViewButton?: ProductCardActionOverride;
+  };
+  slots?: ProductCardSlots;
+}
+
+export const createProductCardCustomizations = (
+  customizations: ProductCardCustomizations,
+) => customizations;
+
+const HIDE_ALL_MARQUEES: ProductCardElementKey[] = [
+  "dailyMarquee",
+  "weeklyMarquee",
+  "tradeMarquee",
+  "lowStockMarquee",
+];
+
+export const PRODUCT_CARD_PRESETS: Record<
+  "compactCard" | "searchCard" | "perfectMatchCard",
+  ProductCardCustomizations
+> = {
+  compactCard: createProductCardCustomizations({
+    hiddenElements: [...HIDE_ALL_MARQUEES],
+    imageBlockClassName: "h-44 min-h-[220px]",
+  }),
+  searchCard: createProductCardCustomizations({
+    hiddenElements: ["category", "quickViewIcon", ...HIDE_ALL_MARQUEES],
+    imageBlockClassName: "h-40 min-h-[190px]",
+  }),
+  perfectMatchCard: createProductCardCustomizations({
+    hiddenElements: ["category", "quickViewIcon", ...HIDE_ALL_MARQUEES],
+    imageBlockClassName: "h-44 min-h-[220px]",
+  }),
+};
+
+const formatMoney = (value: number) => formatCurrency(value);
 
 const formatTwo = (value: number) => value.toString().padStart(2, "0");
 
@@ -63,6 +133,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   className = "",
   showDealName = false,
   variant = "default",
+  customizations,
 }) => {
   const isFlat = variant === "flat" || variant === "flat-horizontal";
   const isFlatHorizontal = variant === "flat-horizontal";
@@ -74,6 +145,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [isQuickViewClosing, setIsQuickViewClosing] = React.useState(false);
   const [isQuickViewOpening, setIsQuickViewOpening] = React.useState(false);
   const [isImageHovering, setIsImageHovering] = React.useState(false);
+  const hiddenElements = React.useMemo(
+    () => new Set(customizations?.hiddenElements || []),
+    [customizations?.hiddenElements],
+  );
+  const isHidden = (key: ProductCardElementKey) => hiddenElements.has(key);
 
   const handleNotify = async (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -297,23 +373,39 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const quickViewId = `QuickView-${product.id}`;
 
-  const openQuickView = () => {
-    setShouldRenderQuickView(true);
-    setIsQuickViewClosing(false);
-    setIsQuickViewOpening(true);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => setIsQuickViewOpening(false));
-    });
+  const actionHelpers: ProductCardActionHelpers = {
+    openQuickView: () => {
+      setShouldRenderQuickView(true);
+      setIsQuickViewClosing(false);
+      setIsQuickViewOpening(true);
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setIsQuickViewOpening(false));
+      });
+    },
+    closeQuickView: () => {
+      setIsQuickViewClosing(true);
+      window.setTimeout(() => {
+        setShouldRenderQuickView(false);
+        setIsQuickViewClosing(false);
+        setIsQuickViewOpening(false);
+      }, 300);
+    },
+    addWithPriceMode,
+    handleNotify,
   };
 
-  const closeQuickView = () => {
-    setIsQuickViewClosing(true);
-    window.setTimeout(() => {
-      setShouldRenderQuickView(false);
-      setIsQuickViewClosing(false);
-      setIsQuickViewOpening(false);
-    }, 300);
-  };
+  const quickViewIconAction = customizations?.actions?.quickViewIcon;
+  const quickViewButtonAction = customizations?.actions?.quickViewButton;
+  const resolvedCategoryText =
+    typeof customizations?.categoryText === "function"
+      ? customizations.categoryText(product)
+      : customizations?.categoryText;
+  const imageBlockClassName =
+    customizations?.imageBlockClassName ||
+    (isFlatHorizontal ? "h-full w-[33%]" : "h-52 min-h-[260px]");
+
+  const openQuickView = actionHelpers.openQuickView;
+  const closeQuickView = actionHelpers.closeQuickView;
 
   React.useEffect(() => {
     if (!shouldRenderQuickView) return;
@@ -342,8 +434,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         onMouseEnter={() => setIsImageHovering(true)}
         onMouseLeave={() => setIsImageHovering(false)}
       >
+        {customizations?.slots?.beforeImage?.(product)}
+
         {/* Deal Badge */}
-        {badgeLabel && (
+        {badgeLabel && !isHidden("badge") && (
           <div
             className={[
               "absolute top-3 z-10 rounded-2xl px-2.5 py-1 font-semibold uppercase",
@@ -359,29 +453,37 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <Link
           to={`/product/${product.id}`}
           className={`relative flex items-center justify-center rounded-lg bg-grey-light overflow-hidden ${
-            isFlatHorizontal ? "h-full w-[33%]" : "h-52 min-h-[260px]"
+            imageBlockClassName
           } ${isFlat && !isFlatHorizontal ? "" : !isFlatHorizontal ? "p-5" : ""}`}
         >
           {/* Quick View Icon Button - Top Right */}
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              openQuickView();
-            }}
-            className={`group absolute right-2 top-4 z-20 h-10 w-10 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-all duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white ${
-              isImageHovering
-                ? "translate-x-0 opacity-100"
-                : "translate-x-4 opacity-0"
-            }`}
-            aria-label="Quick view"
-          >
-            <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
-            <span className="relative z-10 flex items-center justify-center">
-              <Eye size={18} strokeWidth={2} />
-            </span>
-          </button>
+          {!isHidden("quickViewIcon") && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (quickViewIconAction?.onClick) {
+                  quickViewIconAction.onClick(product, actionHelpers);
+                  return;
+                }
+                openQuickView();
+              }}
+              className={[
+                "group absolute right-2 top-4 z-20 h-10 w-10 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-all duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white",
+                isImageHovering
+                  ? "translate-x-0 opacity-100"
+                  : "translate-x-4 opacity-0",
+                quickViewIconAction?.className || "",
+              ].join(" ")}
+              aria-label={quickViewIconAction?.ariaLabel || "Quick view"}
+            >
+              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="relative z-10 flex items-center justify-center">
+                {quickViewIconAction?.icon || <Eye size={18} strokeWidth={2} />}
+              </span>
+            </button>
+          )}
 
           {product.image ? (
             <>
@@ -391,9 +493,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 alt={product.name}
                 loading="lazy"
                 decoding="async"
-                className={`absolute max-h-[165px] max-w-[160px] p-4 object-contain transition-transform duration-300 mix-blend-multiply ${
-                  isImageHovering ? "scale-90" : "scale-100"
-                }`}
+                className={[
+                  "absolute max-h-[165px] max-w-[160px] p-4 object-contain transition-transform duration-300 mix-blend-multiply",
+                  isImageHovering ? "scale-90" : "scale-100",
+                  customizations?.imageClassName || "",
+                ].join(" ")}
               />
             </>
           ) : (
@@ -402,7 +506,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </div>
           )}
 
-          {isDailyDeal && !isFlatHorizontal && (
+          {isDailyDeal && !isFlatHorizontal && !isHidden("dailyMarquee") && (
             <div
               className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-grey-light transition-opacity duration-200 ease-out ${
                 isImageHovering ? "opacity-0" : "opacity-100"
@@ -421,7 +525,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </div>
           )}
 
-          {isWeeklyDeal && !isFlatHorizontal && (
+          {isWeeklyDeal && !isFlatHorizontal && !isHidden("weeklyMarquee") && (
             <div
               className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-grey-light transition-opacity duration-200 ease-out ${
                 isImageHovering ? "opacity-0" : "opacity-100"
@@ -456,28 +560,32 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </div>
           )}
 
-          {isTradeSpecial && tradePrice > 0 && !isFlatHorizontal && (
-            <div
-              className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded-md bg-white border border-grey-light transition-opacity duration-200 ease-out ${
-                isImageHovering ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-3 px-1.5 py-2">
-                <span className="text-[13px] font-semibold text-belims-accent">
-                  Trade price available
-                </span>
-                {/* <span className="text-[13px] font-bold text-belims-accent">
+          {isTradeSpecial &&
+            tradePrice > 0 &&
+            !isFlatHorizontal &&
+            !isHidden("tradeMarquee") && (
+              <div
+                className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded-md bg-white border border-grey-light transition-opacity duration-200 ease-out ${
+                  isImageHovering ? "opacity-0" : "opacity-100"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3 px-1.5 py-2">
+                  <span className="text-[13px] font-semibold text-belims-accent">
+                    Trade price available
+                  </span>
+                  {/* <span className="text-[13px] font-bold text-belims-accent">
                   {formatMoney(tradePrice)}
                 </span> */}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {isLowStockUrgent &&
             !isFlatHorizontal &&
             !isDailyDeal &&
             !isWeeklyDeal &&
-            !(isTradeSpecial && tradePrice > 0) && (
+            !(isTradeSpecial && tradePrice > 0) &&
+            !isHidden("lowStockMarquee") && (
               <div
                 className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-grey-light transition-opacity duration-200 ease-out ${
                   isImageHovering ? "opacity-0" : "opacity-100"
@@ -513,56 +621,65 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             )}
 
           {/* Quick View Button - Animated Reveal */}
-          <div
-            className={`absolute bottom-3 left-0 right-0 flex justify-center transition-all duration-500 ease-in-out z-50 transform ${
-              isImageHovering
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-7"
-            }`}
-          >
-            <button
-              aria-controls={quickViewId}
-              aria-haspopup="dialog"
-              type="button"
-              className="group absolute left-4 right-4 bottom-0 flex h-11 items-center justify-center overflow-hidden rounded-full border border-grey-light bg-white px-1 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                openQuickView();
-              }}
+          {!isHidden("quickViewButton") && (
+            <div
+              className={`absolute bottom-3 left-0 right-0 flex justify-center transition-all duration-500 ease-in-out z-50 transform ${
+                isImageHovering
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-7"
+              }`}
             >
-              {/* Sliding background */}
-              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+              <button
+                aria-controls={quickViewId}
+                aria-haspopup="dialog"
+                type="button"
+                className={
+                  quickViewButtonAction?.className ||
+                  "group absolute left-4 right-4 bottom-0 flex h-11 items-center justify-center overflow-hidden rounded-full border border-grey-light bg-white px-1 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
+                }
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (quickViewButtonAction?.onClick) {
+                    quickViewButtonAction.onClick(product, actionHelpers);
+                    return;
+                  }
+                  openQuickView();
+                }}
+              >
+                <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
 
-              {/* Button Content */}
-              <span className="relative z-10 flex items-center gap-3">
-                {/* <span className="flex h-9 w-9 items-center justify-center rounded-full bg-grey-light transition-colors group-hover:bg-white">
-                  <ShoppingBasket
-                    size={20}
-                    strokeWidth={2}
-                    className="text-grey transition-colors group-hover:text-grey"
-                  />
-                </span> */}
-                <span className="font-heading font-semibold transition-colors group-hover:text-white">
-                  Add to cart
+                <span className="relative z-10 flex items-center gap-3">
+                  {quickViewButtonAction?.icon && (
+                    <span className="inline-flex items-center justify-center">
+                      {quickViewButtonAction.icon}
+                    </span>
+                  )}
+                  <span className="font-heading font-semibold transition-colors group-hover:text-white">
+                    {quickViewButtonAction?.label || "Add to cart"}
+                  </span>
                 </span>
-              </span>
-            </button>
-          </div>
+              </button>
+            </div>
+          )}
         </Link>
 
+        {customizations?.slots?.afterImage?.(product)}
+
         {/* Content */}
+        {customizations?.slots?.beforeContent?.(product)}
         <div
           className={`flex flex-1 flex-col ${
             isFlat ? "" : "py-5 pb-0 px-1"
           } ${isFlatHorizontal ? "px-4 pr-0" : ""}`}
         >
           {/* Category / Deal Name */}
-          {!isFlat && (
+          {!isFlat && !isHidden("category") && (
             <div className="mb-2 text-[11px] uppercase text-grey-medium font-semibold">
-              {showDealName && consumerBest?.deal_name
-                ? consumerBest.deal_name
-                : product.category}
+              {resolvedCategoryText ||
+                (showDealName && consumerBest?.deal_name
+                  ? consumerBest.deal_name
+                  : product.category)}
             </div>
           )}
 
@@ -688,6 +805,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </button>
           )} */}
         </div>
+        {customizations?.slots?.afterContent?.(product)}
       </div>
 
       {shouldRenderQuickView && (

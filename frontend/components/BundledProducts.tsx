@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Product } from "../types";
-import { CURRENCY_SYMBOL } from "../constants";
+import { formatCurrency } from "../utils/price";
 
 interface BundleProduct {
   id: string;
@@ -47,11 +47,7 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
     });
   };
 
-  const formatMoney = (value: number) =>
-    `${CURRENCY_SYMBOL}${value.toLocaleString("en-ZA", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
+  const formatMoney = (value: number) => formatCurrency(value);
 
   // Determine bundle products
   let bundleProducts: BundleProduct[] = product.bundleCandidates || [];

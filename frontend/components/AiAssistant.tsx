@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Sparkles, ArrowRight, Loader2, X } from "lucide-react";
 import { getPersonalizedRecommendations } from "../services/geminiService";
 import { Product } from "../types";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { SkeletonProductCard } from "./Skeleton";
 
 interface AiAssistantProps {
@@ -152,6 +152,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
                         className="h-full border-none"
                         isAuthenticated={isAuthenticated}
                         isTradeApproved={isTradeApproved}
+                        customizations={PRODUCT_CARD_PRESETS.compactCard}
                       />
                     </div>
                   ))}
