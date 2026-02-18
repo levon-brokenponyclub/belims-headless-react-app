@@ -1,7 +1,15 @@
 // ProductCard.tsx
 import React from "react";
 import { Link } from "react-router-dom";
-import { Bell, CheckCircle, Zap } from "lucide-react";
+import {
+  Bell,
+  CheckCircle,
+  Zap,
+  ChevronRight,
+  ShoppingCart,
+  ShoppingBasket,
+  Eye,
+} from "lucide-react";
 import { Product } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 
@@ -328,9 +336,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             isFlatHorizontal ? "flex-row" : "flex-col"
           }`,
           isFlat ? "min-w-full max-w-full w-full" : "w-full min-w-0 max-w-full",
-          isFlat
-            ? "bg-white"
-            : "rounded border border-grey-light bg-white shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition-shadow hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]",
+          isFlat ? "bg-white" : "rounded-lg bg-white transition-shadow",
           className,
         ].join(" ")}
         onMouseEnter={() => setIsImageHovering(true)}
@@ -352,10 +358,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Image */}
         <Link
           to={`/product/${product.id}`}
-          className={`relative flex items-center justify-center bg-grey-light overflow-hidden ${
-            isFlatHorizontal ? "h-full w-[33%]" : "h-52 min-h-52"
+          className={`relative flex items-center justify-center rounded-lg bg-grey-light overflow-hidden ${
+            isFlatHorizontal ? "h-full w-[33%]" : "h-52 min-h-[260px]"
           } ${isFlat && !isFlatHorizontal ? "" : !isFlatHorizontal ? "p-5" : ""}`}
         >
+          {/* Quick View Icon Button - Top Right */}
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              openQuickView();
+            }}
+            className={`group absolute right-2 top-4 z-20 h-10 w-10 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-all duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white ${
+              isImageHovering
+                ? "translate-x-0 opacity-100"
+                : "translate-x-4 opacity-0"
+            }`}
+            aria-label="Quick view"
+          >
+            <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+            <span className="relative z-10 flex items-center justify-center">
+              <Eye size={18} strokeWidth={2} />
+            </span>
+          </button>
+
           {product.image ? (
             <>
               {/* Image */}
@@ -364,31 +391,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 alt={product.name}
                 loading="lazy"
                 decoding="async"
-                className={`absolute max-h-full max-w-full p-4 object-contain transition-transform duration-300 mix-blend-multiply ${
+                className={`absolute max-h-[165px] max-w-[160px] p-4 object-contain transition-transform duration-300 mix-blend-multiply ${
                   isImageHovering ? "scale-90" : "scale-100"
                 }`}
               />
             </>
           ) : (
-            <div className="flex h-full w-full items-center justify-center rounded bg-[#ECF0F1] text-sm text-[#565969]">
+            <div className="flex h-full w-full items-center justify-center rounded bg-[#F2F2F2] text-sm text-[#565969]">
               No image
             </div>
           )}
 
           {isDailyDeal && !isFlatHorizontal && (
             <div
-              className={`absolute left-4 right-4 bottom-4 z-10 overflow-hidden rounded bg-white shadow-sm transition-opacity duration-200 ease-out ${
+              className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-grey-light transition-opacity duration-200 ease-out ${
                 isImageHovering ? "opacity-0" : "opacity-100"
               }`}
             >
-              <div className="flex items-center justify-between gap-4 py-2 pl-3 pr-4">
-                <span className="text-grey-900 font-bold text-[13px]">
+              <div className="flex items-center justify-center gap-4 py-2 pl-3 pr-4">
+                {/*  <span className="text-grey-900 font-semibold text-[13px]">
                   Deal ends:
-                </span>
-                <span className="text-red-600 font-bold text-[13px] text-right">
-                  {formatTwo(dailyTimeLeft.hours)}h{" "}
-                  {formatTwo(dailyTimeLeft.minutes)}m{" "}
-                  {formatTwo(dailyTimeLeft.seconds)}s
+                </span> */}
+                <span className="text-red-muted font-semibold text-[13px] text-center">
+                  {formatTwo(dailyTimeLeft.hours)}H{" "}
+                  {formatTwo(dailyTimeLeft.minutes)}M{" "}
+                  {formatTwo(dailyTimeLeft.seconds)}S
                 </span>
               </div>
             </div>
@@ -396,7 +423,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {isWeeklyDeal && !isFlatHorizontal && (
             <div
-              className={`absolute left-4 right-4 bottom-4 z-10 overflow-hidden rounded bg-white shadow-sm transition-opacity duration-200 ease-out ${
+              className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-grey-light transition-opacity duration-200 ease-out ${
                 isImageHovering ? "opacity-0" : "opacity-100"
               }`}
             >
@@ -410,7 +437,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div
                     key={`weekly-deal-${index}`}
-                    className="flex items-center gap-2 text-grey-900 font-black text-[13px]"
+                    className="flex items-center gap-2 text-grey font-semibold text-[13px]"
                   >
                     <Zap className="h-4 w-4 text-accent" />
                     <span>Weekly Deal</span>
@@ -419,7 +446,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div
                     key={`weekly-deal-dup-${index}`}
-                    className="flex items-center gap-2 text-grey font-semibold text-base"
+                    className="flex items-center gap-2 text-grey font-semibold text-[13px]"
                   >
                     <Zap className="h-4 w-4 text-accent" />
                     <span>Weekly Deal</span>
@@ -431,17 +458,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {isTradeSpecial && tradePrice > 0 && !isFlatHorizontal && (
             <div
-              className={`absolute left-4 right-4 bottom-4 z-10 overflow-hidden rounded bg-white shadow-sm transition-opacity duration-200 ease-out ${
+              className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded-md bg-white border border-grey-light transition-opacity duration-200 ease-out ${
                 isImageHovering ? "opacity-0" : "opacity-100"
               }`}
             >
-              <div className="flex items-center justify-between gap-3 px-4 py-2">
-                <span className="text-base font-semibold text-900">
-                  Trade price
+              <div className="flex items-center justify-between gap-3 px-1.5 py-2">
+                <span className="text-[13px] font-semibold text-belims-accent">
+                  Trade price available
                 </span>
-                <span className="text-base font-bold text-belims-accent">
+                {/* <span className="text-[13px] font-bold text-belims-accent">
                   {formatMoney(tradePrice)}
-                </span>
+                </span> */}
               </div>
             </div>
           )}
@@ -452,7 +479,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             !isWeeklyDeal &&
             !(isTradeSpecial && tradePrice > 0) && (
               <div
-                className={`absolute left-4 right-4 bottom-4 z-10 overflow-hidden rounded bg-white shadow-sm transition-opacity duration-200 ease-out ${
+                className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-grey-light transition-opacity duration-200 ease-out ${
                   isImageHovering ? "opacity-0" : "opacity-100"
                 }`}
               >
@@ -466,7 +493,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   {Array.from({ length: 5 }).map((_, index) => (
                     <div
                       key={`low-stock-${index}`}
-                      className="flex items-center gap-2 text-grey-900 font-bold text-[13px]"
+                      className="flex items-center gap-2 text-grey font-semibold text-[13px]"
                     >
                       <Zap className="h-4 w-4 text-accent" />
                       <span>Low stock. Order soon</span>
@@ -475,7 +502,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   {Array.from({ length: 5 }).map((_, index) => (
                     <div
                       key={`low-stock-dup-${index}`}
-                      className="flex items-center gap-2 text-grey-900 font-bold text-[13px]"
+                      className="flex items-center gap-2 text-grey font-semibold text-[13px]"
                     >
                       <Zap className="h-4 w-4 text-accent" />
                       <span>Low stock. Order soon</span>
@@ -487,17 +514,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* Quick View Button - Animated Reveal */}
           <div
-            className={`absolute bottom-4 left-0 right-0 flex justify-center transition-all duration-300 transform ${
+            className={`absolute bottom-3 left-0 right-0 flex justify-center transition-all duration-500 ease-in-out z-50 transform ${
               isImageHovering
                 ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-4"
+                : "opacity-0 translate-y-7"
             }`}
           >
             <button
               aria-controls={quickViewId}
               aria-haspopup="dialog"
               type="button"
-              className="group relative h-12 px-6 rounded-full bg-white text-gray-900 overflow-hidden transition-colors"
+              className="group absolute left-4 right-4 bottom-0 flex h-11 items-center justify-center overflow-hidden rounded-full border border-grey-light bg-white px-1 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -505,25 +532,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               }}
             >
               {/* Sliding background */}
-              <span className="absolute inset-0 bg-gray-900 transform scale-x-0 origin-left transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
 
-              {/* Button Text */}
-              <div className="relative flex items-center gap-2 z-10 transition-colors group-hover:text-white">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                <span className="font-heading font-bold">Quick View</span>
-              </div>
+              {/* Button Content */}
+              <span className="relative z-10 flex items-center gap-3">
+                {/* <span className="flex h-9 w-9 items-center justify-center rounded-full bg-grey-light transition-colors group-hover:bg-white">
+                  <ShoppingBasket
+                    size={20}
+                    strokeWidth={2}
+                    className="text-grey transition-colors group-hover:text-grey"
+                  />
+                </span> */}
+                <span className="font-heading font-semibold transition-colors group-hover:text-white">
+                  Add to cart
+                </span>
+              </span>
             </button>
           </div>
         </Link>
@@ -531,12 +554,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Content */}
         <div
           className={`flex flex-1 flex-col ${
-            isFlat ? "" : "p-5"
+            isFlat ? "" : "py-5 pb-0 px-1"
           } ${isFlatHorizontal ? "px-4 pr-0" : ""}`}
         >
           {/* Category / Deal Name */}
           {!isFlat && (
-            <div className="mb-1 text-[11px] uppercase text-[#676767]">
+            <div className="mb-2 text-[11px] uppercase text-grey-medium font-semibold">
               {showDealName && consumerBest?.deal_name
                 ? consumerBest.deal_name
                 : product.category}
@@ -546,14 +569,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Title - Fixed height for 2 lines */}
           <Link
             to={`/product/${product.id}`}
-            className={`mb-3 mt-0 line-clamp-2 font-heading leading-[1.35] text-gray-900 hover:underline min-h-[41px] tracking-tight ${
-              isFlat ? "text-[13px] min-h-[20px] mt-3" : "text-[15px]"
+            className={`mb-0 mt-0 line-clamp-2 font-heading font-semibold leading-[1.35] text-grey min-h-[35px] ${
+              isFlat ? "text-[15px] min-h-[10px] mt-1" : "text-base"
             }`}
           >
             {product.name}
           </Link>
 
-          <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase text-[#565969]">
+          {/* <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase text-[#565969]">
             <span
               className={`flex h-4 w-4 items-center justify-center rounded-full ${stockIndicator.light}`}
             >
@@ -562,7 +585,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               />
             </span>
             <span className={stockIndicator.tone}>{stockIndicator.text}</span>
-          </div>
+          </div> */}
 
           {/* SKU */}
           {/* <div className="mb-4 text-[11px] font-semibold uppercase text-[#565969]">
@@ -576,7 +599,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 isFlatHorizontal ? (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-left">
-                      <span className="font-heading text-[16px] font-bold text-belims-accent bg-belims-accent/10 inline-block rounded px-2 py-1">
+                      <span className="font-heading text-base font-bold text-belims-accent bg-belims-accent/10 inline-block rounded px-2 py-1">
                         {formatMoney(tradePrice)}
                       </span>
                     </div>
@@ -597,7 +620,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   </div>
                 )
               ) : (
-                <span className="font-heading text-[16px] font-bold text-[#04223E]">
+                <span className="font-heading text-base font-bold text-grey">
                   {formatMoney(displayPrice)}
                 </span>
               )}
@@ -606,13 +629,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <div className="mt-auto py-1 pb-3">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
                 {/* Dominant price */}
-                <span className="font-heading text-[17px] font-semibold text-[#04223E] tracking-tight">
+                <span className="font-heading text-base font-bold text-red-muted">
                   {formatMoney(displayPrice)}
                 </span>
 
                 {/* Non-trade deals: compare → sale */}
                 {hasConsumerStrike && (
-                  <span className="text-[16px] font-light text-[#9b9b9b] line-through">
+                  <span className="text-[14px] font-light text-grey-medium line-through">
                     {formatMoney(consumerCompareAt as number)}
                   </span>
                 )}
@@ -621,7 +644,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
 
           {/* CTA */}
-          {product.stock > 0 ? (
+          {/* {product.stock > 0 ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -663,7 +686,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     ? "Try again"
                     : "Notify me"}
             </button>
-          )}
+          )} */}
         </div>
       </div>
 
@@ -698,7 +721,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
             <div className="grid gap-6 p-6 md:grid-cols-[1.1fr_1fr]">
               <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-center rounded-block bg-canvas p-4">
+                <div className="flex items-center justify-center rounded-block bg-grey-light p-4">
                   {product.image ? (
                     <img
                       src={product.image}
@@ -726,7 +749,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   {formatMoney(displayPrice)}
                 </div>
 
-                <div className="mt-6">
+                {/* <div className="mt-6">
                   {product.stock > 0 ? (
                     <button
                       onClick={() =>
@@ -769,7 +792,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                             : "Notify me"}
                     </button>
                   )}
-                </div>
+                </div> */}
               </div>
             </div>
           </div>

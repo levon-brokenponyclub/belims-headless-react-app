@@ -53,42 +53,6 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
       maximumFractionDigits: 2,
     })}`;
 
-  const getStockIndicator = (stockLevel = 0) => {
-    if (stockLevel <= 0) {
-      return {
-        text: "Out of stock",
-        tone: "text-[#922c2c]",
-        dot: "bg-[#922c2c]",
-        light: "bg-[#f7e5e5]",
-      };
-    }
-
-    if (stockLevel <= 3) {
-      return {
-        text: `Only ${stockLevel} left`,
-        tone: "text-[#bd6b1b]",
-        dot: "bg-[#bd6b1b]",
-        light: "bg-[#f8e1cb]",
-      };
-    }
-
-    if (stockLevel <= 10) {
-      return {
-        text: "Low stock",
-        tone: "text-[#bd6b1b]",
-        dot: "bg-[#bd6b1b]",
-        light: "bg-[#f8e1cb]",
-      };
-    }
-
-    return {
-      text: "In stock",
-      tone: "text-[#337239]",
-      dot: "bg-[#337239]",
-      light: "bg-[#ddf0df]",
-    };
-  };
-
   // Determine bundle products
   let bundleProducts: BundleProduct[] = product.bundleCandidates || [];
 
@@ -147,25 +111,24 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {bundleProducts.map((item) => {
               const isSelected = selectedBundleItems.includes(item.id);
-              const stockIndicator = getStockIndicator(item.stock ?? 0);
 
               return (
                 <div
                   key={item.id}
-                  className={`relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white transition-shadow shadow-[0_1px_2px_rgba(16,24,40,0.06)] hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)] ${
+                  className={`relative flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-lg border bg-white transition-shadow ${
                     isSelected
-                      ? "border-[#1f1f1f] ring-1 ring-[#1f1f1f]"
-                      : "border-grey-light"
+                      ? "border-grey shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
+                      : "border-grey-light shadow-[0_1px_2px_rgba(16,24,40,0.06)] hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
                   }`}
                 >
-                  <div className="relative flex h-56 items-center justify-center bg-grey-light p-6">
+                  <div className="relative flex h-52 min-h-[260px] items-center justify-center rounded-lg bg-grey-light p-5">
                     {item.image ? (
                       <img
                         src={item.image}
                         alt={item.name}
                         loading="lazy"
                         decoding="async"
-                        className="absolute max-h-full max-w-full p-4 object-contain mix-blend-multiply"
+                        className="absolute max-h-[165px] max-w-[160px] p-4 object-contain mix-blend-multiply"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center rounded bg-[#ECF0F1] text-sm text-[#565969]">
@@ -174,29 +137,16 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
                     )}
                   </div>
 
-                  <div className="flex flex-1 flex-col p-5">
-                    <div className="mb-1 text-[11px] uppercase text-[#676767]">
+                  <div className="flex flex-1 flex-col py-5 pb-0 px-1">
+                    <div className="mb-2 text-[11px] font-semibold uppercase text-grey-medium">
                       {item.category || "Product"}
                     </div>
-                    <div className="mb-2 line-clamp-2 font-heading text-[15px] font-semibold leading-[1.35] text-gray-900">
+                    <div className="mb-2 min-h-[35px] line-clamp-2 font-heading text-base font-semibold leading-[1.35] text-grey">
                       {item.name}
                     </div>
 
-                    <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase text-[#565969]">
-                      <span
-                        className={`flex h-4 w-4 items-center justify-center rounded-full ${stockIndicator.light}`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${stockIndicator.dot}`}
-                        />
-                      </span>
-                      <span className={stockIndicator.tone}>
-                        {stockIndicator.text}
-                      </span>
-                    </div>
-
                     <div className="mt-auto pb-4">
-                      <span className="font-heading text-[17px] font-semibold text-[#04223E] tracking-tight">
+                      <span className="font-heading text-base font-bold text-red-muted">
                         {formatMoney(item.price || 0)}
                       </span>
                     </div>
@@ -206,8 +156,8 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
                       onClick={() => toggleBundleItem(item.id)}
                       className={`h-11 w-full rounded-full border text-sm font-semibold transition-colors ${
                         isSelected
-                          ? "border-[#1f1f1f] bg-[#6b6b6b] text-white"
-                          : "border-[#1f1f1f] bg-white text-[#1f1f1f] hover:bg-[#1f1f1f] hover:text-white"
+                          ? "border-grey bg-grey text-white"
+                          : "border-grey bg-white text-grey hover:bg-grey hover:text-white"
                       }`}
                     >
                       {isSelected ? "Added to Bundle" : "Add to Bundle"}

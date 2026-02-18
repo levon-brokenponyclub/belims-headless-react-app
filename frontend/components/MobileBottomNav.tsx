@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Home, Search, LayoutGrid, ShoppingCart, User } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Home, LayoutGrid, ShoppingCart, User, Search } from "lucide-react";
 
 interface MobileBottomNavProps {
   onSearch?: () => void;
@@ -12,8 +12,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onCart,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isVisible, setIsVisible] = useState(true);
-  const [stickyBarVisible, setStickyBarVisible] = useState(false);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
@@ -34,118 +34,71 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Detect sticky add to cart bar visibility
-  useEffect(() => {
-    const stickyBar = document.querySelector("[data-sticky-cart-bar]");
-    if (!stickyBar) return;
-
-    const observer = new MutationObserver(() => {
-      const isBarVisible = stickyBar.classList.contains("translate-y-0");
-      setStickyBarVisible(isBarVisible);
-    });
-
-    observer.observe(stickyBar, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-
-    // Initial check
-    const isBarVisible = stickyBar.classList.contains("translate-y-0");
-    setStickyBarVisible(isBarVisible);
-
-    return () => observer.disconnect();
-  }, []);
+  const isHomeActive = location.pathname === "/";
+  const isShopActive = location.pathname.startsWith("/shop");
+  const itemClass = (isActive: boolean) =>
+    `flex flex-col items-center justify-center gap-1 py-1 transition-colors ${
+      isActive ? "text-brand" : "text-grey"
+    }`;
 
   return (
     <div
-      className={`lg:hidden fixed left-1/2 -translate-x-1/2 z-[100] w-full max-w-lg px-6 transition-all duration-300 ${
-        isVisible ? "translate-y-0" : "translate-y-[80px]"
-      } ${stickyBarVisible ? "bottom-[77px]" : "bottom-4"}`}
+      className={`lg:hidden fixed left-0 right-0 z-[100] transition-transform duration-300 ${
+        isVisible ? "translate-y-0" : "translate-y-full"
+      } bottom-0`}
     >
-      <div className="h-12 bg-white/70 backdrop-blur-xl border border-gray-200 rounded-lg shadow-2xl flex items-center justify-between px-2">
-        {/* Home */}
-        <div className="relative group flex-1 flex justify-center">
+      <div className="border-t border-subtle bg-white/95 backdrop-blur-sm shadow-[0_-4px_18px_rgb(0_0_0_/_0.08)]">
+        <nav
+          className="grid grid-cols-5 items-center px-2 py-2"
+          aria-label="Mobile navigation"
+        >
           <button
             type="button"
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
+            className={itemClass(isHomeActive)}
             onClick={() => navigate("/")}
           >
-            <Home className="w-5 h-5 text-gray-500 group-hover:text-belims-blue transition-colors" />
-            <span className="sr-only">Home</span>
+            <Home className="h-5 w-5" />
+            <span className="text-[11px] font-semibold leading-none">Home</span>
           </button>
-          <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
-            Home
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[5px] border-t-belims-navy" />
-          </div>
-        </div>
 
-        {/* Search */}
-        <div className="relative group flex-1 flex justify-center">
+          <button type="button" className={itemClass(false)} onClick={onSearch}>
+            <Search className="h-5 w-5" />
+            <span className="text-[11px] font-semibold leading-none">
+              Search
+            </span>
+          </button>
+
           <button
             type="button"
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
-            onClick={onSearch}
-          >
-            <Search className="w-5 h-5 text-gray-500 group-hover:text-belims-blue transition-colors" />
-            <span className="sr-only">Search</span>
-          </button>
-          <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
-            Search
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[5px] border-t-belims-navy" />
-          </div>
-        </div>
-
-        {/* Departments */}
-        <div className="relative group flex-1 flex justify-center">
-          <button
-            type="button"
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-red-600 transition-colors"
+            className={itemClass(isShopActive)}
             onClick={() =>
               window.dispatchEvent(new CustomEvent("belims:open-mobile-menu"))
             }
           >
-            <LayoutGrid className="w-5 h-5 text-white" />
-            <span className="sr-only">Departments</span>
+            <LayoutGrid className="h-5 w-5" />
+            <span className="text-[11px] font-semibold leading-none">
+              Departments
+            </span>
           </button>
-          <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
-            Departments
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[5px] border-t-belims-navy" />
-          </div>
-        </div>
 
-        {/* Cart */}
-        <div className="relative group flex-1 flex justify-center">
+          <button type="button" className={itemClass(false)} onClick={onCart}>
+            <ShoppingCart className="h-5 w-5" />
+            <span className="text-[11px] font-semibold leading-none">Cart</span>
+          </button>
+
           <button
             type="button"
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
-            onClick={onCart}
-          >
-            <ShoppingCart className="w-5 h-5 text-gray-500 group-hover:text-belims-blue transition-colors" />
-            <span className="sr-only">Cart</span>
-          </button>
-          <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
-            Cart
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[5px] border-t-belims-navy" />
-          </div>
-        </div>
-
-        {/* Account */}
-        <div className="relative group flex-1 flex justify-center">
-          <button
-            type="button"
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition-colors group"
+            className={itemClass(false)}
             onClick={() =>
               window.dispatchEvent(new CustomEvent("belims:open-account-panel"))
             }
           >
-            <User className="w-5 h-5 text-gray-500 group-hover:text-belims-blue transition-colors" />
-            <span className="sr-only">Account</span>
+            <User className="h-5 w-5" />
+            <span className="text-[11px] font-semibold leading-none">
+              Account
+            </span>
           </button>
-          <div className="absolute bottom-full mb-3 px-3 py-1 bg-belims-navy text-white text-[10px] font-bold rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 whitespace-nowrap">
-            Account
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[5px] border-t-belims-navy" />
-          </div>
-        </div>
+        </nav>
       </div>
     </div>
   );

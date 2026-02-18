@@ -15,6 +15,7 @@ type Card = {
 
 const HeroBanner: React.FC = () => {
   const [shouldPlayVideo, setShouldPlayVideo] = useState(false);
+  const [activeMobileSlide, setActiveMobileSlide] = useState(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -45,17 +46,6 @@ const HeroBanner: React.FC = () => {
   const cards: Card[] = useMemo(
     () => [
       {
-        key: "orbital-sanders",
-        href: "/collections/orbital-sanders",
-        title: "Orbital Sanders",
-        description:
-          "Find the perfect orbital sander for all your cards like bodywork polishing, decorating and finishing work.",
-        buttonText: "Shop now",
-        imageSrc:
-          "https://athens-theme.myshopify.com/cdn/shop/files/athens-mosaic-05.jpg?v=1747139046&width=2840",
-        imageAlt: "Orbital sander",
-      },
-      {
         key: "trade",
         href: "/trade",
         title: "Trade pricing that works as hard as you do",
@@ -68,6 +58,17 @@ const HeroBanner: React.FC = () => {
           "https://athens-theme.myshopify.com/cdn/shop/videos/c/vp/2d30e4d882bb45b9bb7dee5e078cb9d0/2d30e4d882bb45b9bb7dee5e078cb9d0.m3u8?v=0",
         videoMp4Src:
           "https://athens-theme.myshopify.com/cdn/shop/videos/c/vp/2d30e4d882bb45b9bb7dee5e078cb9d0/2d30e4d882bb45b9bb7dee5e078cb9d0.HD-720p-1.6Mbps-60607784.mp4?v=0",
+      },
+      {
+        key: "orbital-sanders",
+        href: "/collections/orbital-sanders",
+        title: "Orbital Sanders",
+        description:
+          "Find the perfect orbital sander for all your cards like bodywork polishing, decorating and finishing work.",
+        buttonText: "Shop now",
+        imageSrc:
+          "https://athens-theme.myshopify.com/cdn/shop/files/athens-mosaic-05.jpg?v=1747139046&width=2840",
+        imageAlt: "Orbital sander",
       },
       {
         key: "planers",
@@ -84,12 +85,192 @@ const HeroBanner: React.FC = () => {
     [],
   );
 
+  useEffect(() => {
+    if (cards.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setActiveMobileSlide((prev) => (prev + 1) % cards.length);
+    }, 6000);
+
+    return () => window.clearInterval(timer);
+  }, [cards.length]);
+
+  const goToPrevMobileSlide = () => {
+    setActiveMobileSlide((prev) => (prev - 1 + cards.length) % cards.length);
+  };
+
+  const goToNextMobileSlide = () => {
+    setActiveMobileSlide((prev) => (prev + 1) % cards.length);
+  };
+
   return (
-    <section className="bg-white py-6 md:py-8 lg:py-10">
+    <section className="bg-[#F2F3F7] py-4 md:py-4 lg:py-8">
       <div className="container mx-auto max-w-[1400px] px-3 lg:px-6">
-        {/* Mobile: horizontal scroller. Desktop: 25/50/25 grid */}
+        <div className="md:hidden">
+          <div className="relative h-[360px] overflow-hidden rounded-2xl bg-gray-900">
+            {cards.map((card, idx) => {
+              const hasVideo = !!card.videoMp4Src || !!card.videoHlsSrc;
+              const isTradeCard = card.key === "trade";
+              const isActive = idx === activeMobileSlide;
+
+              return (
+                <a
+                  key={`mobile-${card.key}`}
+                  href={card.href}
+                  aria-label={card.title}
+                  className={`absolute inset-0 transition-opacity duration-500 ease-out ${
+                    isActive
+                      ? "opacity-100 pointer-events-auto"
+                      : "opacity-0 pointer-events-none"
+                  }`}
+                >
+                  <div className="absolute inset-0">
+                    <img
+                      src={card.imageSrc}
+                      alt={card.imageAlt}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+
+                    {hasVideo && isTradeCard && isActive && (
+                      <video
+                        className="absolute inset-0 h-full w-full object-cover"
+                        muted
+                        playsInline
+                        loop
+                        preload="none"
+                        autoPlay={shouldPlayVideo}
+                      >
+                        {shouldPlayVideo && card.videoHlsSrc && (
+                          <source
+                            type="application/x-mpegURL"
+                            src={card.videoHlsSrc}
+                          />
+                        )}
+                        {shouldPlayVideo && card.videoMp4Src && (
+                          <source type="video/mp4" src={card.videoMp4Src} />
+                        )}
+                      </video>
+                    )}
+
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent" />
+                    <div className="absolute inset-0 bg-black/10" />
+                  </div>
+
+                  <div className="relative z-10 flex h-full flex-col items-center justify-center p-5 text-center">
+                    <h3 className="text-2xl font-semibold tracking-tight text-white">
+                      {card.title}
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-relaxed text-white/85">
+                      {card.description}
+                    </p>
+
+                    {isTradeCard ? (
+                      <div className="mt-5 grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          className="inline-flex h-11 w-full items-center justify-center rounded-sm bg-belims-accent px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = "/trade/deals";
+                          }}
+                        >
+                          View Trade Deals
+                        </button>
+
+                        <button
+                          type="button"
+                          className="inline-flex h-11 w-full items-center justify-center rounded-sm border-2 border-white bg-transparent px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-white hover:text-black"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = "/trade/register";
+                          }}
+                        >
+                          Apply for Trade Account
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-5">
+                        <span className="inline-flex h-11 items-center justify-center rounded-sm bg-belims-blue px-8 font-semibold text-sm text-white shadow-sm transition">
+                          {card.buttonText}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </a>
+              );
+            })}
+
+            <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-4">
+              <button
+                type="button"
+                aria-label="Previous slide"
+                onClick={goToPrevMobileSlide}
+                className="flex h-8 w-8 items-center justify-center text-white/90 transition hover:text-white"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12.5 16.25L6.25 10L12.5 3.75"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              <div className="flex items-center gap-2">
+                {cards.map((card, idx) => (
+                  <button
+                    key={`bullet-${card.key}`}
+                    type="button"
+                    aria-label={`Go to slide ${idx + 1}`}
+                    aria-current={idx === activeMobileSlide}
+                    onClick={() => setActiveMobileSlide(idx)}
+                    className={`h-2.5 w-2.5 rounded-full transition-all ${
+                      idx === activeMobileSlide
+                        ? "bg-white"
+                        : "bg-white/45 hover:bg-white/70"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                aria-label="Next slide"
+                onClick={goToNextMobileSlide}
+                className="flex h-8 w-8 items-center justify-center text-white/90 transition hover:text-white"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7.5 3.75L13.75 10L7.5 16.25"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop/tablet: existing 25/50/25 grid */}
         <div className="-mx-3 px-3 lg:mx-0 lg:px-0">
-          <div className="overflow-x-auto lg:overflow-visible">
+          <div className="hidden overflow-x-auto md:block lg:overflow-visible">
             <div
               className="
                 flex gap-4 md:gap-6
@@ -100,10 +281,11 @@ const HeroBanner: React.FC = () => {
             >
               {cards.map((card, idx) => {
                 const hasVideo = !!card.videoMp4Src || !!card.videoHlsSrc;
-                const isMiddle = idx === 1;
+                const isTradeCard = card.key === "trade";
+                const isPrimary = idx === 0;
 
-                // 25% / 50% / 25% on lg+
-                const colSpan = isMiddle ? "lg:col-span-6" : "lg:col-span-3";
+                // 50% / 25% / 25% on lg+
+                const colSpan = isPrimary ? "lg:col-span-6" : "lg:col-span-3";
 
                 return (
                   <a
@@ -115,7 +297,7 @@ const HeroBanner: React.FC = () => {
                       w-[88%] min-w-[88%] sm:w-[70%] sm:min-w-[70%] md:w-[52%] md:min-w-[52%]
                       lg:w-auto lg:min-w-0
                       h-[320px] sm:h-[360px] md:h-[420px] lg:h-[520px]
-                      overflow-hidden rounded-md
+                      overflow-hidden rounded-2xl
                       bg-gray-900
                       shadow-sm
                       snap-start
@@ -136,7 +318,7 @@ const HeroBanner: React.FC = () => {
                         loading="lazy"
                       />
 
-                      {hasVideo && isMiddle && (
+                      {hasVideo && isTradeCard && (
                         <video
                           className="absolute inset-0 h-full w-full object-cover"
                           muted
@@ -184,7 +366,7 @@ const HeroBanner: React.FC = () => {
                       </p>
 
                       {/* Buttons */}
-                      {isMiddle ? (
+                      {isTradeCard ? (
                         <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
                           <button
                             type="button"
@@ -240,7 +422,7 @@ const HeroBanner: React.FC = () => {
                     </div>
 
                     {/* Middle card video play affordance */}
-                    {isMiddle && hasVideo && !shouldPlayVideo && (
+                    {isTradeCard && hasVideo && !shouldPlayVideo && (
                       <button
                         type="button"
                         onClick={(e) => {

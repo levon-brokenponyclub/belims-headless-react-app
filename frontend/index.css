@@ -8,6 +8,14 @@
 */
 
 @layer base {
+  @media (max-width: 1023px) {
+    html,
+    body {
+      max-width: 100%;
+      overflow-x: clip;
+    }
+  }
+
   body {
     @apply font-body text-base text-[#333333];
   }

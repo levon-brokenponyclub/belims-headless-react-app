@@ -891,34 +891,38 @@ export const Archive: React.FC<ArchiveProps> = ({
                     >
                       <Link
                         to={`/shop/${encodeURIComponent(label)}`}
-                        className="group flex flex-col items-center text-center"
+                        className="group relative flex h-full w-full items-center overflow-hidden rounded-full border border-white bg-white px-3 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
                       >
-                        <span
-                          className={`relative flex items-center justify-center overflow-hidden rounded-full text-sm font-semibold uppercase tracking-tight ${
-                            isSale
-                              ? "bg-belims-accent text-white"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                          style={{ width: "80px", height: "80px" }}
-                        >
-                          {isSale ? (
-                            "Sale"
-                          ) : media?.icon ? (
-                            <img
-                              src={media.icon}
-                              alt=""
-                              className="relative z-10 h-8 w-8 object-contain"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ) : (
-                            <span className="relative z-10">
-                              {label.slice(0, 2)}
-                            </span>
-                          )}
-                        </span>
-                        <span className="mt-3 text-sm font-semibold text-gray-900">
-                          {label}
+                        <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                        <span className="relative z-10 flex items-center gap-3 min-w-0">
+                          <span
+                            className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors group-hover:bg-white ${
+                              isSale
+                                ? "bg-belims-accent text-white"
+                                : "bg-grey-light"
+                            }`}
+                          >
+                            {isSale ? (
+                              <span className="text-[10px] font-bold uppercase leading-none">
+                                Sale
+                              </span>
+                            ) : media?.icon ? (
+                              <img
+                                src={media.icon}
+                                alt=""
+                                className="h-6 w-6 object-contain"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            ) : (
+                              <span className="text-xs font-semibold text-grey">
+                                {label.slice(0, 2)}
+                              </span>
+                            )}
+                          </span>
+                          <span className="truncate text-sm font-semibold transition-colors group-hover:text-white">
+                            {label}
+                          </span>
                         </span>
                       </Link>
                     </div>

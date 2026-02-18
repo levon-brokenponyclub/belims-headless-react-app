@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Product, WooCommerceCategory } from "../types";
+import { Product } from "../types";
 import { ProductCard } from "./ProductCard";
-import { ArrowRight } from "lucide-react";
-import { CATEGORY_SLIDER_DATA } from "../constants";
-import { fetchCategories } from "../services/wooCommerceService";
 import { SkeletonProductCard } from "./Skeleton";
 
 interface ShopByCategoryProps {
@@ -27,130 +24,58 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
   isTradeApproved = false,
 }) => {
   const navigate = useNavigate();
-  const [categoryPills, setCategoryPills] = useState<string[]>(["On Sale"]);
-  const [activeCategory, setActiveCategory] = useState("On Sale");
-  const hasLoadedCategoriesRef = useRef(false);
+  const [activeCollection, setActiveCollection] = useState<
+    "new-arrivals" | "best-sellers"
+  >("new-arrivals");
 
-  console.log("ShopByCategory rendered, products count:", products.length);
+  const toNumericId = (id: string) => {
+    const value = Number(id);
+    return Number.isFinite(value) ? value : 0;
+  };
 
-  // Fetch child categories from WooCommerce
-  useEffect(() => {
-    const loadCategories = async () => {
-      // Wait for products to load first
-      if (products.length === 0) {
-        console.log("Waiting for products to load before fetching categories");
-        return;
-      }
+  const categoryProducts = useMemo(() => {
+    const list = [...products];
 
-      if (hasLoadedCategoriesRef.current) return;
-      hasLoadedCategoriesRef.current = true;
-
-      try {
-        console.log("Fetching categories from API cache");
-        const categories: WooCommerceCategory[] = await fetchCategories();
-        if (categories.length > 0) {
-          console.log("Fetched categories:", categories);
-
-          // Get unique categories that actually exist in products
-          const productCategoryNames = [
-            ...new Set(products.map((p) => p.category)),
-          ];
-          console.log("Categories from products:", productCategoryNames.sort());
-
-          // Filter WooCommerce categories to only those that match product categories
-          const matchingCategories = categories
-            .filter((cat) =>
-              productCategoryNames.some(
-                (pc) => pc.toLowerCase() === cat.name.toLowerCase(),
-              ),
-            )
-            .map((cat) => cat.name)
-            .sort();
-
-          console.log("Matching categories:", matchingCategories);
-
-          if (matchingCategories.length > 0) {
-            setCategoryPills(["On Sale", ...matchingCategories]);
-          } else {
-            console.warn("No matching categories found");
+    if (activeCollection === "best-sellers") {
+      return list
+        .sort((a, b) => {
+          if ((b.reviews || 0) !== (a.reviews || 0)) {
+            return (b.reviews || 0) - (a.reviews || 0);
           }
-        }
-      } catch (error) {
-        console.error("Failed to load categories:", error);
-      }
-    };
-    loadCategories();
-  }, [products]);
+          if ((b.rating || 0) !== (a.rating || 0)) {
+            return (b.rating || 0) - (a.rating || 0);
+          }
+          return toNumericId(b.id) - toNumericId(a.id);
+        })
+        .slice(0, 10);
+    }
 
-  // Get slider content based on active category
-  const currentSliderContent =
-    CATEGORY_SLIDER_DATA[activeCategory] || CATEGORY_SLIDER_DATA["default"];
-
-  // Filter products by active category and limit to 10
-  const categoryProducts = products
-    .filter((product) => {
-      if (activeCategory === "On Sale") {
-        // Show consumer deals / on-sale items, exclude trade specials
-        if (product.deals_resolved?.trade?.bestDeal?.type === "trade_special") {
-          return false;
-        }
-
-        if (product.deals_resolved?.consumer?.bestDeal) return true;
-
-        return (
-          (product.sale_price && parseFloat(String(product.sale_price)) > 0) ||
-          product.isFeatured
-        );
-      }
-
-      // Check if product category matches the active category exactly
-      const productCategory = (product.category || "").trim();
-      const searchCategory = activeCategory.trim();
-
-      // Try exact match first (case-insensitive)
-      if (productCategory.toLowerCase() === searchCategory.toLowerCase()) {
-        return true;
-      }
-
-      // Also check if product category contains the search term
-      if (
-        productCategory.toLowerCase().includes(searchCategory.toLowerCase())
-      ) {
-        return true;
-      }
-
-      return false;
-    })
-    .slice(0, 10);
+    return list
+      .sort((a, b) => toNumericId(b.id) - toNumericId(a.id))
+      .slice(0, 10);
+  }, [products, activeCollection]);
 
   const showSkeletons = isLoadingProducts;
 
-  // Debug: log when filtering and when no products found
-  console.log(
-    `Filtering for category: "${activeCategory}", found: ${categoryProducts.length} products`,
-  );
-  if (categoryProducts.length === 0 && activeCategory !== "On Sale") {
-    console.log("No products found for category:", activeCategory);
-    // Get unique categories from ALL products
-    const uniqueCategories = [
-      ...new Set(products.map((p) => p.category)),
-    ].sort();
-    console.log("All unique categories in products:", uniqueCategories);
-    console.log(
-      "Sample product categories (first 10):",
-      products.slice(0, 10).map((p) => p.category),
-    );
-  }
+  const sectionTitle =
+    activeCollection === "new-arrivals" ? "New Arrivals" : "Best Sellers";
+  const sectionDescription =
+    activeCollection === "new-arrivals"
+      ? "Fresh arrivals from top brands, ready for your next project."
+      : "Top-rated picks trusted by customers for quality and value.";
+
+  const openChatBot = () => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new Event("belims:open-chat"));
+  };
 
   // -----------------------------
   // Slider functionality (ported from ProjectInspiration)
   // -----------------------------
-  const width = useWindowWidth();
   const railRef = useRef<HTMLDivElement | null>(null);
   const [railWidth, setRailWidth] = useState(0);
   const [stepWidth, setStepWidth] = useState(0);
   const [index, setIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
 
   const itemsLength = showSkeletons ? 5 : categoryProducts.length;
 
@@ -202,7 +127,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [width, itemsLength]);
+  }, [itemsLength]);
 
   const scrollToIndex = (nextIndex: number) => {
     if (!railRef.current || !stepWidth) return;
@@ -228,58 +153,72 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
     maxIndex === 0 ? 100 : Math.min(100, (index / maxIndex) * 100);
 
   return (
-    <section className="w-full py-14">
+    <section className="w-full py-10">
       <div className="container mx-auto px-4">
-        <h2 className="text-2xl font-bold text-gray-900 font-heading letterspacing-tight mb-6">
-          Shop by department
-        </h2>
-
-        {/* Category Pills */}
-        <div className="mb-6 overflow-x-auto no-scrollbar pb-2">
-          <div className="flex gap-3 min-w-max">
-            {categoryPills.map((pill, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  setActiveCategory(pill);
-                  // reset slider position when switching categories
-                  setIndex(0);
-                  scrollToIndex(0);
-                }}
-                className={`px-4 h-9 rounded-xl border font-semibold font-heading transition-colors whitespace-nowrap text-[13px] ${
-                  activeCategory === pill
-                    ? "bg-belims-blue text-white border-gray-200"
-                    : "bg-white text-[#64748b] border-gray-200 hover:bg-belims-blue hover:text-white"
-                }`}
-              >
-                {pill}
-              </button>
-            ))}
+        <div className="flex items-center justify-between gap-7 mb-5">
+          <h2 className="text-2xl font-bold tracking-tight text-grey md:text-[28px]">
+            {sectionTitle}
+          </h2>
+          <div className="flex items-center gap-4" role="tablist">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCollection("new-arrivals");
+                setIndex(0);
+                scrollToIndex(0);
+              }}
+              className={`text-lg font-semibold transition-colors ${
+                activeCollection === "new-arrivals"
+                  ? "text-grey"
+                  : "text-grey-medium hover:text-grey"
+              }`}
+            >
+              New Arrivals
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCollection("best-sellers");
+                setIndex(0);
+                scrollToIndex(0);
+              }}
+              className={`text-lg font-semibold transition-colors ${
+                activeCollection === "best-sellers"
+                  ? "text-grey"
+                  : "text-grey-medium hover:text-grey"
+              }`}
+            >
+              Best Sellers
+            </button>
           </div>
         </div>
 
         {/* Category Preview Section */}
-        <div className="flex flex-col lg:flex-row gap-6 h-auto animate-fadeIn">
+        <div className="flex flex-col lg:flex-row gap-5 h-auto animate-fadeIn">
           {/* Left: Category Hero Video - Always visible now, adjusted for mobile */}
-          <div className="w-full lg:w-1/3 xl:w-1/5 rounded overflow-hidden relative group flex-shrink-0">
+          <div className="w-full lg:w-1/5 rounded-xl overflow-hidden relative group flex-shrink-0">
             <img
               src="/images/development/athens-mosaic-06.webp"
-              alt={activeCategory}
+              alt={sectionTitle}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-[0.85]"
             />
 
-            <div className="absolute inset-0 p-6 flex flex-col justify-center items-start text-center lg:text-left">
-              <h3 className="text-1xl md:text-2xl font-bold text-white mb-4 font-heading leading-tight drop-shadow-lg">
-                {/* {currentSliderContent.title} */}
-                {activeCategory}
+            <div className="absolute inset-0 p-6 flex flex-col justify-center items-start text-left">
+              <h3 className="text-white text-3xl font-bold font-heading">
+                {sectionTitle}
               </h3>
+              <p className="mt-3 text-lg font-semibold text-white/90 max-w-[260px]">
+                {sectionDescription}
+              </p>
               <button
-                onClick={() =>
-                  navigate(`/shop/${encodeURIComponent(activeCategory)}`)
-                }
-                className="mt-2 text-white font-semibold pb-0.5 hover:text-belims-accent hover:border-belims-accent transition-colors font-heading"
+                type="button"
+                onClick={openChatBot}
+                className="group relative mt-auto h-12 w-full overflow-hidden rounded-pill bg-white text-gray-900 transition-colors"
               >
-                Shop All {/* {activeCategory} */}
+                <span className="absolute inset-0 origin-left scale-x-0 bg-gray-900 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
+                  Get Started
+                </span>
               </button>
             </div>
           </div>
@@ -288,10 +227,8 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <div
               ref={railRef}
-              className="flex-1 overflow-x-auto no-scrollbar flex gap-6 items-stretch snap-x snap-mandatory scroll-pl-0 scroll-pr-4"
+              className="flex-1 overflow-x-auto no-scrollbar flex gap-4 lg:gap-5 items-stretch snap-x snap-mandatory scroll-pl-0"
               aria-roledescription="carousel"
-              onMouseEnter={() => setIsPaused(true)}
-              onMouseLeave={() => setIsPaused(false)}
               onScroll={() => {
                 if (!railRef.current || !stepWidth) return;
                 const nextIndex = Math.round(
@@ -304,16 +241,16 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
                 ? Array.from({ length: 5 }).map((_, index) => (
                     <div
                       key={`shop-skel-${index}`}
-                      className="flex-shrink-0 snap-start"
+                      className="flex-shrink-0 snap-start basis-[82%] sm:basis-[48%] lg:basis-[calc((100%-3.75rem)/4)] min-w-0"
                       data-slider-item
                     >
-                      <SkeletonProductCard className="w-[320px]" />
+                      <SkeletonProductCard className="w-full" />
                     </div>
                   ))
                 : categoryProducts.map((product) => (
                     <div
                       key={product.id}
-                      className="flex-shrink-0 snap-start w-[320px]"
+                      className="flex-shrink-0 snap-start basis-[82%] sm:basis-[48%] lg:basis-[calc((100%-3.75rem)/4)] min-w-0"
                       data-slider-item
                       onClick={() => navigate(`/product/${product.id}`)}
                     >
@@ -349,26 +286,52 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
             <button
               type="button"
               onClick={prev}
+              className="group relative h-12 w-12 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white"
               aria-label="Previous products"
-              className={[
-                "grid h-9 w-9 place-items-center rounded-lg",
-                "border border-black/10 bg-white text-gray-600",
-                "transition-colors hover:bg-gray-50 hover:text-gray-900",
-              ].join(" ")}
             >
-              ‹
+              <span className="absolute inset-0 origin-right scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="relative z-10 flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-chevron-left"
+                  aria-hidden="true"
+                >
+                  <path d="m15 18-6-6 6-6"></path>
+                </svg>
+              </span>
             </button>
             <button
               type="button"
               onClick={next}
+              className="group relative h-12 w-12 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white"
               aria-label="Next products"
-              className={[
-                "grid h-9 w-9 place-items-center rounded-lg",
-                "border border-black/10 bg-white text-gray-600",
-                "transition-colors hover:bg-gray-50 hover:text-gray-900",
-              ].join(" ")}
             >
-              ›
+              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+              <span className="relative z-10 flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-chevron-right"
+                  aria-hidden="true"
+                >
+                  <path d="m9 18 6-6-6-6"></path>
+                </svg>
+              </span>
             </button>
           </div>
         </div>
@@ -376,15 +339,3 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
     </section>
   );
 };
-
-function useWindowWidth() {
-  const [w, setW] = useState<number>(() =>
-    typeof window === "undefined" ? 1024 : window.innerWidth,
-  );
-  useEffect(() => {
-    const onResize = () => setW(window.innerWidth);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-  return w;
-}

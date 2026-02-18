@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -125,6 +125,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [mobileCategoryStack, setMobileCategoryStack] = useState<
     CategoryNode[]
   >([]);
+  const megaMenuCloseTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -274,25 +275,9 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [deliveryAddress, legacyDeliveryLabel, selectedStore]);
 
-  const deliveryLabel = deliveryAddress
-    ? deliveryAddress.label || buildAddressLabel(deliveryAddress)
-    : legacyDeliveryLabel || "";
-
-  const deliveryAddressDisplay = deliveryAddress?.street
-    ? [deliveryAddress.street, deliveryAddress.city, deliveryAddress.province]
-        .filter(Boolean)
-        .join(", ")
-    : deliveryLabel;
-
-  const truncateText = (value: string, maxLength: number) => {
-    if (value.length <= maxLength) return value;
-    return `${value.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
-  };
-
   const pickupLabel = selectedStore?.name || "Select Store";
-  const deliveryLabelText = deliveryAddressDisplay
-    ? truncateText(deliveryAddressDisplay, 32)
-    : "Enter Address";
+  const deliveryLabelText =
+    deliveryAddress?.postalCode?.trim() || "Enter Address";
 
   // Initialize category tree from API
   useEffect(() => {
@@ -406,8 +391,35 @@ export const Header: React.FC<HeaderProps> = ({
     setMobileMenuOpen(false);
   };
 
+  const openMegaMenu = () => {
+    if (megaMenuCloseTimerRef.current !== null) {
+      window.clearTimeout(megaMenuCloseTimerRef.current);
+      megaMenuCloseTimerRef.current = null;
+    }
+    setIsMegaMenuOpen(true);
+  };
+
+  const closeMegaMenu = () => {
+    if (megaMenuCloseTimerRef.current !== null) {
+      window.clearTimeout(megaMenuCloseTimerRef.current);
+    }
+
+    megaMenuCloseTimerRef.current = window.setTimeout(() => {
+      setIsMegaMenuOpen(false);
+      megaMenuCloseTimerRef.current = null;
+    }, 140);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (megaMenuCloseTimerRef.current !== null) {
+        window.clearTimeout(megaMenuCloseTimerRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <header className="sticky top-0 z-[300] font-sans">
+    <header className="sticky top-0 z-[1200] font-sans overflow-visible shadow-[5px_0_30px_0_rgb(0_0_0_/_.08)]">
       <section className="w-full bg-surface border-b border-subtle">
         <div className="bg-brand text-white">
           <div className="container mx-auto px-0">
@@ -432,14 +444,14 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsDeliveryLocationModalOpen(true)}
-                    className="flex items-center gap-3 px-3 py-2 text-left w-full"
+                    className="flex items-center gap-3 px-3 text-left w-full"
                   >
-                    <MapPin size={16} className="flex-shrink-0" />
-                    <span className="flex flex-col">
-                      <span className="text-[12px] text-white/80">
-                        Pickup from
+                    <MapPin size={15} className="flex-shrink-0" />
+                    <span className="flex flex-col md:flex-row md:items-center md:gap-2 min-w-0">
+                      <span className="text-sm text-white/80 md:text-[13px] whitespace-nowrap">
+                        Pickup from:
                       </span>
-                      <span className="text-[14px] font-semibold text-white truncate">
+                      <span className="text-sm font-semibold text-white truncate md:text-[13px] md:truncate">
                         {pickupLabel}
                       </span>
                     </span>
@@ -448,14 +460,14 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsDeliveryLocationModalOpen(true)}
-                    className="flex items-center gap-3 px-3 py-2 text-left w-full"
+                    className="flex items-center gap-3 px-3 text-left w-full"
                   >
-                    <Truck size={16} className="flex-shrink-0" />
-                    <span className="flex flex-col">
-                      <span className="text-[12px] text-white/80">
-                        Deliver to
+                    <Truck size={15} className="flex-shrink-0" />
+                    <span className="flex flex-col md:flex-row md:items-center md:gap-2 min-w-0">
+                      <span className="text-sm text-white/80 md:text-[13px]">
+                        Deliver to:
                       </span>
-                      <span className="text-[14px] font-semibold text-white leading-tight truncate">
+                      <span className="text-sm font-semibold text-white leading-tight truncate md:text-[13px] md:leading-normal md:truncate">
                         {deliveryLabelText}
                       </span>
                     </span>
@@ -468,7 +480,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between gap-3 py-4 md:py-5">
+          <div className="relative flex items-center justify-between gap-3 py-4 md:py-5">
             <div className="relative flex items-center gap-2 flex-shrink-0 min-h-[44px]">
               <button
                 type="button"
@@ -599,10 +611,10 @@ export const Header: React.FC<HeaderProps> = ({
               </Link>
             </div>
 
-            <div className="hidden lg:block flex-1 max-w-2xl relative">
+            <div className="hidden lg:block absolute left-1/2 -translate-x-1/2 w-full max-w-2xl z-20">
               <form
                 onSubmit={handleSearchSubmit}
-                className="relative flex items-center border border-grey-light bg-grey-light rounded-full overflow-hidden transition-[background-color,border-color] duration-200 ease-in-out focus-within:bg-white focus-within:border-grey ml-3"
+                className="relative flex items-center border border-grey-light bg-grey-light rounded-full overflow-hidden transition-[background-color,border-color] duration-200 ease-in-out focus-within:bg-white focus-within:border-grey"
               >
                 <div className="relative h-full hidden xl:block">
                   <button
@@ -868,7 +880,7 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <ShoppingBasket size={22} />
                 {cartCount > 0 && (
-                  <span className="ml-1 text-sm font-semibold text-white bg-red-muted leading-[1.5rem] rounded-full absolute w-6 h-6 top-0 -right-2">
+                  <span className="text-[10px] font-bold text-white bg-red-muted rounded-full absolute w-5 h-5 top-0.5 right-0.5 flex items-center justify-center leading-none">
                     {cartCount}
                   </span>
                 )}
@@ -886,7 +898,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex md:hidden items-center gap-3 text-ink">
               <button
                 type="button"
-                className="icon-btn"
+                className="h-10 w-10 rounded-full border border-subtle bg-white text-grey flex items-center justify-center"
                 onClick={() => setIsAccountPanelOpen(true)}
                 aria-label="Account"
               >
@@ -894,13 +906,13 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               <button
                 type="button"
-                className="icon-btn relative"
+                className="h-10 w-10 rounded-full border border-subtle bg-white text-grey flex items-center justify-center relative"
                 onClick={toggleCart}
                 aria-label="Cart"
               >
                 <ShoppingBasket size={18} />
                 {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-accent text-white text-[10px] font-bold w-5 h-5 rounded-pill flex items-center justify-center">
+                  <span className="absolute top-0.5 right-0.5 bg-red-muted text-white text-[10px] font-bold w-5 h-5 rounded-pill flex items-center justify-center leading-none">
                     {cartCount}
                   </span>
                 )}
@@ -942,8 +954,8 @@ export const Header: React.FC<HeaderProps> = ({
                 {/* Categories Button */}
                 <div
                   className="relative"
-                  onMouseEnter={() => setIsMegaMenuOpen(true)}
-                  onMouseLeave={() => setIsMegaMenuOpen(false)}
+                  onMouseEnter={openMegaMenu}
+                  onMouseLeave={closeMegaMenu}
                 >
                   <button
                     type="button"
@@ -1089,8 +1101,8 @@ export const Header: React.FC<HeaderProps> = ({
         handleShopAll={handleShopAll}
         handleCategorySelect={handleCategorySelect}
         products={products}
-        onMouseEnter={() => setIsMegaMenuOpen(true)}
-        onMouseLeave={() => setIsMegaMenuOpen(false)}
+        onMouseEnter={openMegaMenu}
+        onMouseLeave={closeMegaMenu}
       />
 
       {/* Mobile Menu Overlay */}

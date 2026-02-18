@@ -85,11 +85,11 @@ export function BrandStrip() {
 
   return (
     <section
-      className="mb-16 bg-belims-blue border-y border-black/5"
+      className="bg-belims-blue border-y border-black/5"
       aria-label="Trusted brands"
     >
       <div className="container mx-auto px-4 py-14 pb-16 md:py-14 md:pb-16">
-        <div className="flex items-center justify-between mb-6">
+        {/* <div className="flex items-center justify-between mb-6">
           <h3 className="font-heading text-h3 text-white">Trusted brands</h3>
 
           <div className="flex items-center gap-2">
@@ -123,7 +123,7 @@ export function BrandStrip() {
               ›
             </button>
           </div>
-        </div>
+        </div> */}
 
         <div
           ref={railRef}

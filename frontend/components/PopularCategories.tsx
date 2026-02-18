@@ -346,6 +346,11 @@ export const PopularCategories: React.FC = () => {
     "Get 30% off elegant, timeless seating. Do not miss out!",
   ];
 
+  const featuredImages = [
+    "/images/bosch-impact-kit.jpg",
+    "/images/Makita-Saws.jpg",
+  ];
+
   return (
     <section className="mb-16" aria-label="Popular categories">
       <div className="container mx-auto px-4">
@@ -370,7 +375,7 @@ export const PopularCategories: React.FC = () => {
                       {copy}
                     </p>
                     <span className="mt-7 inline-flex">
-                      <span className="group relative h-12 px-6 rounded-full bg-white text-gray-900 overflow-hidden transition-colors">
+                      <span className="group relative h-12 px-10 rounded-full bg-white text-gray-900 overflow-hidden transition-colors p-3">
                         <span className="absolute inset-0 bg-gray-900 transform scale-x-0 origin-left transition-transform duration-300 ease-out group-hover:scale-x-100" />
                         <span className="relative flex items-center gap-2 z-10 transition-colors group-hover:text-white">
                           <span className="font-heading font-semibold">
@@ -381,10 +386,11 @@ export const PopularCategories: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="relative flex items-center justify-center sm:justify-end">
-                    <div className="relative h-40 w-40 sm:h-52 sm:w-52">
+                  <div className="relative flex items-center justify-center sm:justify-end z-1">
+                    <div className="relative h-40 w-40 sm:h-52 sm:w-52 p-6 bg-white rounded-lg">
                       <img
                         src={
+                          featuredImages[index % featuredImages.length] ||
                           media?.slider ||
                           media?.lifestyle ||
                           "/placeholder.png"
@@ -392,14 +398,14 @@ export const PopularCategories: React.FC = () => {
                         alt={category.name}
                         loading="lazy"
                         decoding="async"
-                        className="h-full w-full object-contain"
+                        className="h-full w-full object-contain mix-blend-multiply"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div
-                  className={`absolute right-6 top-6 flex h-20 w-20 flex-col items-center justify-center rounded-full text-center ${badge.tone}`}
+                  className={`absolute right-6 top-6 flex h-20 w-20 flex-col items-center justify-center rounded-full text-center z-10 ${badge.tone}`}
                 >
                   <span className="text-sm font-semibold">{badge.label}</span>
                   <span className="text-2xl font-semibold leading-tight">
@@ -413,7 +419,7 @@ export const PopularCategories: React.FC = () => {
 
         <div className="mt-8">
           <div className="flex items-center justify-end gap-2">
-            <button
+            {/* <button
               type="button"
               onClick={handlePrev}
               className="grid h-10 w-10 place-items-center rounded-full bg-grey-light text-gray-700 hover:bg-gray-200"
@@ -428,12 +434,12 @@ export const PopularCategories: React.FC = () => {
               aria-label="Scroll categories right"
             >
               <ChevronRight size={18} />
-            </button>
+            </button> */}
           </div>
 
           <div
             ref={sliderRef}
-            className="mt-4 flex items-center gap-4 overflow-x-auto no-scrollbar pb-2"
+            className="mt-4 flex items-center gap-4 overflow-x-auto no-scrollbar py-12 px-8 bg-[#f4f691] rounded-xl"
             aria-roledescription="carousel"
           >
             {(isLoading ? fallbackCategories : sliderCategories).map(
@@ -443,25 +449,28 @@ export const PopularCategories: React.FC = () => {
                   <Link
                     key={`${cat.slug}-${index}`}
                     to={`/shop/${encodeURIComponent(cat.slug)}`}
-                    className="shrink-0 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
+                    className="group relative flex shrink-0 items-center overflow-hidden rounded-full border border-white bg-white px-3 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
                   >
-                    <span className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F1F1F1]">
-                        {media?.slider || media?.icon ? (
+                    <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                    <span className="relative z-10 flex items-center gap-3 min-w-0">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-grey-light transition-colors group-hover:bg-white">
+                        {media?.icon || media?.slider ? (
                           <img
-                            src={media?.slider || media?.icon}
+                            src={media?.icon || media?.slider}
                             alt=""
                             loading="lazy"
                             decoding="async"
                             className="h-6 w-6 object-contain"
                           />
                         ) : (
-                          <span className="text-xs font-semibold text-gray-500">
+                          <span className="text-xs font-semibold text-grey">
                             {cat.name.slice(0, 2)}
                           </span>
                         )}
                       </span>
-                      <span>{cat.name}</span>
+                      <span className="truncate text-sm font-semibold transition-colors group-hover:text-white">
+                        {cat.name}
+                      </span>
                     </span>
                   </Link>
                 );

@@ -2,15 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../types";
 import { ProductCard } from "./ProductCard";
-import { CountdownTimer } from "./CountdownTimer";
 import { SkeletonProductCard } from "./Skeleton";
 
-type DealTabKey =
-  | "all"
-  | "deal_of_day"
-  | "weekly"
-  | "trade_special"
-  | "clearance";
+type DealTabKey = "deal_of_day" | "weekly" | "clearance";
 
 type DealTabConfig = {
   key: DealTabKey;
@@ -23,19 +17,10 @@ type DealTabConfig = {
 };
 
 const DEAL_TABS: DealTabConfig[] = [
-  // {
-  //   key: "all",
-  //   label: "All deals",
-  //   title: "All deals",
-  //   description: "The best savings across the store, all in one place.",
-  //   image: "/images/development/collection-sales.webp",
-  //   link: "/deals",
-  //   linkLabel: "Shop all deals",
-  // },
   {
     key: "deal_of_day",
-    label: "Deals of the day",
-    title: "Deals of the day",
+    label: "Daily Deals",
+    title: "Daily Deals",
     description: "Fresh discounts daily. New savings every morning.",
     image: "/images/development/athens-mosaic-04a.webp",
     link: "/deals",
@@ -43,22 +28,12 @@ const DEAL_TABS: DealTabConfig[] = [
   },
   {
     key: "weekly",
-    label: "Weekly deals",
-    title: "Weekly deals",
+    label: "Weekly Deals",
+    title: "Weekly Deals",
     description: "Weekly savings across selected products.",
     image: "/images/development/athens-mosaic-03.webp",
     link: "/deals/weekly",
     linkLabel: "View weekly deals",
-  },
-  {
-    key: "trade_special",
-    label: "Trade specials",
-    title: "Trade specials",
-    description: "Contractor pricing for approved trade accounts.",
-    image:
-      "/images/development/man-portrait-tools-with-arms-crossed-home-development-construction-renovation-workshop-carpenter-male-employee-contractor-maintenance-drill-repair-work-diy.webp",
-    link: "/deals?type=trade_special",
-    linkLabel: "View trade specials",
   },
   {
     key: "clearance",
@@ -92,14 +67,6 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
 }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<DealTabKey>("deal_of_day");
-  const tabConfig =
-    DEAL_TABS.find((tab) => tab.key === activeTab) || DEAL_TABS[0];
-  const dealsOfDayEndsAt = useMemo(() => {
-    const now = new Date();
-    const end = new Date(now);
-    end.setHours(23, 59, 59, 999);
-    return end;
-  }, []);
 
   const tabProducts = useMemo(() => {
     const filtered = products.filter((product) => {
@@ -112,10 +79,6 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
 
       if (activeTab === "weekly") {
         return consumerType === "weekly_special";
-      }
-
-      if (activeTab === "trade_special") {
-        return tradeType === "trade_special";
       }
 
       if (activeTab === "clearance") {
@@ -219,30 +182,45 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
   const indicatorPct =
     maxIndex === 0 ? 100 : Math.min(100, (index / maxIndex) * 100);
 
-  return (
-    <section className="w-full py-14 bg-gray-50 border-t border-black/5">
-      <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 font-heading">
-              Shop deals
-            </h2>
-            <p className="text-sm text-gray-500">
-              Find the best offers across today, weekly, trade, and clearance.
-            </p>
-          </div>
-        </div>
+  // Hide section if no deals available across all tabs
+  const hasAnyDeals = useMemo(() => {
+    return products.some((product) => {
+      const consumerType = product.deals_resolved?.consumer?.bestDeal?.type;
+      const tradeType = product.deals_resolved?.trade?.bestDeal?.type;
+      return (
+        consumerType === "deal_of_day" ||
+        consumerType === "weekly_special" ||
+        consumerType === "clearance" ||
+        (product.sale_price && parseFloat(String(product.sale_price)) > 0)
+      );
+    });
+  }, [products]);
 
-        <div className="mb-6 overflow-x-auto no-scrollbar pb-2">
-          <div className="flex gap-3 min-w-max">
+  if (!hasAnyDeals && !isLoadingProducts) {
+    return null;
+  }
+
+  return (
+    <section className="w-full py-10">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between gap-6 mb-5">
+          <h2 className="text-2xl font-bold tracking-tight text-grey md:text-[28px]">
+            Shop Deals
+          </h2>
+          <div className="flex items-center gap-4" role="tablist">
             {DEAL_TABS.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-4 h-9 rounded-xl border font-semibold font-heading transition-colors whitespace-nowrap text-[13px] ${
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  setIndex(0);
+                  scrollToIndex(0);
+                }}
+                className={`text-lg font-semibold transition-colors ${
                   activeTab === tab.key
-                    ? "bg-belims-blue text-white border-gray-200"
-                    : "bg-white text-[#64748b] border-gray-200 hover:bg-belims-blue hover:text-white"
+                    ? "text-grey"
+                    : "text-grey-medium hover:text-grey"
                 }`}
               >
                 {tab.label}
@@ -251,44 +229,11 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6 h-auto animate-fadeIn">
-          <div className="w-full lg:w-1/3 xl:w-1/3 rounded overflow-hidden relative group flex-shrink-0">
-            <img
-              src={tabConfig.image}
-              alt={tabConfig.title}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-[0.85]"
-            />
-            <div className="absolute inset-0 p-6 flex flex-col justify-center items-start text-center lg:text-left">
-              <h3 className="text-xl md:text-2xl font-bold text-white mb-3 font-heading leading-tight drop-shadow-lg">
-                {tabConfig.title}
-              </h3>
-              <p className="text-sm text-white/90 font-medium max-w-[16rem]">
-                {tabConfig.description}
-              </p>
-              {activeTab === "deal_of_day" && (
-                <div className="mt-4">
-                  <CountdownTimer
-                    targetDate={dealsOfDayEndsAt}
-                    label="Ends in"
-                    variant="inverse"
-                    hideDays
-                  />
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => navigate(tabConfig.link)}
-                className="mt-3 text-white font-semibold pb-0.5 hover:text-belims-accent hover:border-belims-accent transition-colors font-heading"
-              >
-                {tabConfig.linkLabel}
-              </button>
-            </div>
-          </div>
-
+        <div className="flex flex-col lg:flex-row gap-5 h-auto animate-fadeIn">
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <div
               ref={railRef}
-              className="flex-1 overflow-x-auto no-scrollbar flex gap-6 items-stretch snap-x snap-mandatory scroll-pl-0 scroll-pr-4"
+              className="flex-1 overflow-x-auto no-scrollbar flex gap-4 lg:gap-5 items-stretch snap-x snap-mandatory scroll-pl-0"
               aria-roledescription="carousel"
               onScroll={() => {
                 if (!railRef.current || !stepWidth) return;
@@ -302,16 +247,16 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
                 ? Array.from({ length: 5 }).map((_, itemIndex) => (
                     <div
                       key={`deals-skel-${itemIndex}`}
-                      className="flex-shrink-0 snap-start"
+                      className="flex-shrink-0 snap-start basis-[82%] sm:basis-[48%] lg:basis-[calc((100%-4rem)/5)] min-w-0"
                       data-slider-item
                     >
-                      <SkeletonProductCard className="w-[320px]" />
+                      <SkeletonProductCard className="w-full" />
                     </div>
                   ))
                 : tabProducts.map((product) => (
                     <div
                       key={product.id}
-                      className="flex-shrink-0 snap-start w-[320px]"
+                      className="flex-shrink-0 snap-start basis-[82%] sm:basis-[48%] lg:basis-[calc((100%-4rem)/5)] min-w-0"
                       data-slider-item
                       onClick={() => navigate(`/product/${product.id}`)}
                     >
@@ -327,12 +272,6 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
                     </div>
                   ))}
             </div>
-
-            {!showSkeletons && tabProducts.length === 0 && (
-              <div className="mt-4 rounded-lg border border-black/5 bg-white px-4 py-6 text-sm text-gray-500">
-                No deals available for this tab right now. Check back soon.
-              </div>
-            )}
           </div>
         </div>
 
@@ -348,26 +287,52 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
             <button
               type="button"
               onClick={prev}
-              aria-label="Previous deals"
-              className={[
-                "grid h-9 w-9 place-items-center rounded-lg",
-                "border border-black/10 bg-white text-gray-600",
-                "transition-colors hover:bg-gray-50 hover:text-gray-900",
-              ].join(" ")}
+              className="group relative h-12 w-12 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white"
+              aria-label="Previous products"
             >
-              <span aria-hidden>‹</span>
+              <span className="absolute inset-0 origin-right scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="relative z-10 flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-chevron-left"
+                  aria-hidden="true"
+                >
+                  <path d="m15 18-6-6 6-6"></path>
+                </svg>
+              </span>
             </button>
             <button
               type="button"
               onClick={next}
-              aria-label="Next deals"
-              className={[
-                "grid h-9 w-9 place-items-center rounded-lg",
-                "border border-black/10 bg-white text-gray-600",
-                "transition-colors hover:bg-gray-50 hover:text-gray-900",
-              ].join(" ")}
+              className="group relative h-12 w-12 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white"
+              aria-label="Next products"
             >
-              <span aria-hidden>›</span>
+              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+              <span className="relative z-10 flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-chevron-right"
+                  aria-hidden="true"
+                >
+                  <path d="m9 18 6-6-6-6"></path>
+                </svg>
+              </span>
             </button>
           </div>
         </div>

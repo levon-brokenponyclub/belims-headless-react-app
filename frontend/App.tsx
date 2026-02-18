@@ -40,6 +40,7 @@ import { FilterSearch } from "./components/FilterSearch";
 import { ShopByCategory } from "./components/ShopByCategory";
 import { DealsSection } from "./components/DealsSection";
 import { CategoryGrid } from "./components/CategoryGrid";
+import { TradeDeals } from "./components/TradeDeals";
 import { TrackOrderPage } from "./components/TrackOrderPage";
 import { BrandStrip } from "./components/BrandStrip";
 import { AuthPage } from "./components/AuthPage";
@@ -189,17 +190,6 @@ const HomePage = ({
   isTradeApproved,
 }) => {
   const navigate = useNavigate();
-  const isTradeLoggedIn = !!isTradeApproved;
-
-  // Filter products for Trade Specials
-  const tradeSpecials = useMemo(() => {
-    return products
-      .filter(
-        (product) =>
-          product.deals_resolved?.trade?.bestDeal?.type === "trade_special",
-      )
-      .slice(0, 4);
-  }, [products]);
 
   // Filter products for Clearance
 
@@ -245,8 +235,6 @@ const HomePage = ({
 
   return (
     <>
-      <FeaturedGrid />
-
       <HeroBanner />
 
       {/* <FilterSearch
@@ -265,6 +253,7 @@ const HomePage = ({
         isTradeApproved={isTradeApproved}
       />
 
+      <FeaturedGrid />
       {/* Collage Grid */}
       <CollageGrid />
 
@@ -281,48 +270,14 @@ const HomePage = ({
       {/* Featured Category Spotlights */}
       <CategoryGrid />
 
-      {/* Trade Specials */}
-      <section
-        className="py-14 bg-gray-50 border-t border-b border-black/5"
-        aria-label="Trade specials"
-      >
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-end mb-6">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 font-heading">
-                Trade specials
-              </h2>
-              <p className="text-gray-500 text-sm mt-1">
-                {isTradeLoggedIn
-                  ? "Exclusive contractor pricing for your account"
-                  : "Contractor pricing available — log in to purchase at trade rate"}
-              </p>
-            </div>
-            <a
-              href="/deals?type=trade_special"
-              className="text-sm font-semibold text-belims-blue hover:text-belims-accent hidden md:block"
-            >
-              See all trade deals →
-            </a>
-          </div>
-
-          {tradeSpecials.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {tradeSpecials.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  addToCart={addToCart}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              <p>No trade specials currently.</p>
-            </div>
-          )}
-        </div>
-      </section>
+      <TradeDeals
+        products={products}
+        addToCart={addToCart}
+        onBuyNow={handleBuyNow}
+        onCompare={addToCompare}
+        isAuthenticated={isAuthenticated}
+        isTradeApproved={isTradeApproved}
+      />
 
       <PopularCategories />
 
@@ -469,7 +424,7 @@ const HomePage = ({
       {/* Brand Strip */}
       <BrandStrip />
 
-      <ProjectInspiration />
+      {/* <ProjectInspiration /> */}
 
       {/* Lifestyle Section */}
       {/*  <section

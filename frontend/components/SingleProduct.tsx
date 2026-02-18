@@ -992,9 +992,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         <div className="container mx-auto px-4 py-12 pt-0">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
             {/* LEFT COLUMN */}
-            <div className="lg:col-span-7">
+            <div className="order-1 lg:order-1 lg:col-span-7">
               {/* Featured Image / Gallery */}
-              <div className="bg-[#F9F9F9] rounded-lg overflow-hidden border border-gray-100">
+              <div className="bg-[#F9F9F9] rounded-xl overflow-hidden border border-gray-100">
                 <div className="w-full h-[340px] md:h-[520px] flex items-center justify-center p-6 cursor-zoom-in">
                   {mainImage.startsWith("video:") ? (
                     <VideoPlayer
@@ -1044,52 +1044,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   </div>
                 )} */}
               </div>
-
-              {/* Product Description */}
-              <div className="mt-10">
-                <h3 className="text-2xl font-bold text-grey mb-3 border-b border-grey pb-3">
-                  Product Description
-                </h3>
-                <div className="prose prose-sm max-w-none text-grey-medium text-base [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-grey [&_h3]:mt-4 [&_h3]:mb-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-grey [&_h4]:mt-3 [&_h4]:mb-2 [&_strong]:font-bold [&_strong]:text-grey [&_b]:font-bold [&_b]:text-grey [&_em]:italic [&_i]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:mb-3 [&_ul]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:mb-3 [&_ol]:mt-2 [&_li]:text-grey [&_li]:leading-relaxed [&_p]:mb-2 [&_p]:leading-relaxed [&_br]:content-[''] [&_table]:w-full [&_table]:border-collapse [&_table]:mb-3 [&_th]:border [&_th]:border-grey [&_th]:bg-grey [&_th]:p-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-grey [&_td]:p-2">
-                  {product.description ? (
-                    <div
-                      dangerouslySetInnerHTML={{ __html: product.description }}
-                    />
-                  ) : (
-                    <p className="text-grey-medium italic">
-                      No description available.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* ProductAccordions */}
-              <div className="mt-10">
-                <ProductAccordions
-                  ecommercePolicies={ecommercePolicies}
-                  expandedPolicy={expandedPolicy}
-                  setExpandedPolicy={setExpandedPolicy}
-                />
-                <SocialShareExpertBlock
-                  productName={product.name}
-                  productUrl={shareUrl}
-                  expertName={expertContact?.expert_name}
-                  expertTitle={expertContact?.expert_title}
-                  expertImageUrl={
-                    expertContact?.expert_avatar?.url ||
-                    expertContact?.expert_avatar_url
-                  }
-                  videoChatUrl={expertContact?.expert_video_chat_url}
-                  chatUrl={expertContact?.expert_chat_url}
-                  email={expertContact?.expert_email}
-                  phone={expertContact?.expert_phone}
-                />
-              </div>
             </div>
 
             {/* RIGHT COLUMN */}
-            <div className="lg:col-span-5 lg:self-stretch">
-              <div className="lg:sticky lg:top-24">
+            <div className="order-2 lg:order-2 lg:col-span-5 lg:row-span-2 lg:self-start lg:sticky lg:top-24 lg:h-fit">
+              <div>
                 {/* ProductSummary */}
                 <div className="bg-white">
                   <div className="pb-0">
@@ -1407,6 +1366,50 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 />
               </div>
             </div>
+
+            {/* DETAILS COLUMN (below buy box on mobile, below image on desktop) */}
+            <div className="order-3 lg:order-3 lg:col-span-7">
+              {/* Product Description */}
+              <div className="mt-10 lg:mt-0">
+                <h3 className="text-2xl font-bold text-grey mb-3 border-b border-grey pb-3">
+                  Product Description
+                </h3>
+                <div className="prose prose-sm max-w-none text-grey-medium text-base [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-grey [&_h3]:mt-4 [&_h3]:mb-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-grey [&_h4]:mt-3 [&_h4]:mb-2 [&_strong]:font-bold [&_strong]:text-grey [&_b]:font-bold [&_b]:text-grey [&_em]:italic [&_i]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:mb-3 [&_ul]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:mb-3 [&_ol]:mt-2 [&_li]:text-grey [&_li]:leading-relaxed [&_p]:mb-2 [&_p]:leading-relaxed [&_br]:content-[''] [&_table]:w-full [&_table]:border-collapse [&_table]:mb-3 [&_th]:border [&_th]:border-grey [&_th]:bg-grey [&_th]:p-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-grey [&_td]:p-2">
+                  {product.description ? (
+                    <div
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+                    />
+                  ) : (
+                    <p className="text-grey-medium italic">
+                      No description available.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* ProductAccordions */}
+              <div className="mt-10">
+                <ProductAccordions
+                  ecommercePolicies={ecommercePolicies}
+                  expandedPolicy={expandedPolicy}
+                  setExpandedPolicy={setExpandedPolicy}
+                />
+                <SocialShareExpertBlock
+                  productName={product.name}
+                  productUrl={shareUrl}
+                  expertName={expertContact?.expert_name}
+                  expertTitle={expertContact?.expert_title}
+                  expertImageUrl={
+                    expertContact?.expert_avatar?.url ||
+                    expertContact?.expert_avatar_url
+                  }
+                  videoChatUrl={expertContact?.expert_video_chat_url}
+                  chatUrl={expertContact?.expert_chat_url}
+                  email={expertContact?.expert_email}
+                  phone={expertContact?.expert_phone}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1417,21 +1420,21 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           showBottomCta ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="flex items-center gap-4 container mx-auto px-4">
+        <div className="container mx-auto flex items-center justify-between gap-4 px-0">
           {/* Product info */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <img
               src={product.image}
               alt={product.name}
-              className="w-12 h-12 object-contain bg-gray-50 rounded border border-gray-200 flex-shrink-0"
+              className="h-14 w-14 flex-shrink-0 rounded bg-gray-50 object-contain"
               loading="lazy"
               decoding="async"
             />
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-sm text-gray-900 truncate">
+              <div className="truncate font-heading text-base font-bold text-grey">
                 {product.name}
               </div>
-              <div className="text-sm font-bold text-belims-blue">
+              <div className="text-base font-bold text-grey">
                 {CURRENCY_SYMBOL}
                 {(
                   product.deals_resolved?.consumer?.price ?? product.price
@@ -1440,48 +1443,31 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             </div>
           </div>
 
-          {/* Quantity + CTAs */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="flex items-center border border-gray-300 rounded bg-white h-11 flex-shrink-0">
-              <button
-                onClick={() => setQty(Math.max(1, qty - 1))}
-                className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded"
-              >
-                <Minus size={16} />
-              </button>
-              <div className="w-8 text-center font-bold text-sm">{qty}</div>
-              <button
-                onClick={() => setQty(Math.min(product.stock, qty + 1))}
-                className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded"
-              >
-                <Plus size={16} />
-              </button>
-            </div>
+          {/* CTAs */}
+          <div className="flex w-[150px] flex-shrink-0 flex-col gap-2 md:w-auto md:flex-row md:items-center">
+            <button
+              onClick={handleAddToCart}
+              disabled={product.stock === 0}
+              className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey-light text-grey transition-colors disabled:opacity-50 md:w-[140px]"
+            >
+              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
+                {product.stock > 0 ? "Add to cart" : "Out of Stock"}
+              </span>
+            </button>
 
-            <div className="flex flex-1 min-w-0">
-              <button
-                onClick={handleAddToCart}
-                disabled={product.stock === 0}
-                className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey-light text-grey transition-colors disabled:opacity-50"
-              >
-                <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
-                  {product.stock > 0 ? "Add to cart" : "Out of Stock"}
-                </span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleBuyNowAction}
+              disabled={product.stock === 0}
+              className="group relative hidden h-11 w-full overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50 md:block md:w-[140px]"
+            >
+              <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="relative z-10 font-heading font-bold transition-colors">
+                Buy Now
+              </span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleBuyNowAction}
-            disabled={product.stock === 0}
-            className="group relative mt-3 h-11 w-full overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50"
-          >
-            <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
-            <span className="relative z-10 font-heading font-bold transition-colors">
-              Buy Now
-            </span>
-          </button>
         </div>
       </div>
 
