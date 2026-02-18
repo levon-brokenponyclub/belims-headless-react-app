@@ -36,15 +36,21 @@ const featuredCategories = [
 ];
 
 export const FeaturedGrid: React.FC = () => {
+  const sliderRef = React.useRef<HTMLDivElement | null>(null);
+
   return (
     <section className="w-full pb-14">
       <div className="container mx-auto px-4">
         <div
-          className="flex items-stretch no-scrollbar py-10 px-8 gap-12 bg-[#f4f691] rounded-xl"
+          ref={sliderRef}
+          className="flex items-stretch overflow-x-auto no-scrollbar snap-x snap-mandatory py-10 pl-10 pr-0 gap-12 bg-[#f4f691] rounded-xl md:overflow-visible md:snap-none md:px-8"
           aria-roledescription="carousel"
         >
           {featuredCategories.map((category) => (
-            <div key={category.id} className="w-1/5">
+            <div
+              key={category.id}
+              className="w-[240px] shrink-0 snap-start md:w-1/5 md:shrink"
+            >
               <Link
                 className="group relative flex h-full w-full items-center overflow-hidden rounded-full border border-white bg-white px-3 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
                 to={category.href}

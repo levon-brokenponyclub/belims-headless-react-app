@@ -68,7 +68,23 @@ export const TradeDeals: React.FC<TradeDealsProps> = ({
 
           {handToolsProducts.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:col-start-2">
+              <div className="grid grid-cols-2 gap-5 lg:hidden">
+                {handToolsProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    addToCart={addToCart}
+                    onBuyNow={onBuyNow}
+                    onCompare={onCompare}
+                    isAuthenticated={isAuthenticated}
+                    isTradeApproved={isTradeApproved}
+                    className="h-full"
+                    customizations={PRODUCT_CARD_PRESETS.compactCard}
+                  />
+                ))}
+              </div>
+
+              <div className="hidden lg:grid lg:grid-cols-3 gap-5 lg:col-start-2">
                 {topRowProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -84,7 +100,7 @@ export const TradeDeals: React.FC<TradeDealsProps> = ({
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:col-start-2">
+              <div className="hidden lg:grid lg:grid-cols-3 gap-5 lg:col-start-2">
                 {bottomRowProducts.map((product) => (
                   <ProductCard
                     key={product.id}

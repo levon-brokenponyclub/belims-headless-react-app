@@ -12,40 +12,39 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const banners = [
   {
-    title: "Macbook M4",
-    subTitle: "APPLE BRAND",
-    description: "Starting at $1.579.99",
-    cta: "View All",
+    title: "Power Tools",
+    description: "Reliable tools built for everyday performance.",
+    cta: "Shop Now",
     href: "#",
-    image: "/images/development/rotary_01.webp",
+    image: "/images/development/athens-mosaic-03.webp",
     ratioPercent: 88,
   },
   {
-    title: "Limited Edition",
-    subTitle: "SAVE 30—50% ELECTRONICS",
-    description: "",
-    cta: "View All",
+    title: "Tool Kits",
+    subTitle: "",
+    description: "Complete sets for home and professional use.",
+    cta: "Get Started",
     href: "#",
     image: "/images/development/athens-mosaic-06.webp",
     ratioPercent: 88,
     align: "center" as const,
   },
   {
-    title: "Speaker Save Up To $178",
-    subTitle: "",
-    description: "Limited Time: Online Only!",
-    cta: "View All",
+    title: "Cutting Tools",
+    description: "Strong, efficient tools for tough jobs.",
+    cta: "Shop Now",
     href: "#",
-    image: "/images/development/athens-mosaic-03.webp",
+
+    image: "/images/development/athens-mosaic-02d.webp",
     ratioPercent: 42,
   },
   {
-    title: "Limited Edition",
-    subTitle: "SAVE 40—50% ELECTRONICS",
-    description: "Choose the right laptop screen for the best experience.",
-    cta: "Shop Now",
+    title: "Drilling Power",
+    description: "Precision and strength for every project.",
+    cta: "Shop Drills",
     href: "#",
-    image: "/images/development/athens-mosaic-02d.webp",
+
+    image: "/images/development/rotary_01.webp",
     ratioPercent: 88,
     align: "center" as const,
     ctaVariant: "light" as const,
@@ -108,14 +107,8 @@ export const CollageGrid: React.FC = () => {
     });
   };
 
-  const indicatorPct =
-    maxIndex === 0 ? 100 : Math.min(100, (index / maxIndex) * 100);
-
   const BannerCard = ({ banner }: { banner: Banner }) => {
-    const align =
-      banner.align === "center"
-        ? "items-center text-center"
-        : "items-start text-left";
+    const align = "items-start text-left";
     const ctaClass =
       banner.ctaVariant === "light"
         ? "bg-white text-gray-900 hover:bg-white/90"
@@ -132,8 +125,12 @@ export const CollageGrid: React.FC = () => {
       >
         {/* Ratio wrapper (matches the reference's --gz-ratio-percent) */}
         <div
-          className="relative w-full"
-          style={{ paddingBottom: `${banner.ratioPercent}%` }}
+          className={`relative w-full ${isMobileSlider ? "h-[360px]" : ""}`}
+          style={
+            isMobileSlider
+              ? undefined
+              : { paddingBottom: `${banner.ratioPercent}%` }
+          }
         >
           {/* media */}
           <img
@@ -151,7 +148,7 @@ export const CollageGrid: React.FC = () => {
           {/* content */}
           <div
             className={
-              "absolute inset-0 z-10 flex flex-col justify-start gap-3 p-6 md:p-7 " +
+              "absolute inset-0 z-10 flex flex-col justify-end gap-3 p-6 md:p-7 " +
               align
             }
           >
@@ -171,15 +168,28 @@ export const CollageGrid: React.FC = () => {
               </p>
             ) : null}
 
-            <div className="mt-auto pt-4">
-              <span
+            <div className="pt-2">
+              {/* <span
                 className={
                   "inline-flex items-center justify-center rounded-full px-8 py-3 text-sm font-semibold transition " +
                   ctaClass
                 }
               >
                 {banner.cta}
-              </span>
+              </span> */}
+              <button
+                type="button"
+                className="group relative h-11 px-4 overflow-hidden rounded-pill border border-white text-white transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.location.href = "/trade/deals";
+                }}
+              >
+                <span className="absolute inset-0 origin-left scale-x-0 bg-white transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                <span className="relative z-10 px-3 text-[14px] font-semibold font-heading transition-colors group-hover:text-grey">
+                  {banner.cta}
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -217,13 +227,6 @@ export const CollageGrid: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-            <div
-              className="h-full rounded-full bg-belims-blue transition-all duration-300"
-              style={{ width: `${indicatorPct}%` }}
-            />
           </div>
         </div>
 

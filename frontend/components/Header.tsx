@@ -817,7 +817,7 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between gap-4 p-0 pt-0 pb-2">
-              <div className="lg:hidden flex-1">
+              <div className="hidden md:block lg:hidden flex-1">
                 <form onSubmit={handleSearchSubmit} className="relative">
                   <input
                     type="text"

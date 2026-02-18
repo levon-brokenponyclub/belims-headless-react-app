@@ -204,11 +204,14 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
   return (
     <section className="w-full py-10">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between gap-6 mb-5">
+        <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
           <h2 className="text-2xl font-bold tracking-tight text-grey md:text-[28px]">
             Shop Deals
           </h2>
-          <div className="flex items-center gap-4" role="tablist">
+          <div
+            className="flex w-full items-center justify-start gap-4 md:w-auto"
+            role="tablist"
+          >
             {DEAL_TABS.map((tab) => (
               <button
                 key={tab.key}
@@ -248,7 +251,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
                 ? Array.from({ length: 5 }).map((_, itemIndex) => (
                     <div
                       key={`deals-skel-${itemIndex}`}
-                      className="flex-shrink-0 snap-start basis-[82%] sm:basis-[48%] lg:basis-[calc((100%-4rem)/5)] min-w-0"
+                      className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2.15)] sm:basis-[48%] lg:basis-[calc((100%-4rem)/5)] min-w-0"
                       data-slider-item
                     >
                       <SkeletonProductCard className="w-full" />
@@ -257,7 +260,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
                 : tabProducts.map((product) => (
                     <div
                       key={product.id}
-                      className="flex-shrink-0 snap-start basis-[82%] sm:basis-[48%] lg:basis-[calc((100%-4rem)/5)] min-w-0"
+                      className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2.15)] sm:basis-[48%] lg:basis-[calc((100%-4rem)/5)] min-w-0"
                       data-slider-item
                       onClick={() => navigate(`/product/${product.id}`)}
                     >

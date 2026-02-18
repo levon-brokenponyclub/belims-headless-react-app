@@ -1534,7 +1534,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             <div className="order-3 lg:order-3 lg:col-span-7">
               {/* Product Description */}
               <div className="mt-10 lg:mt-0">
-                <h3 className="text-xl font-bold text-grey mb-3 border-b border-grey pb-3">
+                <h3 className="text-2xl font-semibold text-grey mb-3 border-b border-grey pb-3">
                   Product Description
                 </h3>
                 <div className="prose prose-sm max-w-none text-grey-medium text-base [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-grey [&_h3]:mt-4 [&_h3]:mb-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-grey [&_h4]:mt-3 [&_h4]:mb-2 [&_strong]:font-bold [&_strong]:text-grey [&_b]:font-bold [&_b]:text-grey [&_em]:italic [&_i]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:mb-3 [&_ul]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:mb-3 [&_ol]:mt-2 [&_li]:text-grey [&_li]:leading-relaxed [&_p]:mb-2 [&_p]:leading-relaxed [&_br]:content-[''] [&_table]:w-full [&_table]:border-collapse [&_table]:mb-3 [&_th]:border [&_th]:border-grey [&_th]:bg-grey [&_th]:p-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-grey [&_td]:p-2">

@@ -77,7 +77,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
         <div className="flex-1">
           {displayProducts.length > 0 ? (
             <>
-              <h3 className="text-lg font-bold text-gray-900 mb-4">
+              <h3 className="text-lg font-semibold text-grey mb-4">
                 Related Products
               </h3>
               <ul className="grid grid-cols-5 gap-4 mb-6">
@@ -100,13 +100,35 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
                   </li>
                 ))}
               </ul>
+
               <button
                 type="button"
+                className="group relative h-12 rounded-full border border-subtle bg-white px-14 pr-1 overflow-hidden transition-colors hover:border-grey hover:text-white"
                 onClick={onViewAllResults}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-belims-accent text-white font-bold rounded-lg hover:bg-opacity-90 transition-colors"
               >
-                See all results
-                <ArrowRight size={16} />
+                <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+                <div className="relative z-10 flex items-center gap-3">
+                  <span className="text-base mr-5 font-bold text-grey transition-colors group-hover:text-white">
+                    See all results
+                  </span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-grey-light text-grey transition-colors group-hover:bg-white">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="26"
+                      height="26"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="lucide lucide-chevron-right"
+                      aria-hidden="true"
+                    >
+                      <path d="m9 18 6-6-6-6"></path>
+                    </svg>
+                  </span>
+                </div>
               </button>
             </>
           ) : (

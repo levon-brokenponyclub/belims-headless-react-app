@@ -94,7 +94,7 @@ export const CategoryGrid: React.FC = () => {
     <section className="w-full py-14 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="flex items-start justify-between gap-6 mb-6">
-          <h2 className="font-heading text-2xl md:text-3xl text-grey">
+          <h2 className="font-heading text-2xl md:text-3xl font-semibold text-grey">
             Shop By Categories
           </h2>
           <a

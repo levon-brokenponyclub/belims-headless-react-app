@@ -4,6 +4,9 @@ import { CartItem, Product } from "../types";
 import { FREE_SHIPPING_THRESHOLD, CURRENCY_SYMBOL } from "../constants";
 import { formatCurrency } from "../utils/price";
 
+const DRAWER_ANIMATION_MS = 320;
+const DRAWER_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+
 interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,12 +28,31 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   recommendedProducts = [],
   addToCart,
 }) => {
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [isDrawerVisible, setIsDrawerVisible] = useState(isOpen);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
   const [fsbAnimationKey, setFsbAnimationKey] = useState(0);
   const [fsbIconLeft, setFsbIconLeft] = useState("0%");
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      const frame = requestAnimationFrame(() => {
+        setIsDrawerVisible(true);
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+
+    setIsDrawerVisible(false);
+    const timeout = window.setTimeout(() => {
+      setShouldRender(false);
+    }, DRAWER_ANIMATION_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [isOpen]);
 
   const totalQuantity = useMemo(
     () => items.reduce((acc, item) => acc + item.quantity, 0),
@@ -71,28 +93,40 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setShowRecommendations(true);
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
+
+  const recommendationsVisible = showRecommendations && isDrawerVisible;
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-hidden">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+        className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity ${
+          isDrawerVisible ? "opacity-100" : "opacity-0"
+        }`}
+        style={{
+          transitionDuration: `${DRAWER_ANIMATION_MS}ms`,
+          transitionTimingFunction: DRAWER_EASING,
+        }}
         onClick={onClose}
       ></div>
 
       <div className="absolute right-0 top-0 bottom-0 flex items-stretch">
         {/* Slide-in Recommendations Panel */}
         <aside
-          className={`relative h-full overflow-hidden bg-white shadow-2xl border-r border-gray-200 transition-all duration-300 ease-out ${
-            showRecommendations
+          className={`relative h-full overflow-hidden bg-white shadow-2xl border-r border-gray-200 transition-all will-change-transform ${
+            recommendationsVisible
               ? "w-72 sm:w-80 opacity-100 translate-x-0"
               : "w-0 opacity-0 -translate-x-4 pointer-events-none"
           }`}
-          aria-hidden={!showRecommendations}
+          style={{
+            transitionDuration: `${DRAWER_ANIMATION_MS}ms`,
+            transitionTimingFunction: DRAWER_EASING,
+          }}
+          aria-hidden={!recommendationsVisible}
         >
           <div
             className={`flex h-full flex-col transition-opacity duration-200 ${
-              showRecommendations ? "opacity-100" : "opacity-0"
+              recommendationsVisible ? "opacity-100" : "opacity-0"
             }`}
           >
             <div className="flex items-center justify-between border-b px-4 py-3">
@@ -169,7 +203,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         </aside>
 
         {/* Main Cart Panel */}
-        <div className="relative w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-300">
+        <div
+          className={`relative w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-all will-change-transform ${
+            isDrawerVisible
+              ? "translate-x-0 opacity-100"
+              : "translate-x-full opacity-0"
+          }`}
+          style={{
+            transitionDuration: `${DRAWER_ANIMATION_MS}ms`,
+            transitionTimingFunction: DRAWER_EASING,
+          }}
+        >
           {/* Header */}
           <div className="border-b p-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
