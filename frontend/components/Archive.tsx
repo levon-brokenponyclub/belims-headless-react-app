@@ -12,7 +12,7 @@ import {
   List,
 } from "lucide-react";
 import { CATEGORY_TREE, initializeCategoryTree } from "../categoryTree";
-import { getApiBaseUrl } from "../services/wooCommerceService";
+import { fetchProducts, getApiBaseUrl } from "../services/wooCommerceService";
 import { SkeletonProductCard } from "./Skeleton";
 
 interface FilterOption {
@@ -57,8 +57,29 @@ export const Archive: React.FC<ArchiveProps> = ({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const categorySliderWidth = useWindowWidth();
   const [categorySliderIndex, setCategorySliderIndex] = useState(0);
-  const showSkeletons = isLoadingProducts;
+  const [categoryScopedProducts, setCategoryScopedProducts] = useState<
+    Product[] | null
+  >(null);
+  const [isCategoryScopedLoading, setIsCategoryScopedLoading] = useState(false);
+  const [searchScopedProducts, setSearchScopedProducts] = useState<
+    Product[] | null
+  >(null);
+  const [isSearchScopedLoading, setIsSearchScopedLoading] = useState(false);
+  const showSkeletons =
+    isLoadingProducts || isCategoryScopedLoading || isSearchScopedLoading;
   const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
+
+  // DEBUG: Log props on mount and when they change
+  useEffect(() => {
+    if (category) {
+      console.log(`[Archive Debug] Component loaded with props:`, {
+        category,
+        products: products.length,
+        brand,
+        searchQuery,
+      });
+    }
+  }, []);
 
   // Additional local filters
   const [filterInStock, setFilterInStock] = useState(false);
@@ -125,6 +146,71 @@ export const Archive: React.FC<ArchiveProps> = ({
   useEffect(() => {
     setSelectedCategories(category ? [category] : []);
   }, [category]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!category) {
+      setCategoryScopedProducts(null);
+      setIsCategoryScopedLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setIsCategoryScopedLoading(true);
+    fetchProducts(category)
+      .then((items) => {
+        if (!isMounted) return;
+        setCategoryScopedProducts(items);
+        console.log(
+          `[Archive Debug] API fetchProducts("${category}") returned ${items.length} items`,
+        );
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setCategoryScopedProducts(null);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsCategoryScopedLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [category]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!searchQuery) {
+      setSearchScopedProducts(null);
+      setIsSearchScopedLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setIsSearchScopedLoading(true);
+    fetchProducts(undefined, searchQuery)
+      .then((items) => {
+        if (!isMounted) return;
+        setSearchScopedProducts(items);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setSearchScopedProducts(null);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsSearchScopedLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [searchQuery]);
 
   useEffect(() => {
     setSelectedRanges(range ? [range] : []);
@@ -207,9 +293,64 @@ export const Archive: React.FC<ArchiveProps> = ({
     return null;
   };
 
+  // Helper to get full breadcrumb path for a category
+  const getCategoryBreadcrumbPath = (
+    targetLabel: string,
+    nodes: CategoryNode[],
+  ): string[] => {
+    const path: string[] = [];
+
+    const findPath = (label: string, nodeList: CategoryNode[]): boolean => {
+      for (const node of nodeList) {
+        if (node.label.toLowerCase() === label.toLowerCase()) {
+          path.push(node.label);
+          return true;
+        }
+        if (node.children) {
+          if (findPath(label, node.children)) {
+            path.unshift(node.label);
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    findPath(targetLabel, nodes);
+    return path;
+  };
+
   // Filter Logic
   const filteredProducts = useMemo(() => {
-    let filtered = [...products];
+    // Determine source products: search-scoped > category-scoped > general list
+    let sourceProducts = products;
+    let sourceType = "general";
+    if (searchScopedProducts) {
+      sourceProducts = searchScopedProducts;
+      sourceType = "search-scoped";
+    } else if (categoryScopedProducts) {
+      sourceProducts = categoryScopedProducts;
+      sourceType = "category-scoped";
+    }
+
+    console.log(
+      `[Archive] Starting filter with ${sourceType} source: ${sourceProducts.length} products`,
+    );
+    if (selectedCategories.length > 0) {
+      console.log(
+        `[Archive] Selected categories for filtering:`,
+        selectedCategories,
+      );
+      console.log(`[Archive Debug] Source products breakdown:`, {
+        products: products.length,
+        categoryScopedProducts: categoryScopedProducts?.length,
+        searchScopedProducts: searchScopedProducts?.length,
+        sourceType,
+        sourceProducts: sourceProducts.length,
+      });
+    }
+
+    let filtered = [...sourceProducts];
     const activeCategoryTree = categoryTree.length
       ? categoryTree
       : CATEGORY_TREE;
@@ -221,19 +362,101 @@ export const Archive: React.FC<ArchiveProps> = ({
       );
       const validCategories = new Set<string>();
 
+      console.log(
+        `[Archive Filter] Starting category filter with ${selectedCategories.length} selected categories`,
+      );
+      console.log(`[Archive Filter] Selected categories:`, selectedCategories);
+      console.log(
+        `[Archive Filter] Source products before filter:`,
+        filtered.length,
+      );
+
       selectedCategories.forEach((selected) => {
+        // Try to find in tree first
         const matches = getCategoryMatches(selected, activeCategoryTree);
         if (matches.length > 0) {
+          console.log(
+            `[Archive Filter] Found ${matches.length} matches for "${selected}":`,
+            matches,
+          );
           matches.forEach((match) => validCategories.add(match.toLowerCase()));
+        } else {
+          // If not found in tree, add directly (handles categories not in static tree)
+          console.log(
+            `[Archive Filter] "${selected}" not found in tree, adding directly`,
+          );
+          validCategories.add(selected.toLowerCase());
         }
         validCategories.add(selected.toLowerCase());
       });
 
+      console.log(
+        `[Archive Filter] Valid categories to match:`,
+        Array.from(validCategories),
+      );
+
+      const beforeCount = filtered.length;
       filtered = filtered.filter((p) => {
-        const productCategory = p.category.toLowerCase();
-        if (validCategories.has(productCategory)) return true;
-        return selectedLabels.some((label) => productCategory.includes(label));
+        const productCategory = (p.category || "").toLowerCase();
+        const breadcrumbLabels = (p.breadcrumbs || [])
+          .map((crumb) => (crumb.label || "").toLowerCase())
+          .filter(Boolean);
+
+        // Log first few products for debugging
+        if (filtered.indexOf(p) < 3) {
+          console.log(
+            `[Archive Filter] Product: "${p.name}", category: "${productCategory}", breadcrumbs:`,
+            breadcrumbLabels,
+          );
+        }
+
+        // Check if product matches any selected category
+        // 1. Direct category match
+        if (validCategories.has(productCategory)) {
+          if (filtered.indexOf(p) < 3)
+            console.log(`  → Matched by direct category`);
+          return true;
+        }
+
+        // 2. Breadcrumb match (most reliable)
+        if (breadcrumbLabels.some((label) => validCategories.has(label))) {
+          if (filtered.indexOf(p) < 3) console.log(`  → Matched by breadcrumb`);
+          return true;
+        }
+
+        // 3. Partial matching (in case of slight naming differences)
+        if (selectedLabels.some((label) => productCategory.includes(label))) {
+          if (filtered.indexOf(p) < 3)
+            console.log(`  → Matched by partial category`);
+          return true;
+        }
+
+        // 4. Breadcrumb partial match
+        const partialBreadcrumbMatch = breadcrumbLabels.some((crumbLabel) =>
+          selectedLabels.some((selectedLabel) =>
+            crumbLabel.includes(selectedLabel),
+          ),
+        );
+        if (partialBreadcrumbMatch && filtered.indexOf(p) < 3) {
+          console.log(`  → Matched by partial breadcrumb`);
+        }
+        return partialBreadcrumbMatch;
       });
+
+      console.log(
+        `[Archive Filter] Category filter result: ${beforeCount} → ${filtered.length} products`,
+      );
+
+      // Add debug logging for final filtered products
+      console.log(
+        `[Archive Debug] Final filtered products for category "${category}":`,
+        {
+          total: filtered.length,
+          beforeCategoryFilter: beforeCount,
+          productsFiltered: beforeCount - filtered.length,
+          category: category,
+        },
+      );
     }
 
     // 2. Filter by Brand (Prop)
@@ -318,9 +541,17 @@ export const Archive: React.FC<ArchiveProps> = ({
         break;
     }
 
+    if (category) {
+      console.log(
+        `[Archive Debug] Final filteredProducts count for category "${category}": ${filtered.length}`,
+      );
+    }
+
     return filtered;
   }, [
     products,
+    categoryScopedProducts,
+    searchScopedProducts,
     brand,
     searchQuery,
     priceRange,
@@ -333,15 +564,157 @@ export const Archive: React.FC<ArchiveProps> = ({
     categoryTree,
   ]);
 
+  // Calculate products filtered by all criteria EXCEPT category selection
+  // This is used for category counts so they show available categories regardless of current selection
+  const categoryCountsSourceProducts = useMemo(() => {
+    const sourceProducts =
+      searchScopedProducts || categoryScopedProducts || products;
+    let filtered = [...sourceProducts];
+    const activeCategoryTree = categoryTree.length
+      ? categoryTree
+      : CATEGORY_TREE;
+
+    // 2. Filter by Brand (Prop)
+    if (brand) {
+      filtered = filtered.filter(
+        (p) => p.brand && p.brand.toLowerCase() === brand.toLowerCase(),
+      );
+    }
+
+    // 2.5. Filter by Facet Brands (Local)
+    if (selectedFacetBrands.length > 0) {
+      filtered = filtered.filter(
+        (p) => p.brand && selectedFacetBrands.includes(p.brand),
+      );
+    }
+
+    // 3. Filter by Search Query (if not already in searchScopedProducts)
+    if (searchQuery && !searchScopedProducts) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          p.description.toLowerCase().includes(query) ||
+          p.sku.toLowerCase().includes(query),
+      );
+    }
+
+    // 4. Filter by Range
+    if (selectedRanges.length > 0) {
+      const normalizedRanges = selectedRanges.map((r) => r.toLowerCase());
+      filtered = filtered.filter((p) => {
+        const rangeValue =
+          p.acf?.range || p.acf?.range_slug || p.acf?.range_label;
+        if (rangeValue) {
+          return normalizedRanges.some((r) =>
+            String(rangeValue).toLowerCase().includes(r),
+          );
+        }
+        if (p.tags && p.tags.length > 0) {
+          return p.tags.some((tag) =>
+            normalizedRanges.some((r) => tag.toLowerCase().includes(r)),
+          );
+        }
+        return false;
+      });
+    }
+
+    // 5. Filter by Price
+    filtered = filtered.filter(
+      (p) => p.price >= priceRange[0] && p.price <= priceRange[1],
+    );
+
+    // 5.5 Additional Facets (Availability, Deal Types)
+    if (filterInStock && !filterBackOrder) {
+      filtered = filtered.filter((p) => p.stock > 0);
+    }
+    if (filterBackOrder && !filterInStock) {
+      filtered = filtered.filter((p) => p.stock <= 0);
+    }
+
+    if (selectedDealTypes.length > 0) {
+      filtered = filtered.filter((p) => {
+        const dealType =
+          p.deals_resolved?.consumer?.bestDeal?.type ||
+          p.deals_resolved?.trade?.bestDeal?.type;
+        return dealType ? selectedDealTypes.includes(dealType) : false;
+      });
+    }
+
+    return filtered;
+  }, [
+    products,
+    categoryScopedProducts,
+    searchScopedProducts,
+    brand,
+    searchQuery,
+    priceRange,
+    filterInStock,
+    filterBackOrder,
+    selectedDealTypes,
+    selectedFacetBrands,
+    selectedRanges,
+    categoryTree,
+  ]);
+
   const productCategoryCounts = useMemo(() => {
+    // Count products by their deepest/leaf category for accuracy
+    // Prefer breadcrumb[-1] over direct category since backend sets breadcrumbs to the full path
     const counts: Record<string, number> = {};
-    filteredProducts.forEach((product) => {
-      if (!product.category) return;
-      const key = product.category.toLowerCase();
-      counts[key] = (counts[key] || 0) + 1;
+    const unCategorized: Product[] = [];
+
+    categoryCountsSourceProducts.forEach((product) => {
+      let leafCategory: string | undefined;
+
+      // Prefer last breadcrumb (deepest/leaf category)
+      if (product.breadcrumbs && product.breadcrumbs.length > 0) {
+        const lastBreadcrumb =
+          product.breadcrumbs[product.breadcrumbs.length - 1];
+        if (
+          lastBreadcrumb.label &&
+          lastBreadcrumb.label.toLowerCase() !== "shop"
+        ) {
+          leafCategory = lastBreadcrumb.label.toLowerCase();
+        }
+      }
+
+      // Fall back to direct category if no breadcrumbs
+      if (!leafCategory && product.category) {
+        leafCategory = product.category.toLowerCase();
+      }
+
+      // Track products with no category
+      if (!leafCategory) {
+        unCategorized.push(product);
+      }
+
+      // Count in leaf category only (prevents double-counting in tree traversal)
+      if (leafCategory) {
+        counts[leafCategory] = (counts[leafCategory] || 0) + 1;
+      }
     });
+
+    // Debug: Log uncategorized products
+    if (unCategorized.length > 0) {
+      console.log(
+        `[Archive Debug] Found ${unCategorized.length} uncategorized products:`,
+        unCategorized.map((p) => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          breadcrumbs: p.breadcrumbs?.map((b) => b.label),
+        })),
+      );
+    }
+
+    // Debug: Log total count
+    const totalCounted = Object.values(counts).reduce((a, b) => a + b, 0);
+    console.log(
+      `[Archive Debug] totalCounted=${totalCounted}, uncategorized=${unCategorized.length}, sourceProducts=${categoryCountsSourceProducts.length}`,
+    );
+
     return counts;
-  }, [filteredProducts]);
+  }, [categoryCountsSourceProducts]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -349,10 +722,14 @@ export const Archive: React.FC<ArchiveProps> = ({
       ? categoryTree
       : CATEGORY_TREE;
 
+    // Tree traversal: sum children totals (each product already counted in its leaf category)
     const tallyNode = (node: CategoryNode): number => {
       const key = node.label.toLowerCase();
+
+      // Start with direct count from this category
       let total = productCategoryCounts[key] || 0;
 
+      // Add children totals
       if (node.children && node.children.length > 0) {
         total += node.children.reduce(
           (sum, child) => sum + tallyNode(child),
@@ -365,6 +742,7 @@ export const Archive: React.FC<ArchiveProps> = ({
     };
 
     activeCategoryTree.forEach((node) => tallyNode(node));
+
     return counts;
   }, [productCategoryCounts, categoryTree]);
 
@@ -684,12 +1062,47 @@ export const Archive: React.FC<ArchiveProps> = ({
     window.dispatchEvent(new Event("belims:open-chat"));
   };
 
+  // Pre-calculate subcategories for use in toggleCategory
+  const activeCategoryNode = category
+    ? findCategoryNode(
+        category,
+        categoryTree.length ? categoryTree : CATEGORY_TREE,
+      )
+    : null;
+  const subcategories = activeCategoryNode?.children || [];
+
   const toggleCategory = (categoryLabel: string) => {
     setSelectedCategories((prev) => {
+      let newCategories;
+
       if (prev.includes(categoryLabel)) {
-        return prev.filter((item) => item !== categoryLabel);
+        // If already selected, deselect it
+        newCategories = prev.filter((item) => item !== categoryLabel);
+      } else {
+        // When selecting a category, check if it's a child of the current parent category
+        // If so, replace the parent with the child
+        const isChildOfCurrentCategory = subcategories.some(
+          (sub) => sub.label.toLowerCase() === categoryLabel.toLowerCase(),
+        );
+
+        if (isChildOfCurrentCategory && category && prev.includes(category)) {
+          console.log(
+            `[Archive] "${categoryLabel}" is a child of "${category}", replacing parent with child`,
+          );
+          // Replace parent category with child category
+          newCategories = prev.filter(
+            (item) => item.toLowerCase() !== category.toLowerCase(),
+          );
+          newCategories.push(categoryLabel);
+        } else {
+          // Otherwise, add to selection
+          newCategories = [...prev, categoryLabel];
+        }
       }
-      return [...prev, categoryLabel];
+
+      console.log(`[Archive] Category toggled: "${categoryLabel}"`);
+      console.log(`[Archive] Selected categories now:`, newCategories);
+      return newCategories;
     });
   };
 
@@ -781,11 +1194,11 @@ export const Archive: React.FC<ArchiveProps> = ({
     setSortBy("featured");
   };
 
-  const activeCategoryNode = category
-    ? findCategoryNode(category, CATEGORY_TREE)
-    : null;
-  const subcategories = activeCategoryNode?.children || [];
-  const categoryList = category ? subcategories : CATEGORY_TREE;
+  const categoryList = category
+    ? activeCategoryNode?.children || []
+    : categoryTree.length
+      ? categoryTree
+      : CATEGORY_TREE;
   const filteredCategoryList = useMemo(() => {
     const query = sidebarSearch.trim().toLowerCase();
     if (!query) return categoryList;
@@ -820,9 +1233,34 @@ export const Archive: React.FC<ArchiveProps> = ({
             )}
             {category && (
               <>
-                <li>
-                  <span className="font-base text-grey">{category}</span>
-                </li>
+                {/* Show full category hierarchy in breadcrumb */}
+                {(() => {
+                  const activeCatTree = categoryTree.length
+                    ? categoryTree
+                    : CATEGORY_TREE;
+                  const breadcrumbPath = getCategoryBreadcrumbPath(
+                    category,
+                    activeCatTree,
+                  );
+                  return breadcrumbPath.length > 0 ? (
+                    breadcrumbPath.map((catName, idx) => (
+                      <React.Fragment key={idx}>
+                        <li>
+                          <span className="font-base text-grey">{catName}</span>
+                        </li>
+                        {idx < breadcrumbPath.length - 1 && (
+                          <li>
+                            <ChevronRight size={14} />
+                          </li>
+                        )}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    <li>
+                      <span className="font-base text-grey">{category}</span>
+                    </li>
+                  );
+                })()}
               </>
             )}
             {!category && !brand && (
@@ -1559,7 +1997,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                     </div>
                   </div>
                 </li>
-                {filteredProducts.slice(1).map((product) => (
+                {filteredProducts.map((product) => (
                   <li key={product.id} className="grid__item">
                     <ProductCard
                       product={product}

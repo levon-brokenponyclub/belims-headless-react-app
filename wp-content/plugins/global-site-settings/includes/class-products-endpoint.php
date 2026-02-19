@@ -153,8 +153,23 @@ class Belims_Products_Endpoint {
         );
         
         if (!empty($categories)) {
+            // Find the deepest (leaf) category - the one with no children in our product's category list
             $main_category = $categories[0];
-            // Get all ancestors (parent categories)
+            $max_depth = 0;
+            
+            foreach ($categories as $cat) {
+                // Get ancestors of this category
+                $ancestors = get_ancestors($cat->term_id, 'product_cat');
+                $depth = count($ancestors);
+                
+                // If this category has more ancestors, it's deeper in the hierarchy
+                if ($depth > $max_depth) {
+                    $max_depth = $depth;
+                    $main_category = $cat;
+                }
+            }
+            
+            // Get all ancestors (parent categories) of the deepest category
             $ancestors = get_ancestors($main_category->term_id, 'product_cat');
             // Reverse to show from root to leaf
             $ancestors = array_reverse($ancestors);

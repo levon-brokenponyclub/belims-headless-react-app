@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Product } from "../types";
 import { formatCurrency } from "../utils/price";
+import { QuickView } from "./QuickView";
 
 interface ProductCardProps {
   product: Product;
@@ -122,6 +123,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   addToCart,
   onNotify,
+  onBuyNow,
   className = "",
   showDealName = false,
   variant = "default",
@@ -398,6 +400,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const openQuickView = actionHelpers.openQuickView;
   const closeQuickView = actionHelpers.closeQuickView;
+
+  const handleQuickViewAddToCart = (quantity: number) => {
+    if (product.stock <= 0) return;
+    for (let count = 0; count < quantity; count += 1) {
+      addWithPriceMode(isTradeSpecial ? "trade" : "retail");
+    }
+  };
+
+  const handleQuickViewBuyNow = (quantity: number) => {
+    if (product.stock <= 0) return;
+    handleQuickViewAddToCart(quantity);
+    onBuyNow?.(product);
+    closeQuickView();
+  };
 
   React.useEffect(() => {
     if (!shouldRenderQuickView) return;
@@ -800,114 +816,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {customizations?.slots?.afterContent?.(product)}
       </div>
 
-      {shouldRenderQuickView && (
-        <div className="fixed inset-0 z-[700] flex items-end md:items-center justify-center p-0 md:p-4">
-          <div
-            className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              isQuickViewOpening || isQuickViewClosing
-                ? "opacity-0"
-                : "opacity-100"
-            }`}
-            onClick={closeQuickView}
-          />
-          <div
-            id={quickViewId}
-            role="dialog"
-            aria-modal="true"
-            className={`relative z-[1] w-full md:max-w-3xl rounded-t-2xl md:rounded-block bg-surface shadow-pop border border-subtle max-h-[85vh] md:max-h-[90vh] overflow-y-auto transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              isQuickViewOpening || isQuickViewClosing
-                ? "translate-y-full"
-                : "translate-y-0"
-            } md:translate-y-0`}
-          >
-            <button
-              type="button"
-              onClick={closeQuickView}
-              className="absolute right-4 top-4 text-muted hover:text-ink"
-              aria-label="Close quick view"
-            >
-              <span className="text-xl">X</span>
-            </button>
-
-            <div className="grid gap-6 p-6 md:grid-cols-[1.1fr_1fr]">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-center rounded-block bg-grey-light p-4">
-                  {product.image ? (
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      loading="lazy"
-                      decoding="async"
-                      className="max-h-[360px] w-full object-contain"
-                    />
-                  ) : (
-                    <div className="flex h-[260px] w-full items-center justify-center rounded bg-soft text-sm text-muted">
-                      No image
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col">
-                <div className="text-[11px] font-semibold uppercase text-muted">
-                  {product.category} | {product.sku || product.id}
-                </div>
-                <div className="mt-2 text-xl font-bold text-ink font-heading">
-                  {product.name}
-                </div>
-                <div className="mt-3 text-2xl font-bold text-ink">
-                  {formatMoney(displayPrice)}
-                </div>
-
-                {/* <div className="mt-6">
-                  {product.stock > 0 ? (
-                    <button
-                      onClick={() =>
-                        addWithPriceMode(isTradeSpecial ? "trade" : "retail")
-                      }
-                      className="w-full rounded-pill bg-brand text-white font-bold text-sm h-12 hover:bg-ink transition-colors"
-                    >
-                      Add to cart
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleNotify}
-                      disabled={
-                        notifyStatus === "pending" || notifyStatus === "sent"
-                      }
-                      className={[
-                        "w-full rounded-pill text-sm font-bold h-12",
-                        "flex items-center justify-center gap-2 transition-colors",
-                        notifyStatus === "sent"
-                          ? "bg-green-50 text-green-800 border border-green-200"
-                          : notifyStatus === "error"
-                            ? "bg-red-50 text-red-700 border border-red-200"
-                            : "bg-brand text-white hover:bg-ink",
-                        notifyStatus === "pending"
-                          ? "opacity-70 cursor-wait"
-                          : "",
-                      ].join(" ")}
-                    >
-                      {notifyStatus === "sent" ? (
-                        <CheckCircle size={16} />
-                      ) : (
-                        <Bell size={16} />
-                      )}
-                      {notifyStatus === "sent"
-                        ? "Notification set"
-                        : notifyStatus === "pending"
-                          ? "Setting reminder…"
-                          : notifyStatus === "error"
-                            ? "Try again"
-                            : "Notify me"}
-                    </button>
-                  )}
-                </div> */}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <QuickView
+        product={product}
+        quickViewId={quickViewId}
+        shouldRender={shouldRenderQuickView}
+        isQuickViewOpening={isQuickViewOpening}
+        isQuickViewClosing={isQuickViewClosing}
+        closeQuickView={closeQuickView}
+        displayPrice={displayPrice}
+        onAddToCart={handleQuickViewAddToCart}
+        onBuyNow={handleQuickViewBuyNow}
+      />
     </>
   );
 };

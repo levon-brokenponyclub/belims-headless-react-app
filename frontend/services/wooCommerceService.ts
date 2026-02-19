@@ -87,13 +87,20 @@ export const cachedGetJson = async <T>(
 /**
  * Fetch Products from WooCommerce via custom API
  */
-export const fetchProducts = async (category?: string): Promise<Product[]> => {
+export const fetchProducts = async (
+  category?: string,
+  search?: string,
+): Promise<Product[]> => {
   try {
     let endpoint = `${BASE_URL}/products`;
     const params = new URLSearchParams();
 
     if (category) {
       params.append("category", category);
+    }
+
+    if (search) {
+      params.append("search", search);
     }
 
     const url = params.toString() ? `${endpoint}?${params}` : endpoint;
