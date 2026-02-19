@@ -1310,7 +1310,7 @@ function MainApp(props) {
         />
       )}
 
-      <BelimsChatbot />
+      {/* <BelimsChatbot /> */}
 
       <MobileBottomNav
         onSearch={() => props.setIsSearchModalOpen(true)}

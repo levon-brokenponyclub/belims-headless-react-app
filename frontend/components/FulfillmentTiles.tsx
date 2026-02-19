@@ -256,7 +256,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Pickup Option */}
         {pickup && (
           <button
