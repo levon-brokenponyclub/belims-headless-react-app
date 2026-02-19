@@ -130,16 +130,10 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     });
   };
 
-  const mapGoogleGeocodeResult = (
-    result: google.maps.GeocoderResult,
-  ): ShippingAddress | null => {
+  const mapGoogleGeocodeResult = (result: any): ShippingAddress | null => {
     const components = result.address_components || [];
     const findComponent = (type: string) =>
-      components.find((component) =>
-        component.types.includes(
-          type as google.maps.GeocoderAddressComponentType,
-        ),
-      );
+      components.find((component: any) => component.types.includes(type));
 
     const streetNumber = findComponent("street_number")?.long_name || "";
     const route = findComponent("route")?.long_name || "";
@@ -181,7 +175,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       const result = await new Promise<ShippingAddress | null>((resolve) => {
         geocoder.geocode(
           { location: { lat, lng: lon } },
-          (results: google.maps.GeocoderResult[] | null, status: string) => {
+          (results: any[] | null, status: string) => {
             if (status === "OK" && results && results.length > 0) {
               resolve(mapGoogleGeocodeResult(results[0]));
               return;
@@ -1404,7 +1398,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                           placeholder="Search delivery address"
                           value={input}
                           onChange={handleInputChange}
-                          className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-full text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
+                          className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-full text-base md:text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
                         />
                         {input && (
                           <button
@@ -1562,7 +1556,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                       placeholder="Search pickup stores"
                       value={storeSearch}
                       onChange={(e) => setStoreSearch(e.target.value)}
-                      className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-full text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
+                      className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-full text-base md:text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
                     />
                     {storeSearch && (
                       <button

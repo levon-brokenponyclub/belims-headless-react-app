@@ -168,7 +168,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
       <div
         data-state={isOpen && !isClosing ? "open" : "closed"}
-        className={`group lg:hidden fixed bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-3xl flex flex-col items-center mx-auto max-w-4xl border-t border-x border-slate-100 shadow-2xl h-[75vh] overflow-hidden gap-4 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`group lg:hidden fixed bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-3xl flex flex-col items-center mx-auto max-w-4xl border-t border-x border-slate-100 shadow-2xl h-[65vh] overflow-hidden gap-4 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isOpen && !isClosing ? "translate-y-0" : "translate-y-full"
         }`}
       >
