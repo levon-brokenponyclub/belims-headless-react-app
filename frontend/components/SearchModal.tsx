@@ -181,8 +181,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
           <span className="w-12 h-1.5 bg-slate-300 rounded-full" />
         </button>
 
-        <div className="w-full px-0 pb-0 h-full flex flex-col gap-0 justify-between">
-          <div className="px-4">
+        <div className="w-full px-0 pb-0 h-full flex flex-col gap-0 overflow-y-auto">
+          <div className="px-4 mt-6 mb-4 flex-shrink-0 sticky top-0 bg-white z-10 pt-2">
             <form
               onSubmit={handleSearchSubmit}
               className="relative flex items-center bg-white border rounded-full border-gray-200 overflow-hidden"
@@ -279,7 +279,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchCategoryDropdownOpen(false)}
-                className="flex-1 py-3 px-4 text-black text-base focus:outline-none font-medium placeholder:text-gray-400"
+                className="flex-1 py-3 px-4 text-black text-[16px] focus:outline-none font-medium placeholder:text-gray-400"
                 autoFocus
               />
               <button
@@ -296,123 +296,74 @@ export const SearchModal: React.FC<SearchModalProps> = ({
               searchResults.products.length > 0) && (
               <div className="h-full flex flex-col gap-0 justify-between">
                 <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setActiveSearchTab("products")}
-                      className={`px-3 py-1.5 text-xs font-bold uppercase tracking-[1px] rounded-full border transition-colors ${
-                        activeSearchTab === "products"
-                          ? "bg-belims-blue text-white border-belims-blue"
-                          : "bg-white text-gray-500 border-gray-200 hover:text-belims-blue"
-                      }`}
-                    >
-                      Products
-                      <span className="ml-2 text-[10px] font-bold">
-                        {searchResults.products.length}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveSearchTab("categories")}
-                      className={`px-3 py-1.5 text-xs font-bold uppercase tracking-[1px] rounded-full border transition-colors ${
-                        activeSearchTab === "categories"
-                          ? "bg-belims-blue text-white border-belims-blue"
-                          : "bg-white text-gray-500 border-gray-200 hover:text-belims-blue"
-                      }`}
-                    >
-                      Categories
-                      <span className="ml-2 text-[10px] font-bold">
-                        {searchResults.categories.length}
-                      </span>
-                    </button>
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4">
+                    {searchResults.categories.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => handleCategorySelect(c.label)}
+                        className="px-4 py-2 bg-gray-100 rounded-full text-xs font-bold text-gray-700 whitespace-nowrap hover:bg-belims-blue hover:text-white transition-colors flex-shrink-0"
+                      >
+                        {c.label}
+                      </button>
+                    ))}
                   </div>
-                  <div className="text-[11px] font-semibold text-gray-400">
-                    {searchResults.products.length +
-                      searchResults.categories.length}{" "}
-                    results
+                  <div className="text-[11px] font-semibold text-gray-400 mt-2">
+                    {searchResults.products.length} results
                   </div>
                 </div>
 
-                <div className="max-h-[300px] overflow-y-auto">
-                  {activeSearchTab === "categories" && (
-                    <div className="p-3 bg-gray-50">
-                      {searchResults.categories.length > 0 ? (
-                        searchResults.categories.map((c) => (
-                          <div
-                            key={c.id}
-                            className="px-3 py-2.5 hover:bg-white hover:text-belims-blue cursor-pointer rounded-lg text-sm font-semibold transition-colors"
-                            onClick={() => handleCategorySelect(c.label)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span>{c.label}</span>
-                              <ChevronRight
-                                size={12}
-                                className="text-gray-300"
-                              />
-                            </div>
-                            <div className="text-[11px] text-gray-500 font-normal truncate">
-                              {c.fullPath}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-6 text-sm text-gray-400 text-center">
-                          No categories found
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {activeSearchTab === "products" && (
-                    <div className="p-0">
-                      {searchResults.products.length > 0 ? (
-                        searchResults.products.map((p) => (
-                          <div
-                            key={p.id}
-                            className="px-3 py-3 hover:bg-gray-50 cursor-pointer rounded-lg flex gap-3 items-center group"
-                            onClick={() => handleProductSelect(p)}
-                          >
+                <div className="flex-1 overflow-y-auto min-h-0">
+                  <div className="p-0 pb-20">
+                    {searchResults.products.length > 0 ? (
+                      searchResults.products.map((p) => (
+                        <div
+                          key={p.id}
+                          className="px-4 py-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer flex gap-4 items-center group"
+                          onClick={() => handleProductSelect(p)}
+                        >
+                          <div className="w-12 h-12 bg-white rounded border border-gray-100 p-1 flex-shrink-0">
                             <img
                               src={p.image}
-                              className="w-11 h-11 object-contain rounded bg-white border border-gray-100"
+                              className="w-full h-full object-contain"
                               alt=""
                               loading="lazy"
                               decoding="async"
                             />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-bold text-gray-900 truncate font-heading group-hover:text-belims-blue">
-                                {p.name}
-                              </div>
-                              <div className="text-xs text-gray-500 truncate">
-                                {p.category}
-                              </div>
-                            </div>
-                            <div className="text-sm font-bold text-belims-blue">
-                              {formatCurrency(p.price)}
-                            </div>
-
-                            {onCompare && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onCompare(p);
-                                }}
-                                className="p-1.5 rounded-full hover:bg-belims-blue hover:text-white text-gray-400 transition-colors ml-2"
-                                title="Compare"
-                              >
-                                <span className="sr-only">Compare</span>
-                                <Scale size={16} />
-                              </button>
-                            )}
                           </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-6 text-sm text-gray-400 text-center">
-                          No products found
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-bold text-gray-900 truncate font-heading group-hover:text-belims-blue mb-0.5">
+                              {p.name}
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {p.category}
+                            </div>
+                          </div>
+                          <div className="text-sm font-bold text-gray-900 whitespace-nowrap">
+                            {formatCurrency(p.price)}
+                          </div>
+
+                          {onCompare && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onCompare(p);
+                              }}
+                              className="p-1.5 rounded-full hover:bg-belims-blue hover:text-white text-gray-300 transition-colors ml-1"
+                              title="Compare"
+                            >
+                              <span className="sr-only">Compare</span>
+                              <Scale size={16} />
+                            </button>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )}
+                      ))
+                    ) : (
+                      <div className="px-4 py-12 text-sm text-gray-400 text-center flex flex-col items-center gap-2">
+                        <Search size={24} className="opacity-20" />
+                        <span>No products found matching "{searchQuery}"</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-3 bg-gray-50 border-t text-center">

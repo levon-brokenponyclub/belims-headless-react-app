@@ -533,6 +533,31 @@ function global_site_settings_enqueue_admin_assets($hook) {
 add_action('admin_enqueue_scripts', 'global_site_settings_enqueue_admin_assets');
 
 /**
+ * Hide default WordPress admin footer text/version on Site Settings page
+ */
+function global_site_settings_hide_wp_admin_footer($footer_text) {
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+
+    if ($screen && $screen->id === 'toplevel_page_belims-site-settings') {
+        return '';
+    }
+
+    return $footer_text;
+}
+add_filter('admin_footer_text', 'global_site_settings_hide_wp_admin_footer', 99);
+
+function global_site_settings_hide_wp_version_footer($version_text) {
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+
+    if ($screen && $screen->id === 'toplevel_page_belims-site-settings') {
+        return '';
+    }
+
+    return $version_text;
+}
+add_filter('update_footer', 'global_site_settings_hide_wp_version_footer', 99);
+
+/**
  * Add top-level menu (single page with tabs)
  */
 function global_site_settings_admin_menus() {

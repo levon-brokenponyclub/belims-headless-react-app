@@ -432,12 +432,12 @@ export const Header: React.FC<HeaderProps> = ({
                   Wishlist
                 </Link>
               </div>
-              <div className="md:ml-auto">
-                <div className="grid grid-cols-2 divide-x divide-white/40 w-full md:flex md:items-center md:divide-x">
+              <div className="hidden md:block md:ml-auto">
+                <div className="flex items-center divide-x divide-white/40">
                   <button
                     type="button"
                     onClick={() => setIsDeliveryLocationModalOpen(true)}
-                    className="flex items-center gap-3 px-3 text-left w-full"
+                    className="flex items-center gap-3 px-3 text-left w-full whitespace-nowrap"
                   >
                     <MapPin size={15} className="flex-shrink-0" />
                     <span className="flex flex-col md:flex-row md:items-center md:gap-2 min-w-0">
@@ -453,11 +453,11 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsDeliveryLocationModalOpen(true)}
-                    className="flex items-center gap-3 px-3 text-left w-full"
+                    className="flex items-center gap-3 px-3 text-left pl-6"
                   >
                     <Truck size={15} className="flex-shrink-0" />
                     <span className="flex flex-col md:flex-row md:items-center md:gap-2 min-w-0">
-                      <span className="text-sm text-white/80 md:text-[13px]">
+                      <span className="text-sm text-white/80 md:text-[13px] whitespace-nowrap">
                         Deliver to:
                       </span>
                       <span className="text-sm font-semibold text-white leading-tight truncate md:text-[13px] md:leading-normal md:truncate">
@@ -471,7 +471,9 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
         </div>
+      </section>
 
+      <section className="w-full bg-surface border-b border-subtle">
         <div className="container mx-auto px-4">
           <div className="relative flex items-center justify-between gap-3 py-4 md:py-5">
             <div className="relative flex items-center gap-2 flex-shrink-0 min-h-[44px]">
@@ -762,12 +764,12 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 type="button"
-                className="h-[48px] w-[48px] rounded-full flex items-center justify-center p-0 bg-grey-light relative"
+                className="h-[48px] w-[48px] rounded-full flex items-center justify-center p-0 right-2 bg-grey-light relative"
                 onClick={toggleCart}
               >
                 <ShoppingBasket size={20} strokeWidth={1.5} />
                 {cartCount > 0 && (
-                  <span className="text-[10px] font-bold text-white bg-red-muted rounded-full absolute w-5 h-5 top-0.5 right-0.5 flex items-center justify-center leading-none">
+                  <span className="text-[10px] font-bold text-white bg-red-muted rounded-full absolute w-5 h-5 top-0.5 -right-1 flex items-center justify-center leading-none">
                     {cartCount}
                   </span>
                 )}
@@ -808,8 +810,32 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
+        {/* Mobile Delivery Bar - moved below logo bar */}
+        <div className="md:hidden w-full bg-brand text-white border-t border-white/20">
+          <div className="container mx-auto px-4">
+            <button
+              type="button"
+              onClick={() => setIsDeliveryLocationModalOpen(true)}
+              className="flex items-center justify-between w-full py-2.5"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-white/10 p-1.5 rounded-full">
+                  <Truck size={16} />
+                </div>
+                <span className="font-bold text-sm">Delivery</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-white/90">
+                <span className="truncate max-w-[200px] font-medium">
+                  {deliveryLabelText}
+                </span>
+                <ChevronDown size={14} />
+              </div>
+            </button>
+          </div>
+        </div>
+
         <div
-          className={`overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out ${
+          className={`hidden md:block overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out ${
             isNavbarVisible
               ? "max-h-[400px] opacity-100 translate-y-0"
               : "max-h-0 opacity-0 -translate-y-2 pointer-events-none"
@@ -846,10 +872,8 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <button
                     type="button"
-                    className={`flex items-center gap-2 font-semibold px-3 py-2 rounded-md transition-all ${
-                      isMegaMenuOpen
-                        ? "bg-brand text-white"
-                        : "bg-soft text-grey hover:bg-gray-100"
+                    className={`flex items-center gap-2 font-semibold px-3 py-2 rounded-md text-white transition-all hover:bg-red-muted ${
+                      isMegaMenuOpen ? "bg-red-muted" : "bg-belims-blue"
                     }`}
                   >
                     <LayoutGrid size={16} />

@@ -79,11 +79,11 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
       >
         {/* Left Column: Parent Categories */}
         <div className="bg-white border-r border-subtle flex flex-col max-h-[600px]">
-          <div className="px-5 py-4 border-b border-subtle">
+          {/* <div className="px-5 py-4 border-b border-subtle">
             <span className="text-[11px] font-black uppercase tracking-widest text-muted">
               Shop by Category
             </span>
-          </div>
+          </div> */}
 
           <div className="flex-1 overflow-y-auto py-3 px-3">
             <button
@@ -138,7 +138,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
               activeMegaCategory.children.length > 0 ? (
                 <div className="flex flex-col gap-1">
                   <div className="px-2 pb-2 mb-2 border-b border-subtle">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-muted">
+                    <span className="font-heading font-bold text-lg text-ink">
                       {activeMegaCategory.label}
                     </span>
                   </div>
@@ -187,9 +187,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted">
-              Select a category to see subcategories.
-            </p>
+            <p className="text-sm text-muted"></p>
           )}
         </div>
 
@@ -200,13 +198,12 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
             <div className="h-full animate-fadeIn">
               <div className="px-2 pb-2 mb-2 border-b border-subtle">
                 <h4 className="font-heading font-bold text-lg text-ink">
-                  {activeChildCategory?.label || activeMegaCategory.label}
+                  {activeChildCategory?.label || "Subcategories"}
                 </h4>
-                <p className="text-sm text-muted mt-1">Flyout categories</p>
               </div>
 
               <div className="flex flex-col gap-1 mb-5">
-                {activeMegaCategory.children.map((sibling) => {
+                {/* {activeMegaCategory.children.map((sibling) => {
                   const isSiblingActive =
                     activeChildCategory?.id === sibling.id;
                   return (
@@ -225,23 +222,23 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
                       <span className="text-xs font-bold text-muted">→</span>
                     </button>
                   );
-                })}
+                })} */}
               </div>
 
               <div className="px-2">
-                <div className="text-[11px] font-black uppercase tracking-widest text-muted mb-3">
+                {/* <div className="text-[11px] font-black uppercase tracking-widest text-muted mb-3">
                   {activeChildCategory?.label || "Subcategories"}
-                </div>
+                </div> */}
 
                 {activeChildCategory?.children &&
                 activeChildCategory.children.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+                  <div className="flex flex-col gap-y-3">
                     {activeChildCategory.children.map((subCategory) => (
                       <button
                         key={subCategory.id}
                         type="button"
                         onClick={() => handleCategorySelect(subCategory.label)}
-                        className="text-sm text-muted hover:text-brand text-left transition-colors"
+                        className="text-sm text-muted hover:text-brand text-left transition-colors w-full"
                       >
                         {subCategory.label}
                       </button>
@@ -263,16 +260,14 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
               </div>
             </div>
           ) : (
-            <div className="h-full p-6 flex items-center justify-center text-muted">
-              Hover a child category to view flyout categories.
-            </div>
+            <div className="h-full p-6 flex items-center justify-center text-muted"></div>
           )}
         </div>
 
         {/* Right Column: On Sale products */}
-        <div className="p-6 bg-soft overflow-y-auto max-h-[600px]">
+        <div className="p-6 bg-white overflow-y-auto max-h-[600px]">
           <div className="px-2 pb-2 mb-3 border-b border-subtle">
-            <h4 className="font-heading font-bold text-xl text-ink">On Sale</h4>
+            <h4 className="font-heading font-bold text-lg text-ink">On Sale</h4>
           </div>
 
           <div className="grid grid-cols-2 gap-8">

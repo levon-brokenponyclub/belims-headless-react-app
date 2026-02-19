@@ -206,17 +206,17 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-[0.85]"
             />
 
-            <div className="absolute inset-0 p-6 flex flex-col justify-center items-start text-left">
+            <div className="absolute inset-0 p-6 flex flex-col justify-end items-start text-left">
               <h3 className="text-white text-3xl font-bold font-heading">
                 {sectionTitle}
               </h3>
-              <p className="mt-3 text-lg font-semibold text-white/90 max-w-[260px]">
+              <p className="mt-3 mb-6 text-lg font-semibold text-white/90 max-w-[260px]">
                 {sectionDescription}
               </p>
               <button
                 type="button"
                 onClick={openChatBot}
-                className="group relative mt-auto h-12 w-full overflow-hidden rounded-pill bg-white text-gray-900 transition-colors"
+                className="group relative h-12 px-6 overflow-hidden rounded-pill bg-white text-gray-900 transition-colors"
               >
                 <span className="absolute inset-0 origin-left scale-x-0 bg-gray-900 transition-transform duration-300 ease-out group-hover:scale-x-100" />
                 <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">

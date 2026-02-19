@@ -75,27 +75,19 @@ export const createProductCardCustomizations = (
   customizations: ProductCardCustomizations,
 ) => customizations;
 
-const HIDE_ALL_MARQUEES: ProductCardElementKey[] = [
-  "dailyMarquee",
-  "weeklyMarquee",
-  "tradeMarquee",
-  "lowStockMarquee",
-];
-
 export const PRODUCT_CARD_PRESETS: Record<
   "compactCard" | "searchCard" | "perfectMatchCard",
   ProductCardCustomizations
 > = {
   compactCard: createProductCardCustomizations({
-    hiddenElements: [...HIDE_ALL_MARQUEES],
     imageBlockClassName: "h-44 min-h-[220px]",
   }),
   searchCard: createProductCardCustomizations({
-    hiddenElements: ["category", "quickViewIcon", ...HIDE_ALL_MARQUEES],
+    hiddenElements: ["category", "quickViewIcon"],
     imageBlockClassName: "h-40 min-h-[190px]",
   }),
   perfectMatchCard: createProductCardCustomizations({
-    hiddenElements: ["category", "quickViewIcon", ...HIDE_ALL_MARQUEES],
+    hiddenElements: ["category", "quickViewIcon"],
     imageBlockClassName: "h-44 min-h-[220px]",
   }),
 };

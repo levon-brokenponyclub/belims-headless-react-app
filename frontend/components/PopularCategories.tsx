@@ -364,7 +364,7 @@ export const PopularCategories: React.FC = () => {
               <Link
                 key={category.slug}
                 to={`/shop/${encodeURIComponent(category.slug)}`}
-                className={`group relative overflow-hidden rounded-3xl ${featuredStyles[index % featuredStyles.length]} px-6 py-8 md:px-10 md:py-10 transition-shadow hover:shadow-[0_18px_40px_rgba(15,23,42,0.12)]`}
+                className={`group relative overflow-hidden rounded-3xl ${featuredStyles[index % featuredStyles.length]} px-6 py-8 md:px-10 md:py-10`}
               >
                 <div className="relative z-10 flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
                   <div className="max-w-md">
@@ -449,7 +449,7 @@ export const PopularCategories: React.FC = () => {
                   <Link
                     key={`${cat.slug}-${index}`}
                     to={`/shop/${encodeURIComponent(cat.slug)}`}
-                    className="group relative flex shrink-0 items-center overflow-hidden rounded-full border border-white bg-white px-3 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
+                    className="group relative flex shrink-0 items-center overflow-hidden rounded-full border border-white bg-white px-3 pr-10 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
                   >
                     <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
                     <span className="relative z-10 flex items-center gap-3 min-w-0">
@@ -468,7 +468,7 @@ export const PopularCategories: React.FC = () => {
                           </span>
                         )}
                       </span>
-                      <span className="truncate text-sm font-semibold transition-colors group-hover:text-white">
+                      <span className="truncate text-base font-bold text-grey transition-colors group-hover:text-white">
                         {cat.name}
                       </span>
                     </span>

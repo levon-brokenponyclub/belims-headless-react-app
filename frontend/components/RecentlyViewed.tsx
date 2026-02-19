@@ -38,7 +38,7 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
   if (displayProducts.length === 0) return null;
 
   return (
-    <section className="py-12 bg-white border-t border-gray-100 mb-8">
+    <section className="py-12 bg-gray-50 border-t border-gray-100">
       <div className="container mx-auto px-4">
         <div className="flex items-center gap-2 mb-8">
           <History className="text-belims-blue" size={20} />

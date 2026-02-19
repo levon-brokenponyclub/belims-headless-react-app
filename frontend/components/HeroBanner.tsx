@@ -301,7 +301,7 @@ const HeroBanner: React.FC = () => {
                     key={card.key}
                     href={card.href}
                     className={`
-                      group relative
+                      group/card relative
                       ${colSpan}
                       w-[88%] min-w-[88%] sm:w-[70%] sm:min-w-[70%] md:w-[52%] md:min-w-[52%]
                       lg:w-auto lg:min-w-0
@@ -322,7 +322,7 @@ const HeroBanner: React.FC = () => {
                         className="
                           h-full w-full object-cover
                           transition-transform duration-700
-                          group-hover:scale-[1.03]
+                          group-hover/card:scale-[1.03]
                         "
                         loading="lazy"
                       />

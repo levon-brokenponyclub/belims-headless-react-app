@@ -41,22 +41,22 @@ export const TradeDeals: React.FC<TradeDealsProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-[560px_minmax(0,1fr)] gap-5">
           <div className="hidden lg:block lg:row-span-2 rounded-xl overflow-hidden relative group min-h-[380px]">
             <img
-              src="/images/development/midsection-worker-using-circular-saw-workshop.webp"
+              src="/images/development/athens-mosaic-06.webp"
               alt="Hand tools"
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 filter brightness-[0.82]"
             />
-            <div className="absolute inset-0 p-6 flex flex-col justify-center items-start text-left">
-              <h3 className="text-white text-3xl font-bold font-heading">
+            <div className="absolute inset-0 p-6 flex flex-col justify-end items-start text-left">
+              <h3 className="text-2xl font-semibold tracking-tight text-white md:text-3xl">
                 Hand Tools
               </h3>
-              <p className="mt-3 text-base font-semibold text-white/90 max-w-[260px]">
+              <p className="mt-3 max-w-[33ch] text-sm text-white md:text-[15px]">
                 Built for daily use on site and at home—shop dependable hand
                 tools for every project.
               </p>
               <button
                 type="button"
                 onClick={() => navigate("/shop/hand-tools")}
-                className="group relative mt-auto h-12 w-full overflow-hidden rounded-pill bg-white text-gray-900 transition-colors"
+                className="group relative mt-5 h-12 overflow-hidden rounded-pill bg-white text-grey px-6 transition-colors"
               >
                 <span className="absolute inset-0 origin-left scale-x-0 bg-gray-900 transition-transform duration-300 ease-out group-hover:scale-x-100" />
                 <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
