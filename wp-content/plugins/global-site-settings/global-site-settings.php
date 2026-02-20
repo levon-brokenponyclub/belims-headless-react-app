@@ -15,7 +15,7 @@
 if (!defined('ABSPATH')) exit;
 
 define('GLOBAL_SITE_SETTINGS_VERSION', '2.2.0');
-define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-02-14 11:48:43');
+define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-02-20 03:30:39');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -2510,12 +2510,82 @@ add_action('wp_footer', 'belims_output_deployment_info');
 // ============= DRY RUN IMPORT FEATURE =============
 
 /**
+ * Normalize CSV status values to valid WooCommerce post statuses.
+ */
+if (!function_exists('belims_normalize_import_status')) {
+    function belims_normalize_import_status($raw_status) {
+        $status = strtolower(trim((string) $raw_status));
+
+        if ($status === '' || $status === 'success' || $status === 'ok' || $status === 'active') {
+            return 'publish';
+        }
+
+        $allowed = ['publish', 'draft', 'pending', 'private'];
+        if (in_array($status, $allowed, true)) {
+            return $status;
+        }
+
+        return 'publish';
+    }
+}
+
+/**
+ * Find existing product for import update (SKU first, then exact title fallback).
+ */
+if (!function_exists('belims_find_product_id_for_update')) {
+    function belims_find_product_id_for_update($sku, $title, $url = '') {
+        $sku = trim((string) $sku);
+        $title = trim((string) $title);
+        $url = trim((string) $url);
+
+        if ($sku !== '') {
+            $product_id = wc_get_product_id_by_sku($sku);
+            if (!empty($product_id)) {
+                return intval($product_id);
+            }
+        }
+
+        if ($title !== '') {
+            $posts = get_posts([
+                'post_type' => 'product',
+                'post_status' => ['publish', 'draft', 'pending', 'private', 'trash'],
+                'posts_per_page' => 1,
+                'fields' => 'ids',
+                'title' => $title,
+            ]);
+            if (!empty($posts)) {
+                return intval($posts[0]);
+            }
+        }
+
+        if ($url !== '') {
+            $path = wp_parse_url($url, PHP_URL_PATH);
+            if (!empty($path)) {
+                $slug = trim(basename(rtrim($path, '/')));
+                if ($slug !== '') {
+                    $post = get_page_by_path($slug, OBJECT, 'product');
+                    if ($post && isset($post->ID)) {
+                        return intval($post->ID);
+                    }
+                }
+            }
+        }
+
+        return 0;
+    }
+}
+
+/**
  * Dry run preview - show what will be imported without actually importing
  */
 add_action('wp_ajax_import_dry_run', function() {
     check_ajax_referer('import_nonce', 'nonce');
-    if (!current_user_can('manage_options')) wp_die(json_encode(['error' => 'Unauthorized']));
-    if (empty($_FILES['csv_file'])) wp_die(json_encode(['error' => 'No file uploaded']));
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['error' => 'Unauthorized']);
+    }
+    if (empty($_FILES['csv_file'])) {
+        wp_send_json_error(['error' => 'No file uploaded']);
+    }
     
     $file = $_FILES['csv_file'];
     $products_preview = [];
@@ -2523,15 +2593,38 @@ add_action('wp_ajax_import_dry_run', function() {
     
     if (($handle = fopen($file['tmp_name'], 'r')) !== false) {
         $header = fgetcsv($handle);
-        $col_index = array_flip($header);
+        if ($header === false) {
+            fclose($handle);
+            wp_send_json_error(['error' => 'Invalid or empty CSV file']);
+        }
+
+        $normalize_header = function($value) {
+            $value = preg_replace('/^\xEF\xBB\xBF/', '', (string) $value);
+            return strtolower(trim($value));
+        };
+
+        $header_map = [];
+        foreach ($header as $index => $name) {
+            $header_map[$normalize_header($name)] = $index;
+        }
+
+        $sku_index = $header_map['sku'] ?? null;
+        $title_index = $header_map['title'] ?? null;
+        $description_index = $header_map['description'] ?? null;
+
+        if ($sku_index === null || $title_index === null || $description_index === null) {
+            fclose($handle);
+            wp_send_json_error(['error' => 'CSV missing required columns: SKU, Title, Description']);
+        }
+
         $preview_count = 0;
         
         while (($row = fgetcsv($handle)) !== false && $preview_count < 5) {
-            $sku = isset($row[$col_index['SKU']]) ? trim($row[$col_index['SKU']]) : '';
-            $title = isset($row[$col_index['Title']]) ? trim($row[$col_index['Title']]) : '';
-            $description = isset($row[$col_index['Description']]) ? trim($row[$col_index['Description']]) : '';
+            $sku = isset($row[$sku_index]) ? trim($row[$sku_index]) : '';
+            $title = isset($row[$title_index]) ? trim($row[$title_index]) : '';
+            $description = isset($row[$description_index]) ? trim($row[$description_index]) : '';
             
-            if ($sku) {
+            if ($sku || $title) {
                 $desc_preview = wp_strip_all_tags($description);
                 if (strlen($desc_preview) > 150) $desc_preview = substr($desc_preview, 0, 150) . '...';
                 
@@ -2549,11 +2642,11 @@ add_action('wp_ajax_import_dry_run', function() {
         fclose($handle);
     }
     
-    wp_die(json_encode([
+    wp_send_json([
         'success' => true,
         'total_products' => $total_count,
         'preview_products' => $products_preview
-    ]));
+    ]);
 });
 
 /**
@@ -2561,62 +2654,368 @@ add_action('wp_ajax_import_dry_run', function() {
  */
 add_action('wp_ajax_import_execute', function() {
     check_ajax_referer('import_nonce', 'nonce');
-    if (!current_user_can('manage_options')) wp_die(json_encode(['error' => 'Unauthorized']));
-    if (empty($_FILES['csv_file'])) wp_die(json_encode(['error' => 'No file uploaded']));
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['error' => 'Unauthorized']);
+    }
+    if (empty($_FILES['csv_file'])) {
+        wp_send_json_error(['error' => 'No file uploaded']);
+    }
     
     $file = $_FILES['csv_file'];
     $imported = 0;
     $updated = 0;
     $skipped = 0;
+    $not_found = 0;
     
     if (($handle = fopen($file['tmp_name'], 'r')) !== false) {
         $header = fgetcsv($handle);
-        $col_index = array_flip($header);
+        if ($header === false) {
+            fclose($handle);
+            wp_send_json_error(['error' => 'Invalid or empty CSV file']);
+        }
+
+        $normalize_header = function($value) {
+            $value = preg_replace('/^\xEF\xBB\xBF/', '', (string) $value);
+            return strtolower(trim($value));
+        };
+
+        $header_map = [];
+        foreach ($header as $index => $name) {
+            $header_map[$normalize_header($name)] = $index;
+        }
+
+        $sku_index = $header_map['sku'] ?? null;
+        $title_index = $header_map['title'] ?? null;
+        $url_index = $header_map['url'] ?? null;
+        $description_index = $header_map['description'] ?? null;
+        $status_index = $header_map['status'] ?? null;
+
+        if ($sku_index === null || $title_index === null || $description_index === null) {
+            fclose($handle);
+            wp_send_json_error(['error' => 'CSV missing required columns: SKU, Title, Description']);
+        }
         
         while (($row = fgetcsv($handle)) !== false) {
-            $sku = isset($row[$col_index['SKU']]) ? trim($row[$col_index['SKU']]) : '';
-            $title = isset($row[$col_index['Title']]) ? trim($row[$col_index['Title']]) : '';
-            $description = isset($row[$col_index['Description']]) ? trim($row[$col_index['Description']]) : '';
-            $status = isset($row[$col_index['Status']]) ? trim($row[$col_index['Status']]) : 'draft';
+            $sku = isset($row[$sku_index]) ? trim($row[$sku_index]) : '';
+            $title = isset($row[$title_index]) ? trim($row[$title_index]) : '';
+            $url = ($url_index !== null && isset($row[$url_index])) ? trim($row[$url_index]) : '';
+            $description = isset($row[$description_index]) ? trim($row[$description_index]) : '';
+            $status = ($status_index !== null && isset($row[$status_index])) ? trim($row[$status_index]) : 'publish';
+            $status = belims_normalize_import_status($status);
             
             if (!$sku || !$title) {
                 $skipped++;
                 continue;
             }
             
-            // Check if product exists by SKU using WooCommerce function
-            $product_id = wc_get_product_id_by_sku($sku);
+            // Update-only mode: find existing product by SKU, then title fallback
+            $product_id = belims_find_product_id_for_update($sku, $title, $url);
             
             if ($product_id) {
+                if (get_post_status($product_id) === 'trash') {
+                    wp_untrash_post($product_id);
+                }
                 // Update existing product
                 $product = wc_get_product($product_id);
                 $product->set_name($title);
+                if (!empty($sku)) {
+                    $product->set_sku($sku);
+                }
                 $product->set_description($description);
                 $product->set_status($status);
                 $product->save();
                 $updated++;
             } else {
-                // Create new product
-                $product = new WC_Product_Simple();
-                $product->set_name($title);
-                $product->set_sku($sku);
-                $product->set_description($description);
-                $product->set_status($status);
-                $product->save();
-                $imported++;
+                // Strict update-only mode: do not create new products
+                $not_found++;
+                $skipped++;
             }
         }
         
         fclose($handle);
     }
     
-    wp_die(json_encode([
+    wp_send_json([
         'success' => true,
         'imported' => $imported,
         'updated' => $updated,
         'skipped' => $skipped,
-        'message' => "Import complete! Created {$imported} new products, Updated {$updated} existing, Skipped {$skipped}."
-    ]));
+        'not_found' => $not_found,
+        'message' => "Import complete (update-only). Updated {$updated} existing, Skipped {$skipped}, Not found {$not_found}. No new products were created."
+    ]);
+});
+
+/**
+ * Start batch import session (stores rows in transient and returns session info)
+ */
+add_action('wp_ajax_import_start_batch', function() {
+    check_ajax_referer('import_nonce', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['error' => 'Unauthorized']);
+    }
+    if (empty($_FILES['csv_file'])) {
+        wp_send_json_error(['error' => 'No file uploaded']);
+    }
+
+    $file = $_FILES['csv_file'];
+    $rows = [];
+
+    if (($handle = fopen($file['tmp_name'], 'r')) === false) {
+        wp_send_json_error(['error' => 'Unable to open CSV file']);
+    }
+
+    $header = fgetcsv($handle);
+    if ($header === false) {
+        fclose($handle);
+        wp_send_json_error(['error' => 'Invalid or empty CSV file']);
+    }
+
+    $normalize_header = function($value) {
+        $value = preg_replace('/^\xEF\xBB\xBF/', '', (string) $value);
+        return strtolower(trim($value));
+    };
+
+    $header_map = [];
+    foreach ($header as $index => $name) {
+        $header_map[$normalize_header($name)] = $index;
+    }
+
+    $sku_index = $header_map['sku'] ?? null;
+    $title_index = $header_map['title'] ?? null;
+    $url_index = $header_map['url'] ?? null;
+    $description_index = $header_map['description'] ?? null;
+    $status_index = $header_map['status'] ?? null;
+
+    if ($sku_index === null || $title_index === null || $description_index === null) {
+        fclose($handle);
+        wp_send_json_error(['error' => 'CSV missing required columns: SKU, Title, Description']);
+    }
+
+    while (($row = fgetcsv($handle)) !== false) {
+        $rows[] = [
+            'sku' => isset($row[$sku_index]) ? trim($row[$sku_index]) : '',
+            'title' => isset($row[$title_index]) ? trim($row[$title_index]) : '',
+            'url' => ($url_index !== null && isset($row[$url_index])) ? trim($row[$url_index]) : '',
+            'description' => isset($row[$description_index]) ? trim($row[$description_index]) : '',
+            'status' => belims_normalize_import_status(($status_index !== null && isset($row[$status_index])) ? trim($row[$status_index]) : 'publish'),
+        ];
+    }
+    fclose($handle);
+
+    $session_id = 'import_batch_' . get_current_user_id() . '_' . wp_generate_password(12, false, false);
+    $payload = [
+        'rows' => $rows,
+        'total' => count($rows),
+        'offset' => 0,
+        'imported' => 0,
+        'updated' => 0,
+        'skipped' => 0,
+        'not_found' => 0,
+    ];
+
+    set_transient($session_id, $payload, 2 * HOUR_IN_SECONDS);
+
+    wp_send_json([
+        'success' => true,
+        'session_id' => $session_id,
+        'total' => $payload['total'],
+    ]);
+});
+
+/**
+ * Process next batch chunk for active import session
+ */
+add_action('wp_ajax_import_process_batch', function() {
+    check_ajax_referer('import_nonce', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['error' => 'Unauthorized']);
+    }
+
+    $session_id = isset($_POST['session_id']) ? sanitize_text_field(wp_unslash($_POST['session_id'])) : '';
+    $batch_size = isset($_POST['batch_size']) ? max(1, min(200, intval($_POST['batch_size']))) : 25;
+
+    if (empty($session_id)) {
+        wp_send_json_error(['error' => 'Missing session_id']);
+    }
+
+    $payload = get_transient($session_id);
+    if (!$payload || !isset($payload['rows'])) {
+        wp_send_json_error(['error' => 'Import session expired or not found']);
+    }
+
+    $rows = $payload['rows'];
+    $total = intval($payload['total']);
+    $offset = intval($payload['offset']);
+
+    $end = min($offset + $batch_size, $total);
+
+    for ($i = $offset; $i < $end; $i++) {
+        $row = $rows[$i];
+        $sku = $row['sku'];
+        $title = $row['title'];
+        $url = isset($row['url']) ? $row['url'] : '';
+        $description = $row['description'];
+        $status = belims_normalize_import_status($row['status'] ?? 'publish');
+
+        if (!$sku || !$title) {
+            $payload['skipped']++;
+            continue;
+        }
+
+        $product_id = belims_find_product_id_for_update($sku, $title, $url);
+
+        if ($product_id) {
+            if (get_post_status($product_id) === 'trash') {
+                wp_untrash_post($product_id);
+            }
+            $product = wc_get_product($product_id);
+            if ($product) {
+                $product->set_name($title);
+                if (!empty($sku)) {
+                    $product->set_sku($sku);
+                }
+                $product->set_description($description);
+                $product->set_status($status);
+                $product->save();
+                $payload['updated']++;
+            } else {
+                $payload['skipped']++;
+            }
+        } else {
+            $payload['not_found'] = intval($payload['not_found']) + 1;
+            $payload['skipped']++;
+        }
+    }
+
+    $payload['offset'] = $end;
+    $done = $end >= $total;
+    $progress = $total > 0 ? round(($end / $total) * 100, 1) : 100;
+
+    if ($done) {
+        delete_transient($session_id);
+    } else {
+        set_transient($session_id, $payload, 2 * HOUR_IN_SECONDS);
+    }
+
+    wp_send_json([
+        'success' => true,
+        'done' => $done,
+        'total' => $total,
+        'processed' => $end,
+        'progress' => $progress,
+        'imported' => intval($payload['imported']),
+        'updated' => intval($payload['updated']),
+        'skipped' => intval($payload['skipped']),
+        'not_found' => intval($payload['not_found']),
+    ]);
+});
+
+/**
+ * One-click restore of trashed products matching SKUs in uploaded CSV.
+ */
+add_action('wp_ajax_import_restore_trashed_skus', function() {
+    check_ajax_referer('import_nonce', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['error' => 'Unauthorized']);
+    }
+    if (empty($_FILES['csv_file'])) {
+        wp_send_json_error(['error' => 'No file uploaded']);
+    }
+
+    $file = $_FILES['csv_file'];
+    if (($handle = fopen($file['tmp_name'], 'r')) === false) {
+        wp_send_json_error(['error' => 'Unable to open CSV file']);
+    }
+
+    $header = fgetcsv($handle);
+    if ($header === false) {
+        fclose($handle);
+        wp_send_json_error(['error' => 'Invalid or empty CSV file']);
+    }
+
+    $normalize_header = function($value) {
+        $value = preg_replace('/^\xEF\xBB\xBF/', '', (string) $value);
+        return strtolower(trim($value));
+    };
+
+    $header_map = [];
+    foreach ($header as $index => $name) {
+        $header_map[$normalize_header($name)] = $index;
+    }
+
+    $sku_index = $header_map['sku'] ?? null;
+    $status_index = $header_map['status'] ?? null;
+    if ($sku_index === null) {
+        fclose($handle);
+        wp_send_json_error(['error' => 'CSV missing required column: SKU']);
+    }
+
+    $sku_status_map = [];
+    while (($row = fgetcsv($handle)) !== false) {
+        $sku = isset($row[$sku_index]) ? trim($row[$sku_index]) : '';
+        if (!$sku) {
+            continue;
+        }
+        $raw_status = ($status_index !== null && isset($row[$status_index])) ? trim($row[$status_index]) : 'publish';
+        $sku_status_map[$sku] = belims_normalize_import_status($raw_status);
+    }
+    fclose($handle);
+
+    if (empty($sku_status_map)) {
+        wp_send_json_error(['error' => 'No valid SKUs found in CSV']);
+    }
+
+    $restored = 0;
+    $updated = 0;
+    $not_found = 0;
+    $already_active = 0;
+
+    foreach ($sku_status_map as $sku => $normalized_status) {
+        $posts = get_posts([
+            'post_type' => 'product',
+            'post_status' => ['trash', 'publish', 'draft', 'pending', 'private'],
+            'posts_per_page' => 1,
+            'fields' => 'ids',
+            'meta_query' => [
+                [
+                    'key' => '_sku',
+                    'value' => $sku,
+                    'compare' => '=',
+                ]
+            ],
+        ]);
+
+        if (empty($posts)) {
+            $not_found++;
+            continue;
+        }
+
+        $product_id = intval($posts[0]);
+        $current_status = get_post_status($product_id);
+
+        if ($current_status === 'trash') {
+            wp_untrash_post($product_id);
+            $restored++;
+        } else {
+            $already_active++;
+        }
+
+        $product = wc_get_product($product_id);
+        if ($product) {
+            $product->set_status($normalized_status);
+            $product->save();
+            $updated++;
+        }
+    }
+
+    wp_send_json([
+        'success' => true,
+        'restored' => $restored,
+        'updated' => $updated,
+        'already_active' => $already_active,
+        'not_found' => $not_found,
+        'message' => "Restore complete. Restored {$restored} trashed products; updated status for {$updated}; already active: {$already_active}; not found: {$not_found}."
+    ]);
 });
 
 /**
@@ -2641,7 +3040,7 @@ add_action('admin_menu', function() {
                                 <th><label for="csv_file">CSV File:</label></th>
                                 <td>
                                     <input type="file" id="csv_file" name="csv_file" accept=".csv" required style="padding: 10px;">
-                                    <p class="description" style="margin-top: 10px;">Upload INGCO_Products_199_with_Descriptions.csv</p>
+                                    <p class="description" style="margin-top: 10px;">INGCO_Products_199_with_Descriptions_FROM_HTML.csv</p>
                                 </td>
                             </tr>
                         </table>
@@ -2661,12 +3060,22 @@ add_action('admin_menu', function() {
                     
                     <button type="button" class="button button-success" id="confirm-import-btn" style="padding: 10px 30px; font-size: 14px; margin-right: 10px;">✓ Confirm & Import All</button>
                     <button type="button" class="button" id="cancel-import-btn" style="padding: 10px 30px; font-size: 14px;">✗ Cancel</button>
+                    <button type="button" class="button" id="restore-trashed-btn" style="padding: 10px 30px; font-size: 14px; margin-left: 10px; border-color: #b45309; color: #92400e;">↺ Restore Imported Trashed SKUs</button>
                 </div>
                 
                 <!-- Import Status -->
                 <div id="import-status" style="display: none; max-width: 800px; background: #fff3cd; padding: 20px; border-radius: 5px; border: 2px solid #ffc107;">
                     <h2 style="color: #856404;">✓ Import Complete!</h2>
                     <div id="import-results-text" style="font-size: 16px; line-height: 1.8; margin-top: 15px;"></div>
+                </div>
+
+                <!-- Import Progress -->
+                <div id="import-progress" style="display: none; max-width: 800px; background: #e8f0fe; padding: 20px; border-radius: 5px; border: 2px solid #3b82f6; margin-top: 20px;">
+                    <h2 style="color: #1d4ed8; margin-bottom: 12px;">Import in Progress</h2>
+                    <div style="height: 14px; background: #dbeafe; border-radius: 999px; overflow: hidden;">
+                        <div id="import-progress-bar" style="width: 0%; height: 100%; background: #2563eb; transition: width 0.2s ease;"></div>
+                    </div>
+                    <div id="import-progress-text" style="margin-top: 10px; font-weight: 600; color: #1e3a8a;">0%</div>
                 </div>
             </div>
             
@@ -2710,7 +3119,7 @@ add_action('admin_menu', function() {
                         contentType: false,
                         processData: false,
                         success: function(response) {
-                            var data = JSON.parse(response);
+                            var data = (typeof response === 'string') ? JSON.parse(response) : response;
                             if (data.success) {
                                 $('#total-products-span').text(data.total_products);
                                 
@@ -2722,12 +3131,18 @@ add_action('admin_menu', function() {
                                     html += '<div class="product-desc"><strong>Description:</strong> ' + product.description_preview + '</div>';
                                     html += '</div>';
                                 });
+                                if (!html) {
+                                    html = '<div class="product-preview-item"><div class="product-title">No sample rows available. Check CSV columns: SKU, Title, Description.</div></div>';
+                                }
                                 
                                 $('#products-preview-list').html(html);
                                 $('#preview-results').show();
                             } else {
                                 alert('Error: ' + (data.error || 'Unknown error'));
                             }
+                        },
+                        error: function(xhr) {
+                            alert('Preview failed: ' + (xhr.responseText || 'Server error'));
                         }
                     });
                 });
@@ -2736,31 +3151,85 @@ add_action('admin_menu', function() {
                     if (!confirm('Import ' + $('#total-products-span').text() + ' products? This cannot be undone.')) return;
                     
                     $('#confirm-import-btn').prop('disabled', true).text('⏳ Importing...');
-                    
-                    var formData = new FormData($('#import-dry-run-form')[0]);
-                    formData.append('action', 'import_execute');
-                    
+
+                    var startForm = new FormData($('#import-dry-run-form')[0]);
+                    startForm.append('action', 'import_start_batch');
+
+                    $('#import-progress').show();
+                    $('#import-progress-bar').css('width', '0%');
+                    $('#import-progress-text').text('Starting import...');
+
                     $.ajax({
                         url: ajaxurl,
                         type: 'POST',
-                        data: formData,
+                        data: startForm,
                         contentType: false,
                         processData: false,
                         success: function(response) {
-                            var data = JSON.parse(response);
-                            if (data.success) {
-                                $('#preview-results').hide();
-                                $('#import-results-text').html(
-                                    '<strong style="color: green; font-size: 18px;">✓ Success! All products imported.</strong><br><br>' +
-                                    '<span style="font-size: 15px;">' +
-                                    '✓ <strong style="color: green;">' + data.imported + ' new products created</strong><br>' +
-                                    '✓ <strong style="color: #1565c0;">' + data.updated + ' existing products updated</strong><br>' +
-                                    '⊘ <strong>' + data.skipped + ' rows skipped</strong><br><br>' +
-                                    '</span>' +
-                                    '<em>Next: Go to Products to verify or Export tab to verify descriptions.</em>'
-                                );
-                                $('#import-status').show();
+                            var startData = (typeof response === 'string') ? JSON.parse(response) : response;
+                            if (!startData.success) {
+                                alert('Import start failed: ' + (startData.error || 'Unknown error'));
+                                $('#confirm-import-btn').prop('disabled', false).text('✓ Confirm & Import All');
+                                $('#import-progress').hide();
+                                return;
                             }
+
+                            var sessionId = startData.session_id;
+                            var batchSize = 25;
+
+                            function runBatch() {
+                                $.ajax({
+                                    url: ajaxurl,
+                                    type: 'POST',
+                                    data: {
+                                        action: 'import_process_batch',
+                                        nonce: $('#import-dry-run-form input[name="nonce"]').val(),
+                                        session_id: sessionId,
+                                        batch_size: batchSize
+                                    },
+                                    success: function(batchResp) {
+                                        var data = (typeof batchResp === 'string') ? JSON.parse(batchResp) : batchResp;
+                                        if (!data.success) {
+                                            alert('Batch import failed: ' + (data.error || 'Unknown error'));
+                                            $('#confirm-import-btn').prop('disabled', false).text('✓ Confirm & Import All');
+                                            return;
+                                        }
+
+                                        $('#import-progress-bar').css('width', data.progress + '%');
+                                        $('#import-progress-text').text(
+                                            data.progress + '% (' + data.processed + '/' + data.total + ') — Updated: ' + data.updated + ', Skipped: ' + data.skipped + ', Not found: ' + (data.not_found || 0)
+                                        );
+
+                                        if (data.done) {
+                                            $('#preview-results').hide();
+                                            $('#import-results-text').html(
+                                                '<strong style="color: green; font-size: 18px;">✓ Success! Batch update complete (no new products created).</strong><br><br>' +
+                                                '<span style="font-size: 15px;">' +
+                                                '✓ <strong style="color: #1565c0;">' + data.updated + ' existing products updated</strong><br>' +
+                                                '⊘ <strong>' + data.skipped + ' rows skipped</strong><br><br>' +
+                                                '⚠ <strong>' + (data.not_found || 0) + ' rows not matched to existing products</strong><br><br>' +
+                                                '</span>' +
+                                                '<em>Next: Go to Products to verify or Export tab to verify descriptions.</em>'
+                                            );
+                                            $('#import-status').show();
+                                            $('#confirm-import-btn').prop('disabled', false).text('✓ Confirm & Import All');
+                                        } else {
+                                            runBatch();
+                                        }
+                                    },
+                                    error: function(xhr) {
+                                        alert('Batch import request failed: ' + (xhr.responseText || 'Server error'));
+                                        $('#confirm-import-btn').prop('disabled', false).text('✓ Confirm & Import All');
+                                    }
+                                });
+                            }
+
+                            runBatch();
+                        },
+                        error: function(xhr) {
+                            alert('Import start failed: ' + (xhr.responseText || 'Server error'));
+                            $('#confirm-import-btn').prop('disabled', false).text('✓ Confirm & Import All');
+                            $('#import-progress').hide();
                         }
                     });
                 });
@@ -2768,6 +3237,36 @@ add_action('admin_menu', function() {
                 $('#cancel-import-btn').click(function() {
                     $('#preview-results').hide();
                     $('#import-dry-run-form')[0].reset();
+                });
+
+                $('#restore-trashed-btn').click(function() {
+                    if (!confirm('Restore trashed products by SKU from this CSV now?')) return;
+
+                    $('#restore-trashed-btn').prop('disabled', true).text('↺ Restoring...');
+
+                    var restoreForm = new FormData($('#import-dry-run-form')[0]);
+                    restoreForm.append('action', 'import_restore_trashed_skus');
+
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: restoreForm,
+                        contentType: false,
+                        processData: false,
+                        success: function(response) {
+                            var data = (typeof response === 'string') ? JSON.parse(response) : response;
+                            if (data.success) {
+                                alert(data.message);
+                            } else {
+                                alert('Restore failed: ' + (data.error || 'Unknown error'));
+                            }
+                            $('#restore-trashed-btn').prop('disabled', false).text('↺ Restore Imported Trashed SKUs');
+                        },
+                        error: function(xhr) {
+                            alert('Restore failed: ' + (xhr.responseText || 'Server error'));
+                            $('#restore-trashed-btn').prop('disabled', false).text('↺ Restore Imported Trashed SKUs');
+                        }
+                    });
                 });
             });
             </script>
