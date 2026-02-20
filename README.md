@@ -278,4 +278,6 @@ Ensure your latest code is pushed to GitHub:
 ```bash
 cd wp-content/plugins/global-site-settings
 ./deploy.sh
+fukrbVPg7vJY
 ```
+

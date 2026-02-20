@@ -37,7 +37,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 }) => {
   if (!searchResults) return null;
 
-  const displayProducts = searchResults.products.slice(0, 10).slice(0, 5);
+  const displayProducts = searchResults.products.slice(0, 10);
 
   // Auto-generate suggestions based on search query and products
   const suggestions = useMemo(() => {

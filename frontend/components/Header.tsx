@@ -322,17 +322,57 @@ export const Header: React.FC<HeaderProps> = ({
   useEffect(() => {
     if (searchQuery.length > 1) {
       const lowerQuery = searchQuery.toLowerCase();
+      const queryWords = lowerQuery.split(/\s+/).filter(Boolean);
 
       const matchedCats = flatCategoryList.filter(
         (cat) =>
           cat.label.toLowerCase().includes(lowerQuery) ||
           cat.fullPath.toLowerCase().includes(lowerQuery),
       );
-      const matchedProds = products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(lowerQuery) ||
-          p.category.toLowerCase().includes(lowerQuery),
-      );
+      const matchedProds = products
+        .map((p) => {
+          const nameLower = p.name.toLowerCase();
+          const categoryLower = p.category.toLowerCase();
+          const skuLower = (p.sku || "").toLowerCase();
+          const descriptionLower = (p.description || "").toLowerCase();
+
+          const isExactSkuMatch = skuLower === lowerQuery;
+          const isExactTitleMatch = nameLower === lowerQuery;
+          const matchesTitlePhrase = nameLower.includes(lowerQuery);
+          const matchesAllWordsInTitle =
+            queryWords.length > 0 &&
+            queryWords.every((word) => nameLower.includes(word));
+          const matchesCategory = categoryLower.includes(lowerQuery);
+          const matchesSku = skuLower.includes(lowerQuery);
+          const matchesDescription = descriptionLower.includes(lowerQuery);
+
+          const isMatch =
+            matchesTitlePhrase ||
+            matchesAllWordsInTitle ||
+            matchesCategory ||
+            matchesSku ||
+            matchesDescription;
+
+          if (!isMatch) {
+            return null;
+          }
+
+          let score = 0;
+          if (isExactSkuMatch) score += 120;
+          if (isExactTitleMatch) score += 110;
+          if (matchesTitlePhrase) score += 90;
+          if (matchesAllWordsInTitle) score += 85;
+          if (matchesSku) score += 80;
+          if (matchesCategory) score += 40;
+          if (matchesDescription) score += 20;
+
+          return { product: p, score };
+        })
+        .filter((entry): entry is { product: Product; score: number } =>
+          Boolean(entry),
+        )
+        .sort((a, b) => b.score - a.score)
+        .map((entry) => entry.product);
       setSearchResults({ categories: matchedCats, products: matchedProds });
     } else {
       setSearchResults(null);
