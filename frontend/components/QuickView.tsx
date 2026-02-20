@@ -55,7 +55,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
         id={quickViewId}
         role="dialog"
         aria-modal="true"
-        className={`relative z-[1] w-full md:max-w-5xl rounded-t-2xl md:rounded-block bg-surface shadow-pop border border-subtle max-h-[75vh] md:max-h-[75vh] overflow-y-auto md:overflow-hidden overscroll-y-contain transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`relative z-[1] w-full md:max-w-5xl rounded-t-2xl md:rounded-block bg-surface shadow-pop border border-subtle max-h-[65vh] md:max-h-[65vh] overflow-y-auto md:overflow-hidden overscroll-y-contain transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isQuickViewOpening || isQuickViewClosing
             ? "translate-y-full"
             : "translate-y-0"
@@ -64,13 +64,22 @@ export const QuickView: React.FC<QuickViewProps> = ({
         <button
           type="button"
           onClick={closeQuickView}
-          className="absolute right-4 top-4 text-muted hover:text-ink"
+          className="w-full h-9 md:hidden flex items-center justify-center px-0 rounded-t-2xl hover:bg-slate-50 transition-colors"
+          aria-label="Close quick view"
+        >
+          <span className="w-12 h-1.5 bg-slate-300 rounded-full" />
+        </button>
+
+        <button
+          type="button"
+          onClick={closeQuickView}
+          className="absolute right-4 top-11 md:top-4 text-muted hover:text-ink"
           aria-label="Close quick view"
         >
           <span className="text-xl">X</span>
         </button>
 
-        <div className="grid gap-6 p-6 md:overflow-hidden md:grid-cols-[1.1fr_1fr] md:h-[78vh]">
+        <div className="grid gap-6 p-0 md:overflow-hidden md:grid-cols-[1.1fr_1fr] md:h-[65vh]">
           <div className="flex flex-col gap-4 md:h-full md:sticky md:top-0">
             <div className="flex items-center justify-center rounded-block bg-grey-light p-4 md:h-full">
               {product.image ? (
@@ -89,14 +98,15 @@ export const QuickView: React.FC<QuickViewProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-col md:max-h-full md:overflow-y-auto md:pr-2">
-            <div className="text-2xl md:text-3xl font-bold text-ink font-heading leading-tight">
-              {product.name}
-            </div>
-            <div className="mt-2 text-sm font-semibold uppercase text-muted tracking-wide">
+          <div className="flex flex-col md:max-h-full py-6 px-6 md:overflow-y-auto md:px-4 md:pr-8">
+            <div className="mb-1 text-sm font-semibold uppercase text-muted tracking-wide">
               SKU: {product.sku || product.id}
             </div>
-            <div className="mt-3 text-2xl font-bold text-ink">
+            <div className="text-xl md:text-3xl font-bold text-grey font-heading leading-tight">
+              {product.name}
+            </div>
+
+            <div className="mt-4 text-2xl font-bold text-red-muted">
               {formatCurrency(displayPrice)}
             </div>
 
@@ -104,8 +114,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
               <StockBar current={product.stock ?? 0} max={quickViewMaxStock} />
             </div>
 
-            <div className="mt-5 rounded-block border border-subtle bg-white p-4">
-              <div className="text-sm font-semibold text-ink mb-3">Buy Box</div>
+            <div className="mt-5 rounded-block bg-white">
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex items-center border border-subtle rounded-pill overflow-hidden h-11">
                   <button
@@ -139,7 +148,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
                   type="button"
                   onClick={() => onAddToCart(quickViewQty)}
                   disabled={product.stock <= 0}
-                  className="group relative h-11 flex-1 overflow-hidden rounded-pill bg-grey-light text-grey transition-colors disabled:opacity-50"
+                  className="group relative h-11 flex-1 overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50"
                 >
                   <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
                   <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
@@ -152,7 +161,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
                 type="button"
                 onClick={() => onBuyNow(quickViewQty)}
                 disabled={product.stock <= 0}
-                className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50"
+                className="group relative h-11 w-full overflow-hidden rounded-pill bg-red-muted text-white transition-colors disabled:opacity-50"
               >
                 <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
                 <span className="relative z-10 font-heading font-bold transition-colors">
