@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aaronfagan/ccicons": "github:aaronfagan/svg-credit-card-payment-icons",
     "@google/genai": "^1.30.0",
     "lucide-react": "^0.554.0",
     "react": "^19.2.0",
