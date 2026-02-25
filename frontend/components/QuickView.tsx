@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 import { Product } from "../types";
 import { formatCurrency } from "../utils/price";
 import { StockBar } from "./StockBar";
@@ -29,6 +29,10 @@ export const QuickView: React.FC<QuickViewProps> = ({
   onBuyNow,
 }) => {
   const [quickViewQty, setQuickViewQty] = React.useState(1);
+  const [isAddToCartLoading, setIsAddToCartLoading] = React.useState(false);
+  const [isBuyNowLoading, setIsBuyNowLoading] = React.useState(false);
+
+  const BUTTON_SPINNER_MIN_MS = 450;
 
   React.useEffect(() => {
     if (shouldRender) {
@@ -40,6 +44,44 @@ export const QuickView: React.FC<QuickViewProps> = ({
     product.maxStock && product.maxStock > 0
       ? product.maxStock
       : Math.max(product.stock ?? 0, 1);
+
+  const runActionWithIndicator = (
+    action: "add" | "buy",
+    callback: () => void,
+  ) => {
+    if (action === "add") {
+      setIsAddToCartLoading(true);
+    } else {
+      setIsBuyNowLoading(true);
+    }
+
+    const startedAt = Date.now();
+
+    try {
+      callback();
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, BUTTON_SPINNER_MIN_MS - elapsed);
+
+      window.setTimeout(() => {
+        if (action === "add") {
+          setIsAddToCartLoading(false);
+        } else {
+          setIsBuyNowLoading(false);
+        }
+      }, remaining);
+    }
+  };
+
+  const handleAddToCartClick = () => {
+    if (product.stock <= 0 || isAddToCartLoading || isBuyNowLoading) return;
+    runActionWithIndicator("add", () => onAddToCart(quickViewQty));
+  };
+
+  const handleBuyNowClick = () => {
+    if (product.stock <= 0 || isAddToCartLoading || isBuyNowLoading) return;
+    runActionWithIndicator("buy", () => onBuyNow(quickViewQty));
+  };
 
   if (!shouldRender) return null;
 
@@ -146,26 +188,46 @@ export const QuickView: React.FC<QuickViewProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => onAddToCart(quickViewQty)}
-                  disabled={product.stock <= 0}
+                  onClick={handleAddToCartClick}
+                  disabled={
+                    product.stock <= 0 || isAddToCartLoading || isBuyNowLoading
+                  }
                   className="group relative h-11 flex-1 overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50"
                 >
                   <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                  <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
-                    {product.stock > 0 ? "Add to cart" : "Out of stock"}
+                  <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors group-hover:text-white">
+                    {isAddToCartLoading ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Adding...
+                      </>
+                    ) : product.stock > 0 ? (
+                      "Add to cart"
+                    ) : (
+                      "Out of stock"
+                    )}
                   </span>
                 </button>
               </div>
 
               <button
                 type="button"
-                onClick={() => onBuyNow(quickViewQty)}
-                disabled={product.stock <= 0}
+                onClick={handleBuyNowClick}
+                disabled={
+                  product.stock <= 0 || isAddToCartLoading || isBuyNowLoading
+                }
                 className="group relative h-11 w-full overflow-hidden rounded-pill bg-red-muted text-white transition-colors disabled:opacity-50"
               >
                 <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                <span className="relative z-10 font-heading font-bold transition-colors">
-                  Buy Now
+                <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors">
+                  {isBuyNowLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Buy Now"
+                  )}
                 </span>
               </button>
             </div>

@@ -4,8 +4,7 @@ import { CartItem, Product } from "../types";
 import { FREE_SHIPPING_THRESHOLD, CURRENCY_SYMBOL } from "../constants";
 import { formatCurrency } from "../utils/price";
 
-const DRAWER_ANIMATION_MS = 320;
-const DRAWER_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+const DRAWER_ANIMATION_MS = 700;
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -28,8 +27,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   recommendedProducts = [],
   addToCart,
 }) => {
-  const [shouldRender, setShouldRender] = useState(isOpen);
-  const [isDrawerVisible, setIsDrawerVisible] = useState(isOpen);
+  const [shouldRender, setShouldRender] = useState(false);
+  const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [showPromoInput, setShowPromoInput] = useState(false);
@@ -40,10 +39,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   useEffect(() => {
     if (isOpen) {
       setShouldRender(true);
-      const frame = requestAnimationFrame(() => {
-        setIsDrawerVisible(true);
+      setIsDrawerVisible(false);
+      let frameOne = 0;
+      let frameTwo = 0;
+      frameOne = requestAnimationFrame(() => {
+        frameTwo = requestAnimationFrame(() => {
+          setIsDrawerVisible(true);
+        });
       });
-      return () => cancelAnimationFrame(frame);
+      return () => {
+        cancelAnimationFrame(frameOne);
+        cancelAnimationFrame(frameTwo);
+      };
     }
 
     setIsDrawerVisible(false);
@@ -100,12 +107,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   return (
     <div className="fixed inset-0 z-[9999] overflow-hidden">
       <div
-        className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity ${
+        className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${
           isDrawerVisible ? "opacity-100" : "opacity-0"
         }`}
         style={{
-          transitionDuration: `${DRAWER_ANIMATION_MS}ms`,
-          transitionTimingFunction: DRAWER_EASING,
+          transitionDuration: isDrawerVisible
+            ? "500ms"
+            : `${DRAWER_ANIMATION_MS}ms`,
         }}
         onClick={onClose}
       ></div>
@@ -113,15 +121,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       <div className="absolute right-0 top-0 bottom-0 flex items-stretch">
         {/* Slide-in Recommendations Panel */}
         <aside
-          className={`relative h-full overflow-hidden bg-white shadow-2xl border-r border-gray-200 transition-all will-change-transform ${
+          className={`relative h-full overflow-hidden bg-white shadow-2xl border-r border-gray-200 transition-all duration-500 ease-in-out sm:duration-700 will-change-transform ${
             recommendationsVisible
               ? "w-72 sm:w-80 opacity-100 translate-x-0"
               : "w-0 opacity-0 -translate-x-4 pointer-events-none"
           }`}
-          style={{
-            transitionDuration: `${DRAWER_ANIMATION_MS}ms`,
-            transitionTimingFunction: DRAWER_EASING,
-          }}
           aria-hidden={!recommendationsVisible}
         >
           <div
@@ -204,15 +208,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
         {/* Main Cart Panel */}
         <div
-          className={`relative w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-all will-change-transform ${
-            isDrawerVisible
-              ? "translate-x-0 opacity-100"
-              : "translate-x-full opacity-0"
+          className={`relative w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-500 ease-in-out sm:duration-700 will-change-transform ${
+            isDrawerVisible ? "translate-x-0" : "translate-x-full"
           }`}
-          style={{
-            transitionDuration: `${DRAWER_ANIMATION_MS}ms`,
-            transitionTimingFunction: DRAWER_EASING,
-          }}
         >
           {/* Header */}
           <div className="border-b p-4 flex items-center justify-between">

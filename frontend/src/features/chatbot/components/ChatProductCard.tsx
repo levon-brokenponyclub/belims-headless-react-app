@@ -1,4 +1,5 @@
 import React from "react";
+import { Loader2 } from "lucide-react";
 import { Product } from "../types";
 import { formatCurrency } from "../../../../utils/price";
 
@@ -21,6 +22,27 @@ export const ChatProductCard: React.FC<ChatProductCardProps> = ({
   type,
   onAddToCart,
 }) => {
+  const [isAdding, setIsAdding] = React.useState(false);
+  const BUTTON_SPINNER_MIN_MS = 450;
+
+  const handleAddClick = () => {
+    if (isAdding) return;
+
+    setIsAdding(true);
+    const startedAt = Date.now();
+
+    try {
+      onAddToCart(product);
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, BUTTON_SPINNER_MIN_MS - elapsed);
+
+      window.setTimeout(() => {
+        setIsAdding(false);
+      }, remaining);
+    }
+  };
+
   const badgeColor =
     {
       Good: "bg-green-100 text-green-800",
@@ -54,10 +76,18 @@ export const ChatProductCard: React.FC<ChatProductCardProps> = ({
           {formatCurrency(product.price)}
         </span>
         <button
-          onClick={() => onAddToCart(product)}
-          className="bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700 transition"
+          onClick={handleAddClick}
+          disabled={isAdding}
+          className="bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700 transition inline-flex items-center justify-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Add
+          {isAdding ? (
+            <>
+              <Loader2 size={12} className="animate-spin" />
+              Adding...
+            </>
+          ) : (
+            "Add"
+          )}
         </button>
       </div>
       <div className="text-[10px] text-gray-500 mt-1">

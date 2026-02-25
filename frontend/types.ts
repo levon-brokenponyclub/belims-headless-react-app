@@ -1,17 +1,20 @@
 export interface Product {
   id: string;
   name: string;
+  slug?: string;
   category: string; // Final price (VAT-inclusive)
   price: number;
   regular_price?: number;
   sale_price?: number;
   price_excl_vat?: number;
   image: string;
+  featured_image?: string;
   images?: string[]; // For gallery
   video_url?: string; // Video URL for product gallery (local or external)
   rating: number;
   reviews: number;
   stock: number; // Current stock
+  stock_status?: "instock" | "outofstock" | "onbackorder" | string;
   maxStock: number; // For the stock bar visual
   weight?: number; // Weight in kg for shipping calculation
   isBundle?: boolean;
@@ -28,6 +31,9 @@ export interface Product {
   cross_sell_ids?: string[]; // WooCommerce cross-sell product IDs
   breadcrumbs?: BreadcrumbItem[]; // Breadcrumb navigation hierarchy
   in_stock?: boolean;
+  deals?: Deal[];
+  best_deal_consumer?: Deal | null;
+  best_deal_trade?: Deal | null;
   acf?: {
     deals?: Deal[];
     [key: string]: any;
@@ -68,6 +74,8 @@ export interface Deal {
   is_active_override?: boolean;
   start_at?: string;
   end_at?: string;
+  start_ts?: number | null;
+  end_ts?: number | null;
 
   // Label/Badge
   deal_name?: string;

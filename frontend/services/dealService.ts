@@ -1,11 +1,44 @@
 import { Product, Deal, DealResolvedInfo } from "../types";
 import { formatCurrency } from "../utils/price";
 
+type DealWithTs = Deal & {
+  start_ts?: number | null;
+  end_ts?: number | null;
+};
+
 // Helper: Normalize deals from product
 export function normalizeDealsFromProduct(product: any): Deal[] {
+  const normalizeWithTimestamps = (deals: any[]): DealWithTs[] =>
+    deals
+      .filter((deal) => deal && typeof deal === "object")
+      .map((deal) => {
+        const startTs =
+          typeof deal.start_ts === "number"
+            ? deal.start_ts
+            : deal.start_at
+              ? new Date(deal.start_at).getTime()
+              : null;
+        const endTs =
+          typeof deal.end_ts === "number"
+            ? deal.end_ts
+            : deal.end_at
+              ? new Date(deal.end_at).getTime()
+              : null;
+
+        return {
+          ...deal,
+          start_ts: Number.isFinite(startTs) ? startTs : null,
+          end_ts: Number.isFinite(endTs) ? endTs : null,
+        };
+      });
+
+  if (Array.isArray(product.deals)) {
+    return normalizeWithTimestamps(product.deals);
+  }
+
   // 1. Prefer acf.deals
   if (product.acf && Array.isArray(product.acf.deals)) {
-    return product.acf.deals;
+    return normalizeWithTimestamps(product.acf.deals);
   }
 
   // 2. Fallback: meta_data
@@ -14,10 +47,13 @@ export function normalizeDealsFromProduct(product: any): Deal[] {
       (m: any) => m.key === "deals" || m.key === "acf:deals",
     );
     if (dealsMeta && dealsMeta.value) {
-      if (Array.isArray(dealsMeta.value)) return dealsMeta.value;
+      if (Array.isArray(dealsMeta.value)) {
+        return normalizeWithTimestamps(dealsMeta.value);
+      }
       if (typeof dealsMeta.value === "string") {
         try {
-          return JSON.parse(dealsMeta.value);
+          const parsed = JSON.parse(dealsMeta.value);
+          return Array.isArray(parsed) ? normalizeWithTimestamps(parsed) : [];
         } catch (e) {
           console.warn("Failed to parse deals meta", e);
         }
@@ -29,12 +65,14 @@ export function normalizeDealsFromProduct(product: any): Deal[] {
 }
 
 // Helper: Check if deal is active
-export function isDealActive(deal: Deal, nowDate: Date = new Date()): boolean {
+export function isDealActive(
+  deal: DealWithTs,
+  nowTime: number = Date.now(),
+): boolean {
   if (deal.is_active_override) return true;
 
-  const nowTime = nowDate.getTime();
-  const start = deal.start_at ? new Date(deal.start_at).getTime() : null;
-  const end = deal.end_at ? new Date(deal.end_at).getTime() : null;
+  const start = deal.start_ts ?? null;
+  const end = deal.end_ts ?? null;
 
   if (start && nowTime < start) return false;
   if (end && nowTime > end) return false;
@@ -59,51 +97,52 @@ export function resolveBestDeal(
   deals: Deal[],
   audienceContext: "consumer" | "trade",
 ): Deal | null {
-  const activeDeals = deals.filter((d) => isDealActive(d));
+  const nowTime = Date.now();
+  let bestDeal: DealWithTs | null = null;
+  let bestScore: [number, number, number, number] | null = null;
 
-  const candidates = activeDeals.filter((d) => {
-    // Audience match
+  for (const rawDeal of deals as DealWithTs[]) {
+    const deal = rawDeal;
+    if (!isDealActive(deal, nowTime)) continue;
+
     if (audienceContext === "consumer") {
-      if (d.audience === "trade") return false;
-      // Rule: "If audienceContext === consumer and deal.audience is trade/both: allow ONLY if visibility is public/teaser"
-      if (d.audience === "both" && d.visibility === "gated") return false;
-    } else {
-      // Trade context
-      if (d.audience === "consumer") return false;
+      if (deal.audience === "trade") continue;
+      if (deal.audience === "both" && deal.visibility === "gated") continue;
+    } else if (deal.audience === "consumer") {
+      continue;
     }
 
-    // Visibility Gating
-    if (d.visibility === "gated" && audienceContext !== "trade") return false;
+    if (deal.visibility === "gated" && audienceContext !== "trade") continue;
 
-    return true;
-  });
+    const typePriority = TYPE_PRIORITY[deal.type] || TYPE_PRIORITY.default;
+    const dealPriority = deal.priority ?? 999;
+    const discountScore = -(deal.discount_percent ?? 0);
+    const endScore = deal.end_ts ?? Number.POSITIVE_INFINITY;
+    const score: [number, number, number, number] = [
+      typePriority,
+      dealPriority,
+      discountScore,
+      endScore,
+    ];
 
-  if (candidates.length === 0) return null;
+    if (
+      !bestScore ||
+      score[0] < bestScore[0] ||
+      (score[0] === bestScore[0] && score[1] < bestScore[1]) ||
+      (score[0] === bestScore[0] &&
+        score[1] === bestScore[1] &&
+        score[2] < bestScore[2]) ||
+      (score[0] === bestScore[0] &&
+        score[1] === bestScore[1] &&
+        score[2] === bestScore[2] &&
+        score[3] < bestScore[3])
+    ) {
+      bestDeal = deal;
+      bestScore = score;
+    }
+  }
 
-  // Sort candidates
-  candidates.sort((a, b) => {
-    // (A) Type priority
-    const pA = TYPE_PRIORITY[a.type] || TYPE_PRIORITY.default;
-    const pB = TYPE_PRIORITY[b.type] || TYPE_PRIORITY.default;
-    if (pA !== pB) return pA - pB;
-
-    // (B) Deal priority
-    const dpA = a.priority ?? 999;
-    const dpB = b.priority ?? 999;
-    if (dpA !== dpB) return dpA - dpB;
-
-    // (C) Deeper discount (Approximate logic: percent first)
-    const discA = a.discount_percent ?? 0;
-    const discB = b.discount_percent ?? 0;
-    if (discA !== discB) return discB - discA; // Higher discount wins
-
-    // (D) Earliest end_at
-    const endA = a.end_at ? new Date(a.end_at).getTime() : Infinity;
-    const endB = b.end_at ? new Date(b.end_at).getTime() : Infinity;
-    return endA - endB;
-  });
-
-  return candidates[0];
+  return bestDeal;
 }
 
 // Helper: Compute Display
@@ -250,11 +289,12 @@ export function enrichProductWithDeals(product: Product): Product {
   // Pass false to simulate "logged out/public view" of the trade deal to determine login requirements
   const tradeDisplay = computeDealDisplay(product, bestTrade, "trade", false);
 
-  product.deals_resolved = {
-    raw: rawDeals,
-    consumer: consumerDisplay,
-    trade: tradeDisplay,
+  return {
+    ...product,
+    deals_resolved: {
+      raw: rawDeals,
+      consumer: consumerDisplay,
+      trade: tradeDisplay,
+    },
   };
-
-  return product;
 }

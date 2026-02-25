@@ -12,6 +12,7 @@ import {
   useNavigate,
   useParams,
   useSearchParams,
+  useLocation,
 } from "react-router-dom";
 
 import { Header } from "./components/Header";
@@ -46,6 +47,7 @@ import { BrandStrip } from "./components/BrandStrip";
 import { AuthPage } from "./components/AuthPage";
 import { AccountPage } from "./components/AccountPage";
 import { Toast } from "./components/Toast";
+import { CookieConsent } from "./components/CookieConsent";
 import { Skeleton, SkeletonLine, SkeletonImage } from "./components/Skeleton";
 import HeroBanner from "./components/HeroBanner";
 import { CountdownTimer } from "./components/CountdownTimer";
@@ -57,6 +59,7 @@ import { getCurrentUser, UserData, logoutUser } from "./services/authService";
 import { Product, CartItem, Store } from "./types";
 import {
   fetchProducts,
+  fetchProductById,
   fetchFeaturedProducts,
   fetchCategories,
   getApiBaseUrl,
@@ -94,12 +97,63 @@ const ProductPage = ({
   const { id } = useParams();
   const navigate = useNavigate();
   const product = products.find((p) => String(p.id) === id);
+  const [hydratedProduct, setHydratedProduct] = useState<Product | null>(null);
+  const [isHydratingProduct, setIsHydratingProduct] = useState(false);
 
-  if (!product && !isLoadingProducts && products.length > 0)
+  useEffect(() => {
+    if (!id) return;
+
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const baseProduct = products.find((p) => String(p.id) === id) || null;
+    const hasDetailPayload = Boolean(
+      baseProduct?.description ||
+      (baseProduct?.images && baseProduct.images.length > 0) ||
+      (baseProduct?.specifications && baseProduct.specifications.length > 0),
+    );
+
+    if (baseProduct && hasDetailPayload) {
+      setHydratedProduct(baseProduct);
+      return () => {
+        isMounted = false;
+        controller.abort();
+      };
+    }
+
+    setIsHydratingProduct(true);
+    fetchProductById(String(id), { signal: controller.signal })
+      .then((fullProduct) => {
+        if (!isMounted) return;
+        if (fullProduct) {
+          setHydratedProduct(fullProduct);
+        } else {
+          setHydratedProduct(baseProduct);
+        }
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsHydratingProduct(false);
+      });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [id, products]);
+
+  const resolvedProduct = hydratedProduct || product;
+
+  if (
+    !resolvedProduct &&
+    !isLoadingProducts &&
+    !isHydratingProduct &&
+    products.length > 0
+  )
     return <div className="p-10 text-center">Product not found</div>;
-  if (!product && !isLoadingProducts)
+  if (!resolvedProduct && !isLoadingProducts && !isHydratingProduct)
     return <div className="p-10 text-center">Product not found</div>;
-  if (!product)
+  if (!resolvedProduct || isHydratingProduct)
     return (
       <div className="container mx-auto px-4 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8">
@@ -124,7 +178,7 @@ const ProductPage = ({
 
   return (
     <SingleProduct
-      product={product}
+      product={resolvedProduct}
       allProducts={products}
       addToCart={addToCart}
       onBuyNow={onBuyNow}
@@ -190,6 +244,7 @@ const HomePage = ({
   isTradeApproved,
 }) => {
   const navigate = useNavigate();
+  const homeLoadLoggedRef = useRef(false);
 
   // Filter products for Clearance
 
@@ -232,6 +287,27 @@ const HomePage = ({
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [products]);
+
+  useEffect(() => {
+    if (homeLoadLoggedRef.current) return;
+    if (isLoadingProducts || products.length === 0) return;
+
+    let rafB = 0;
+    const rafA = window.requestAnimationFrame(() => {
+      rafB = window.requestAnimationFrame(() => {
+        const loadTimeMs = performance.now();
+        console.log(
+          `[Performance][Optimized] Home page loaded with products in ${loadTimeMs.toFixed(0)}ms (products: ${products.length})`,
+        );
+        homeLoadLoggedRef.current = true;
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafA);
+      if (rafB) window.cancelAnimationFrame(rafB);
+    };
+  }, [isLoadingProducts, products]);
 
   return (
     <>
@@ -907,7 +983,12 @@ export default function App() {
     const loadProducts = async () => {
       setIsLoadingProducts(true);
       try {
+        const productsFetchStart = performance.now();
         const apiProducts = await fetchProducts();
+        const productsFetchMs = performance.now() - productsFetchStart;
+        console.log(
+          `[Performance][Optimized] Products API fetched in ${productsFetchMs.toFixed(0)}ms (products: ${apiProducts?.length || 0})`,
+        );
         if (apiProducts?.length) setProducts(apiProducts);
 
         const apiFeatured = await fetchFeaturedProducts();
@@ -1059,8 +1140,78 @@ export default function App() {
 
 function MainApp(props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const isAuthenticated = !!props.currentUser;
   const isTradeApproved = !!props.currentUser?.roles?.includes("contractor");
+  const PAGE_FADE_DURATION_MS = 550;
+  const COOKIE_ACCEPTED_STORAGE_KEY = "cookieConsentAccepted";
+
+  const [displayLocation, setDisplayLocation] = useState(location);
+  const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
+  const [isCookieConsentOpen, setIsCookieConsentOpen] = useState(false);
+
+  useEffect(() => {
+    const isSameLocation =
+      location.pathname === displayLocation.pathname &&
+      location.search === displayLocation.search;
+
+    if (isSameLocation) return;
+
+    setIsRouteTransitioning(true);
+
+    const timeoutId = window.setTimeout(() => {
+      setDisplayLocation(location);
+      setIsRouteTransitioning(false);
+    }, PAGE_FADE_DURATION_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [location, displayLocation, PAGE_FADE_DURATION_MS]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+  }, [displayLocation.pathname, displayLocation.search]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedAccepted = window.localStorage.getItem(
+      COOKIE_ACCEPTED_STORAGE_KEY,
+    );
+
+    if (savedAccepted === "true") return;
+
+    const openDrawer = () => {
+      window.setTimeout(() => {
+        setIsCookieConsentOpen(true);
+      }, 150);
+    };
+
+    if (document.readyState === "complete") {
+      openDrawer();
+      return;
+    }
+
+    window.addEventListener("load", openDrawer, { once: true });
+    return () => window.removeEventListener("load", openDrawer);
+  }, []);
+
+  const handleOpenCookieConsent = () => {
+    setIsCookieConsentOpen(true);
+  };
+
+  const handleCloseCookieConsent = () => {
+    setIsCookieConsentOpen(false);
+  };
+
+  const handleCookieCancel = () => {
+    setIsCookieConsentOpen(false);
+  };
+
+  const handleCookieAccept = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(COOKIE_ACCEPTED_STORAGE_KEY, "true");
+    }
+    setIsCookieConsentOpen(false);
+  };
 
   const handleProductClick = (product: Product) => {
     navigate(`/product/${product.id}`);
@@ -1085,109 +1236,119 @@ function MainApp(props) {
       />
 
       <main className="flex-1 w-full px-0 relative">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <HomePage
-                {...props}
-                handleProductClick={handleProductClick}
-                isAuthenticated={isAuthenticated}
-                isTradeApproved={isTradeApproved}
-              />
-            }
-          />
-          <Route
-            path="/product/:id"
-            element={
-              <ProductPage
-                products={props.products}
-                isLoadingProducts={props.isLoadingProducts}
-                addToCart={props.addToCart}
-                onBuyNow={props.handleBuyNow}
-                onCompare={props.addToCompare}
-                setPriceMatchProduct={props.setPriceMatchProduct}
-                isAuthenticated={isAuthenticated}
-                isTradeApproved={isTradeApproved}
-              />
-            }
-          />
-          <Route
-            path="/shop"
-            element={
-              <ArchivePage
-                products={props.products}
-                isLoadingProducts={props.isLoadingProducts}
-                addToCart={props.addToCart}
-                onBuyNow={props.handleBuyNow}
-                onCompare={props.addToCompare}
-                isAuthenticated={isAuthenticated}
-                isTradeApproved={isTradeApproved}
-              />
-            }
-          />
-          <Route
-            path="/shop/:categorySlug"
-            element={
-              <ArchivePage
-                products={props.products}
-                isLoadingProducts={props.isLoadingProducts}
-                addToCart={props.addToCart}
-                onBuyNow={props.handleBuyNow}
-                onCompare={props.addToCompare}
-                isAuthenticated={isAuthenticated}
-                isTradeApproved={isTradeApproved}
-              />
-            }
-          />
-          <Route
-            path="/checkout"
-            element={
-              <Checkout
-                cartItems={props.cartItems}
-                onBack={() => navigate(-1)}
-                onClearCart={props.clearCart}
-                onSchedulePickup={() => props.setIsLocatorOpen(true)}
-              />
-            }
-          />
-          <Route
-            path="/login"
-            element={
-              <AuthPage
-                mode="login"
-                onSuccess={props.handleLogin}
-                showToast={props.showToast}
-              />
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <AuthPage
-                mode="register"
-                onSuccess={props.handleLogin}
-                showToast={props.showToast}
-              />
-            }
-          />
-          <Route path="/track-order" element={<TrackOrderPage />} />
-          <Route path="/order-confirmation" element={<OrderConfirmation />} />
-          <Route path="/admin/order-preview" element={<AdminOrderPreview />} />
-          <Route
-            path="/admin/account-preview"
-            element={<AdminAccountPreview />}
-          />
-          <Route
-            path="/account"
-            element={
-              <AccountPage
-                user={props.currentUser}
-                onLogout={props.handleLogout}
-              />
-            }
-          />
-        </Routes>
+        <div
+          className={`transition-opacity ease-out ${
+            isRouteTransitioning ? "opacity-0" : "opacity-100"
+          }`}
+          style={{ transitionDuration: `${PAGE_FADE_DURATION_MS}ms` }}
+        >
+          <Routes location={displayLocation}>
+            <Route
+              path="/"
+              element={
+                <HomePage
+                  {...props}
+                  handleProductClick={handleProductClick}
+                  isAuthenticated={isAuthenticated}
+                  isTradeApproved={isTradeApproved}
+                />
+              }
+            />
+            <Route
+              path="/product/:id"
+              element={
+                <ProductPage
+                  products={props.products}
+                  isLoadingProducts={props.isLoadingProducts}
+                  addToCart={props.addToCart}
+                  onBuyNow={props.handleBuyNow}
+                  onCompare={props.addToCompare}
+                  setPriceMatchProduct={props.setPriceMatchProduct}
+                  isAuthenticated={isAuthenticated}
+                  isTradeApproved={isTradeApproved}
+                />
+              }
+            />
+            <Route
+              path="/shop"
+              element={
+                <ArchivePage
+                  products={props.products}
+                  isLoadingProducts={props.isLoadingProducts}
+                  addToCart={props.addToCart}
+                  onBuyNow={props.handleBuyNow}
+                  onCompare={props.addToCompare}
+                  isAuthenticated={isAuthenticated}
+                  isTradeApproved={isTradeApproved}
+                />
+              }
+            />
+            <Route
+              path="/shop/:categorySlug"
+              element={
+                <ArchivePage
+                  products={props.products}
+                  isLoadingProducts={props.isLoadingProducts}
+                  addToCart={props.addToCart}
+                  onBuyNow={props.handleBuyNow}
+                  onCompare={props.addToCompare}
+                  isAuthenticated={isAuthenticated}
+                  isTradeApproved={isTradeApproved}
+                />
+              }
+            />
+            <Route
+              path="/checkout"
+              element={
+                <Checkout
+                  cartItems={props.cartItems}
+                  onBack={() => navigate(-1)}
+                  onClearCart={props.clearCart}
+                  onSchedulePickup={() => props.setIsLocatorOpen(true)}
+                />
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                <AuthPage
+                  mode="login"
+                  onSuccess={props.handleLogin}
+                  showToast={props.showToast}
+                />
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <AuthPage
+                  mode="register"
+                  onSuccess={props.handleLogin}
+                  showToast={props.showToast}
+                />
+              }
+            />
+            <Route path="/track-order" element={<TrackOrderPage />} />
+            <Route path="/order-confirmation" element={<OrderConfirmation />} />
+            <Route
+              path="/admin/order-preview"
+              element={<AdminOrderPreview />}
+            />
+            <Route
+              path="/admin/account-preview"
+              element={<AdminAccountPreview />}
+            />
+            <Route
+              path="/account"
+              element={
+                <AccountPage
+                  user={props.currentUser}
+                  onLogout={props.handleLogout}
+                />
+              }
+            />
+          </Routes>
+        </div>
       </main>
 
       <Footer />
@@ -1309,6 +1470,14 @@ function MainApp(props) {
           onClose={() => props.setToast(null)}
         />
       )}
+
+      <CookieConsent
+        isOpen={isCookieConsentOpen}
+        onOpen={handleOpenCookieConsent}
+        onClose={handleCloseCookieConsent}
+        onCancel={handleCookieCancel}
+        onAccept={handleCookieAccept}
+      />
 
       {/* <BelimsChatbot /> */}
 

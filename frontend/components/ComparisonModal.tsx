@@ -1,5 +1,13 @@
 import React from "react";
-import { X, Check, Minus, ShoppingCart, Trash2, Scale } from "lucide-react";
+import {
+  X,
+  Check,
+  Minus,
+  ShoppingCart,
+  Trash2,
+  Scale,
+  Loader2,
+} from "lucide-react";
 import { Product } from "../types";
 import { formatCurrency } from "../utils/price";
 
@@ -16,6 +24,31 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
   onRemove,
   addToCart,
 }) => {
+  const [addingProductId, setAddingProductId] = React.useState<string | null>(
+    null,
+  );
+  const BUTTON_SPINNER_MIN_MS = 450;
+
+  const handleAddToCart = (product: Product) => {
+    if (addingProductId === product.id) return;
+
+    setAddingProductId(product.id);
+    const startedAt = Date.now();
+
+    try {
+      addToCart(product);
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, BUTTON_SPINNER_MIN_MS - elapsed);
+
+      window.setTimeout(() => {
+        setAddingProductId((current) =>
+          current === product.id ? null : current,
+        );
+      }, remaining);
+    }
+  };
+
   if (!products || products.length === 0) return null;
 
   return (
@@ -74,10 +107,20 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
                         {formatCurrency(p.price)}
                       </div>
                       <button
-                        onClick={() => addToCart(p)}
-                        className="w-full bg-belims-blue text-white py-2 rounded font-bold text-sm hover:bg-belims-light flex items-center justify-center gap-2 transition-colors"
+                        onClick={() => handleAddToCart(p)}
+                        disabled={addingProductId === p.id}
+                        className="w-full bg-belims-blue text-white py-2 rounded font-bold text-sm hover:bg-belims-light flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <ShoppingCart size={16} /> Add to Cart
+                        {addingProductId === p.id ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart size={16} /> Add to Cart
+                          </>
+                        )}
                       </button>
                     </th>
                   ))}

@@ -38,7 +38,35 @@ class Belims_Categories_Endpoint {
             $formatted_categories[] = $this->format_category($category);
         }
 
-        return rest_ensure_response($formatted_categories);
+        return $this->build_cached_response($request, $formatted_categories);
+    }
+
+    private function build_cached_response($request, $payload) {
+        $etag = '"' . md5(wp_json_encode($payload)) . '"';
+        $if_none_match = trim((string) $request->get_header('if-none-match'));
+
+        $headers = array(
+            'Cache-Control' => 'public, max-age=60, s-maxage=300, stale-while-revalidate=300',
+            'ETag' => $etag,
+            'Vary' => 'Accept-Encoding',
+        );
+
+        if (!empty($if_none_match)) {
+            $incoming_tags = array_map('trim', explode(',', $if_none_match));
+            if (in_array($etag, $incoming_tags, true) || in_array('*', $incoming_tags, true)) {
+                $response = new WP_REST_Response(null, 304);
+                foreach ($headers as $key => $value) {
+                    $response->header($key, $value);
+                }
+                return $response;
+            }
+        }
+
+        $response = rest_ensure_response($payload);
+        foreach ($headers as $key => $value) {
+            $response->header($key, $value);
+        }
+        return $response;
     }
 
     /**

@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Target,
+  Loader2,
 } from "lucide-react";
 import { Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
@@ -648,6 +649,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     return items;
   }, [product.images, product.image, product.video_url]);
 
+  const [isAddToCartLoading, setIsAddToCartLoading] = useState(false);
+  const [isBuyNowLoading, setIsBuyNowLoading] = useState(false);
+  const BUTTON_SPINNER_MIN_MS = 450;
+
   const handleAddToCart = () => {
     for (let i = 0; i < qty; i++) {
       const productToAdd = { ...product };
@@ -673,6 +678,44 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const handleBuyNowAction = () => {
     handleAddToCart();
     onBuyNow(product);
+  };
+
+  const runActionWithIndicator = (
+    action: "add" | "buy",
+    callback: () => void,
+  ) => {
+    if (action === "add") {
+      setIsAddToCartLoading(true);
+    } else {
+      setIsBuyNowLoading(true);
+    }
+
+    const startedAt = Date.now();
+
+    try {
+      callback();
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, BUTTON_SPINNER_MIN_MS - elapsed);
+
+      window.setTimeout(() => {
+        if (action === "add") {
+          setIsAddToCartLoading(false);
+        } else {
+          setIsBuyNowLoading(false);
+        }
+      }, remaining);
+    }
+  };
+
+  const handleAddToCartClick = () => {
+    if (product.stock === 0 || isAddToCartLoading || isBuyNowLoading) return;
+    runActionWithIndicator("add", handleAddToCart);
+  };
+
+  const handleBuyNowClick = () => {
+    if (product.stock === 0 || isAddToCartLoading || isBuyNowLoading) return;
+    runActionWithIndicator("buy", handleBuyNowAction);
   };
 
   const handleNextImage = (e: React.MouseEvent) => {
@@ -1208,28 +1251,50 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
                         <div className="flex flex-1">
                           <button
-                            onClick={handleAddToCart}
-                            disabled={product.stock === 0}
+                            onClick={handleAddToCartClick}
+                            disabled={
+                              product.stock === 0 ||
+                              isAddToCartLoading ||
+                              isBuyNowLoading
+                            }
                             className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey-light text-grey transition-colors disabled:opacity-50"
                           >
                             <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                            <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
-                              {product.stock > 0
-                                ? "Add to cart"
-                                : "Out of Stock"}
+                            <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors group-hover:text-white">
+                              {isAddToCartLoading ? (
+                                <>
+                                  <Loader2 size={16} className="animate-spin" />
+                                  Adding...
+                                </>
+                              ) : product.stock > 0 ? (
+                                "Add to cart"
+                              ) : (
+                                "Out of Stock"
+                              )}
                             </span>
                           </button>
                         </div>
                       </div>
                       <button
                         type="button"
-                        onClick={handleBuyNowAction}
-                        disabled={product.stock === 0}
+                        onClick={handleBuyNowClick}
+                        disabled={
+                          product.stock === 0 ||
+                          isAddToCartLoading ||
+                          isBuyNowLoading
+                        }
                         className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50"
                       >
                         <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                        <span className="relative z-10 font-heading font-bold transition-colors">
-                          Buy Now
+                        <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors">
+                          {isBuyNowLoading ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            "Buy Now"
+                          )}
                         </span>
                       </button>
                     </div>
@@ -1608,25 +1673,45 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           {/* CTAs */}
           <div className="flex w-[150px] flex-shrink-0 flex-col gap-2 md:w-auto md:flex-row md:items-center">
             <button
-              onClick={handleAddToCart}
-              disabled={product.stock === 0}
+              onClick={handleAddToCartClick}
+              disabled={
+                product.stock === 0 || isAddToCartLoading || isBuyNowLoading
+              }
               className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey-light text-grey transition-colors disabled:opacity-50 md:w-[140px]"
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
-              <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
-                {product.stock > 0 ? "Add to cart" : "Out of Stock"}
+              <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors group-hover:text-white">
+                {isAddToCartLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Adding...
+                  </>
+                ) : product.stock > 0 ? (
+                  "Add to cart"
+                ) : (
+                  "Out of Stock"
+                )}
               </span>
             </button>
 
             <button
               type="button"
-              onClick={handleBuyNowAction}
-              disabled={product.stock === 0}
+              onClick={handleBuyNowClick}
+              disabled={
+                product.stock === 0 || isAddToCartLoading || isBuyNowLoading
+              }
               className="group relative hidden h-11 w-full overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50 md:block md:w-[140px]"
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
-              <span className="relative z-10 font-heading font-bold transition-colors">
-                Buy Now
+              <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors">
+                {isBuyNowLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Buy Now"
+                )}
               </span>
             </button>
           </div>

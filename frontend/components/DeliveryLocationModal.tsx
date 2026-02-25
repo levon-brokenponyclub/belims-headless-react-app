@@ -11,6 +11,8 @@ import {
   readStoredAddress,
 } from "../services/shippingAddress";
 
+const MODAL_ANIMATION_MS = 700;
+
 interface DeliveryLocationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -78,6 +80,8 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     useState<ShippingAddress | null>(null);
   const [isEditingDeliveryAddress, setIsEditingDeliveryAddress] =
     useState(true);
+  const [shouldRender, setShouldRender] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const getDefaultStore = (stores: StoreWithStatus[]) =>
     stores.find((store) => store.name.toLowerCase().includes("umzinto")) ||
@@ -1310,16 +1314,47 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     setStoreList((prev) => applyDistances(prev, userLocation));
   }, [userLocation]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setIsModalVisible(false);
+      let frameOne = 0;
+      let frameTwo = 0;
+      frameOne = requestAnimationFrame(() => {
+        frameTwo = requestAnimationFrame(() => {
+          setIsModalVisible(true);
+        });
+      });
+      return () => {
+        cancelAnimationFrame(frameOne);
+        cancelAnimationFrame(frameTwo);
+      };
+    }
+
+    setIsModalVisible(false);
+    const timeout = window.setTimeout(() => {
+      setShouldRender(false);
+    }, MODAL_ANIMATION_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [isOpen]);
+
+  if (!shouldRender) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-hidden">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+        className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${
+          isModalVisible ? "opacity-100" : "opacity-0"
+        }`}
         onClick={onClose}
       ></div>
 
-      <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white flex flex-col animate-in slide-in-from-right-4 duration-200">
+      <div
+        className={`absolute right-0 top-0 bottom-0 w-full max-w-md bg-white flex flex-col transform transition-transform duration-500 ease-in-out sm:duration-700 ${
+          isModalVisible ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
         {/* Header */}
         <div className="p-4 bg-belims-blue text-white flex justify-between items-center h-16">
           <div className="flex items-center gap-3">

@@ -149,6 +149,7 @@ export const Archive: React.FC<ArchiveProps> = ({
 
   useEffect(() => {
     let isMounted = true;
+    const controller = new AbortController();
 
     if (!category) {
       setCategoryScopedProducts(null);
@@ -159,7 +160,7 @@ export const Archive: React.FC<ArchiveProps> = ({
     }
 
     setIsCategoryScopedLoading(true);
-    fetchProducts(category)
+    fetchProducts(category, undefined, { signal: controller.signal })
       .then((items) => {
         if (!isMounted) return;
         setCategoryScopedProducts(items);
@@ -178,11 +179,13 @@ export const Archive: React.FC<ArchiveProps> = ({
 
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, [category]);
 
   useEffect(() => {
     let isMounted = true;
+    const controller = new AbortController();
 
     if (!searchQuery) {
       setSearchScopedProducts(null);
@@ -193,7 +196,7 @@ export const Archive: React.FC<ArchiveProps> = ({
     }
 
     setIsSearchScopedLoading(true);
-    fetchProducts(undefined, searchQuery)
+    fetchProducts(undefined, searchQuery, { signal: controller.signal })
       .then((items) => {
         if (!isMounted) return;
         setSearchScopedProducts(items);
@@ -209,6 +212,7 @@ export const Archive: React.FC<ArchiveProps> = ({
 
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, [searchQuery]);
 
