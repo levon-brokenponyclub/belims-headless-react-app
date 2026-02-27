@@ -29,6 +29,7 @@ function belims_ftg_sync_page() {
             $response = wp_remote_post(rest_url('belims/v1/ftg/sync'), array(
                 'body'    => json_encode(array(
                     'collection_token' => $collection_token,
+                    'brand' => 'Assa Abloy',
                     // Test sync: pull up to 10 products
                     'limit' => 10,
                     'batch_size' => 10,
@@ -43,7 +44,7 @@ function belims_ftg_sync_page() {
                 $data = json_decode($body, true);
 
                 if (!empty($data['success'])) {
-                    $sync_status = '<div class="notice notice-success"><p>FTG Sync completed. ' . intval($data['synced']) . ' products synced.</p></div>';
+                    $sync_status = '<div class="notice notice-success"><p>Assa Abloy test sync completed. ' . intval($data['synced']) . ' products synced.</p></div>';
                     update_option('belims_ftg_last_sync', current_time('timestamp'));
                 } else {
                     $sync_status = '<div class="notice notice-error"><p>Sync completed with errors: ' . esc_html(implode(', ', $data['errors'] ?? [])) . '</p></div>';
@@ -54,7 +55,7 @@ function belims_ftg_sync_page() {
     ?>
     <div class="wrap">
         <h1 class="wp-heading-inline">FTG Product Sync</h1>
-        <p>Sync your FTG products into WooCommerce.</p>
+        <p>Sync your Assa Abloy FTG catalogue into WooCommerce.</p>
 
         <?php echo $sync_status; ?>
 
@@ -65,11 +66,11 @@ function belims_ftg_sync_page() {
             </tr>
         </table>
 
-        <h2>Sync All Products</h2>
+        <h2>Test Sync Assa Abloy Catalogue</h2>
         <form method="post">
             <?php wp_nonce_field('belims_ftg_sync_action', 'belims_ftg_sync_nonce'); ?>
             <p>
-                <input type="submit" name="belims_ftg_sync_submit" id="belims_ftg_sync_submit" class="button button-primary" value="Test Sync - 10 Products">
+                <input type="submit" name="belims_ftg_sync_submit" id="belims_ftg_sync_submit" class="button button-primary" value="Test Assa Abloy Sync - 10 Products">
             </p>
         </form>
 

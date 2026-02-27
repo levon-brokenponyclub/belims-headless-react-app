@@ -242,6 +242,7 @@ class Belims_FTG_Sync_Endpoint {
         $collection_token = $params['collection_token'] ?? '';
         $limit = $params['limit'] ?? null; // null = all products
         $offset = $params['offset'] ?? 0;
+        $requested_brand = sanitize_text_field($params['brand'] ?? '');
         // Default test sync chunking to 50 when a limit is provided, otherwise fall back to 50
         $batch_size = $params['batch_size'] ?? ($limit !== null ? 50 : 50);
         
@@ -255,10 +256,10 @@ class Belims_FTG_Sync_Endpoint {
             return new WP_Error('missing_token', 'Collection token required', array('status' => 400));
         }
         
-        // Determine if we should filter for Ingco during pagination (test sync)
+        // Optional brand filter during pagination (used for test syncs)
         $brand_filter = null;
-        if ($limit !== null && $limit <= 400) {
-            $brand_filter = 'Ingco';
+        if (!empty($requested_brand)) {
+            $brand_filter = $requested_brand;
             error_log('Filtering for brand during fetch: ' . $brand_filter);
         }
         // Get products from FTG with pagination to avoid the 100-item cap seen in single calls
@@ -463,6 +464,7 @@ class Belims_FTG_Sync_Endpoint {
         
         return rest_ensure_response(array(
             'success' => true,
+            'brand_filter' => $brand_filter,
             'synced' => $synced_count,
             'skipped' => $skipped_count,
             'total' => count($products),
@@ -539,7 +541,7 @@ class Belims_FTG_Sync_Endpoint {
      */
     public function get_brand_count($request) {
         $collection_token = $request->get_param('collection_token') ?: get_field('ftg_collection_token', 'option');
-        $brand = $request->get_param('brand') ?: 'Ingco';
+        $brand = $request->get_param('brand') ?: 'Assa Abloy';
         $per_page = 100;
         $max_pages = 50;
 
@@ -597,11 +599,21 @@ class Belims_FTG_Sync_Endpoint {
         } while (!empty($page_products) && $page <= $max_pages);
 
         $products = $this->deduplicate_products_by_sku($products);
+        $first_product = null;
+
+        if (!empty($products[0])) {
+            $first_product_data = $products[0]['productData'] ?? $products[0];
+            $first_product = array(
+                'name' => $first_product_data['description1'] ?? $first_product_data['description2'] ?? $first_product_data['description3'] ?? 'Unnamed Product',
+                'sku' => $first_product_data['productCode'] ?? $first_product_data['mdrProductCode'] ?? $first_product_data['altProductCode'] ?? '',
+            );
+        }
 
         return rest_ensure_response(array(
             'success' => true,
             'brand' => $brand,
             'total_unique' => count($products),
+            'first_product' => $first_product,
             'pages_fetched' => $page - 1,
             'page_sizes' => $page_sizes,
         ));
@@ -687,6 +699,13 @@ class Belims_FTG_Sync_Endpoint {
             $product->set_manage_stock(true);
             $product->set_stock_quantity($stock_qty);
             $product->set_stock_status($stock_qty > 0 ? 'instock' : 'outofstock');
+
+            $weight = 0.0;
+            $weight_unit = 'kg';
+            $length = 0.0;
+            $width = 0.0;
+            $height = 0.0;
+            $dim_unit = 'cm';
             
             // Set weight and dimensions if available
             if (!empty($product_data['weight'])) {
@@ -694,6 +713,7 @@ class Belims_FTG_Sync_Endpoint {
                 // Convert grams to kg if needed
                 if (isset($product_data['weightUnit']) && $product_data['weightUnit'] === 'g') {
                     $weight = round($weight / 1000, 3);
+                    $weight_unit = 'kg';
                 }
                 $product->set_weight($weight);
             }
@@ -708,6 +728,7 @@ class Belims_FTG_Sync_Endpoint {
                     $length = round($length / 10, 1);
                     $width = round($width / 10, 1);
                     $height = round($height / 10, 1);
+                    $dim_unit = 'cm';
                 }
                 
                 $product->set_length($length);

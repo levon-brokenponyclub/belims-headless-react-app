@@ -813,7 +813,7 @@ function global_site_settings_main_page() {
                             View API Endpoints
                         </button>
                         <button type="button" id="ftg-brand-count" class="bpc-btn-secondary">
-                            Check Ingco Count
+                            Check Assa Abloy Count
                         </button>
                         <button type="button" id="belims-clear-cache" class="bpc-btn-secondary">
                             Clear Cache
@@ -823,23 +823,50 @@ function global_site_settings_main_page() {
 
                     <script>
                     jQuery(document).ready(function($) {
+                        function getQuickActionBrand() {
+                            var selected = ($('#ftg-brand-filter').val() || '').trim();
+                            if (selected === '__custom__') {
+                                return ($('#ftg-custom-brand').val() || '').trim();
+                            }
+                            return selected || 'Assa Abloy';
+                        }
+
+                        function updateQuickActionBrandButton() {
+                            var brand = getQuickActionBrand();
+                            $('#ftg-brand-count').text('Check ' + brand + ' Count');
+                        }
+
+                        $(document).on('change input', '#ftg-brand-filter, #ftg-custom-brand', function() {
+                            updateQuickActionBrandButton();
+                        });
+
+                        updateQuickActionBrandButton();
+
                         $('#ftg-brand-count').on('click', function() {
+                            var brand = getQuickActionBrand();
                             var btn = $(this);
                             var status = $('#ftg-brand-count-status');
                             btn.prop('disabled', true).text('Checking...');
-                            status.text('Fetching Ingco total from FTG...');
-                            fetch('<?php echo rest_url('belims/v1/ftg/brand-count'); ?>?brand=Ingco')
+                            status.text('Fetching ' + brand + ' total from FTG...');
+                            fetch('<?php echo rest_url('belims/v1/ftg/brand-count'); ?>?brand=' + encodeURIComponent(brand))
                                 .then(function(r) { return r.json(); })
                                 .then(function(data) {
-                                    btn.prop('disabled', false).text('Check Ingco Count');
+                                    btn.prop('disabled', false);
+                                    updateQuickActionBrandButton();
                                     if (data && data.success) {
-                                        status.html('Ingco products available in FTG: <strong>' + data.total_unique + '</strong> (pages fetched: ' + (data.pages_fetched || 0) + ')');
+                                        var firstProductText = '';
+                                        if (data.first_product && data.first_product.sku) {
+                                            var firstName = data.first_product.name || 'Unnamed Product';
+                                            firstProductText = '<br/>Product: <strong>' + firstName + '</strong> - <code>' + data.first_product.sku + '</code>';
+                                        }
+                                        status.html(brand + ' products available in FTG: <strong>' + data.total_unique + '</strong> (pages fetched: ' + (data.pages_fetched || 0) + ')' + firstProductText);
                                     } else {
                                         status.text('Unable to fetch count: ' + (data && data.message ? data.message : 'Unknown error'));
                                     }
                                 })
                                 .catch(function(err) {
-                                    btn.prop('disabled', false).text('Check Ingco Count');
+                                    btn.prop('disabled', false);
+                                    updateQuickActionBrandButton();
                                     status.text('Request failed: ' + err);
                                 });
                         });
@@ -1003,6 +1030,21 @@ function global_site_settings_main_page() {
                             </div>
                         <?php else: ?>
                             <div id="ftg-sync-controls">
+                                <div style="margin: 0 0 15px 0; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                                    <div>
+                                        <label for="ftg-brand-filter" style="display: block; margin-bottom: 5px; font-weight: 500;">Catalogue Brand:</label>
+                                        <select id="ftg-brand-filter" class="regular-text" style="min-width: 220px;">
+                                            <option value="Assa Abloy" selected>Assa Abloy</option>
+                                            <option value="Ingco">Ingco</option>
+                                            <option value="Yale">Yale</option>
+                                            <option value="__custom__">Other (type below)</option>
+                                        </select>
+                                    </div>
+                                    <div id="ftg-custom-brand-wrap" style="display:none;">
+                                        <label for="ftg-custom-brand" style="display: block; margin-bottom: 5px; font-weight: 500;">Custom Brand:</label>
+                                        <input type="text" id="ftg-custom-brand" class="regular-text" placeholder="Enter FTG brand name" style="min-width: 220px;" />
+                                    </div>
+                                </div>
                                 <button type="button" id="ftg-test-connection" class="button button-secondary" style="margin-right: 10px;">
                                     🔗 Test Connection
                                 </button>
@@ -1010,10 +1052,10 @@ function global_site_settings_main_page() {
                                     🔍 Inspect Product
                                 </button>
                                 <button type="button" id="ftg-test-sync" class="button button-secondary" style="margin-right: 10px;">
-                                    ✅ Test Sync - Optimised
+                                    ✅ Test Brand Sync
                                 </button>
                                 <button type="button" id="ftg-sync-products" class="button button-primary" style="margin-right: 10px;">
-                                    🔄 Sync All Products
+                                    🔄 Sync Brand Catalogue
                                 </button>
                                 <button type="button" id="ftg-cleanup-attributes" class="button button-secondary" style="margin-right: 10px;">
                                     🧹 Cleanup Duplicate Attributes
@@ -1086,6 +1128,32 @@ function global_site_settings_main_page() {
                             
                             <script>
                             jQuery(document).ready(function($) {
+                                function getSelectedFtgBrand() {
+                                    var selected = ($('#ftg-brand-filter').val() || '').trim();
+                                    if (selected === '__custom__') {
+                                        return ($('#ftg-custom-brand').val() || '').trim();
+                                    }
+                                    return selected;
+                                }
+
+                                function getSelectedFtgBrandLabel() {
+                                    return getSelectedFtgBrand() || 'Selected Brand';
+                                }
+
+                                function updateFtgBrandControls() {
+                                    var selected = $('#ftg-brand-filter').val();
+                                    var showCustom = selected === '__custom__';
+                                    $('#ftg-custom-brand-wrap').toggle(showCustom);
+
+                                    var label = getSelectedFtgBrandLabel();
+                                    $('#ftg-test-sync').text('✅ Test ' + label + ' Sync');
+                                    $('#ftg-sync-products').text('🔄 Sync ' + label + ' Catalogue');
+                                }
+
+                                $('#ftg-brand-filter').on('change', updateFtgBrandControls);
+                                $('#ftg-custom-brand').on('input', updateFtgBrandControls);
+                                updateFtgBrandControls();
+
                                 $('#ftg-cleanup-attributes').on('click', function() {
                                     if (!confirm('Clean up duplicate attributes (Range, Color)? This will remove duplicate attribute terms.')) return;
                                     
@@ -1226,13 +1294,19 @@ function global_site_settings_main_page() {
                                 });
                                 
                                 $('#ftg-test-sync').on('click', function() {
-                                    if (!confirm('Test sync 400 Ingco products from FTG?')) return;
+                                    var selectedBrand = getSelectedFtgBrand();
+                                    if (!selectedBrand) {
+                                        $('#ftg-sync-status').html('<div class="notice notice-error inline"><p>⚠️ Please select or enter a brand before syncing.</p></div>');
+                                        return;
+                                    }
+
+                                    if (!confirm('Test sync 400 ' + selectedBrand + ' products from FTG?')) return;
                                     
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
                                     
                                     btn.prop('disabled', true).text('Testing...');
-                                    status.html('<p>⏳ Syncing 400 Ingco products from FTG in batches of 50...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Starting sync...</p>');
+                                    status.html('<p>⏳ Syncing 400 ' + selectedBrand + ' products from FTG in batches of 50...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Starting sync...</p>');
                                     
                                     // Track totals across all batches
                                     var totalSynced = 0;
@@ -1244,16 +1318,18 @@ function global_site_settings_main_page() {
                                     function syncBatch(offset) {
                                         var limit = 400;
                                         var batchSize = 50; // Process 50 products at a time
+                                        var payload = {
+                                            collection_token: '<?php echo esc_js($ftg_token); ?>',
+                                            brand: selectedBrand,
+                                            limit: limit,
+                                            offset: offset,
+                                            batch_size: batchSize
+                                        };
                                         
                                         $.ajax({
                                             url: '<?php echo rest_url('belims/v1/ftg/sync'); ?>',
                                             method: 'POST',
-                                            data: JSON.stringify({
-                                                collection_token: '<?php echo esc_js($ftg_token); ?>',
-                                                limit: limit,
-                                                offset: offset,
-                                                batch_size: batchSize
-                                            }),
+                                            data: JSON.stringify(payload),
                                             contentType: 'application/json',
                                             timeout: 90000,
                                             beforeSend: function(xhr) {
@@ -1284,13 +1360,14 @@ function global_site_settings_main_page() {
                                                         syncBatch(response.next_offset);
                                                     } else {
                                                         // All done!
-                                                        btn.prop('disabled', false).text('✅ Test Sync - Optimised');
+                                                        btn.prop('disabled', false);
+                                                        updateFtgBrandControls();
                                                         $('.ftg-progress-fill').css('width', '100%').text('100%');
                                                         $('.ftg-progress-text').html('Sync complete!');
                                                         
                                                         var skippedMsg = totalSkipped > 0 ? '<br/><span style="color: #856404;">⚠️ Skipped ' + totalSkipped + ' products (no price/invalid data)</span>' : '';
                                                         var errorMsg = totalErrors.length > 0 ? '<br/><span style="color: #dc3232;">❌ ' + totalErrors.length + ' errors occurred</span>' : '';
-                                                        var summaryHtml = '<div class="notice notice-success inline"><p>✅ Test sync completed! ' + totalSynced + ' Ingco products synced.' + skippedMsg + errorMsg + '<br/>Check WooCommerce → Products to see the imported items.</p></div>';
+                                                        var summaryHtml = '<div class="notice notice-success inline"><p>✅ Test sync completed! ' + totalSynced + ' ' + selectedBrand + ' products synced.' + skippedMsg + errorMsg + '<br/>Check WooCommerce → Products to see the imported items.</p></div>';
 
                                                         // Build details table
                                                         var detailsHtml = '<div class="ftg-sync-details">';
@@ -1371,13 +1448,15 @@ function global_site_settings_main_page() {
                                                         status.html(summaryHtml + detailsHtml);
                                                     }
                                                 } else {
-                                                    btn.prop('disabled', false).text('✅ Test Sync - Optimised');
+                                                    btn.prop('disabled', false);
+                                                    updateFtgBrandControls();
                                                     var message = response.message || 'Unknown error';
                                                     status.html('<div class="notice notice-warning inline"><p>⚠️ ' + message + '</p></div>');
                                                 }
                                             },
                                             error: function(xhr) {
-                                                btn.prop('disabled', false).text('✅ Test Sync - Optimised');
+                                                btn.prop('disabled', false);
+                                                updateFtgBrandControls();
                                                 var errorMsg = xhr.responseJSON?.message || 'Sync failed';
                                                 status.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
                                             }
@@ -1389,29 +1468,39 @@ function global_site_settings_main_page() {
                                 });
                                 
                                 $('#ftg-sync-products').on('click', function() {
-                                    if (!confirm('Start FULL FTG product sync? This may take several minutes and will sync ALL products.')) return;
+                                    var selectedBrand = getSelectedFtgBrand();
+                                    if (!selectedBrand) {
+                                        $('#ftg-sync-status').html('<div class="notice notice-error inline"><p>⚠️ Please select or enter a brand before syncing.</p></div>');
+                                        return;
+                                    }
+
+                                    if (!confirm('Start ' + selectedBrand + ' catalogue sync from FTG? This may take several minutes.')) return;
                                     
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
                                     var startTime = Date.now();
                                     
                                     btn.prop('disabled', true).text('Syncing...');
-                                    status.html('<p>⏳ Starting full product sync from FTG...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Fetching products...</p>');
+                                    status.html('<p>⏳ Starting ' + selectedBrand + ' catalogue sync from FTG...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Fetching products...</p>');
+
+                                    var payload = {
+                                        collection_token: '<?php echo esc_js($ftg_token); ?>',
+                                        brand: selectedBrand,
+                                        limit: 500
+                                    };
                                     
                                     $.ajax({
                                         url: '<?php echo rest_url('belims/v1/ftg/sync'); ?>',
                                         method: 'POST',
-                                        data: JSON.stringify({
-                                            collection_token: '<?php echo esc_js($ftg_token); ?>',
-                                            limit: 500
-                                        }),
+                                        data: JSON.stringify(payload),
                                         contentType: 'application/json',
                                         timeout: 180000,
                                         beforeSend: function(xhr) {
                                             xhr.setRequestHeader('X-WP-Nonce', '<?php echo wp_create_nonce('wp_rest'); ?>');
                                         },
                                         success: function(response) {
-                                            btn.prop('disabled', false).text('🔄 Sync All Products');
+                                            btn.prop('disabled', false);
+                                            updateFtgBrandControls();
                                             
                                             if (response.success) {
                                                 $('.ftg-progress-fill').css('width', '100%').text('100%');
@@ -1420,7 +1509,7 @@ function global_site_settings_main_page() {
                                                 var skippedMsg = response.skipped > 0 ? ' (' + response.skipped + ' skipped)' : '';
                                                 var errorMsg = response.errors && response.errors.length > 0 ? '<br/><span style="color: #dc3232;">⚠️ ' + response.errors.length + ' errors occurred. Check error log for details.</span>' : '';
                                                 
-                                                status.html('<div class="notice notice-success inline"><p>✅ Full sync completed in ' + totalTime + ' seconds!<br/>' + response.synced + ' products synced' + skippedMsg + errorMsg + '</p></div>');
+                                                status.html('<div class="notice notice-success inline"><p>✅ ' + selectedBrand + ' catalogue sync completed in ' + totalTime + ' seconds!<br/>' + response.synced + ' products synced' + skippedMsg + errorMsg + '</p></div>');
                                                 setTimeout(function() { location.reload(); }, 2000);
                                             } else {
                                                 var errors = response.errors?.join(', ') || 'Unknown error';
@@ -1428,7 +1517,8 @@ function global_site_settings_main_page() {
                                             }
                                         },
                                         error: function(xhr) {
-                                            btn.prop('disabled', false).text('🔄 Sync All Products');
+                                            btn.prop('disabled', false);
+                                            updateFtgBrandControls();
                                             var errorMsg = xhr.responseJSON?.message || 'Sync failed';
                                             status.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
                                         }

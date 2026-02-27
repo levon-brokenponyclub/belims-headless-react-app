@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Cookie } from "lucide-react";
+import { Cookie } from "lucide-react";
 
 interface CookieConsentProps {
   isOpen: boolean;
@@ -66,67 +66,90 @@ export const CookieConsent: React.FC<CookieConsentProps> = ({
           />
 
           <div
-            className={`pointer-events-auto relative z-[1] w-full max-w-[500px] rounded-t-xl bg-white border border-gray-200 shadow-2xl p-6 pt-4 transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-h-[85vh] overflow-y-auto ${
+            className={`pointer-events-auto relative z-[1] w-full rounded-t-3xl bg-white border border-gray-200 shadow-2xl px-0 pb-0 pt-4 transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-h-[85vh] overflow-y-auto ${
               isDrawerVisible ? "translate-y-0" : "translate-y-full"
             }`}
+            style={{
+              borderTopLeftRadius: "1.5rem",
+              borderTopRightRadius: "1.5rem",
+            }}
             role="dialog"
             aria-label="Cookies Settings"
           >
             <button
               type="button"
               onClick={onClose}
-              className="w-full h-1 flex items-center justify-center rounded-t-2xl"
+              className="w-full h-1 flex items-center justify-center rounded-t-2xl mb-6"
               aria-label="Close cookies settings"
             >
               <span className="w-12 h-1 bg-slate-300 rounded-full" />
             </button>
 
-            <div className="mb-3  flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">
-                Cookie Settings
+            <div className="relative mb-1 flex items-center justify-center text-center">
+              <h3 className="text-3xl font-bold text-gray-900">
+                Your privacy matters.
               </h3>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-md p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                className="group absolute right-6 -top-1 z-10 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-gray-300 bg-white text-gray-900 transition-colors"
                 aria-label="Close"
               >
-                <X size={14} />
+                <span className="absolute inset-0 translate-y-[-100%] bg-gray-900 transition-transform duration-300 ease-out group-hover:translate-y-0" />
+                <span className="relative z-10 text-gray-900 transition-colors group-hover:text-white">
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    stroke="currentColor"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    role="presentation"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 15L15 5M5 5L15 15"
+                    />
+                  </svg>
+                </span>
               </button>
             </div>
 
-            <p className="mb-4 text-sm text-gray-600">
-              We use cookies to improve functionality and personalize your
-              experience. You can manage your settings anytime. Read our
-              <a
+            <p className="mb-8 text-lg text-gray-600 text-center">
+              We use essential cookies and optional cookies to improve your
+              experience.
+              {/* <a
                 href="/cookies-policy"
                 className="ml-1 font-semibold text-belims-blue underline-offset-2 hover:underline"
               >
                 Cookie Policy
               </a>
-              .
+              . */}
             </p>
 
-            <div className="flex flex-row flex-wrap items-center justify-start gap-3">
-              <button
-                type="button"
-                onClick={onAccept}
-                className="group relative flex h-10 items-center justify-center overflow-hidden rounded-full border border-grey-light bg-grey-light px-6 py-2 text-sm font-bold text-grey transition-colors hover:border-grey hover:text-white"
-              >
-                <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
-                <span className="relative z-10 flex items-center gap-3">
-                  <span className="font-heading font-semibold transition-colors group-hover:text-white">
-                    Accept Cookies
+            <div className="mt-2 border-t bg-surface py-5">
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={onAccept}
+                  className="group relative flex h-11 w-[280px] max-w-full items-center justify-center overflow-hidden rounded-full border border-grey bg-grey px-4 py-2 transition-colors hover:border-belims-blue"
+                >
+                  <span className="absolute inset-0 origin-left scale-x-0 bg-belims-blue transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                  <span className="relative z-10 font-heading font-bold text-white transition-colors group-hover:text-white">
+                    Accept
                   </span>
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="border-0 bg-transparent p-0 text-sm font-semibold text-gray-700 underline-offset-2 transition-colors hover:text-gray-900 hover:underline"
-              >
-                Manage Preferences
-              </button>
+                </button>
+                <button
+                  type="button"
+                  onClick={onAccept}
+                  className="group relative flex h-11 w-[280px] max-w-full items-center justify-center overflow-hidden rounded-full border border-red bg-grey-light px-4 py-2 transition-colors hover:border-red-muted"
+                >
+                  <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                  <span className="relative z-10 font-heading font-bold text-grey transition-colors group-hover:text-white">
+                    Reject
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
