@@ -1213,6 +1213,59 @@ function MainApp(props) {
     setIsCookieConsentOpen(false);
   };
 
+  const chatbotUserId = props.currentUser?.id
+    ? String(props.currentUser.id)
+    : undefined;
+  const chatbotCartId = `belims-cart-${chatbotUserId ?? "guest"}`;
+
+  const chatbotAddToCart = async (productId) => {
+    const normalizedId = String(productId);
+    let product = props.products.find(
+      (item) => String(item.id) === normalizedId,
+    );
+
+    if (!product) {
+      product = await fetchProductById(normalizedId);
+    }
+
+    if (!product) {
+      props.showToast?.("Product not found", "error");
+      return;
+    }
+
+    props.addToCart(product);
+  };
+
+  const chatbotBuyNow = async (productId) => {
+    const normalizedId = String(productId);
+    let product = props.products.find(
+      (item) => String(item.id) === normalizedId,
+    );
+
+    if (!product) {
+      product = await fetchProductById(normalizedId);
+    }
+
+    if (!product) {
+      props.showToast?.("Product not found", "error");
+      return;
+    }
+
+    props.handleBuyNow(product);
+  };
+
+  const chatbotCheckout = () => {
+    props.setIsCartOpen(false);
+    navigate("/checkout");
+  };
+
+  const chatbotEscalate = () => {
+    props.showToast?.(
+      "Support team notified. We'll follow up shortly.",
+      "success",
+    );
+  };
+
   const handleProductClick = (product: Product) => {
     navigate(`/product/${product.id}`);
   };
@@ -1479,7 +1532,14 @@ function MainApp(props) {
         onAccept={handleCookieAccept}
       />
 
-      {/* <BelimsChatbot /> */}
+      <BelimsChatbot
+        userId={chatbotUserId}
+        cartId={chatbotCartId}
+        onAddToCart={chatbotAddToCart}
+        onBuyNow={chatbotBuyNow}
+        onCheckout={chatbotCheckout}
+        onEscalateToHuman={chatbotEscalate}
+      />
 
       <MobileBottomNav
         onSearch={() => props.setIsSearchModalOpen(true)}

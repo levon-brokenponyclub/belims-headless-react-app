@@ -1,8 +1,7 @@
 import React from "react";
-import { RefreshCw } from "lucide-react";
 import { ShippingAddress, Store } from "../types";
-import { FulfillmentTiles } from "./FulfillmentTiles";
-import { DeliveryRateOption } from "./DeliveryRateOption";
+import { FulfillmentTiles } from "@/components/FulfillmentTiles";
+import { FulfillmentTab } from "./FulfillmentTabs";
 
 type ShippingTier = "Express" | "Standard" | "Economy";
 
@@ -15,8 +14,8 @@ interface ShippingRate {
 
 interface FulfillmentBlockProps {
   productStock: number;
-  fulfillmentType: "pickup" | "delivery" | null;
-  onSelectFulfillment: (value: "pickup" | "delivery" | null) => void;
+  fulfillmentType: FulfillmentTab;
+  onSelectFulfillment: (value: FulfillmentTab) => void;
   onSetDeliveryLocation: () => void;
   hasDeliveryLocation: boolean;
   deliveryAddress: ShippingAddress | null;
@@ -32,10 +31,7 @@ interface FulfillmentBlockProps {
   onEnableDefaultStore?: () => void;
   selectedDeliveryOptionId: string;
   onSelectDeliveryOption: (id: string) => void;
-  onOpenDeliveryOptions?: () => void;
-  onClearSelection?: () => void;
-  classifyRate: (rate: ShippingRate, allRates: ShippingRate[]) => ShippingTier;
-  formatEta: (dateStr?: string | null) => string;
+  focusDeliveryPanelSignal?: number;
 }
 
 export const FulfillmentBlock: React.FC<FulfillmentBlockProps> = ({
@@ -57,43 +53,25 @@ export const FulfillmentBlock: React.FC<FulfillmentBlockProps> = ({
   onEnableDefaultStore,
   selectedDeliveryOptionId,
   onSelectDeliveryOption,
-  onOpenDeliveryOptions,
-  onClearSelection,
-  classifyRate,
-  formatEta,
+  focusDeliveryPanelSignal,
 }) => {
-  const selectedRateIndex = deliveryRates.findIndex(
-    (_, idx) => selectedDeliveryOptionId === `rate-${idx}`,
-  );
-  const selectedRate =
-    selectedRateIndex >= 0 ? deliveryRates[selectedRateIndex] : null;
-
   return (
     <div className="mt-6">
       <FulfillmentTiles
         selectedType={fulfillmentType}
         onSelect={onSelectFulfillment}
-        onClearSelection={onClearSelection}
         onSetDeliveryLocation={onSetDeliveryLocation}
-        onOpenDeliveryOptions={onOpenDeliveryOptions}
+        onEditDeliveryLocation={onSetDeliveryLocation}
         pickupStore={pickupStore}
         pickupSchedule={pickupSchedule}
-        selectedDeliveryDetails={
-          selectedRate
-            ? {
-                name: selectedRate.service_name,
-                eta: formatEta(selectedRate.expected_delivery_date),
-                price: selectedRate.total_price,
-                isFree: selectedRate.total_price === 0,
-                badge:
-                  classifyRate(selectedRate, deliveryRates) === "Express"
-                    ? "Faster"
-                    : undefined,
-              }
-            : null
-        }
         deliveryLocationSet={hasDeliveryLocation}
         deliveryAddress={deliveryAddress}
+        deliveryRates={deliveryRates}
+        selectedDeliveryOptionId={selectedDeliveryOptionId}
+        onSelectDeliveryOption={onSelectDeliveryOption}
+        onViewPickupDetails={onViewPickupDetails}
+        deliveryRatesError={deliveryRatesError}
+        focusDeliveryPanelSignal={focusDeliveryPanelSignal}
         pickup={{
           type: "pickup",
           available: productStock,
@@ -111,19 +89,8 @@ export const FulfillmentBlock: React.FC<FulfillmentBlockProps> = ({
               ? deliveryRates[0].total_price === 0
               : false,
         }}
-        onSchedulePickup={onSchedulePickup}
-        onViewPickupDetails={onViewPickupDetails}
-        onResetPickupStore={onResetPickupStore}
-        onEnableDefaultStore={onEnableDefaultStore}
         loading={loadingDeliveryRates}
       />
-
-      {loadingDeliveryRates && fulfillmentType === "delivery" && (
-        <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
-          <RefreshCw size={14} className="animate-spin" />
-          <span>Finding delivery options...</span>
-        </div>
-      )}
     </div>
   );
 };

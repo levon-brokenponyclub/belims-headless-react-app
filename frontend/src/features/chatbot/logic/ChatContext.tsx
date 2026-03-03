@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
-import { ChatState, ChatAction, ChatMessage } from "../types";
+import { ChatState, ChatAction, ChatMessage } from "../types/index";
 
 const initialMessage: ChatMessage = {
   id: "welcome-msg",

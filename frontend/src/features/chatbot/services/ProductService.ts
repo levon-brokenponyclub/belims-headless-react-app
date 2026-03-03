@@ -1,4 +1,4 @@
-import { Product } from "../types";
+import { Product } from "../types/index";
 
 export class ProductService {
   static async search(query: string): Promise<Product[]> {

@@ -1,203 +1,135 @@
-import React, { useEffect, useRef } from "react";
-import { useChat } from "../logic/ChatContext";
-import { ChatService } from "../services/ChatService";
-import { ProductService } from "../services/ProductService";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChatMessageItem } from "./ChatMessageItem";
 import { ChatInput } from "./ChatInput";
 import { QuickReplies } from "./QuickReplies";
-import { ChatMessage, Product } from "../types";
+import { ChatMessage } from "../types.ts";
 
-export const ChatWindow: React.FC = () => {
-  const { state, dispatch, addMessage } = useChat();
+interface ChatWindowProps {
+  isTyping: boolean;
+  messages: ChatMessage[];
+  onSendMessage: (text: string, imageFile?: File) => void;
+  onQuickIntent: (intent: string) => void;
+  onAddToCart: (productId: string) => void;
+  onBuyNow: (productId: string) => void;
+  onCheckStock: (productId: string) => void;
+  onEditFinderAnswers: () => void;
+  onDecisionOptionSelect: (value: string) => void;
+  onEditDecisionAnswers: () => void;
+  onCompareShortlist: () => void;
+  onOpenDeliveryLocation: () => void;
+  onOpenDeliveryOptions: () => void;
+  onPdpAction: (
+    action: "check_stock" | "delivery_options",
+    productId: string,
+  ) => void;
+  onActionChip: (
+    action:
+      | { type: "add_to_cart"; productId: string; label: string }
+      | { type: "find_alternatives"; productId: string; label: string },
+  ) => void;
+  decisionModeActive?: boolean;
+  decisionAcceleratorChips?: string[];
+  showProductsInChat?: boolean;
+  inputAutoFocus?: boolean;
+}
+
+export const ChatWindow: React.FC<ChatWindowProps> = ({
+  isTyping,
+  messages,
+  onSendMessage,
+  onQuickIntent,
+  onAddToCart,
+  onBuyNow,
+  onCheckStock,
+  onEditFinderAnswers,
+  onDecisionOptionSelect,
+  onEditDecisionAnswers,
+  onCompareShortlist,
+  onOpenDeliveryLocation,
+  onOpenDeliveryOptions,
+  onPdpAction,
+  onActionChip,
+  decisionModeActive = false,
+  decisionAcceleratorChips = [],
+  showProductsInChat = false,
+  inputAutoFocus,
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [state.messages]);
+  const lastMessage = useMemo(() => messages[messages.length - 1], [messages]);
 
   useEffect(() => {
-    const handleOpen = () => {
-      if (!state.isOpen) {
-        dispatch({ type: "TOGGLE_CHAT" });
-      }
-    };
-
-    window.addEventListener("belims:open-chat", handleOpen);
-    return () => window.removeEventListener("belims:open-chat", handleOpen);
-  }, [state.isOpen, dispatch]);
-
-  const handleSendMessage = async (text: string) => {
-    // Add user message
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: "user",
-      type: "text",
-      text: text,
-      timestamp: Date.now(),
-    };
-    addMessage(userMsg);
-
-    // Set Loading
-    dispatch({ type: "SET_LOADING", payload: true });
-
-    // Call Service
-    try {
-      // Create services object matching ChatService requirements
-      const services = {
-        productService: {
-          // use wrapper for static method
-          search: (q: string) => ProductService.search(q),
-        },
-        pricingService: {
-          enrich: async (products: any[]) => products, // Pass-through mock
-        },
-        shippingService: {
-          estimate: async () => ({
-            etaLabel: "2-3 Days",
-            costLabel: "Calculating...",
-          }),
-        },
-        inventoryService: {
-          getStock: async (ids: string[]) =>
-            ids.reduce((acc, id) => ({ ...acc, [id]: "IN_STOCK" }), {}),
-        },
-        cartService: {
-          add: async (id: string, qty: number) =>
-            console.log(`Adding ${qty} of ${id} to cart`),
-        },
-      };
-
-      const response = await ChatService.processMessage(text, state, services);
-
-      // Handle the new AssistantResponse structure
-      const botMessages = response.messages.map((msg, index) => ({
-        id: (Date.now() + index + 1).toString(),
-        sender: "bot" as const,
-        type: "text" as const,
-        text: msg.text,
-        // Only attach cards/actions to the LAST message
-        cards:
-          index === response.messages.length - 1 ? response.cards : undefined,
-        quickReplies:
-          index === response.messages.length - 1
-            ? response.quickReplies?.map((qr) => qr.label) // Convert back to string array for now
-            : undefined,
-        structuredReplies:
-          index === response.messages.length - 1
-            ? response.quickReplies
-            : undefined,
-        timestamp: Date.now(),
-      }));
-
-      // Add all messages
-      botMessages.forEach((msg) => addMessage(msg));
-
-      if (response.intent && response.intent !== state.currentIntent) {
-        dispatch({ type: "SET_INTENT", payload: response.intent });
-      }
-
-      // Update User Profile if memory patch exists
-      if (response.memoryPatch) {
-        dispatch({
-          type: "UPDATE_PROFILE",
-          payload: response.memoryPatch,
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      addMessage({
-        id: Date.now().toString(),
-        sender: "bot",
-        type: "text",
-        text: "I'm having trouble connecting right now. Please try again.",
-        timestamp: Date.now(),
-      });
-    } finally {
-      dispatch({ type: "SET_LOADING", payload: false });
+    if (shouldAutoScroll) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  };
+  }, [messages, isTyping, shouldAutoScroll]);
 
-  const handleAddToCart = (product: Product) => {
-    // Implement Cart Logic here or emit event
-    console.log("Adding to cart:", product);
-    addMessage({
-      id: Date.now().toString(),
-      sender: "bot",
-      type: "text",
-      text: `Added ${product.name} to your cart! Anything else?`,
-      timestamp: Date.now(),
-    });
-  };
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) {
+      return;
+    }
 
-  if (!state.isOpen) return null;
+    const handleScroll = () => {
+      const threshold = 40;
+      const atBottom =
+        node.scrollHeight - node.scrollTop - node.clientHeight < threshold;
+      setShouldAutoScroll(atBottom);
+    };
+
+    node.addEventListener("scroll", handleScroll);
+    return () => node.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <div className="fixed bottom-4 right-4 w-[380px] h-[600px] bg-gray-50 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 z-[9999] font-sans">
-      {/* Header */}
-      <div className="bg-red-700 text-white p-4 flex justify-between items-center bg-gradient-to-r from-red-700 to-red-600">
-        <div>
-          <h3 className="font-bold text-lg">Belims Assistant</h3>
-          <p className="text-xs text-red-100 opacity-90">
-            Expert Help & Project Advice
-          </p>
-        </div>
-        <button
-          onClick={() => dispatch({ type: "TOGGLE_CHAT" })}
-          className="text-white hover:bg-white/20 rounded-full p-1"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      </div>
-
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {state.messages.map((msg) => (
+    <div className="h-full min-h-0 bg-gradient-to-b from-violet-50/20 to-white flex flex-col">
+      <div
+        ref={containerRef}
+        className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5"
+      >
+        {messages.map((msg) => (
           <ChatMessageItem
             key={msg.id}
             message={msg}
-            onAddToCart={handleAddToCart}
+            onAddToCart={onAddToCart}
+            onBuyNow={onBuyNow}
+            onCheckStock={onCheckStock}
+            onEditFinderAnswers={onEditFinderAnswers}
+            onDecisionOptionSelect={onDecisionOptionSelect}
+            onEditDecisionAnswers={onEditDecisionAnswers}
+            onCompareShortlist={onCompareShortlist}
+            onOpenDeliveryLocation={onOpenDeliveryLocation}
+            onOpenDeliveryOptions={onOpenDeliveryOptions}
+            onPdpAction={onPdpAction}
+            onActionChip={onActionChip}
+            showProductsInChat={showProductsInChat}
           />
         ))}
 
-        {/* Quick Replies for last message */}
-        {state.messages.length > 0 &&
-          state.messages[state.messages.length - 1].sender === "bot" &&
-          state.messages[state.messages.length - 1].quickReplies && (
+        {lastMessage?.role === "assistant" && (
+          <div className="overflow-x-auto pb-1">
             <QuickReplies
-              replies={state.messages[state.messages.length - 1].quickReplies!}
-              onClick={handleSendMessage}
+              onIntent={onQuickIntent}
+              decisionModeActive={decisionModeActive}
+              decisionAcceleratorChips={decisionAcceleratorChips}
             />
-          )}
+          </div>
+        )}
 
-        {state.isLoading && (
-          <div className="flex items-center space-x-2 text-gray-400 text-sm ml-4">
+        {isTyping && (
+          <div className="flex items-center space-x-2 text-violet-500 text-sm ml-4 animate-[chatFadeIn_150ms_ease-out]">
             <div
-              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+              className="w-2 h-2 bg-violet-400 rounded-full animate-bounce"
               style={{ animationDelay: "0ms" }}
             />
             <div
-              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+              className="w-2 h-2 bg-violet-400 rounded-full animate-bounce"
               style={{ animationDelay: "150ms" }}
             />
             <div
-              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+              className="w-2 h-2 bg-violet-400 rounded-full animate-bounce"
               style={{ animationDelay: "300ms" }}
             />
           </div>
@@ -205,11 +137,18 @@ export const ChatWindow: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <ChatInput
-        onSendMessage={handleSendMessage}
-        isLoading={state.isLoading}
-      />
+      <div className="border-t border-gray-200 bg-white">
+        <ChatInput
+          onSendMessage={onSendMessage}
+          isLoading={isTyping}
+          autoFocus={inputAutoFocus}
+          decisionModeActive={decisionModeActive}
+        />
+      </div>
+
+      <style>
+        {`@keyframes chatFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }`}
+      </style>
     </div>
   );
 };

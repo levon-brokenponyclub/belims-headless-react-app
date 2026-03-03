@@ -28,12 +28,19 @@ import {
   readStoredAddress,
   saveStoredAddress,
 } from "../services/shippingAddress";
+import {
+  hydrateFromSiteStorage,
+  setDeliveryAddress as setSharedDeliveryAddress,
+  setPdpContext,
+  setPickupStore as setSharedPickupStore,
+  setSelectedDeliveryOption as setSharedDeliveryOption,
+} from "../src/lib/fulfillmentContext";
 import { RecentlyViewed } from "./RecentlyViewed";
 import { StoreLocator } from "./StoreLocator";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { ProductPriceDisplay } from "./ProductPriceDisplay";
 import { FulfillmentBlock } from "./FulfillmentBlock";
-import { DeliveryRateOption } from "./DeliveryRateOption";
+import { FulfillmentTab } from "./FulfillmentTabs";
 import { ProductAccordions } from "./ProductAccordions";
 import { TradePricingAvailable } from "./TradePricingAvailable";
 import { SocialShareExpertBlock } from "./SocialShareExpertBlock";
@@ -166,6 +173,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   // Delivery Modal + address
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+  const [deliveryModalMode, setDeliveryModalMode] =
+    useState<FulfillmentTab>("delivery");
   const [deliveryAddress, setDeliveryAddress] =
     useState<ShippingAddress | null>(null);
   const [legacyDeliveryLabel, setLegacyDeliveryLabel] = useState<string | null>(
@@ -187,11 +196,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const [showTradeDeal, setShowTradeDeal] = useState(false);
 
   // Fulfillment selection
-  const [fulfillmentType, setFulfillmentType] = useState<
-    "pickup" | "delivery" | null
-  >(null);
-  const [isDeliveryOptionsOpen, setIsDeliveryOptionsOpen] = useState(false);
-  const hasOpenedDeliveryOptionsRef = useRef(false);
+  const [fulfillmentType, setFulfillmentType] =
+    useState<FulfillmentTab>("pickup");
+  const [focusDeliveryPanelSignal, setFocusDeliveryPanelSignal] =
+    useState<number>(0);
+  const latestDeliveryRequestRef = useRef(0);
   const hasPickupLocationRef = useRef(false);
 
   // Sticky bottom CTA (Athens-like): show when BuyBox actions are out of view
@@ -466,7 +475,54 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   useEffect(() => {
     refreshStoredAddress();
+    hydrateFromSiteStorage();
   }, []);
+
+  useEffect(() => {
+    setPdpContext({
+      productId: product.id,
+      title: product.name,
+      price: product.price,
+      imageUrl: product.image,
+      category: product.category,
+    });
+  }, [
+    product.category,
+    product.id,
+    product.image,
+    product.name,
+    product.price,
+  ]);
+
+  useEffect(() => {
+    setSharedDeliveryAddress(
+      deliveryAddress
+        ? {
+            street: deliveryAddress.street,
+            city: deliveryAddress.city,
+            province: deliveryAddress.province,
+            postalCode: deliveryAddress.postalCode,
+          }
+        : null,
+    );
+  }, [
+    deliveryAddress?.city,
+    deliveryAddress?.postalCode,
+    deliveryAddress?.province,
+    deliveryAddress?.street,
+  ]);
+
+  useEffect(() => {
+    setSharedPickupStore(
+      selectedStore?.id ?? null,
+      selectedStore?.name ?? null,
+      selectedStore?.hours,
+    );
+  }, [selectedStore?.hours, selectedStore?.id, selectedStore?.name]);
+
+  useEffect(() => {
+    setSharedDeliveryOption(selectedDeliveryOptionId || null);
+  }, [selectedDeliveryOptionId]);
 
   const syncStoredPickupStore = React.useCallback(() => {
     if (typeof window === "undefined") return;
@@ -479,11 +535,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       const nextStore = matched ?? parsed;
       if (!nextStore?.id || selectedStore?.id === nextStore.id) return;
       setSelectedStore(nextStore);
-      window.dispatchEvent(
-        new CustomEvent("belims:pickup-store-updated", {
-          detail: nextStore,
-        }),
-      );
     } catch {
       return;
     }
@@ -512,11 +563,15 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   }, [isDeliveryModalOpen]);
 
   useEffect(() => {
-    if (fulfillmentType !== "delivery") return;
-    if (hasOpenedDeliveryOptionsRef.current) return;
-    hasOpenedDeliveryOptionsRef.current = true;
-    setIsDeliveryOptionsOpen(true);
-  }, [fulfillmentType]);
+    const { address } = readStoredAddress();
+    const defaultTab: FulfillmentTab = address ? "delivery" : "pickup";
+    setFulfillmentType(defaultTab);
+    localStorage.setItem("belims_fulfillment_tab", defaultTab);
+    localStorage.setItem("fulfillmentType", defaultTab);
+    if (defaultTab === "pickup") {
+      localStorage.setItem("pickupStoreSelected", "true");
+    }
+  }, []);
 
   useEffect(() => {
     if (selectedDeliveryOptionId) {
@@ -554,6 +609,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         return;
       }
 
+      const requestId = ++latestDeliveryRequestRef.current;
+
       setLoadingDeliveryRates(true);
       setDeliveryRatesError(null);
 
@@ -586,8 +643,14 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           tier: classifyRate(rate, finalRates),
         }));
 
+        if (requestId !== latestDeliveryRequestRef.current) {
+          return;
+        }
         setDeliveryRates(classifiedRates);
       } catch (error) {
+        if (requestId !== latestDeliveryRequestRef.current) {
+          return;
+        }
         console.error("Failed to fetch delivery rates:", error);
         const fallbackRates = getFallbackShipping().map((rate: any) => ({
           ...rate,
@@ -598,11 +661,18 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           "Unable to fetch live rates. Showing estimated delivery options.",
         );
       } finally {
+        if (requestId !== latestDeliveryRequestRef.current) {
+          return;
+        }
         setLoadingDeliveryRates(false);
       }
     };
 
     fetchDeliveryRates();
+
+    return () => {
+      latestDeliveryRequestRef.current += 1;
+    };
   }, [
     deliveryAddress?.street,
     deliveryAddress?.city,
@@ -733,8 +803,27 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   };
 
   const hasDeliveryLocation = !!deliveryAddress;
-  const handleOpenDeliveryLocation = () => setIsDeliveryModalOpen(true);
+  const handleSelectFulfillment = (value: FulfillmentTab) => {
+    setFulfillmentType(value);
+    localStorage.setItem("belims_fulfillment_tab", value);
+    localStorage.setItem("fulfillmentType", value);
+
+    if (value === "pickup") {
+      localStorage.setItem("pickupStoreSelected", "true");
+      hydratePickupDistances();
+    }
+
+    window.dispatchEvent(new Event("belims:fulfillment-changed"));
+  };
+
+  const handleOpenDeliveryLocation = () => {
+    setDeliveryModalMode("delivery");
+    localStorage.setItem("fulfillmentType", "delivery");
+    setIsDeliveryModalOpen(true);
+  };
   const handleOpenPickupDetails = () => {
+    setDeliveryModalMode("pickup");
+    localStorage.setItem("belims_fulfillment_tab", "pickup");
     localStorage.setItem("fulfillmentType", "pickup");
     setIsDeliveryModalOpen(true);
   };
@@ -988,6 +1077,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             localStorage.setItem("selectedPickupStore", JSON.stringify(store));
             localStorage.setItem("pickupStoreSelected", "true");
             setFulfillmentType("pickup");
+            localStorage.setItem("belims_fulfillment_tab", "pickup");
             localStorage.setItem("fulfillmentType", "pickup");
             if (typeof window !== "undefined") {
               window.dispatchEvent(
@@ -1014,12 +1104,14 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       <DeliveryLocationModal
         isOpen={isDeliveryModalOpen}
         onClose={() => setIsDeliveryModalOpen(false)}
+        initialFulfillmentType={deliveryModalMode}
         currentAddress={deliveryAddress || undefined}
         currentStore={selectedStore || undefined}
         onStoreSelect={(store) => {
           setSelectedStore(store || null);
           if (store) {
             setFulfillmentType("pickup");
+            localStorage.setItem("belims_fulfillment_tab", "pickup");
             localStorage.setItem("fulfillmentType", "pickup");
             localStorage.setItem("pickupStoreSelected", "true");
             if (typeof window !== "undefined") {
@@ -1035,8 +1127,15 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           setDeliveryAddress(address);
           if (address) {
             saveStoredAddress(address);
+            setFulfillmentType("delivery");
+            localStorage.setItem("belims_fulfillment_tab", "delivery");
+            localStorage.setItem("fulfillmentType", "delivery");
+            setFocusDeliveryPanelSignal((prev) => prev + 1);
           } else {
             setDeliveryAddress(null);
+            setFulfillmentType("pickup");
+            localStorage.setItem("belims_fulfillment_tab", "pickup");
+            localStorage.setItem("fulfillmentType", "pickup");
             localStorage.removeItem("deliveryAddressV2");
             localStorage.removeItem("deliveryAddress");
           }
@@ -1431,23 +1530,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 <FulfillmentBlock
                   productStock={product.stock}
                   fulfillmentType={fulfillmentType}
-                  onSelectFulfillment={(value) => {
-                    setFulfillmentType(value);
-                    if (value) {
-                      localStorage.setItem("fulfillmentType", value);
-                      if (value === "pickup") {
-                        localStorage.setItem("pickupStoreSelected", "true");
-                        hydratePickupDistances();
-                      }
-                    } else {
-                      localStorage.removeItem("fulfillmentType");
-                      localStorage.removeItem("pickupStoreSelected");
-                    }
-                    window.dispatchEvent(
-                      new Event("belims:fulfillment-changed"),
-                    );
-                  }}
-                  onClearSelection={() => setFulfillmentType(null)}
+                  onSelectFulfillment={handleSelectFulfillment}
                   onSetDeliveryLocation={handleOpenDeliveryLocation}
                   hasDeliveryLocation={hasDeliveryLocation}
                   deliveryAddress={deliveryAddress}
@@ -1466,9 +1549,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                     setSelectedDeliveryOptionId(id);
                     sessionStorage.setItem("selectedDeliveryOptionId", id);
                   }}
-                  onOpenDeliveryOptions={() => setIsDeliveryOptionsOpen(true)}
-                  classifyRate={classifyRate}
-                  formatEta={formatEta}
+                  focusDeliveryPanelSignal={focusDeliveryPanelSignal}
                 />
 
                 {/* Perfect Match With - Slider in Right Column */}
@@ -1717,75 +1798,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           </div>
         </div>
       </div>
-
-      {isDeliveryOptionsOpen && (
-        <div className="fixed inset-0 z-[400] overflow-hidden">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setIsDeliveryOptionsOpen(false)}
-          ></div>
-          <div
-            className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-belims-blue text-white p-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Available options</h2>
-              <button
-                onClick={() => setIsDeliveryOptionsOpen(false)}
-                className="p-1 hover:bg-white/10 rounded transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5">
-              {loadingDeliveryRates ? (
-                <div className="flex items-center justify-center gap-2 py-6 text-gray-500">
-                  <span className="text-xs">Finding delivery options...</span>
-                </div>
-              ) : deliveryRatesError ? (
-                <div className="rounded border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-                  <p>{deliveryRatesError}</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  {deliveryRates.map((rate, idx) => {
-                    const tier = classifyRate(rate, deliveryRates);
-                    const isSelected =
-                      selectedDeliveryOptionId === `rate-${idx}`;
-                    const isFaster = tier === "Express";
-
-                    return (
-                      <DeliveryRateOption
-                        key={`rate-${idx}`}
-                        option={{
-                          id: `rate-${idx}`,
-                          serviceName: rate.service_name,
-                          eta: formatEta(rate.expected_delivery_date),
-                          price: rate.total_price,
-                          isFree: rate.total_price === 0,
-                          badge: isFaster ? "Faster" : undefined,
-                          isFaster,
-                        }}
-                        isSelected={isSelected}
-                        className="z-[401]"
-                        onSelect={(id) => {
-                          setSelectedDeliveryOptionId(id);
-                          sessionStorage.setItem(
-                            "selectedDeliveryOptionId",
-                            id,
-                          );
-                          setIsDeliveryOptionsOpen(false);
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {product.bundleCandidates && product.bundleCandidates.length > 0 && (
         <>

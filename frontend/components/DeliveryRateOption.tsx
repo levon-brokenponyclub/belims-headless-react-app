@@ -1,5 +1,4 @@
 import React from "react";
-import { Zap } from "lucide-react";
 import { formatCurrency } from "../utils/price";
 
 export interface DeliveryRateOptionData {
@@ -8,8 +7,8 @@ export interface DeliveryRateOptionData {
   eta: string;
   price: number;
   isFree?: boolean;
-  badge?: string;
-  isFaster?: boolean;
+  badgeText?: "Fastest" | "Best value";
+  etaEmphasis?: boolean;
 }
 
 interface DeliveryRateOptionProps {
@@ -29,42 +28,39 @@ export const DeliveryRateOption: React.FC<DeliveryRateOptionProps> = ({
     <button
       type="button"
       onClick={() => onSelect(option.id)}
-      className={`relative z-[1] flex items-center justify-between p-6 rounded-md border transition-all text-left w-full ${
+      className={`relative z-[1] flex items-center justify-between py-3 pl-3 pr-2 border-l-2 transition-all text-left w-full ${
         isSelected
-          ? "border-green-500 bg-[#dcfce796]"
-          : "border-gray-300 bg-white hover:border-gray-400"
+          ? "border-grey bg-grey-light/40"
+          : "border-transparent bg-white hover:bg-grey-light/20"
       } ${className}`}
     >
-      <div className="flex items-center gap-3 w-[75%]">
-        {/* Selection Indicator (Left) */}
+      <div className="flex items-start gap-3 w-[75%]">
         <div
-          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-            isSelected ? "border-green-500" : "border-green-500"
+          className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+            isSelected ? "border-grey" : "border-grey-medium"
           }`}
         >
-          {isSelected && (
-            <div className="w-2.5 h-2.5 rounded-full bg-green-600" />
-          )}
+          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-grey" />}
         </div>
 
-        {/* Info */}
-        <div>
+        <div className="min-w-0">
           <h4 className="font-semibold text-gray-900 text-[14px] leading-relaxed">
             {option.serviceName}
           </h4>
-          <p className="text-sm text-gray-600">{option.eta}</p>
+          <p
+            className={`text-sm ${option.etaEmphasis ? "text-grey font-medium" : "text-grey-medium"}`}
+          >
+            {option.eta}
+          </p>
         </div>
 
-        {/* Badge */}
-        {option.badge && (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
-            <Zap size={10} fill="currentColor" />
-            {option.badge}
+        {option.badgeText && (
+          <span className="text-xs font-semibold text-grey-medium">
+            {option.badgeText}
           </span>
         )}
       </div>
 
-      {/* Price (Right) */}
       <span className="text-[14px] font-bold text-gray-900 flex-shrink-0">
         {option.isFree ? "FREE" : formatCurrency(option.price)}
       </span>

@@ -66,7 +66,7 @@ export const CookieConsent: React.FC<CookieConsentProps> = ({
           />
 
           <div
-            className={`pointer-events-auto relative z-[1] w-full rounded-t-3xl bg-white border border-gray-200 shadow-2xl px-0 pb-0 pt-4 transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-h-[85vh] overflow-y-auto ${
+            className={`pointer-events-auto relative z-[1] w-full max-w-[min(1400px,96vw)] rounded-t-3xl bg-white border border-gray-200 shadow-2xl px-0 pb-0 pt-4 transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-h-[85vh] overflow-y-auto ${
               isDrawerVisible ? "translate-y-0" : "translate-y-full"
             }`}
             style={{

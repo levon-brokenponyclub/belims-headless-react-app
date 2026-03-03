@@ -3,6 +3,7 @@ import { X, MapPin, Loader, Search } from "lucide-react";
 import { ShippingAddress, Store } from "../types";
 import { STORES } from "../constants";
 import { getApiBaseUrl } from "../services/wooCommerceService";
+import { BottomDrawer } from "./BottomDrawer";
 import {
   buildAddressLabel,
   mapNominatimAddress,
@@ -11,11 +12,10 @@ import {
   readStoredAddress,
 } from "../services/shippingAddress";
 
-const MODAL_ANIMATION_MS = 700;
-
 interface DeliveryLocationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialFulfillmentType?: "delivery" | "pickup";
   currentAddress?: ShippingAddress;
   onAddressSelect: (address: ShippingAddress | null) => void;
   currentStore?: Store | null;
@@ -44,6 +44,7 @@ type StoreWithStatus = Store & {
 export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   isOpen,
   onClose,
+  initialFulfillmentType,
   currentAddress,
   onAddressSelect,
   currentStore,
@@ -80,8 +81,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     useState<ShippingAddress | null>(null);
   const [isEditingDeliveryAddress, setIsEditingDeliveryAddress] =
     useState(true);
-  const [shouldRender, setShouldRender] = useState(false);
-  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const getDefaultStore = (stores: StoreWithStatus[]) =>
     stores.find((store) => store.name.toLowerCase().includes("umzinto")) ||
@@ -387,7 +386,12 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         ? initialAddress.label || buildAddressLabel(initialAddress)
         : storedLegacy || "";
 
-      if (storedFulfillment === "pickup" || storedFulfillment === "delivery") {
+      if (initialFulfillmentType) {
+        setFulfillmentType(initialFulfillmentType);
+      } else if (
+        storedFulfillment === "pickup" ||
+        storedFulfillment === "delivery"
+      ) {
         setFulfillmentType(storedFulfillment);
       } else {
         setFulfillmentType("delivery");
@@ -411,7 +415,13 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         setSelectedPickupStoreId(currentStore?.id || storedPickupId || null);
       }
     }
-  }, [currentAddress, currentStore, isOpen, remoteStores]);
+  }, [
+    currentAddress,
+    currentStore,
+    initialFulfillmentType,
+    isOpen,
+    remoteStores,
+  ]);
 
   useEffect(() => {
     const apiBase = getApiBaseUrl();
@@ -1314,60 +1324,46 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     setStoreList((prev) => applyDistances(prev, userLocation));
   }, [userLocation]);
 
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true);
-      setIsModalVisible(false);
-      let frameOne = 0;
-      let frameTwo = 0;
-      frameOne = requestAnimationFrame(() => {
-        frameTwo = requestAnimationFrame(() => {
-          setIsModalVisible(true);
-        });
-      });
-      return () => {
-        cancelAnimationFrame(frameOne);
-        cancelAnimationFrame(frameTwo);
-      };
-    }
+  const primaryButtonClass =
+    "group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full border border-grey bg-grey px-4 py-2 transition-colors hover:border-belims-blue";
+  const primaryButtonLabelClass =
+    "relative z-10 font-heading font-bold text-white transition-colors group-hover:text-white";
+  const primaryButtonOverlayClass =
+    "absolute inset-0 origin-left scale-x-0 bg-belims-blue transition-transform duration-300 ease-out group-hover:scale-x-100";
 
-    setIsModalVisible(false);
-    const timeout = window.setTimeout(() => {
-      setShouldRender(false);
-    }, MODAL_ANIMATION_MS);
-
-    return () => window.clearTimeout(timeout);
-  }, [isOpen]);
-
-  if (!shouldRender) return null;
+  const secondaryButtonClass =
+    "group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full border border-red bg-grey-light px-4 py-2 transition-colors hover:border-red-muted";
+  const secondaryButtonLabelClass =
+    "relative z-10 font-heading font-bold text-grey transition-colors group-hover:text-white";
+  const secondaryButtonOverlayClass =
+    "absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100";
 
   return (
-    <div className="fixed inset-0 z-[9999] overflow-hidden">
-      <div
-        className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-500 ease-in-out ${
-          isModalVisible ? "opacity-100" : "opacity-0"
-        }`}
-        onClick={onClose}
-      ></div>
-
-      <div
-        className={`absolute right-0 top-0 bottom-0 w-full max-w-md bg-white flex flex-col transform transition-transform duration-500 ease-in-out sm:duration-700 ${
-          isModalVisible ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
+    <BottomDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel="Delivery location"
+      widthClassName="w-full max-w-[min(1400px,96vw)]"
+      heightClassName="h-[92vh] sm:h-[88vh]"
+    >
+      <div className="relative h-full bg-white flex flex-col">
         {/* Header */}
-        <div className="p-4 bg-belims-blue text-white flex justify-between items-center h-16">
-          <div className="flex items-center gap-3">
-            <MapPin size={20} />
-            <span className="font-bold font-heading text-base">
+        <div className="relative px-6 pt-4 pb-3 border-b border-gray-200/80 bg-white/90 backdrop-blur-sm">
+          <div className="mb-1 flex items-center justify-center text-center">
+            <h3 className="text-3xl font-bold text-gray-900">
               Delivery Location
-            </span>
+            </h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-white hover:text-gray-200 transition-colors p-1"
+            className="group absolute right-6 top-3 z-10 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-gray-300 bg-white text-gray-900 transition-colors"
+            aria-label="Close delivery location"
           >
-            <X size={24} />
+            <span className="absolute inset-0 translate-y-[-100%] bg-gray-900 transition-transform duration-300 ease-out group-hover:translate-y-0" />
+            <span className="relative z-10 text-gray-900 transition-colors group-hover:text-white">
+              <X size={22} />
+            </span>
           </button>
         </div>
 
@@ -1517,9 +1513,12 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsEditingDeliveryAddress(true)}
-                      className="w-full rounded bg-belims-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-belims-navy"
+                      className={primaryButtonClass}
                     >
-                      Edit Address
+                      <span className={primaryButtonOverlayClass} />
+                      <span className={primaryButtonLabelClass}>
+                        Edit Address
+                      </span>
                     </button>
 
                     <p className="text-xs text-gray-500">
@@ -1548,16 +1547,20 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                     <button
                       type="button"
                       onClick={handleSaveDetectedAddress}
-                      className="rounded bg-belims-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-belims-navy"
+                      className={primaryButtonClass}
                     >
-                      Save
+                      <span className={primaryButtonOverlayClass} />
+                      <span className={primaryButtonLabelClass}>Save</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setDetectedLocationAddress(null)}
-                      className="rounded border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50"
+                      className={secondaryButtonClass}
                     >
-                      Edit address
+                      <span className={secondaryButtonOverlayClass} />
+                      <span className={secondaryButtonLabelClass}>
+                        Edit address
+                      </span>
                     </button>
                   </div>
 
@@ -1753,6 +1756,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           {fulfillmentType === "delivery" ? (
             <div className="grid grid-cols-1 gap-3">
               <button
+                type="button"
                 onClick={() => {
                   localStorage.removeItem("deliveryAddressV2");
                   localStorage.removeItem("deliveryAddress");
@@ -1764,21 +1768,24 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                   setIsEditingDeliveryAddress(true);
                   onAddressSelect(null);
                 }}
-                className="px-4 py-2.5 rounded border border-gray-300 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                className={secondaryButtonClass}
               >
-                Reset
+                <span className={secondaryButtonOverlayClass} />
+                <span className={secondaryButtonLabelClass}>Reset</span>
               </button>
             </div>
           ) : (
             <button
+              type="button"
               onClick={handlePickupSave}
-              className="w-full px-4 py-2.5 rounded bg-belims-blue text-white text-sm font-semibold hover:bg-belims-navy transition-colors"
+              className={primaryButtonClass}
             >
-              Save Pickup Store
+              <span className={primaryButtonOverlayClass} />
+              <span className={primaryButtonLabelClass}>Save Pickup Store</span>
             </button>
           )}
         </div>
       </div>
-    </div>
+    </BottomDrawer>
   );
 };

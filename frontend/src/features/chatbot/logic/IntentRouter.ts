@@ -1,4 +1,9 @@
-import { IntentType, ChatMessage, UserProfile, ChatState } from "../types";
+import {
+  IntentType,
+  ChatMessage,
+  UserProfile,
+  ChatState,
+} from "../types/index";
 
 export class IntentRouter {
   // Simple keyword matching for now, would be an LLM call in production

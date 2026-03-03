@@ -81,16 +81,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         <div className="mx-auto grid h-full min-h-full w-full flex-1 overflow-hidden bg-white lg:grid-cols-2">
           <div className="order-2 flex h-full flex-col justify-between border-t border-gray-200 bg-gray-900 px-8 py-10 text-white lg:order-1 lg:border-t-0 lg:border-r">
             <div>
-              <a href="/" className="inline-flex">
-                <img
-                  alt="logo"
-                  src="https://cdn-tailgrids.b-cdn.net/3.0/logo/tailgrids-logo.svg"
-                  className="h-8 w-auto"
-                />
-              </a>
               <p className="mt-6 text-lg font-semibold leading-relaxed">
-                Beautifully crafted Tailwind CSS UI components, blocks and
-                templates.
+                Placeholder text for a compelling marketing message.
               </p>
             </div>
 
@@ -100,7 +92,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 href="mailto:support@tailgrids.com"
                 className="font-semibold text-white underline underline-offset-2"
               >
-                support@tailgrids.com
+                info@belims.co.za
               </a>
             </p>
           </div>

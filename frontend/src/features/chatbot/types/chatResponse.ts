@@ -1,4 +1,4 @@
-import { IntentType, ChatAction as BaseChatAction } from "../types";
+import { IntentType, ChatAction as BaseChatAction } from "./index";
 
 export type QuickReply =
   | { type: "INTENT"; label: string; intent: IntentType }

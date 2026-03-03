@@ -1,7 +1,7 @@
 // services/ChatService.ts
 import { IntentRouter } from "../logic/IntentRouter";
 import { RecommendationEngine } from "../logic/RecommendationEngine";
-import { ChatState, IntentType } from "../types";
+import { ChatState, IntentType } from "../types/index";
 import { AssistantResponse } from "../types/chatResponse.ts";
 
 type Services = {

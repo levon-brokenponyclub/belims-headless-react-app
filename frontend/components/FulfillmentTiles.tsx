@@ -1,14 +1,12 @@
-import React, { useState } from "react";
-import {
-  Check,
-  MapPin,
-  Truck,
-  CreditCard,
-  Zap,
-  ChevronRight,
-} from "lucide-react";
+import React from "react";
 import { Store } from "../types";
+import { BottomDrawer } from "./BottomDrawer";
+import { FulfillmentTab, FulfillmentTabs } from "./FulfillmentTabs";
 import { formatCurrency } from "../utils/price";
+import {
+  formatDeliveryEtaText,
+  getDeliveryOptionMarkers,
+} from "../src/lib/fulfillmentSummary";
 
 export interface DeliveryAddress {
   street?: string;
@@ -25,12 +23,13 @@ export interface FulfillmentData {
   isFree?: boolean;
 }
 
-export interface SelectedDeliveryDetails {
-  name: string;
-  eta: string;
-  price: number;
-  isFree?: boolean;
-  badge?: string;
+type ShippingTier = "Express" | "Standard" | "Economy";
+
+interface ShippingRate {
+  service_name: string;
+  total_price: number;
+  expected_delivery_date?: string;
+  tier?: ShippingTier;
 }
 
 interface FulfillmentTilesProps {
@@ -38,592 +37,634 @@ interface FulfillmentTilesProps {
   delivery?: FulfillmentData;
   pickupStore?: Store | null;
   pickupSchedule?: { date: string; time: string } | null;
-  selectedType?: "pickup" | "delivery" | null;
-  onSelect?: (type: "pickup" | "delivery") => void;
-  onClearSelection?: () => void;
+  selectedType: FulfillmentTab;
+  onSelect: (type: FulfillmentTab) => void;
   onSetDeliveryLocation?: () => void;
-  onOpenDeliveryOptions?: () => void;
-  selectedDeliveryDetails?: SelectedDeliveryDetails | null;
+  onEditDeliveryLocation?: () => void;
+  onViewPickupDetails?: () => void;
   deliveryLocationSet?: boolean;
   deliveryAddress?: DeliveryAddress | null;
-  onSchedulePickup?: () => void;
-  onViewPickupDetails?: () => void;
-  onResetPickupStore?: () => void;
-  onEnableDefaultStore?: () => void;
+  deliveryRates: ShippingRate[];
+  selectedDeliveryOptionId: string;
+  onSelectDeliveryOption: (id: string) => void;
   loading?: boolean;
+  deliveryRatesError?: string | null;
+  focusDeliveryPanelSignal?: number;
 }
 
-export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
-  pickup,
-  delivery,
-  pickupStore,
-  pickupSchedule,
-  onSetDeliveryLocation,
-  onOpenDeliveryOptions,
-  selectedDeliveryDetails,
-  deliveryLocationSet = false,
-  deliveryAddress,
-  onSchedulePickup,
-  onViewPickupDetails,
-  onResetPickupStore,
-  onEnableDefaultStore,
-  loading = false,
-}) => {
-  const isDev = import.meta.env.DEV;
-  const showDeliveryPrompt = !deliveryLocationSet;
-  const rawEta = selectedDeliveryDetails?.eta || delivery?.eta || "";
-  const normalizedEta = rawEta.replace(/^Estimated Arrival:\s*/i, "").trim();
-  const isInStock = (pickup?.available ?? 0) > 0;
-  const availabilityLabel = isInStock ? "Available" : "Unavailable";
-  const dayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
-  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+interface DeliveryOptionsAccordionProps {
+  isActive: boolean;
+  hasAddress: boolean;
+  deliveryRates: ShippingRate[];
+  selectedDeliveryOptionId: string;
+  onSelectDeliveryOption: (id: string) => void;
+  loading: boolean;
+  errorMessage?: string | null;
+  onAddAddress?: () => void;
+  onChangeAddress?: () => void;
+}
 
-  const parseTimeToMinutes = (value?: string) => {
-    if (!value) return null;
-    const [hours, minutes] = value.split(":").map((part) => Number(part));
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
-    return hours * 60 + minutes;
-  };
+type PickupStatus = {
+  detail?: string;
+  isOpen: boolean;
+};
 
-  const formatTimeLabel = (value?: string) => {
-    if (!value) return "";
-    const [hoursValue, minutesValue] = value.split(":").map(Number);
-    if (Number.isNaN(hoursValue) || Number.isNaN(minutesValue)) return value;
-    const suffix = hoursValue >= 12 ? "pm" : "am";
-    const normalizedHours = hoursValue % 12 || 12;
-    if (minutesValue === 0) {
-      return `${normalizedHours}${suffix}`;
-    }
-    return `${normalizedHours}:${String(minutesValue).padStart(2, "0")}${suffix}`;
-  };
+const dayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-  const getNextOpenDay = (
-    hours: NonNullable<Store["hours"]>,
-    startIndex: number,
-  ) => {
-    for (let offset = 1; offset <= 7; offset += 1) {
-      const index = (startIndex + offset) % 7;
-      const dayKey = dayKeys[index];
-      const dayHours = hours[dayKey];
-      if (!dayHours || dayHours.closed) continue;
-      if (!dayHours.open || !dayHours.close) continue;
-      return { index, dayHours };
-    }
-    return null;
-  };
+const parseTimeToMinutes = (value?: string) => {
+  if (!value) return null;
+  const [hours, minutes] = value.split(":").map((part) => Number(part));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+};
 
-  const getPickupStatus = (store?: Store | null) => {
-    if (!store?.hours) return null;
-    const now = new Date();
-    const dayKey = dayKeys[now.getDay()];
-    const dayHours = store.hours[dayKey];
+const formatTimeLabel = (value?: string) => {
+  if (!value) return "";
+  const [hoursValue, minutesValue] = value.split(":").map(Number);
+  if (Number.isNaN(hoursValue) || Number.isNaN(minutesValue)) return value;
+  const suffix = hoursValue >= 12 ? "pm" : "am";
+  const normalizedHours = hoursValue % 12 || 12;
+  if (minutesValue === 0) {
+    return `${normalizedHours}${suffix}`;
+  }
+  return `${normalizedHours}:${String(minutesValue).padStart(2, "0")}${suffix}`;
+};
 
-    if (!dayHours || dayHours.closed) {
-      const nextOpen = getNextOpenDay(store.hours, now.getDay());
-      if (nextOpen) {
-        const isTomorrow = nextOpen.index === (now.getDay() + 1) % 7;
-        const nextLabel = isTomorrow
-          ? "opens tomorrow"
-          : `opens ${dayLabels[nextOpen.index]}`;
-        return {
-          label: "Closed",
-          detail: `${nextLabel} ${formatTimeLabel(nextOpen.dayHours.open)}`,
-          isOpen: false,
-        };
-      }
-      return { label: "Closed", isOpen: false };
-    }
+const formatOperatingHours = (
+  hours?: NonNullable<Store["hours"]>[string],
+): string => {
+  if (!hours || hours.closed) {
+    return "Closed";
+  }
+  if (hours.open && hours.close) {
+    return `${hours.open} - ${hours.close}`;
+  }
+  return "Closed";
+};
 
-    const openMinutes = parseTimeToMinutes(dayHours.open);
-    const closeMinutes = parseTimeToMinutes(dayHours.close);
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+const getNextOpenDay = (
+  hours: NonNullable<Store["hours"]>,
+  startIndex: number,
+) => {
+  for (let offset = 1; offset <= 7; offset += 1) {
+    const index = (startIndex + offset) % 7;
+    const dayKey = dayKeys[index];
+    const dayHours = hours[dayKey];
+    if (!dayHours || dayHours.closed) continue;
+    if (!dayHours.open || !dayHours.close) continue;
+    return { index, dayHours };
+  }
+  return null;
+};
 
-    if (openMinutes === null || closeMinutes === null) {
-      return { label: "Closed", isOpen: false };
-    }
+const getPickupStatus = (store?: Store | null): PickupStatus | null => {
+  if (!store?.hours) return null;
 
-    const breakStartMinutes = parseTimeToMinutes(dayHours.breakStart);
-    const breakEndMinutes = parseTimeToMinutes(dayHours.breakEnd);
+  const now = new Date();
+  const dayKey = dayKeys[now.getDay()];
+  const dayHours = store.hours[dayKey];
 
-    if (
-      breakStartMinutes !== null &&
-      breakEndMinutes !== null &&
-      nowMinutes >= breakStartMinutes &&
-      nowMinutes < breakEndMinutes
-    ) {
+  if (!dayHours || dayHours.closed) {
+    const nextOpen = getNextOpenDay(store.hours, now.getDay());
+    if (nextOpen) {
+      const isTomorrow = nextOpen.index === (now.getDay() + 1) % 7;
+      const nextLabel = isTomorrow
+        ? "opens tomorrow"
+        : `opens ${dayLabels[nextOpen.index]}`;
       return {
-        label: "Closed",
-        detail: `reopens ${formatTimeLabel(dayHours.breakEnd)}`,
+        detail: `${nextLabel} ${formatTimeLabel(nextOpen.dayHours.open)}`,
         isOpen: false,
       };
     }
+    return { isOpen: false };
+  }
 
-    if (nowMinutes < openMinutes) {
-      return {
-        label: "Closed",
-        detail: `opens ${formatTimeLabel(dayHours.open)}`,
-        isOpen: false,
-      };
-    }
+  const openMinutes = parseTimeToMinutes(dayHours.open);
+  const closeMinutes = parseTimeToMinutes(dayHours.close);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-    if (nowMinutes >= closeMinutes) {
-      const nextOpen = getNextOpenDay(store.hours, now.getDay());
-      if (nextOpen) {
-        const isTomorrow = nextOpen.index === (now.getDay() + 1) % 7;
-        const nextLabel = isTomorrow
-          ? "opens tomorrow"
-          : `opens ${dayLabels[nextOpen.index]}`;
-        return {
-          label: "Closed",
-          detail: `${nextLabel} ${formatTimeLabel(nextOpen.dayHours.open)}`,
-          isOpen: false,
-        };
-      }
-      return { label: "Closed", isOpen: false };
-    }
+  if (openMinutes === null || closeMinutes === null) {
+    return { isOpen: false };
+  }
 
-    if (nowMinutes >= closeMinutes - 60) {
-      return {
-        label: "Open",
-        detail: `closing soon - closing at ${formatTimeLabel(dayHours.close)}`,
-        isOpen: true,
-      };
-    }
+  const breakStartMinutes = parseTimeToMinutes(dayHours.breakStart);
+  const breakEndMinutes = parseTimeToMinutes(dayHours.breakEnd);
 
+  if (
+    breakStartMinutes !== null &&
+    breakEndMinutes !== null &&
+    nowMinutes >= breakStartMinutes &&
+    nowMinutes < breakEndMinutes
+  ) {
     return {
-      label: "Open",
-      detail: `closing at ${formatTimeLabel(dayHours.close)}`,
-      isOpen: true,
+      detail: `opens ${formatTimeLabel(dayHours.breakEnd)}`,
+      isOpen: false,
     };
-  };
+  }
 
-  const pickupStatus = getPickupStatus(pickupStore);
-  const formatScheduledPickup = (dateValue: string, timeValue: string) => {
-    const parsed = new Date(`${dateValue}T${timeValue}`);
-    if (Number.isNaN(parsed.getTime())) {
-      return `${dateValue} at ${timeValue}`;
+  if (nowMinutes < openMinutes) {
+    return {
+      detail: `opens ${formatTimeLabel(dayHours.open)}`,
+      isOpen: false,
+    };
+  }
+
+  if (nowMinutes >= closeMinutes) {
+    const nextOpen = getNextOpenDay(store.hours, now.getDay());
+    if (nextOpen) {
+      const isTomorrow = nextOpen.index === (now.getDay() + 1) % 7;
+      const nextLabel = isTomorrow
+        ? "opens tomorrow"
+        : `opens ${dayLabels[nextOpen.index]}`;
+      return {
+        detail: `${nextLabel} ${formatTimeLabel(nextOpen.dayHours.open)}`,
+        isOpen: false,
+      };
     }
-    const dayLabel = parsed.toLocaleDateString("en-ZA", { weekday: "long" });
-    const dateLabel = parsed.toLocaleDateString("en-ZA", {
-      day: "2-digit",
-      month: "short",
-    });
-    return `${dayLabel} ${dateLabel} at ${timeValue}`;
+    return { isOpen: false };
+  }
+
+  return { isOpen: true };
+};
+
+const getDeliveryAddressText = (address?: DeliveryAddress | null) => {
+  if (!address) return "";
+  const parts = [address.street, address.city, address.postalCode].filter(
+    Boolean,
+  );
+  return parts.join(", ");
+};
+
+const getDeliverySummaryLine = ({
+  hasAddress,
+  selectedOption,
+}: {
+  hasAddress: boolean;
+  selectedOption?: {
+    service_name: string;
+    total_price: number;
+    expected_delivery_date?: string;
   };
-  const scheduledLabel = pickupSchedule
-    ? formatScheduledPickup(pickupSchedule.date, pickupSchedule.time)
-    : null;
-  const pickupTone = pickupStatus?.isOpen
-    ? "text-green-600"
-    : pickupStatus?.isOpen === false
-      ? "text-red-muted"
-      : "text-grey-medium";
-  const [isPickupRefreshing, setIsPickupRefreshing] = useState(false);
-  const formatDeliveryPrice = (details?: SelectedDeliveryDetails | null) => {
-    if (!details) return "";
-    if (details.isFree || details.price === 0) return "FREE";
-    return formatCurrency(details.price);
-  };
-  const handleDeliveryClick = () => {
-    if (loading) return;
-    if (showDeliveryPrompt) {
-      onSetDeliveryLocation?.();
-      return;
-    }
-    onOpenDeliveryOptions?.();
-  };
+}): string => {
+  if (!hasAddress) {
+    return "Add your address to see delivery rates and arrival dates.";
+  }
+  if (selectedOption) {
+    return `Selected: ${selectedOption.service_name} — ${formatCurrency(selectedOption.total_price)} — ${formatDeliveryEtaText(selectedOption.expected_delivery_date)}`;
+  }
+  return "Choose a delivery option to see final ETA.";
+};
+
+const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
+  isActive,
+  hasAddress,
+  deliveryRates,
+  selectedDeliveryOptionId,
+  onSelectDeliveryOption,
+  loading,
+  errorMessage,
+  onAddAddress,
+  onChangeAddress,
+}) => {
+  const options = React.useMemo(
+    () =>
+      deliveryRates.map((rate, index) => ({
+        id: `rate-${index}`,
+        ...rate,
+      })),
+    [deliveryRates],
+  );
+
+  const selectedOption = options.find(
+    (option) => option.id === selectedDeliveryOptionId,
+  );
+  const hasSelectedOption = Boolean(selectedOption);
+
+  const { fastestOptionId, cheapestOptionId } = getDeliveryOptionMarkers(
+    options.map((option) => ({
+      id: option.id,
+      total_price: option.total_price,
+      expected_delivery_date: option.expected_delivery_date,
+    })),
+  );
+
+  const defaultExpanded =
+    isActive && hasAddress && !hasSelectedOption && options.length !== 1;
+
+  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const handlePickupUpdate = () => {
-      setIsPickupRefreshing(true);
-    };
-    window.addEventListener("belims:pickup-store-updated", handlePickupUpdate);
-    return () => {
-      window.removeEventListener(
-        "belims:pickup-store-updated",
-        handlePickupUpdate,
-      );
-    };
-  }, []);
+    setIsExpanded(defaultExpanded);
+  }, [defaultExpanded]);
 
-  React.useEffect(() => {
-    if (!isPickupRefreshing) return;
-    if (pickupStore?.name) {
-      setIsPickupRefreshing(false);
-    }
-  }, [isPickupRefreshing, pickupStore?.name]);
+  const microSummary = getDeliverySummaryLine({
+    hasAddress,
+    selectedOption,
+  });
 
   return (
-    <div className="w-full">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* Pickup Option */}
-        {pickup && (
-          <button
-            type="button"
-            onClick={() => {
-              if (loading) return;
-              onViewPickupDetails?.();
-            }}
-            disabled={loading}
-            className={`group flex items-start gap-3 p-3 md:p-4 rounded-lg border border-subtle transition-all text-left bg-white ${
-              loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-            }`}
-          >
-            <div className="flex items-center justify-center transition-colors flex-shrink-0 text-grey">
-              <MapPin size={28} strokeWidth={1.5} />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between gap-2">
-                {/* <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#ddf0df]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#337239]"></span>
-                </span> */}
-                <h3 className="font-semibold text-grey text-base">Pickup</h3>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onViewPickupDetails?.();
-                  }}
-                  className="relative h-8 w-8 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out group-hover:border-grey group-hover:bg-grey group-hover:text-white"
-                  aria-label="View store information"
-                >
-                  <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                  <span className="relative z-10 flex items-center justify-center">
-                    <ChevronRight size={16} strokeWidth={1.5} />
-                  </span>
-                </button>
-              </div>
-              <p className="text-[13px] mb-0 transition-colors text-grey-medium">
-                Pickup from:{" "}
-                {isPickupRefreshing && !pickupStore?.name ? (
-                  <span className="inline-flex items-center" aria-hidden>
-                    <span className="mr-2 h-3 w-20 rounded-full bg-grey-light animate-pulse" />
-                    <span className="h-3 w-10 rounded-full bg-grey-light animate-pulse" />
-                  </span>
-                ) : pickupStore?.name ? (
-                  <span className="shipping-text inline-flex items-center gap-2">
-                    <span className="pick-up-store-name">
-                      {pickupStore.name}
-                    </span>
-                    {/* <span className="separator text-gray-400">|</span> */}
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        isInStock ? "bg-[#039B6D]" : "bg-red-muted"
-                      }`}
-                      aria-hidden
-                    />
-                    <span
-                      className={`pick-up-store-availability-indicator text-[13px] ${
-                        isInStock
-                          ? "available text-[#039B6D]"
-                          : "unavailable text-red-muted"
-                      }`}
-                    >
-                      {availabilityLabel}
-                    </span>
-                  </span>
-                ) : (
-                  <span>Select Store</span>
-                )}
-                <br />
-                {pickupStore ? (
-                  scheduledLabel ? (
-                    <>Scheduled: {scheduledLabel}</>
-                  ) : (
-                    <>
-                      {pickupStatus?.isOpen === false ? "" : ""}{" "}
-                      {pickupStatus ? (
-                        <>
-                          <span className={`${pickupTone} font-semibold`}>
-                            {pickupStatus.label}
-                          </span>
-                          {pickupStatus.detail && (
-                            <span className="text-gray-400">
-                              {" "}
-                              - {pickupStatus.detail}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-grey-medium">Check hours</span>
-                      )}
-                    </>
-                  )
-                ) : null}
+    <div className="rounded-2xl border border-subtle bg-grey-light/50">
+      <button
+        type="button"
+        onClick={() => setIsExpanded((prev) => !prev)}
+        className="w-full px-4 py-3 text-left"
+        aria-expanded={isExpanded}
+        aria-controls="delivery-options-accordion"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-grey">Delivery options</p>
+          <span className="text-base leading-none text-grey-medium">
+            {isExpanded ? "×" : "+"}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-grey-medium">{microSummary}</p>
+      </button>
+
+      {isExpanded && (
+        <div
+          id="delivery-options-accordion"
+          className="space-y-2 border-t border-subtle px-4 py-3"
+        >
+          {!hasAddress ? (
+            <div className="space-y-3">
+              <p className="text-sm text-grey-medium">
+                Add your address to see delivery rates and arrival dates.
               </p>
-              {/* {pickupStore && (
-                <div className="mt-2 flex items-center gap-3">
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onViewPickupDetails?.();
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        onViewPickupDetails?.();
-                      }
-                    }}
-                    className="text-[12px] font-bold text-red-muted hover:text-red-muted"
-                  >
-                    View store details
-                  </span>
-                  {isDev && onResetPickupStore && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onResetPickupStore();
-                      }}
-                      className="text-[11px] font-semibold text-grey-medium hover:text-gray-700"
-                    >
-                      Reset store
-                    </button>
-                  )}
-                  {isDev && onEnableDefaultStore && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onEnableDefaultStore();
-                      }}
-                      className="text-[11px] font-semibold text-grey-medium hover:text-gray-700"
-                    >
-                      Use default store
-                    </button>
-                  )}
-                </div>
-              )} */}
+              <button
+                type="button"
+                onClick={() => onAddAddress?.()}
+                className="text-sm font-semibold text-grey underline"
+              >
+                Add address
+              </button>
             </div>
-          </button>
-        )}
-
-        {/* Delivery Option */}
-        {delivery && (
-          <button
-            type="button"
-            onClick={handleDeliveryClick}
-            disabled={loading}
-            className={`group flex items-start gap-3 p-3 md:p-4 rounded-lg border border-subtle transition-all text-left bg-white ${
-              loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-            }`}
-          >
-            <div className="flex items-center justify-center transition-colors flex-shrink-0 text-grey">
-              <Truck size={28} strokeWidth={1.5} />
+          ) : loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={`delivery-option-skeleton-${index}`}
+                  className="h-16 animate-pulse rounded-xl border border-subtle bg-white"
+                />
+              ))}
             </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <div className="flex items-center gap-2 justify-center">
-                  <h3 className="font-semibold text-grey text-base">
-                    Delivery
-                  </h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onOpenDeliveryOptions?.();
-                    }}
-                    className="relative h-8 w-8 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out group-hover:border-grey group-hover:bg-grey group-hover:text-white"
-                    aria-label="View store information"
-                  >
-                    <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                    <span className="relative z-10 flex items-center justify-center">
-                      <ChevronRight size={16} strokeWidth={1.5} />
-                    </span>
-                  </button>
-                </div>
-              </div>
+          ) : errorMessage ? (
+            <div className="space-y-2">
+              <p className="text-sm text-red-muted">{errorMessage}</p>
+              <button
+                type="button"
+                onClick={() => onChangeAddress?.()}
+                className="text-sm font-semibold text-grey underline"
+              >
+                Change address
+              </button>
+            </div>
+          ) : options.length === 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm text-grey-medium">
+                Delivery isn’t available for this address. Try another address
+                or use Pickup.
+              </p>
+              <button
+                type="button"
+                onClick={() => onChangeAddress?.()}
+                className="text-sm font-semibold text-grey underline"
+              >
+                Change address
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {options.map((option) => {
+                const isSelected = selectedDeliveryOptionId === option.id;
+                const badgeText =
+                  option.id === fastestOptionId
+                    ? "Fastest"
+                    : option.id === cheapestOptionId
+                      ? "Best value"
+                      : null;
 
-              {showDeliveryPrompt ? (
-                <div className="flex flex-col gap-1">
-                  <p className="text-[13px] mb-0 transition-colors text-grey-medium">
-                    Enter your address to see available delivery rates and dates
-                  </p>
-                </div>
-              ) : loading ? (
-                <div className="flex flex-col gap-3">
-                  <div className="space-y-2">
-                    <div className="h-3 w-48 rounded-full bg-grey-light animate-pulse" />
-                    <div className="h-3 w-64 rounded-full bg-grey-light animate-pulse" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-3 w-40 rounded-full bg-grey-light animate-pulse" />
-                    <div className="h-3 w-32 rounded-full bg-grey-light animate-pulse" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-3 w-52 rounded-full bg-grey-light animate-pulse" />
-                    <div className="h-3 w-44 rounded-full bg-grey-light animate-pulse" />
-                  </div>
-                </div>
-              ) : (
-                <div className="text-[13px] mb-1">
-                  <p className="text-grey-medium">
-                    <span className="">Deliver to:</span>{" "}
-                    {deliveryAddress?.street}, {deliveryAddress?.city}
-                  </p>
-                  {normalizedEta && (
-                    <div className="mt-0">
-                      <p className="text-grey-medium text-[13px]">
-                        <span className="">Estimated Arrival:</span>{" "}
-                        {normalizedEta}
+                return (
+                  <label
+                    key={option.id}
+                    htmlFor={option.id}
+                    className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors ${
+                      isSelected
+                        ? "border-grey bg-white"
+                        : "border-subtle bg-white hover:border-grey-medium"
+                    }`}
+                  >
+                    <input
+                      id={option.id}
+                      type="radio"
+                      name="delivery-option"
+                      checked={isSelected}
+                      onChange={() => onSelectDeliveryOption(option.id)}
+                      className="mt-1 h-4 w-4 text-grey"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-grey">
+                          {option.service_name}
+                        </p>
+                        {badgeText && (
+                          <span className="rounded-full border border-subtle bg-grey-light px-2 py-0.5 text-[11px] font-medium text-grey-medium">
+                            {badgeText}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-grey-medium">
+                        {formatDeliveryEtaText(option.expected_delivery_date)}
                       </p>
-                      {selectedDeliveryDetails && (
-                        <div className="mt-1 flex items-center justify-between text-gray-900 text-[12px]">
-                          <span>
-                            <span className="font-semibold">
-                              Option Selected:
-                            </span>{" "}
-                            {selectedDeliveryDetails.name}
-                          </span>
-                          <span className="font-semibold">
-                            {formatDeliveryPrice(selectedDeliveryDetails)}
-                          </span>
-                        </div>
-                      )}
-                      {!loading && (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onOpenDeliveryOptions?.();
-                          }}
-                          className="mt-1 text-[13px] font-semibold text-grey-medium hover:underline"
-                        >
-                          {selectedDeliveryDetails
-                            ? "Change delivery option"
-                            : "View delivery options"}
-                        </button>
-                      )}
                     </div>
-                  )}
-                </div>
-              )}
+                    <p className="whitespace-nowrap text-sm font-medium text-grey">
+                      {option.total_price === 0
+                        ? "FREE"
+                        : formatCurrency(option.total_price)}
+                    </p>
+                  </label>
+                );
+              })}
             </div>
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
-export const ShippingSelectionTiles: React.FC = () => {
-  const [selected, setSelected] = useState<
-    "standard" | "next-day" | "same-day"
-  >("standard");
+export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
+  pickup,
+  pickupStore,
+  selectedType,
+  onSelect,
+  onSetDeliveryLocation,
+  onEditDeliveryLocation,
+  onViewPickupDetails,
+  deliveryLocationSet = false,
+  deliveryAddress,
+  deliveryRates,
+  selectedDeliveryOptionId,
+  onSelectDeliveryOption,
+  loading = false,
+  deliveryRatesError,
+  focusDeliveryPanelSignal,
+}) => {
+  const deliveryPanelRef = React.useRef<HTMLDivElement | null>(null);
+  const [isStoreDetailsOpen, setIsStoreDetailsOpen] = React.useState(false);
+
+  const pickupPanelId = "fulfillment-pickup-panel";
+  const deliveryPanelId = "fulfillment-delivery-panel";
+
+  const isPickupAvailable = (pickup?.available ?? 0) > 0;
+  const pickupStatus = getPickupStatus(pickupStore);
+  const storeStatusText = pickupStatus?.isOpen
+    ? "Available"
+    : pickupStatus?.detail
+      ? `Closed — ${pickupStatus.detail}`
+      : "Closed";
+
+  React.useEffect(() => {
+    if (selectedType === "delivery") {
+      deliveryPanelRef.current?.focus();
+    }
+  }, [selectedType, focusDeliveryPanelSignal]);
+
+  const handleViewStoreDetails = () => {
+    if (pickupStore) {
+      setIsStoreDetailsOpen(true);
+      return;
+    }
+    onViewPickupDetails?.();
+  };
+
+  const hoursRows = dayKeys.map((dayKey, index) => ({
+    label: dayLabels[index],
+    value: formatOperatingHours(pickupStore?.hours?.[dayKey]),
+  }));
 
   return (
-    <div className="grid grid-cols-1 gap-3 mt-4">
-      {/* Standard Delivery */}
-      <button
-        type="button"
-        onClick={() => setSelected("standard")}
-        className={`flex items-center justify-between p-6 rounded-md border-2 transition-all text-left ${
-          selected === "standard"
-            ? "border-blue-900 bg-white"
-            : "border-gray-100 bg-white hover:border-blue-200"
-        }`}
-      >
-        <div className="flex items-center gap-3 w-[75%]">
-          <div
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-              selected === "standard" ? "border-blue-900" : "border-gray-300"
-            }`}
-          >
-            {selected === "standard" && (
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-900" />
-            )}
-          </div>
-          <div>
-            <h4 className="font-bold text-gray-900 text-sm leading-tight">
-              Standard Delivery
-            </h4>
-            <p className="text-xs text-grey-medium">
-              Estimated Arrival: 17 Feb - 19 Feb
-            </p>
-          </div>
-        </div>
-        <span className="text-xs font-bold text-gray-900 flex-shrink-0 ml-auto">
-          R75.00
-        </span>
-      </button>
+    <div className="w-full space-y-3">
+      <p className="text-sm font-semibold text-grey">Fulfillment</p>
 
-      {/* Next Day Delivery */}
-      <button
-        type="button"
-        onClick={() => setSelected("next-day")}
-        className={`flex items-center justify-between p-6 rounded-md border-2 transition-all text-left ${
-          selected === "next-day"
-            ? "border-blue-900 bg-white"
-            : "border-gray-100 bg-white hover:border-blue-200"
-        }`}
-      >
-        <div className="flex items-center gap-3 w-[75%]">
-          <div
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-              selected === "next-day" ? "border-blue-900" : "border-gray-300"
-            }`}
-          >
-            {selected === "next-day" && (
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-900" />
-            )}
-          </div>
-          <div>
-            <h4 className="font-bold text-gray-900 text-sm leading-tight">
-              Next Day Delivery
-            </h4>
-            <p className="text-xs text-grey-medium">
-              Estimated Arrival: 16 Feb
-            </p>
-          </div>
-        </div>
-        <span className="text-xs font-bold text-gray-900 flex-shrink-0 ml-auto">
-          R125.00
-        </span>
-      </button>
+      <FulfillmentTabs
+        value={selectedType}
+        onChange={onSelect}
+        pickupPanelId={pickupPanelId}
+        deliveryPanelId={deliveryPanelId}
+      />
 
-      {/* Same Day Delivery */}
-      <button
-        type="button"
-        onClick={() => setSelected("same-day")}
-        className={`flex items-center justify-between p-6 rounded-md border-2 transition-all text-left ${
-          selected === "same-day"
-            ? "border-blue-900 bg-white"
-            : "border-gray-100 bg-white hover:border-blue-200"
-        }`}
-      >
-        <div className="flex items-center gap-3 w-[75%]">
+      <div className="pt-1">
+        {selectedType === "pickup" && (
           <div
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-              selected === "same-day" ? "border-blue-900" : "border-gray-300"
-            }`}
+            id={pickupPanelId}
+            role="tabpanel"
+            aria-labelledby={`${pickupPanelId}-tab`}
+            className="space-y-2 rounded-2xl border border-subtle bg-grey-light/50 px-4 py-3"
           >
-            {selected === "same-day" && (
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-900" />
+            {!pickupStore ? (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-grey-medium">No store selected.</p>
+                <button
+                  type="button"
+                  onClick={() => onViewPickupDetails?.()}
+                  className="text-sm font-semibold text-grey underline"
+                >
+                  Select store
+                </button>
+              </div>
+            ) : !isPickupAvailable ? (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50/60 px-3 py-2">
+                <p className="text-sm text-red-muted">
+                  Pickup currently unavailable at {pickupStore.name}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onViewPickupDetails?.()}
+                  className="shrink-0 text-sm font-semibold text-grey underline"
+                >
+                  Check availability at other stores
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm text-grey">
+                    <span className="font-semibold">Pickup from:</span>{" "}
+                    {pickupStore.name}
+                  </p>
+                  {typeof pickupStore.distance === "number" && (
+                    <span className="whitespace-nowrap text-xs text-grey-medium">
+                      {pickupStore.distance.toFixed(1)} km
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-sm text-grey">
+                  <span className="font-semibold">Status:</span>{" "}
+                  {storeStatusText}
+                </p>
+                <p className="text-sm text-grey-medium">
+                  Pickup available, usually ready in 24 hours
+                </p>
+              </>
             )}
+
+            <button
+              type="button"
+              onClick={handleViewStoreDetails}
+              className="text-sm font-semibold text-grey underline hover:text-grey-medium"
+            >
+              View store details
+            </button>
+
+            <BottomDrawer
+              isOpen={isStoreDetailsOpen}
+              onClose={() => setIsStoreDetailsOpen(false)}
+              ariaLabel="Store details"
+              heightClassName="h-[78vh] lg:h-[72vh]"
+            >
+              <div className="flex h-full flex-col bg-white">
+                <div className="flex items-center justify-between border-b border-subtle px-5 py-4">
+                  <p className="text-lg font-semibold text-grey">
+                    Store details
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsStoreDetailsOpen(false)}
+                    className="text-sm font-semibold text-grey-medium hover:text-grey"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+                  <div className="space-y-2 rounded-2xl border border-subtle bg-grey-light/50 p-4">
+                    <p className="text-base font-semibold text-grey">
+                      {pickupStore?.name || "Selected store"}
+                    </p>
+                    {typeof pickupStore?.distance === "number" && (
+                      <p className="text-sm text-grey-medium">
+                        {pickupStore.distance.toFixed(1)} km away
+                      </p>
+                    )}
+                    <p className="text-sm text-grey-medium">
+                      {isPickupAvailable
+                        ? "Pickup available, usually ready in 24 hours"
+                        : "Pickup currently unavailable at this store."}
+                    </p>
+                    {pickupStore?.address && (
+                      <p className="text-sm text-grey-medium">
+                        {pickupStore.address}
+                      </p>
+                    )}
+                    {pickupStore?.phone && (
+                      <p className="text-sm text-grey-medium">
+                        {pickupStore.phone}
+                      </p>
+                    )}
+                    {pickupStatus && (
+                      <p className="text-sm text-grey">
+                        <span className="font-semibold">Status:</span>{" "}
+                        {pickupStatus.isOpen
+                          ? "Available"
+                          : pickupStatus.detail
+                            ? `Closed — ${pickupStatus.detail}`
+                            : "Closed"}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-subtle bg-grey-light/50 p-4">
+                    <p className="mb-2 text-sm font-semibold text-grey">
+                      Operating hours
+                    </p>
+                    <ul className="space-y-1 text-sm text-grey-medium">
+                      {hoursRows.map((row) => (
+                        <li
+                          key={row.label}
+                          className="flex items-center justify-between gap-3"
+                        >
+                          <span>{row.label}:</span>
+                          <span>{row.value}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsStoreDetailsOpen(false);
+                      onViewPickupDetails?.();
+                    }}
+                    className="text-sm font-semibold text-grey underline"
+                  >
+                    Check availability at other stores
+                  </button>
+                </div>
+              </div>
+            </BottomDrawer>
           </div>
-          <div>
-            <h4 className="font-bold text-gray-900 text-sm leading-tight">
-              Same Day Delivery
-            </h4>
-            <p className="text-xs text-grey-medium">
-              Estimated Arrival: 13 Feb
-            </p>
+        )}
+
+        {selectedType === "delivery" && (
+          <div
+            id={deliveryPanelId}
+            ref={deliveryPanelRef}
+            role="tabpanel"
+            aria-labelledby={`${deliveryPanelId}-tab`}
+            tabIndex={-1}
+            className="space-y-3 focus:outline-none"
+          >
+            {!deliveryLocationSet ? (
+              <div className="space-y-2 rounded-2xl border border-subtle bg-grey-light/50 px-4 py-3">
+                <p className="text-sm text-grey-medium">
+                  Add your address to see delivery options, rates and arrival
+                  dates.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onSetDeliveryLocation?.()}
+                  className="text-sm font-semibold text-grey underline"
+                >
+                  Add address
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-subtle bg-grey-light/50 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="min-w-0 text-sm text-grey">
+                    <span className="font-semibold">Deliver to:</span>{" "}
+                    <span className="text-grey-medium">
+                      {getDeliveryAddressText(deliveryAddress)}
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onEditDeliveryLocation?.()}
+                    className="shrink-0 text-sm font-semibold text-grey underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <DeliveryOptionsAccordion
+              isActive={selectedType === "delivery"}
+              hasAddress={deliveryLocationSet}
+              deliveryRates={deliveryRates}
+              selectedDeliveryOptionId={selectedDeliveryOptionId}
+              onSelectDeliveryOption={onSelectDeliveryOption}
+              loading={loading}
+              errorMessage={deliveryRatesError}
+              onAddAddress={onSetDeliveryLocation}
+              onChangeAddress={onEditDeliveryLocation || onSetDeliveryLocation}
+            />
           </div>
-          <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
-            <Zap size={10} fill="currentColor" />
-            Faster
-          </span>
-        </div>
-        <span className="text-xs font-bold text-gray-900 flex-shrink-0 ml-auto">
-          R150.00
-        </span>
-      </button>
+        )}
+      </div>
     </div>
   );
 };

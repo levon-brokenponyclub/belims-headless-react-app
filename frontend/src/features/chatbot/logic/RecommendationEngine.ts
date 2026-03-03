@@ -1,4 +1,4 @@
-import { Product, UserProfile } from "../types";
+import { Product, UserProfile } from "../types/index";
 
 interface RankConfig {
   profile: UserProfile;
