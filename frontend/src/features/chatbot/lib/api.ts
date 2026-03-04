@@ -50,79 +50,95 @@ export async function productSearchApi(params: {
   userId?: string;
   context?: string;
 }): Promise<{ products: Product[]; assistantText?: string }> {
-  const query = String(params.query ?? "").trim();
+  const STOP_WORDS = new Set([
+    "find",
+    "show",
+    "need",
+    "want",
+    "for",
+    "with",
+    "under",
+    "over",
+    "between",
+    "budget",
+    "preference",
+    "preferences",
+    "focus",
+    "urgency",
+    "usage",
+    "and",
+    "the",
+    "a",
+    "an",
+    "to",
+    "of",
+    "no",
+  ]);
 
-  try {
-    const liveProducts = await fetchProducts(undefined, query || undefined, {
-      view: "listing",
-      fields: [
-        "id",
-        "name",
-        "slug",
-        "price",
-        "regular_price",
-        "sale_price",
-        "image",
-        "featured_image",
-        "stock",
-        "stock_status",
-        "maxStock",
-        "in_stock",
-        "rating",
-        "reviews",
-        "sku",
-        "category",
-      ],
-      perPage: 12,
-    });
+  const sanitizeSearchTerm = (value: string): string =>
+    value
+      .replace(
+        /\b(budget|preference|preferences|focus|urgency|usage)\s*:\s*[^.]+/gi,
+        " ",
+      )
+      .replace(/[|,;]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
-    const products: Product[] = liveProducts.map((item) => ({
-      id: String(item.id ?? ""),
-      title: String(item.name ?? "Product"),
-      price: Number(item.price ?? 0),
-      imageUrl: String(item.image ?? item.featured_image ?? ""),
-      sku: typeof item.sku === "string" ? item.sku : undefined,
-      rating:
-        typeof item.rating === "number"
-          ? item.rating
-          : Number(item.rating ?? 0) || undefined,
-      reviewCount:
-        typeof item.reviews === "number"
-          ? item.reviews
-          : Number(item.reviews ?? 0) || undefined,
-      inStock: Boolean(item.in_stock ?? item.stock_status !== "outofstock"),
-      stockQty:
-        typeof item.stock === "number"
-          ? item.stock
-          : Number(item.maxStock ?? 0) || undefined,
-    }));
+  const extractKeywords = (value: string): string => {
+    const words = value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .split(/\s+/)
+      .filter((word) => word.length > 2 && !STOP_WORDS.has(word));
 
-    return {
-      products,
-      assistantText: `Found ${products.length} live product matches.`,
-    };
-  } catch {
-    const baseUrl = getApiBaseUrl();
-    const routeUrl = `${baseUrl}/products`;
-    const searchParams = new URLSearchParams({
-      view: "listing",
-      per_page: "12",
-      fields:
-        "id,name,slug,price,regular_price,sale_price,image,featured_image,stock,stock_status,maxStock,in_stock,rating,reviews,sku,category",
-    });
-    if (query) {
-      searchParams.set("search", query);
+    return Array.from(new Set(words)).slice(0, 5).join(" ");
+  };
+
+  const parseContextUseCase = (raw?: string): string => {
+    if (!raw) return "";
+    try {
+      const parsed = JSON.parse(raw) as {
+        useCase?: string;
+        decisionAnswers?: { useCase?: string };
+      };
+      return String(
+        parsed.useCase || parsed.decisionAnswers?.useCase || "",
+      ).trim();
+    } catch {
+      return "";
     }
+  };
 
-    const raw = await requestJson<Array<Record<string, unknown>>>(
-      `${routeUrl}?${searchParams.toString()}`,
+  const fetchProductsForSearch = async (searchTerm?: string) => {
+    const liveProducts = await fetchProducts(
+      undefined,
+      searchTerm || undefined,
       {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
+        view: "listing",
+        fields: [
+          "id",
+          "name",
+          "slug",
+          "price",
+          "regular_price",
+          "sale_price",
+          "image",
+          "featured_image",
+          "stock",
+          "stock_status",
+          "maxStock",
+          "in_stock",
+          "rating",
+          "reviews",
+          "sku",
+          "category",
+        ],
+        perPage: 12,
       },
     );
 
-    const products = raw.map((item) => ({
+    return liveProducts.map((item) => ({
       id: String(item.id ?? ""),
       title: String(item.name ?? "Product"),
       price: Number(item.price ?? 0),
@@ -141,13 +157,42 @@ export async function productSearchApi(params: {
         typeof item.stock === "number"
           ? item.stock
           : Number(item.maxStock ?? 0) || undefined,
-    }));
+    })) as Product[];
+  };
 
-    return {
-      products,
-      assistantText: `Found ${products.length} live product matches.`,
-    };
+  const query = String(params.query ?? "").trim();
+  const sanitizedQuery = sanitizeSearchTerm(query);
+  const firstSentence = sanitizedQuery.split(".")[0]?.trim() || "";
+  const contextUseCase = parseContextUseCase(params.context);
+  const keywordSearch = extractKeywords(`${firstSentence} ${contextUseCase}`);
+
+  const searchCandidates = Array.from(
+    new Set([
+      query,
+      sanitizedQuery,
+      firstSentence,
+      contextUseCase,
+      keywordSearch,
+    ]),
+  ).filter(Boolean);
+
+  for (const candidate of searchCandidates) {
+    const products = await fetchProductsForSearch(candidate);
+    if (products.length > 0) {
+      return {
+        products,
+        assistantText: `Found ${products.length} live product matches.`,
+      };
+    }
   }
+
+  const fallbackProducts = await fetchProductsForSearch();
+  return {
+    products: fallbackProducts,
+    assistantText: fallbackProducts.length
+      ? `Found ${fallbackProducts.length} products after broadening your search.`
+      : "I could not find matching products right now.",
+  };
 }
 
 export async function imageSearchApi(

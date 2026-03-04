@@ -2497,12 +2497,10 @@ export const BelimsChatbot: React.FC<BelimsChatbotProps> = ({
                 onCheckStock={handleCheckStock}
                 onSuggestionSelect={(prompt) => sendMessage(prompt)}
                 fulfillment={fulfillment}
-                selectedDeliveryOption={selectedDeliveryOption}
                 onOpenDeliveryLocation={handleOpenDeliveryLocation}
                 onOpenDeliveryOptions={handleOpenDeliveryOptions}
                 focusedProduct={focusedProduct}
                 onFocusProduct={setFocusedProductId}
-                pdpContext={pdpContext}
               />
             </div>
           </div>

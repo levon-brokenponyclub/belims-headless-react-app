@@ -125,8 +125,17 @@ export const readStoredAddress = (): {
 
   try {
     const parsed = JSON.parse(raw) as ShippingAddress;
-    if (parsed && parsed.country === "ZA") {
-      return { address: parsed, legacyLabel };
+    if (parsed) {
+      const normalizedCountry = (parsed.country || "ZA").toUpperCase();
+      if (normalizedCountry === "ZA") {
+        return {
+          address: {
+            ...parsed,
+            country: "ZA",
+          },
+          legacyLabel,
+        };
+      }
     }
   } catch {
     // ignore parsing errors
@@ -145,6 +154,7 @@ export const saveStoredAddress = (address: ShippingAddress | null) => {
   const label = address.label || buildAddressLabel(address);
   const payload: ShippingAddress = {
     ...address,
+    country: "ZA",
     label,
   };
 

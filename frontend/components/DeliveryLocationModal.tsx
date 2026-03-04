@@ -50,6 +50,11 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   currentStore,
   onStoreSelect,
 }) => {
+  const emitDeliveryAddressUpdated = () => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new Event("belims:delivery-address-updated"));
+    window.dispatchEvent(new Event("belims:fulfillment-changed"));
+  };
   const isDev = import.meta.env.DEV;
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -1075,6 +1080,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     setSavedDeliveryAddress(null);
     setIsEditingDeliveryAddress(true);
     onAddressSelect(null);
+    emitDeliveryAddressUpdated();
   };
 
   const handleAddressSaved = (address: ShippingAddress) => {
@@ -1084,6 +1090,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     setDetectedLocationAddress(null);
     setInput(address.label || buildAddressLabel(address));
     setIsEditingDeliveryAddress(false);
+    emitDeliveryAddressUpdated();
   };
 
   const handleSaveDetectedAddress = () => {
@@ -1767,6 +1774,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                   setSavedDeliveryAddress(null);
                   setIsEditingDeliveryAddress(true);
                   onAddressSelect(null);
+                  emitDeliveryAddressUpdated();
                 }}
                 className={secondaryButtonClass}
               >

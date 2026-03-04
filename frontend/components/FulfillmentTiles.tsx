@@ -1,8 +1,9 @@
 import React from "react";
 import { Store } from "../types";
 import { BottomDrawer } from "./BottomDrawer";
-import { FulfillmentTab, FulfillmentTabs } from "./FulfillmentTabs";
+import { FulfillmentTab } from "./FulfillmentTabs";
 import { formatCurrency } from "../utils/price";
+import { CheckCircle2, Minus, Plus, Zap } from "lucide-react";
 import {
   formatDeliveryEtaText,
   getDeliveryOptionMarkers,
@@ -196,6 +197,11 @@ const getDeliveryAddressText = (address?: DeliveryAddress | null) => {
   return parts.join(", ");
 };
 
+const capitalizeFirst = (value?: string) => {
+  if (!value) return "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+};
+
 const getDeliverySummaryLine = ({
   hasAddress,
   selectedOption,
@@ -250,7 +256,7 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
   );
 
   const defaultExpanded =
-    isActive && hasAddress && !hasSelectedOption && options.length !== 1;
+    hasAddress && !hasSelectedOption && options.length !== 1;
 
   const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
 
@@ -264,28 +270,25 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
   });
 
   return (
-    <div className="rounded-2xl border border-subtle bg-grey-light/50">
+    <div className="rounded-lg bg-grey-light px-4 py-3">
       <button
         type="button"
         onClick={() => setIsExpanded((prev) => !prev)}
-        className="w-full px-4 py-3 text-left"
+        className="w-full text-left"
         aria-expanded={isExpanded}
         aria-controls="delivery-options-accordion"
       >
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-semibold text-grey">Delivery options</p>
           <span className="text-base leading-none text-grey-medium">
-            {isExpanded ? "×" : "+"}
+            {isExpanded ? <Minus size={18} /> : <Plus size={18} />}
           </span>
         </div>
         <p className="mt-1 text-xs text-grey-medium">{microSummary}</p>
       </button>
 
       {isExpanded && (
-        <div
-          id="delivery-options-accordion"
-          className="space-y-2 border-t border-subtle px-4 py-3"
-        >
+        <div id="delivery-options-accordion" className="mt-3 space-y-3">
           {!hasAddress ? (
             <div className="space-y-3">
               <p className="text-sm text-grey-medium">
@@ -348,10 +351,10 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
                   <label
                     key={option.id}
                     htmlFor={option.id}
-                    className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors ${
+                    className={`w-full cursor-pointer rounded-lg border p-4 py-6 transition-all ${
                       isSelected
-                        ? "border-grey bg-white"
-                        : "border-subtle bg-white hover:border-grey-medium"
+                        ? "border-belims-blue bg-blue-50"
+                        : "border-gray-200 bg-white hover:border-belims-blue hover:bg-gray-50"
                     }`}
                   >
                     <input
@@ -360,28 +363,57 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
                       name="delivery-option"
                       checked={isSelected}
                       onChange={() => onSelectDeliveryOption(option.id)}
-                      className="mt-1 h-4 w-4 text-grey"
+                      className="sr-only"
                     />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-medium text-grey">
-                          {option.service_name}
-                        </p>
-                        {badgeText && (
-                          <span className="rounded-full border border-subtle bg-grey-light px-2 py-0.5 text-[11px] font-medium text-grey-medium">
-                            {badgeText}
-                          </span>
-                        )}
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex-shrink-0">
+                          <div
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              isSelected
+                                ? "border-belims-blue bg-belims-blue"
+                                : "border-gray-300 bg-white"
+                            }`}
+                          >
+                            {isSelected ? (
+                              <div className="w-2 h-2 rounded-full bg-white" />
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="font-bold text-gray-900 flex items-center gap-2">
+                            {option.service_name}
+                            {badgeText === "Best value" ? (
+                              <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                Budget
+                              </span>
+                            ) : null}
+                            {badgeText === "Fastest" ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                                <Zap size={12} />
+                                Faster
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="text-xs text-gray-500 mt-1">
+                            {formatDeliveryEtaText(
+                              option.expected_delivery_date,
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <p className="mt-1 text-xs text-grey-medium">
-                        {formatDeliveryEtaText(option.expected_delivery_date)}
-                      </p>
+
+                      <div className="text-right">
+                        <div className="font-bold text-lg text-gray-900">
+                          {option.total_price === 0
+                            ? "FREE"
+                            : formatCurrency(option.total_price)}
+                        </div>
+                      </div>
                     </div>
-                    <p className="whitespace-nowrap text-sm font-medium text-grey">
-                      {option.total_price === 0
-                        ? "FREE"
-                        : formatCurrency(option.total_price)}
-                    </p>
                   </label>
                 );
               })}
@@ -418,11 +450,12 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
 
   const isPickupAvailable = (pickup?.available ?? 0) > 0;
   const pickupStatus = getPickupStatus(pickupStore);
-  const storeStatusText = pickupStatus?.isOpen
-    ? "Available"
+  const pickupStatusPrimary = pickupStatus?.isOpen ? "Open" : "Closed";
+  const pickupStatusDetail = pickupStatus?.isOpen
+    ? ""
     : pickupStatus?.detail
-      ? `Closed — ${pickupStatus.detail}`
-      : "Closed";
+      ? capitalizeFirst(pickupStatus.detail)
+      : "";
 
   React.useEffect(() => {
     if (selectedType === "delivery") {
@@ -444,215 +477,232 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
   }));
 
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full space-y-4">
       <p className="text-sm font-semibold text-grey">Fulfillment</p>
 
-      <FulfillmentTabs
-        value={selectedType}
-        onChange={onSelect}
-        pickupPanelId={pickupPanelId}
-        deliveryPanelId={deliveryPanelId}
-      />
-
-      <div className="pt-1">
-        {selectedType === "pickup" && (
-          <div
-            id={pickupPanelId}
-            role="tabpanel"
-            aria-labelledby={`${pickupPanelId}-tab`}
-            className="space-y-2 rounded-2xl border border-subtle bg-grey-light/50 px-4 py-3"
-          >
-            {!pickupStore ? (
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-grey-medium">No store selected.</p>
-                <button
-                  type="button"
-                  onClick={() => onViewPickupDetails?.()}
-                  className="text-sm font-semibold text-grey underline"
-                >
-                  Select store
-                </button>
-              </div>
-            ) : !isPickupAvailable ? (
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50/60 px-3 py-2">
-                <p className="text-sm text-red-muted">
-                  Pickup currently unavailable at {pickupStore.name}
+      <div className="rounded-lg bg-grey-light px-4 py-4">
+        {!pickupStore ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-grey-medium">No store selected.</p>
+            <button
+              type="button"
+              onClick={() => onViewPickupDetails?.()}
+              className="text-sm font-semibold text-grey underline"
+            >
+              Select store
+            </button>
+          </div>
+        ) : !isPickupAvailable ? (
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <Minus size={14} />
+              </span>
+              <div className="grid gap-1">
+                <p className="text-[20px] font-medium leading-tight text-grey">
+                  {pickupStore.name}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => onViewPickupDetails?.()}
-                  className="shrink-0 text-sm font-semibold text-grey underline"
-                >
-                  Check availability at other stores
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm text-grey">
-                    <span className="font-semibold">Pickup from:</span>{" "}
-                    {pickupStore.name}
-                  </p>
-                  {typeof pickupStore.distance === "number" && (
-                    <span className="whitespace-nowrap text-xs text-grey-medium">
-                      {pickupStore.distance.toFixed(1)} km
+                <p className="text-sm leading-tight text-grey-medium">
+                  Pickup unavailable, please check another store
+                </p>
+                <p className="text-sm leading-tight">
+                  <span className="font-semibold text-red-600">
+                    {pickupStatusPrimary}
+                  </span>
+                  {pickupStatusDetail ? (
+                    <span className="text-grey-medium">
+                      {" "}
+                      · {pickupStatusDetail}
                     </span>
-                  )}
-                </div>
+                  ) : null}
+                </p>
+              </div>
+            </div>
 
-                <p className="text-sm text-grey">
-                  <span className="font-semibold">Status:</span>{" "}
-                  {storeStatusText}
+            <button
+              type="button"
+              onClick={() => onViewPickupDetails?.()}
+              className="text-sm text-grey underline text-right"
+            >
+              Check availability at other stores
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="mt-0.5 h-7 w-7 shrink-0 text-green-700" />
+              <div className="grid gap-1">
+                <p className="text-[20px] font-medium leading-tight text-grey">
+                  {pickupStore.name}
                 </p>
-                <p className="text-sm text-grey-medium">
-                  Pickup available, usually ready in 24 hours
+                <p className="text-sm leading-tight text-grey-medium">
+                  Usually ready in 24 hours
                 </p>
-              </>
-            )}
+                <p className="text-sm leading-tight">
+                  <span
+                    className={
+                      pickupStatusPrimary === "Open"
+                        ? "font-semibold text-green-700"
+                        : "font-semibold text-red-600"
+                    }
+                  >
+                    {pickupStatusPrimary}
+                  </span>
+                  {pickupStatusDetail ? (
+                    <span className="text-grey-medium">
+                      {" "}
+                      · {pickupStatusDetail}
+                    </span>
+                  ) : null}
+                </p>
+              </div>
+            </div>
 
             <button
               type="button"
               onClick={handleViewStoreDetails}
-              className="text-sm font-semibold text-grey underline hover:text-grey-medium"
+              className="text-sm text-grey underline text-right"
             >
-              View store details
+              Check availability at other stores
             </button>
-
-            <BottomDrawer
-              isOpen={isStoreDetailsOpen}
-              onClose={() => setIsStoreDetailsOpen(false)}
-              ariaLabel="Store details"
-              heightClassName="h-[78vh] lg:h-[72vh]"
-            >
-              <div className="flex h-full flex-col bg-white">
-                <div className="flex items-center justify-between border-b border-subtle px-5 py-4">
-                  <p className="text-lg font-semibold text-grey">
-                    Store details
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setIsStoreDetailsOpen(false)}
-                    className="text-sm font-semibold text-grey-medium hover:text-grey"
-                  >
-                    Close
-                  </button>
-                </div>
-
-                <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
-                  <div className="space-y-2 rounded-2xl border border-subtle bg-grey-light/50 p-4">
-                    <p className="text-base font-semibold text-grey">
-                      {pickupStore?.name || "Selected store"}
-                    </p>
-                    {typeof pickupStore?.distance === "number" && (
-                      <p className="text-sm text-grey-medium">
-                        {pickupStore.distance.toFixed(1)} km away
-                      </p>
-                    )}
-                    <p className="text-sm text-grey-medium">
-                      {isPickupAvailable
-                        ? "Pickup available, usually ready in 24 hours"
-                        : "Pickup currently unavailable at this store."}
-                    </p>
-                    {pickupStore?.address && (
-                      <p className="text-sm text-grey-medium">
-                        {pickupStore.address}
-                      </p>
-                    )}
-                    {pickupStore?.phone && (
-                      <p className="text-sm text-grey-medium">
-                        {pickupStore.phone}
-                      </p>
-                    )}
-                    {pickupStatus && (
-                      <p className="text-sm text-grey">
-                        <span className="font-semibold">Status:</span>{" "}
-                        {pickupStatus.isOpen
-                          ? "Available"
-                          : pickupStatus.detail
-                            ? `Closed — ${pickupStatus.detail}`
-                            : "Closed"}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="rounded-2xl border border-subtle bg-grey-light/50 p-4">
-                    <p className="mb-2 text-sm font-semibold text-grey">
-                      Operating hours
-                    </p>
-                    <ul className="space-y-1 text-sm text-grey-medium">
-                      {hoursRows.map((row) => (
-                        <li
-                          key={row.label}
-                          className="flex items-center justify-between gap-3"
-                        >
-                          <span>{row.label}:</span>
-                          <span>{row.value}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsStoreDetailsOpen(false);
-                      onViewPickupDetails?.();
-                    }}
-                    className="text-sm font-semibold text-grey underline"
-                  >
-                    Check availability at other stores
-                  </button>
-                </div>
-              </div>
-            </BottomDrawer>
           </div>
         )}
+      </div>
 
-        {selectedType === "delivery" && (
-          <div
-            id={deliveryPanelId}
-            ref={deliveryPanelRef}
-            role="tabpanel"
-            aria-labelledby={`${deliveryPanelId}-tab`}
-            tabIndex={-1}
-            className="space-y-3 focus:outline-none"
-          >
-            {!deliveryLocationSet ? (
-              <div className="space-y-2 rounded-2xl border border-subtle bg-grey-light/50 px-4 py-3">
+      <BottomDrawer
+        isOpen={isStoreDetailsOpen}
+        onClose={() => setIsStoreDetailsOpen(false)}
+        ariaLabel="Store details"
+        heightClassName="h-[78vh] lg:h-[72vh]"
+      >
+        <div className="flex h-full flex-col bg-white">
+          <div className="flex items-center justify-between border-b border-subtle px-5 py-4">
+            <p className="text-lg font-semibold text-grey">Store details</p>
+            <button
+              type="button"
+              onClick={() => setIsStoreDetailsOpen(false)}
+              className="text-sm font-semibold text-grey-medium hover:text-grey"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+            <div className="space-y-2 rounded-2xl border border-subtle bg-grey-light/50 p-4">
+              <p className="text-base font-semibold text-grey">
+                {pickupStore?.name || "Selected store"}
+              </p>
+              {typeof pickupStore?.distance === "number" && (
                 <p className="text-sm text-grey-medium">
-                  Add your address to see delivery options, rates and arrival
-                  dates.
+                  {pickupStore.distance.toFixed(1)} km
+                </p>
+              )}
+              {pickupStore?.address && (
+                <p className="text-sm text-grey-medium">
+                  {pickupStore.address}
+                </p>
+              )}
+              <p className="text-sm text-grey-medium">
+                {isPickupAvailable
+                  ? "Pickup available, usually ready in 24 hours"
+                  : "Pickup unavailable, please check another store"}
+              </p>
+              <p className="text-sm leading-tight">
+                <span
+                  className={
+                    pickupStatusPrimary === "Open"
+                      ? "font-semibold text-green-700"
+                      : "font-semibold text-red-600"
+                  }
+                >
+                  {pickupStatusPrimary}
+                </span>
+              </p>
+              {pickupStatusDetail ? (
+                <p className="text-sm leading-tight text-grey-medium">
+                  · {pickupStatusDetail}
+                </p>
+              ) : null}
+              {pickupStore?.phone && (
+                <p className="text-sm text-grey-medium">{pickupStore.phone}</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-subtle bg-grey-light/50 p-4">
+              <p className="mb-2 text-sm font-semibold text-grey">
+                Operating hours
+              </p>
+              <ul className="space-y-1 text-sm text-grey-medium">
+                {hoursRows.map((row) => (
+                  <li
+                    key={row.label}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <span>{row.label}:</span>
+                    <span>{row.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsStoreDetailsOpen(false);
+                onViewPickupDetails?.();
+              }}
+              className="text-sm font-semibold text-grey underline"
+            >
+              Check availability at other stores
+            </button>
+          </div>
+        </div>
+      </BottomDrawer>
+
+      <div
+        id={deliveryPanelId}
+        ref={deliveryPanelRef}
+        tabIndex={-1}
+        className="space-y-3 focus:outline-none"
+      >
+        {!deliveryLocationSet ? (
+          <div className="rounded-lg bg-grey-light px-4 py-4">
+            <div className="space-y-2">
+              <p className="text-sm text-grey-medium">
+                Add your address to see delivery options, rates and arrival
+                dates.
+              </p>
+              <button
+                type="button"
+                onClick={() => onSetDeliveryLocation?.()}
+                className="text-sm font-semibold text-grey underline"
+              >
+                Add address
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="rounded-lg bg-grey-light px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="min-w-0 text-sm text-grey">
+                  <span className="font-semibold">Deliver to:</span>{" "}
+                  <span className="text-grey-medium">
+                    {getDeliveryAddressText(deliveryAddress)}
+                  </span>
                 </p>
                 <button
                   type="button"
-                  onClick={() => onSetDeliveryLocation?.()}
-                  className="text-sm font-semibold text-grey underline"
+                  onClick={() => onEditDeliveryLocation?.()}
+                  className="shrink-0 text-sm font-semibold text-grey underline"
                 >
-                  Add address
+                  Edit
                 </button>
               </div>
-            ) : (
-              <div className="rounded-2xl border border-subtle bg-grey-light/50 px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="min-w-0 text-sm text-grey">
-                    <span className="font-semibold">Deliver to:</span>{" "}
-                    <span className="text-grey-medium">
-                      {getDeliveryAddressText(deliveryAddress)}
-                    </span>
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => onEditDeliveryLocation?.()}
-                    className="shrink-0 text-sm font-semibold text-grey underline"
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
 
             <DeliveryOptionsAccordion
-              isActive={selectedType === "delivery"}
+              isActive={true}
               hasAddress={deliveryLocationSet}
               deliveryRates={deliveryRates}
               selectedDeliveryOptionId={selectedDeliveryOptionId}
@@ -662,7 +712,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
               onAddAddress={onSetDeliveryLocation}
               onChangeAddress={onEditDeliveryLocation || onSetDeliveryLocation}
             />
-          </div>
+          </>
         )}
       </div>
     </div>

@@ -13,14 +13,11 @@ import {
 import {
   ActiveResults,
   ChatMessage,
-  DeliveryOption,
   FulfillmentContext,
-  PdpContext,
   Product,
   StockStatus,
 } from "../types.ts";
 import { ChatProductCard } from "./ChatProductCard";
-import { FulfillmentTiles } from "@/components/FulfillmentTiles";
 
 interface ResultsPanelProps {
   activeResults: ActiveResults;
@@ -31,12 +28,10 @@ interface ResultsPanelProps {
   onCheckStock: (productId: string) => void;
   onSuggestionSelect?: (prompt: string) => void;
   fulfillment: FulfillmentContext;
-  selectedDeliveryOption?: DeliveryOption;
   onOpenDeliveryLocation: () => void;
   onOpenDeliveryOptions: () => void;
   focusedProduct?: Product;
   onFocusProduct?: (productId: string) => void;
-  pdpContext?: PdpContext | null;
 }
 
 const ResultsPanelSkeleton: React.FC = () => {
@@ -140,12 +135,10 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
   onCheckStock,
   onSuggestionSelect,
   fulfillment,
-  selectedDeliveryOption,
   onOpenDeliveryLocation,
   onOpenDeliveryOptions,
   focusedProduct,
   onFocusProduct,
-  pdpContext,
 }) => {
   const [sort, setSort] = React.useState("relevance");
   const [inStockOnly, setInStockOnly] = React.useState(false);
@@ -203,10 +196,6 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
     needItFast,
     sort,
   ]);
-
-  const showFulfillmentMirror =
-    activeResults.kind === "products" &&
-    (Boolean(focusedProduct) || Boolean(pdpContext));
 
   return (
     <div className="h-full min-h-0 bg-gradient-to-b from-violet-50/40 to-white flex flex-col">
@@ -306,104 +295,59 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
           <ResultsPanelSkeleton />
         ) : activeResults.kind === "products" ? (
           <div>
-            {showFulfillmentMirror && (
-              <div className="px-4 pt-4">
-                <div className="mb-2 text-xs font-semibold text-gray-600">
-                  Fulfillment
+            {products.length === 0 ? (
+              <div className="p-6">
+                <div className="rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-700 shadow-sm">
+                  <p className="font-semibold text-gray-900">
+                    No matching products found
+                  </p>
+                  <p className="mt-1 text-gray-600">
+                    Try a broader search term, remove filters, or ask for
+                    alternatives.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onSuggestionSelect?.("Show popular circular saws")
+                    }
+                    className="mt-3 inline-flex items-center gap-2 rounded-full border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50"
+                  >
+                    Show popular products
+                  </button>
                 </div>
-                <FulfillmentTiles
-                  selectedType={
-                    fulfillment.deliveryLocationSet ? "delivery" : "pickup"
-                  }
-                  onSelect={() => undefined}
-                  pickup={{
-                    type: "pickup",
-                    available:
-                      focusedProduct?.inStock === false
-                        ? 0
-                        : (focusedProduct?.stockQty ??
-                          products.filter((item) => item.inStock).length),
-                    eta: "Ready in 2-4 hours",
-                    price: 0,
-                    isFree: true,
-                  }}
-                  delivery={{
-                    type: "delivery",
-                    available: focusedProduct ? 1 : products.length,
-                    eta:
-                      selectedDeliveryOption?.etaText ||
-                      focusedProduct?.deliveryEtaText ||
-                      "Enter address to see rates",
-                    price:
-                      selectedDeliveryOption?.price ??
-                      focusedProduct?.deliveryPrice ??
-                      0,
-                    isFree: selectedDeliveryOption?.isFree,
-                  }}
-                  pickupStore={
-                    fulfillment.pickupStoreId
-                      ? {
-                          id: fulfillment.pickupStoreId,
-                          name: fulfillment.pickupStoreName ?? "Selected store",
-                          address: "",
-                          hours: fulfillment.pickupStoreHours,
-                        }
-                      : null
-                  }
-                  deliveryLocationSet={fulfillment.deliveryLocationSet}
-                  deliveryAddress={fulfillment.deliveryAddress}
-                  deliveryRates={
-                    selectedDeliveryOption
-                      ? [
-                          {
-                            service_name: selectedDeliveryOption.label,
-                            total_price: selectedDeliveryOption.price ?? 0,
-                            expected_delivery_date:
-                              selectedDeliveryOption.etaDate,
-                          },
-                        ]
-                      : []
-                  }
-                  selectedDeliveryOptionId={
-                    selectedDeliveryOption ? "rate-0" : ""
-                  }
-                  onSelectDeliveryOption={() => undefined}
-                  onSetDeliveryLocation={onOpenDeliveryLocation}
-                  onEditDeliveryLocation={onOpenDeliveryLocation}
-                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 p-4">
+                {products.map((product, index) => (
+                  <div
+                    key={product.id}
+                    style={{
+                      animation: "resultFadeIn 240ms ease-out",
+                      animationDelay: `${index * 80}ms`,
+                      animationFillMode: "both",
+                    }}
+                  >
+                    <ChatProductCard
+                      product={product}
+                      variant="grid"
+                      onAddToCart={onAddToCart}
+                      onBuyNow={onBuyNow}
+                      onCheckStock={onCheckStock}
+                      highlight={Boolean(
+                        product.isBestFit || focusedProduct?.id === product.id,
+                      )}
+                      deliveryLocationSet={fulfillment.deliveryLocationSet}
+                      onRequestDeliveryAddress={
+                        fulfillment.deliveryLocationSet
+                          ? onOpenDeliveryOptions
+                          : onOpenDeliveryLocation
+                      }
+                      onFocusProduct={onFocusProduct}
+                    />
+                  </div>
+                ))}
               </div>
             )}
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 p-4">
-              {products.map((product, index) => (
-                <div
-                  key={product.id}
-                  style={{
-                    animation: "resultFadeIn 240ms ease-out",
-                    animationDelay: `${index * 80}ms`,
-                    animationFillMode: "both",
-                  }}
-                >
-                  <ChatProductCard
-                    product={product}
-                    variant="grid"
-                    onAddToCart={onAddToCart}
-                    onBuyNow={onBuyNow}
-                    onCheckStock={onCheckStock}
-                    highlight={Boolean(
-                      product.isBestFit || focusedProduct?.id === product.id,
-                    )}
-                    deliveryLocationSet={fulfillment.deliveryLocationSet}
-                    onRequestDeliveryAddress={
-                      fulfillment.deliveryLocationSet
-                        ? onOpenDeliveryOptions
-                        : onOpenDeliveryLocation
-                    }
-                    onFocusProduct={onFocusProduct}
-                  />
-                </div>
-              ))}
-            </div>
           </div>
         ) : activeResults.kind === "order" ? (
           <div className="p-4">

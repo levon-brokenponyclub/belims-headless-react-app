@@ -563,6 +563,39 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   }, [isDeliveryModalOpen]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleDeliveryAddressUpdated = () => {
+      refreshStoredAddress();
+      hydrateFromSiteStorage();
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === "deliveryAddressV2" ||
+        event.key === "deliveryAddress" ||
+        event.key === "fulfillmentType"
+      ) {
+        handleDeliveryAddressUpdated();
+      }
+    };
+
+    window.addEventListener(
+      "belims:delivery-address-updated",
+      handleDeliveryAddressUpdated as EventListener,
+    );
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener(
+        "belims:delivery-address-updated",
+        handleDeliveryAddressUpdated as EventListener,
+      );
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  useEffect(() => {
     const { address } = readStoredAddress();
     const defaultTab: FulfillmentTab = address ? "delivery" : "pickup";
     setFulfillmentType(defaultTab);
@@ -802,7 +835,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     setMainImage(gallery[prevIndex]);
   };
 
-  const hasDeliveryLocation = !!deliveryAddress;
+  const hasDeliveryLocation = Boolean(deliveryAddress?.postalCode);
   const handleSelectFulfillment = (value: FulfillmentTab) => {
     setFulfillmentType(value);
     localStorage.setItem("belims_fulfillment_tab", value);

@@ -125,6 +125,26 @@ export const Header: React.FC<HeaderProps> = ({
   >([]);
   const megaMenuCloseTimerRef = useRef<number | null>(null);
 
+  const syncDeliveryFromStorage = React.useCallback(() => {
+    const { address, legacyLabel } = readStoredAddress();
+    setDeliveryAddress(address);
+    setLegacyDeliveryLabel(legacyLabel);
+
+    const storedFulfillment = localStorage.getItem("fulfillmentType");
+    const pickupSelected =
+      localStorage.getItem("pickupStoreSelected") === "true";
+
+    setFulfillmentType(
+      computeFulfillmentType(
+        storedFulfillment,
+        address,
+        legacyLabel,
+        selectedStore,
+        pickupSelected,
+      ),
+    );
+  }, [selectedStore]);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsNavbarVisible(window.scrollY <= 2);
@@ -163,22 +183,8 @@ export const Header: React.FC<HeaderProps> = ({
 
   // Load saved delivery address from localStorage on mount
   useEffect(() => {
-    const { address, legacyLabel } = readStoredAddress();
-    setDeliveryAddress(address);
-    setLegacyDeliveryLabel(legacyLabel);
-    const storedFulfillment = localStorage.getItem("fulfillmentType");
-    const pickupSelected =
-      localStorage.getItem("pickupStoreSelected") === "true";
-    setFulfillmentType(
-      computeFulfillmentType(
-        storedFulfillment,
-        address,
-        legacyLabel,
-        selectedStore,
-        pickupSelected,
-      ),
-    );
-  }, [selectedStore]);
+    syncDeliveryFromStorage();
+  }, [syncDeliveryFromStorage]);
 
   const handleAddressSelect = (address: ShippingAddress | null) => {
     setDeliveryAddress(address);
@@ -188,6 +194,7 @@ export const Header: React.FC<HeaderProps> = ({
     saveStoredAddress(address);
     if (address) {
       setFulfillmentType("delivery");
+      localStorage.setItem("fulfillmentType", "delivery");
     } else {
       const storedFulfillment = localStorage.getItem("fulfillmentType");
       const pickupSelected =
@@ -201,6 +208,11 @@ export const Header: React.FC<HeaderProps> = ({
           pickupSelected,
         ),
       );
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("belims:delivery-address-updated"));
+      window.dispatchEvent(new Event("belims:fulfillment-changed"));
     }
   };
 
@@ -243,6 +255,9 @@ export const Header: React.FC<HeaderProps> = ({
         ),
       );
     };
+    const handleDeliveryAddressUpdated = () => {
+      syncDeliveryFromStorage();
+    };
 
     window.addEventListener(
       "belims:open-mobile-menu",
@@ -255,6 +270,10 @@ export const Header: React.FC<HeaderProps> = ({
     window.addEventListener(
       "belims:fulfillment-changed",
       handleFulfillmentChange as EventListener,
+    );
+    window.addEventListener(
+      "belims:delivery-address-updated",
+      handleDeliveryAddressUpdated as EventListener,
     );
 
     return () => {
@@ -270,8 +289,17 @@ export const Header: React.FC<HeaderProps> = ({
         "belims:fulfillment-changed",
         handleFulfillmentChange as EventListener,
       );
+      window.removeEventListener(
+        "belims:delivery-address-updated",
+        handleDeliveryAddressUpdated as EventListener,
+      );
     };
-  }, [deliveryAddress, legacyDeliveryLabel, selectedStore]);
+  }, [
+    deliveryAddress,
+    legacyDeliveryLabel,
+    selectedStore,
+    syncDeliveryFromStorage,
+  ]);
 
   const pickupLabel = selectedStore?.name || "Select Store";
   const deliveryLabelText =
