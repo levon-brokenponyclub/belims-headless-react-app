@@ -3,11 +3,11 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "https://cms.belims.co.za/wp-json/$1"
+      "source": "/api/:path*",
+      "destination": "https://cms.belims.co.za/wp-json/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
