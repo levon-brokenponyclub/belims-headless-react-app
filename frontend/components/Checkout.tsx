@@ -61,6 +61,7 @@ interface CustomerDetails {
 
 interface ShippingRate {
   service_name: string;
+  service_code?: string;
   total_price: number;
   expected_delivery_date?: string;
   tier?: ShippingTier;
@@ -836,7 +837,12 @@ export const Checkout: React.FC<CheckoutProps> = ({
       const order = await createWooOrder({
         customer,
         items: cartItems,
-        shipping: selectedShipping,
+        shipping: selectedShipping
+          ? {
+              ...selectedShipping,
+              method_id: "bobgo_shipping",
+            }
+          : undefined,
         total,
         order_note: orderNote.trim() || undefined,
         coupon_lines: promoCode.trim() ? [{ code: promoCode.trim() }] : undefined,
