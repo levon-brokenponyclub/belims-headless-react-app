@@ -4,6 +4,89 @@
 
 ---
 
+## Fix: PayFast Return/Cancel URL Pointing to Netlify
+
+**Files:** `wp-content/plugins/global-site-settings/global-site-settings.php`, `includes/payfast/class-payfast-api.php`, `includes/payfast/class-payfast-return-handler.php`
+
+PayFast was redirecting users back to `belims-headless-react-app.netlify.app` after payment.
+
+**Root cause:** The ACF option `headless_frontend_url` on `cms.belims.co.za` was still set to the Netlify URL, which overrides the fallback in `get_frontend_url()`.
+
+**Fix (PHP):**
+- Added global `get_frontend_url()` to `global-site-settings.php` — reads ACF `headless_frontend_url` option first, falls back to `https://belims.vercel.app`
+- `class-payfast-api.php`: `cancelUrl` and `cancel_url` now call `get_frontend_url()` instead of hardcoded Netlify domain
+- `class-payfast-return-handler.php`: private `get_frontend_url()` delegates to the global function
+
+**Fix (server):** Updated ACF option on `cms.belims.co.za` via WP-CLI:
+```bash
+wp eval 'update_field("headless_frontend_url", "https://belims.vercel.app", "option");'
+```
+
+**When going live on `belims.co.za`:** Change the ACF option value in WP Admin → Custom Fields → Options — no code deploy needed.
+
+---
+
+## Fix: "Enter Address" Button Opening Store Pickup Modal
+
+**File:** `frontend/components/Header.tsx`
+
+Clicking "Enter Address" / "Deliver to" in the utility bar opened the Store Pickup tab instead of the Delivery tab.
+
+**Root cause:** After a revert, `deliveryLocationModalType` state and `openDeliveryLocationPanel()` helper were lost. All three buttons (pickup, deliver-to, mobile delivery) called `setIsDeliveryLocationModalOpen(true)` with no type, so `DeliveryLocationModal` defaulted to showing Pickup.
+
+**Fix:**
+- Restored `deliveryLocationModalType` state (default `"delivery"`)
+- Restored `openDeliveryLocationPanel(type)` helper
+- Pickup button → `openDeliveryLocationPanel("pickup")`
+- Deliver to + mobile delivery buttons → `openDeliveryLocationPanel("delivery")`
+- Passed `initialFulfillmentType={deliveryLocationModalType}` to `<DeliveryLocationModal>`
+
+---
+
+## Fix: Shipping Rates and Track Order CORS Errors on Vercel
+
+**Files:** `frontend/services/bobGoService.ts`, `frontend/components/TrackOrderPage.tsx`
+
+Both files called `cms.belims.co.za` directly, bypassing the Vercel proxy and triggering CORS rejections.
+
+**Fix:** Both now use `getApiBaseUrl()` from `wooCommerceService.ts`, which returns `/api/belims/v1` in production (proxied by Vercel) and `http://belims-headless.local/wp-json/belims/v1` in local dev.
+
+---
+
+## QuickView — Layout Refactor
+
+**File:** `frontend/components/QuickView.tsx`
+
+Redesigned to match SingleProduct styling and the Shopify quick-view layout pattern.
+
+**Changes:**
+- **Image column:** `bg-[#f9f9f9]`, rounded left corners (`md:rounded-l-[14px]`), multi-image gallery with prev/next arrow navigation and thumbnail strip (uses `product.images[]`)
+- **Outer dialog:** `md:p-5` padding so the card floats; `md:max-h-[82vh]` (was fixed `h-[88vh]`) — auto-sizes to content
+- **Brand:** `mb-2 inline-block text-sm font-semibold uppercase tracking-wide text-grey-medium hover:text-brand` (exact SingleProduct class)
+- **Title:** `text-3xl font-bold text-grey font-heading mb-1`
+- **SKU:** `text-base text-grey-medium mb-3`
+- **Price:** `font-heading text-[28px] font-bold text-grey` with strikethrough for sale price
+- **Stock bar:** `StockBar` component reused as-is — same badge colours and progress bar as SingleProduct
+- **Qty stepper:** `border border-gray-300 rounded-sm h-11` with `Minus`/`Plus` icons
+- **Add to cart:** `rounded-pill bg-belims-blue` with `bg-red-muted` hover sweep (matches SingleProduct)
+- **Buy Now:** `rounded-pill bg-grey` with same hover sweep
+
+---
+
+## Vercel Deployment Setup
+
+**Files:** `frontend/vercel.json` (created), `frontend/services/bobGoService.ts`, `frontend/components/TrackOrderPage.tsx`
+
+Set up `belims.vercel.app` as an alternative production frontend (Netlify remains on `main` branch auto-deploy).
+
+- New `vercel` branch tracks Vercel production; `main` continues to trigger Netlify
+- `frontend/vercel.json` configures build (`npm ci --include=dev && npm run build`), output dir (`dist`), and rewrites:
+  - `/api/:path*` → `https://cms.belims.co.za/wp-json/:path*` (API proxy)
+  - `/:path*` → `/index.html` (SPA fallback)
+- Vercel Root Directory set to `frontend/` in project settings
+
+---
+
 ## Future: Editable Order Note in Checkout
 
 **File:** `frontend/components/Checkout.tsx`
