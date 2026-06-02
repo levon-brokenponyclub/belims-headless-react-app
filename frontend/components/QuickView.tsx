@@ -105,7 +105,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
         id={quickViewId}
         role="dialog"
         aria-modal="true"
-        className={`relative z-[1] w-full md:max-w-[1060px] rounded-t-[18px] md:rounded-[18px] bg-white border border-black/10 shadow-[0_22px_70px_rgba(15,23,42,0.22)] max-h-[88vh] md:max-h-[82vh] overflow-y-auto md:overflow-hidden overscroll-y-contain transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`relative z-[1] w-full md:max-w-[1060px] rounded-t-[18px] md:rounded-[18px] bg-white border border-black/10 shadow-[0_22px_70px_rgba(15,23,42,0.22)] max-h-[88vh] md:max-h-[82vh] overflow-y-auto md:overflow-hidden overscroll-y-contain p-0 md:p-5 transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isQuickViewOpening || isQuickViewClosing
             ? "translate-y-full"
             : "translate-y-0"
@@ -125,18 +125,18 @@ export const QuickView: React.FC<QuickViewProps> = ({
         <button
           type="button"
           onClick={closeQuickView}
-          className="absolute right-4 top-11 md:top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-grey-medium transition-colors hover:text-grey hover:border-black/20"
+          className="absolute right-4 top-11 md:right-8 md:top-8 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-grey-medium transition-colors hover:text-grey hover:border-black/20"
           aria-label="Close quick view"
         >
           <X size={18} />
         </button>
 
         {/* Two-column grid */}
-        <div className="md:grid md:grid-cols-[1fr_1fr] md:max-h-[82vh]">
+        <div className="md:grid md:grid-cols-[1fr_1fr] md:max-h-[82vh] md:rounded-[14px] overflow-hidden">
 
           {/* ── Left: image gallery ── */}
-          <div className="flex flex-col border-r border-black/5 md:overflow-hidden">
-            <div className="relative flex flex-1 items-center justify-center bg-grey-light/30 p-6 md:p-10">
+          <div className="flex flex-col border-r border-black/5 md:overflow-hidden rounded-t-[14px] md:rounded-l-[14px] md:rounded-tr-none bg-[#f9f9f9]">
+            <div className="relative flex flex-1 items-center justify-center p-6 md:p-10">
               {gallery[activeImageIndex] ? (
                 <img
                   key={activeImageIndex}
