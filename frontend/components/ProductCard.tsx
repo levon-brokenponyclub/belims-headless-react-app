@@ -31,6 +31,7 @@ interface ProductCardProps {
 export type ProductCardElementKey =
   | "badge"
   | "category"
+  | "brand"
   | "quickViewIcon"
   | "quickViewButton"
   | "dailyMarquee"
@@ -689,6 +690,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   ? consumerBest.deal_name
                   : product.category)}
             </div>
+          )}
+
+          {product.brand && !isHidden("brand") && (
+            <Link
+              to={`/shop?brand=${encodeURIComponent(product.brand)}`}
+              onClick={(e) => e.stopPropagation()}
+              className="mb-1 inline-block text-[11px] font-semibold uppercase tracking-wide text-grey-medium hover:text-brand transition-colors"
+            >
+              {product.brand}
+            </Link>
           )}
 
           {/* Title - Fixed height for 2 lines */}

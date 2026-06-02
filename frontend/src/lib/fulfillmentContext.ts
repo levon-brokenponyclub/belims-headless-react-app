@@ -72,16 +72,42 @@ const toSharedAddress = (
 const toShippingAddress = (
   address: SharedAddress | null,
 ): ShippingAddress | null => {
-  if (!address?.city || !address?.province || !address?.postalCode) {
+  if (!address?.postalCode) {
     return null;
   }
 
   return {
     street: address.street ?? "",
-    city: address.city,
-    province: address.province,
+    city: address.city ?? "",
+    province: address.province ?? "",
     postalCode: address.postalCode,
     country: "ZA",
+    label:
+      [address.street, address.city, address.province].filter(Boolean).join(", ") ||
+      address.postalCode,
+  };
+};
+
+const hasDeliveryLocation = (address: SharedAddress | ShippingAddress | null) =>
+  Boolean(address?.postalCode || (address?.city && address?.province));
+
+const withStoredDeliveryAddress = (
+  context: SharedFulfillmentContext,
+): SharedFulfillmentContext => {
+  if (context.deliveryAddress) {
+    return context;
+  }
+
+  const { address } = readStoredAddress();
+  const sharedAddress = toSharedAddress(address);
+  if (!sharedAddress) {
+    return context;
+  }
+
+  return {
+    ...context,
+    deliveryAddress: sharedAddress,
+    deliveryLocationSet: hasDeliveryLocation(sharedAddress),
   };
 };
 
@@ -163,7 +189,7 @@ export const hydrateFromSiteStorage = (): SharedFulfillmentContext => {
   const merged: SharedFulfillmentContext = {
     ...state,
     deliveryAddress: toSharedAddress(address),
-    deliveryLocationSet: Boolean(address?.postalCode),
+    deliveryLocationSet: hasDeliveryLocation(address),
     pickupStoreId,
     pickupStoreName,
     pickupStoreHours,
@@ -182,36 +208,40 @@ export const persistToSiteStorage = (
     return;
   }
 
-  const shippingAddress = toShippingAddress(context.deliveryAddress);
-  saveStoredAddress(shippingAddress);
+  const nextContext = withStoredDeliveryAddress(context);
+  const shippingAddress = toShippingAddress(nextContext.deliveryAddress);
+  if (shippingAddress) {
+    saveStoredAddress(shippingAddress);
+  }
 
-  if (context.pickupStoreId) {
+  if (nextContext.pickupStoreId) {
     const payload = {
-      id: context.pickupStoreId,
-      name: context.pickupStoreName ?? "Selected store",
-      hours: context.pickupStoreHours,
+      id: nextContext.pickupStoreId,
+      name: nextContext.pickupStoreName ?? "Selected store",
+      hours: nextContext.pickupStoreHours,
     };
     window.localStorage.setItem("selectedPickupStore", JSON.stringify(payload));
     window.localStorage.setItem("pickupStoreSelected", "true");
   }
 
-  if (context.selectedDeliveryOptionId) {
+  if (nextContext.selectedDeliveryOptionId) {
     window.sessionStorage.setItem(
       "selectedDeliveryOptionId",
-      context.selectedDeliveryOptionId,
+      nextContext.selectedDeliveryOptionId,
     );
   } else {
     window.sessionStorage.removeItem("selectedDeliveryOptionId");
   }
 
-  persistSnapshot(context);
+  state = nextContext;
+  persistSnapshot(nextContext);
 };
 
 export const setDeliveryAddress = (address: SharedAddress | null) => {
   const next: SharedFulfillmentContext = {
     ...state,
     deliveryAddress: address,
-    deliveryLocationSet: Boolean(address?.postalCode),
+    deliveryLocationSet: hasDeliveryLocation(address),
     selectedDeliveryOptionId: null,
     updatedAt: nowIso(),
   };

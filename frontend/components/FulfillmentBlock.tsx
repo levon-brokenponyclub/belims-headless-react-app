@@ -70,6 +70,7 @@ export const FulfillmentBlock: React.FC<FulfillmentBlockProps> = ({
         selectedDeliveryOptionId={selectedDeliveryOptionId}
         onSelectDeliveryOption={onSelectDeliveryOption}
         onViewPickupDetails={onViewPickupDetails}
+        onSchedulePickup={onSchedulePickup}
         deliveryRatesError={deliveryRatesError}
         focusDeliveryPanelSignal={focusDeliveryPanelSignal}
         pickup={{

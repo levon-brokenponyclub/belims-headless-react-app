@@ -9,24 +9,6 @@ export const STORES: Store[] = [
     name: "Umzinto",
     address: "Lot 12 of 284, Belims Centre, eMuzisweinto, 4200",
   },
-  {
-    id: "1",
-    name: "Belims Sandton",
-    address: "12 Rivonia Rd, Sandton",
-    distance: 2.5,
-  },
-  {
-    id: "2",
-    name: "Belims Cape Town",
-    address: "88 Strand St, Cape Town",
-    distance: 1200,
-  },
-  {
-    id: "3",
-    name: "Belims Durban",
-    address: "45 West St, Durban",
-    distance: 600,
-  },
 ];
 
 export const CATEGORIES: Category[] = [

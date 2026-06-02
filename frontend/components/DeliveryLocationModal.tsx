@@ -10,6 +10,7 @@ import {
   normalizeProvince,
   PROVINCES,
   readStoredAddress,
+  saveStoredAddress,
 } from "../services/shippingAddress";
 
 interface DeliveryLocationModalProps {
@@ -41,6 +42,329 @@ type StoreWithStatus = Store & {
   hours?: Record<string, StoreHours>;
 };
 
+const dayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+interface DeliveryPanelProps {
+  inputRef: React.RefObject<HTMLInputElement>;
+  input: string;
+  loading: boolean;
+  suggestions: Array<any>;
+  errorMessage: string | null;
+  savedDeliveryAddress: ShippingAddress | null;
+  detectedLocationAddress: ShippingAddress | null;
+  isEditingDeliveryAddress: boolean;
+  onEditAddress: () => void;
+  onInputChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onClearLocation: () => void;
+  onDetectLocation: () => void;
+  onSuggestionClick: (suggestion: any) => void;
+  onSaveDetectedAddress: () => void;
+  primaryButtonClass: string;
+  primaryButtonLabelClass: string;
+  primaryButtonOverlayClass: string;
+  secondaryButtonClass: string;
+  secondaryButtonLabelClass: string;
+  secondaryButtonOverlayClass: string;
+}
+
+interface PickupPanelProps {
+  stores: StoreWithStatus[];
+  selectedPickupStoreId: string | null;
+  expandedStoreId: string | null;
+  onSelectStore: (storeId: string) => void;
+  onToggleExpanded: (storeId: string) => void;
+  onEnableDefaultStore: () => void;
+  getStoreStatus: (store: StoreWithStatus) => StoreStatus;
+}
+
+const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
+  inputRef,
+  input,
+  loading,
+  suggestions,
+  errorMessage,
+  savedDeliveryAddress,
+  detectedLocationAddress,
+  isEditingDeliveryAddress,
+  onEditAddress,
+  onInputChange,
+  onClearLocation,
+  onDetectLocation,
+  onSuggestionClick,
+  onSaveDetectedAddress,
+  primaryButtonClass,
+  primaryButtonLabelClass,
+  primaryButtonOverlayClass,
+  secondaryButtonClass,
+  secondaryButtonLabelClass,
+  secondaryButtonOverlayClass,
+}) => (
+  <section className="space-y-5">
+    <div>
+      <h2 className="text-lg font-bold text-gray-900 mb-2">Enter your Postal Code</h2>
+      <p className="text-gray-500 mb-6 max-w-sm">
+        Enter your postal code here to see stock available online for delivery to your location.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={onDetectLocation}
+      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 py-3 text-base font-semibold text-ink hover:bg-soft transition-colors"
+    >
+      <MapPin size={16} /> Use your location.
+    </button>
+
+    <hr className="border-subtle" />
+
+    {isEditingDeliveryAddress ? (
+      <div className="space-y-4">
+        <div className="relative">
+          <Search
+            size={16}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+          />
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Enter Postal Code"
+            value={input}
+            onChange={onInputChange}
+            className="w-full border border-subtle py-3 pl-10 pr-10 text-base text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+          />
+          {input && (
+            <button
+              type="button"
+              onClick={onClearLocation}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        {loading && (
+          <div className="flex items-center gap-2 text-sm text-muted">
+            <Loader size={14} className="animate-spin" />
+            Finding address suggestions...
+          </div>
+        )}
+
+        {suggestions.length > 0 && (
+          <div className="divide-y border border-subtle overflow-hidden">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={`${suggestion.source || "google"}-${suggestion.place_id || index}`}
+                type="button"
+                onClick={() => onSuggestionClick(suggestion)}
+                className="w-full px-4 py-3 text-left text-sm hover:bg-soft transition-colors"
+              >
+                {suggestion.mainText ? (
+                  <div className="flex flex-col">
+                    <span className="text-sm text-ink">{suggestion.mainText}</span>
+                    {suggestion.secondaryText && (
+                      <span className="text-xs text-muted">{suggestion.secondaryText}</span>
+                    )}
+                  </div>
+                ) : (
+                  suggestion.description
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {detectedLocationAddress && (
+          <div className="space-y-3 border border-subtle px-4 py-4">
+            <p className="text-sm font-semibold text-ink">
+              {detectedLocationAddress.label ||
+                [detectedLocationAddress.street, detectedLocationAddress.city, detectedLocationAddress.province]
+                  .filter(Boolean)
+                  .join(", ")}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={onSaveDetectedAddress}
+                className={primaryButtonClass}
+              >
+                <span className={primaryButtonOverlayClass} />
+                <span className={primaryButtonLabelClass}>Save</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onEditAddress()}
+                className={secondaryButtonClass}
+              >
+                <span className={secondaryButtonOverlayClass} />
+                <span className={secondaryButtonLabelClass}>Edit address</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {savedDeliveryAddress && !detectedLocationAddress && (
+          <div className="flex items-center justify-between gap-3 border border-subtle px-4 py-4">
+            <p className="text-sm text-ink">
+              {savedDeliveryAddress.label ||
+                [savedDeliveryAddress.street, savedDeliveryAddress.city, savedDeliveryAddress.province]
+                  .filter(Boolean)
+                  .join(", ")}
+            </p>
+            <button
+              type="button"
+              onClick={onEditAddress}
+              className={primaryButtonClass}
+            >
+              <span className={primaryButtonOverlayClass} />
+              <span className={primaryButtonLabelClass}>Edit Address</span>
+            </button>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            {errorMessage}
+          </div>
+        )}
+      </div>
+    ) : (
+      <div className="flex items-center justify-between gap-3 border border-subtle px-4 py-4">
+        <p className="text-sm text-ink">
+          {savedDeliveryAddress?.label ||
+            [savedDeliveryAddress?.street, savedDeliveryAddress?.city, savedDeliveryAddress?.province]
+              .filter(Boolean)
+              .join(", ") ||
+            "Saved for this device"}
+        </p>
+        <button
+          type="button"
+          onClick={onEditAddress}
+          className="text-sm font-semibold text-grey underline"
+        >
+          Edit
+        </button>
+      </div>
+    )}
+  </section>
+);
+
+const PickupPanel: React.FC<PickupPanelProps> = ({
+  stores,
+  selectedPickupStoreId,
+  expandedStoreId,
+  onSelectStore,
+  onToggleExpanded,
+  onEnableDefaultStore,
+  getStoreStatus,
+}) => (
+  <section className="space-y-5">
+    <div>
+      <h2 className="text-lg font-bold text-gray-900 mb-2">Select a Store</h2>
+      <p className="text-gray-500 mb-6 max-w-sm">
+        By selecting a store below, you make it easier for us to accurately display stock of your desired items.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={onEnableDefaultStore}
+      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 py-3 text-base font-semibold text-ink hover:bg-soft transition-colors"
+    >
+      <MapPin size={16} /> Use your location.
+    </button>
+
+    <hr className="border-subtle" />
+
+    <div className="space-y-3">
+      {stores.map((store) => {
+        const isSelected = store.id === selectedPickupStoreId;
+        const status = getStoreStatus(store);
+        const statusTone = status.isOpen
+          ? "text-green-600"
+          : status.isOpen === false
+            ? "text-red-600"
+            : "text-muted";
+        const isExpanded = expandedStoreId === store.id;
+
+        return (
+          <div
+            key={store.id}
+            className={`rounded-xl px-4 py-4 transition-all ${
+              isSelected
+                ? "border-2 border-belims-blue bg-belims-blue/[0.04] shadow-sm"
+                : "border border-gray-200 bg-white"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => onSelectStore(store.id)}
+              className="w-full text-left"
+            >
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                  isSelected ? "border-belims-blue bg-belims-blue" : "border-gray-300 bg-white"
+                }`}>
+                  {isSelected && <div className="h-2 w-2 rounded-full bg-white" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className={`font-bold font-heading ${isSelected ? "text-belims-blue" : "text-gray-900"}`}>
+                      {store.name}
+                    </span>
+                    {store.distance !== undefined && (
+                      <span className="text-xs font-semibold text-gray-400 flex-shrink-0 mt-0.5">
+                        {store.distance} km
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-0.5">{store.address}</div>
+                  <div className="mt-1 flex items-center gap-1 text-sm">
+                    <span className={`${statusTone} font-semibold`}>{status.label}</span>
+                    {status.detail && (
+                      <span className="text-gray-400">· {status.detail}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggleExpanded(store.id); }}
+              className="mt-3 ml-8 text-sm font-semibold text-belims-blue hover:underline"
+            >
+              {isExpanded ? "Hide Hours" : "View Hours"}
+            </button>
+
+            {isExpanded && (
+              <div className="mt-2 ml-8 space-y-0.5 text-sm text-gray-500 border-t border-gray-100 pt-2">
+                {dayKeys.map((dayKey, index) => {
+                  const hours = store.hours?.[dayKey];
+                  const hoursValue =
+                    !hours || hours.closed
+                      ? "Closed"
+                      : hours.open && hours.close
+                        ? `${hours.open} – ${hours.close}`
+                        : "Hours unavailable";
+                  return (
+                    <div key={dayKey} className="flex justify-between gap-3">
+                      <span>{dayLabels[index]}</span>
+                      <span>{hoursValue}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+
+  </section>
+);
+
 export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   isOpen,
   onClose,
@@ -55,7 +379,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     window.dispatchEvent(new Event("belims:delivery-address-updated"));
     window.dispatchEvent(new Event("belims:fulfillment-changed"));
   };
-  const isDev = import.meta.env.DEV;
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,8 +410,17 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   const [isEditingDeliveryAddress, setIsEditingDeliveryAddress] =
     useState(true);
 
+  const isUmzintoStore = (store: StoreWithStatus) =>
+    store.id?.toLowerCase() === "umzinto" ||
+    store.name?.toLowerCase().includes("umzinto");
+
+  const getPickupStores = (stores: StoreWithStatus[]) => {
+    const umzintoStores = stores.filter(isUmzintoStore);
+    return umzintoStores.length > 0 ? umzintoStores : STORES;
+  };
+
   const getDefaultStore = (stores: StoreWithStatus[]) =>
-    stores.find((store) => store.name.toLowerCase().includes("umzinto")) ||
+    stores.find((store) => store.name?.toLowerCase().includes("umzinto")) ||
     stores[0] ||
     null;
 
@@ -217,9 +549,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     };
   };
 
-  const dayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
-  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-
   const parseTimeToMinutes = (value?: string) => {
     if (!value) return null;
     const [hours, minutes] = value.split(":").map((part) => Number(part));
@@ -346,6 +675,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     if (isOpen) {
       const nextStores =
         remoteStores && remoteStores.length > 0 ? remoteStores : STORES;
+      const pickupStores = getPickupStores(nextStores);
       const storedFulfillment = localStorage.getItem("fulfillmentType");
       const storedPickupRaw = localStorage.getItem("selectedPickupStore");
       const storedDistanceRaw = localStorage.getItem(
@@ -375,7 +705,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         }
       }
 
-      const enrichedStores = nextStores.map((store) => {
+      const enrichedStores = pickupStores.map((store) => {
         if (
           storedPickupDistance?.id === store.id &&
           typeof storedPickupDistance.distance === "number"
@@ -388,7 +718,9 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         readStoredAddress();
       const initialAddress = currentAddress || storedAddress;
       const currentLabel = initialAddress
-        ? initialAddress.label || buildAddressLabel(initialAddress)
+        ? initialAddress.label ||
+          buildAddressLabel(initialAddress) ||
+          initialAddress.postalCode
         : storedLegacy || "";
 
       if (initialFulfillmentType) {
@@ -413,11 +745,13 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       setStoreList(enrichedStores);
       if (storedFulfillment === "pickup") {
         const fallbackId = enrichedStores[0]?.id || null;
-        setSelectedPickupStoreId(
-          currentStore?.id || storedPickupId || fallbackId,
-        );
+        const nextPickupStoreId = currentStore?.id || storedPickupId || fallbackId;
+        setSelectedPickupStoreId(nextPickupStoreId);
+        setExpandedStoreId(null);
       } else {
-        setSelectedPickupStoreId(currentStore?.id || storedPickupId || null);
+        const nextPickupStoreId = currentStore?.id || storedPickupId || null;
+        setSelectedPickupStoreId(nextPickupStoreId);
+        setExpandedStoreId(null);
       }
     }
   }, [
@@ -519,7 +853,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
         if (normalized.length > 0) {
           setRemoteStores(normalized);
-          setStoreList(normalized);
+          setStoreList(getPickupStores(normalized));
         }
       })
       .catch((err) => console.error("Failed to load stores:", err));
@@ -1073,18 +1407,28 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   };
 
   const handleClearLocation = () => {
+    console.log("[delivery-location-modal] clear location requested", {
+      previousInput: input,
+      savedDeliveryAddress,
+      detectedLocationAddress,
+    });
     setInput("");
     setSuggestions([]);
     setErrorMessage(null);
     setDetectedLocationAddress(null);
     setSavedDeliveryAddress(null);
     setIsEditingDeliveryAddress(true);
+    saveStoredAddress(null);
     onAddressSelect(null);
     emitDeliveryAddressUpdated();
   };
 
   const handleAddressSaved = (address: ShippingAddress) => {
+    console.log("[delivery-location-modal] full address save requested", {
+      address,
+    });
     localStorage.setItem("fulfillmentType", "delivery");
+    saveStoredAddress(address);
     onAddressSelect(address);
     setSavedDeliveryAddress(address);
     setDetectedLocationAddress(null);
@@ -1107,12 +1451,6 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       "South Africa",
     ].filter(Boolean);
     return parts.join(", ");
-  };
-
-  const handleFulfillmentChange = (type: "delivery" | "pickup") => {
-    setErrorMessage(null);
-    setFulfillmentType(type);
-    localStorage.setItem("fulfillmentType", type);
   };
 
   const handlePickupSave = () => {
@@ -1321,8 +1659,8 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     if (!storeSearch.trim()) return true;
     const query = storeSearch.toLowerCase();
     return (
-      store.name.toLowerCase().includes(query) ||
-      store.address.toLowerCase().includes(query)
+      (store.name || "").toLowerCase().includes(query) ||
+      (store.address || "").toLowerCase().includes(query)
     );
   });
 
@@ -1345,451 +1683,169 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   const secondaryButtonOverlayClass =
     "absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100";
 
+  const buildPostalCodeOnlyAddress = (): ShippingAddress | null => {
+    const postalCode = input.trim();
+    if (!/^\d{4}$/.test(postalCode)) {
+      return null;
+    }
+
+    return {
+      street: "",
+      city: "",
+      province: "",
+      postalCode,
+      country: "ZA",
+      label: postalCode,
+    };
+  };
+
+  const savePostalCodeOnlyAddress = () => {
+    const postalCodeAddress = buildPostalCodeOnlyAddress();
+    if (!postalCodeAddress) {
+      console.log("[delivery-location-modal] postal code save skipped", {
+        input,
+        reason: "Input is not a valid 4-digit postal code",
+      });
+      emitDeliveryAddressUpdated();
+      return;
+    }
+
+    console.log("[delivery-location-modal] postal code save requested", {
+      input,
+      postalCodeAddress,
+    });
+    localStorage.setItem("fulfillmentType", "delivery");
+    localStorage.setItem("belims_fulfillment_tab", "delivery");
+    saveStoredAddress(postalCodeAddress);
+    onAddressSelect(postalCodeAddress);
+    setSavedDeliveryAddress(postalCodeAddress);
+    setLegacyLabel(postalCodeAddress.label || postalCodeAddress.postalCode);
+    setIsEditingDeliveryAddress(false);
+    emitDeliveryAddressUpdated();
+  };
+
+  const handleClose = () => {
+    if (
+      fulfillmentType === "delivery" &&
+      !savedDeliveryAddress &&
+      !detectedLocationAddress
+    ) {
+      savePostalCodeOnlyAddress();
+    } else {
+      emitDeliveryAddressUpdated();
+    }
+    onClose();
+  };
+
+  const handleUpdatePostalCode = () => {
+    if (detectedLocationAddress) {
+      handleSaveDetectedAddress();
+      return;
+    }
+    savePostalCodeOnlyAddress();
+    onClose();
+  };
+
+  const handleConfirmPickupSelection = () => {
+    handlePickupSave();
+  };
+
+  const handleSelectPickupStore = (storeId: string) => {
+    setSelectedPickupStoreId(storeId);
+  };
+
   return (
     <BottomDrawer
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       ariaLabel="Delivery location"
-      widthClassName="w-full max-w-[min(1400px,96vw)]"
-      heightClassName="h-[92vh] sm:h-[88vh]"
+      placement="right"
+      widthClassName="w-full max-w-md"
+      heightClassName="h-full"
+      showHandle={false}
+      panelClassName="!rounded-none !border-0"
     >
-      <div className="relative h-full bg-white flex flex-col">
+      <div className="h-full bg-surface flex flex-col">
         {/* Header */}
-        <div className="relative px-6 pt-4 pb-3 border-b border-gray-200/80 bg-white/90 backdrop-blur-sm">
-          <div className="mb-1 flex items-center justify-center text-center">
-            <h3 className="text-3xl font-bold text-gray-900">
-              Delivery Location
-            </h3>
+        <div className="p-4 bg-brand text-white flex justify-between items-center flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <MapPin size={20} aria-hidden="true" />
+            <span className="font-bold font-heading">
+              {fulfillmentType === "pickup" ? "Store Pickup" : "Delivery Location"}
+            </span>
           </div>
           <button
             type="button"
-            onClick={onClose}
-            className="group absolute right-6 top-3 z-10 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-gray-300 bg-white text-gray-900 transition-colors"
-            aria-label="Close delivery location"
+            onClick={handleClose}
+            className="text-white hover:text-white/70"
+            aria-label="Close"
           >
-            <span className="absolute inset-0 translate-y-[-100%] bg-gray-900 transition-transform duration-300 ease-out group-hover:translate-y-0" />
-            <span className="relative z-10 text-gray-900 transition-colors group-hover:text-white">
-              <X size={22} />
-            </span>
+            <X size={24} />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5 pb-24">
-          {/* Fulfillment Toggle */}
-          <div className="flex items-center justify-between border-b border-black/10 pb-4">
-            <div className="inline-flex w-full rounded-full bg-gray-50 border border-black/10 p-1">
-              <button
-                type="button"
-                onClick={() => handleFulfillmentChange("delivery")}
-                className={`w-full px-4 py-2 text-[13px] font-bold rounded-full transition-colors ${
-                  fulfillmentType === "delivery"
-                    ? "bg-belims-blue text-white"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                Delivery
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFulfillmentChange("pickup")}
-                className={`w-full px-4 py-2 text-[13px] font-bold rounded-full transition-colors ${
-                  fulfillmentType === "pickup"
-                    ? "bg-belims-blue text-white"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                Pickup
-              </button>
-            </div>
-            {/* {fulfillmentType === "pickup" && (
-              <button
-                type="button"
-                className="flex items-center gap-2 text-xs font-semibold text-belims-blue hover:text-belims-navy"
-              >
-                <Map size={14} /> Map View
-              </button>
-            )} */}
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto bg-soft">
+          <div className="px-5 py-5">
+            {fulfillmentType === "delivery" ? (
+              <DeliveryPanel
+                inputRef={inputRef}
+                input={input}
+                loading={loading}
+                suggestions={suggestions}
+                errorMessage={errorMessage}
+                savedDeliveryAddress={savedDeliveryAddress}
+                detectedLocationAddress={detectedLocationAddress}
+                isEditingDeliveryAddress={isEditingDeliveryAddress}
+                onEditAddress={() => setIsEditingDeliveryAddress(true)}
+                onInputChange={handleInputChange}
+                onClearLocation={handleClearLocation}
+                onDetectLocation={handleDetectLocation}
+                onSuggestionClick={handleSuggestionClick}
+                onSaveDetectedAddress={handleSaveDetectedAddress}
+                primaryButtonClass={primaryButtonClass}
+                primaryButtonLabelClass={primaryButtonLabelClass}
+                primaryButtonOverlayClass={primaryButtonOverlayClass}
+                secondaryButtonClass={secondaryButtonClass}
+                secondaryButtonLabelClass={secondaryButtonLabelClass}
+                secondaryButtonOverlayClass={secondaryButtonOverlayClass}
+              />
+            ) : (
+              <PickupPanel
+                stores={filteredStores}
+                selectedPickupStoreId={selectedPickupStoreId}
+                expandedStoreId={expandedStoreId}
+                onSelectStore={handleSelectPickupStore}
+                onToggleExpanded={(storeId) =>
+                  setExpandedStoreId((prev) => (prev === storeId ? null : storeId))
+                }
+                onEnableDefaultStore={handleEnableDefaultStore}
+                getStoreStatus={getStoreStatus}
+              />
+            )}
           </div>
-
-          {fulfillmentType === "delivery" ? (
-            <div className="space-y-4">
-              <h5 className="text-center text-base font-semibold text-gray-900">
-                Delivery Location
-              </h5>
-              {isEditingDeliveryAddress ? (
-                <>
-                  <div className="space-y-3">
-                    <label className="block mb-2 text-sm text-gray-900 text-center">
-                      Enables us to provide delivery rates and availability for
-                      your location
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <div className="relative flex-1">
-                        <Search
-                          size={16}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        />
-                        <input
-                          ref={inputRef}
-                          type="text"
-                          placeholder="Search delivery address"
-                          value={input}
-                          onChange={handleInputChange}
-                          className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-full text-base md:text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
-                        />
-                        {input && (
-                          <button
-                            type="button"
-                            onClick={handleClearLocation}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="my-5 flex items-center gap-3">
-                      <div className="h-px flex-1 bg-gray-500" />
-                      <span className="text-base text-gray-500 font-semibold">
-                        OR
-                      </span>
-                      <div className="h-px flex-1 bg-gray-500" />
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleDetectLocation}
-                      className="mt-1 flex w-full justify-center items-center gap-2 text-base font-semibold text-belims-blue hover:text-belims-navy"
-                    >
-                      <MapPin size={14} /> Use my current location
-                    </button>
-                  </div>
-
-                  {loading && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <Loader size={14} className="animate-spin" />
-                      Finding address suggestions...
-                    </div>
-                  )}
-
-                  {suggestions.length > 0 && (
-                    <div className="rounded-lg border border-gray-200 divide-y overflow-hidden">
-                      {suggestions.map((suggestion, index) => (
-                        <button
-                          key={`${suggestion.source || "google"}-${suggestion.place_id || index}`}
-                          type="button"
-                          onClick={() => handleSuggestionClick(suggestion)}
-                          className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
-                        >
-                          {suggestion.mainText ? (
-                            <div className="flex flex-col">
-                              <span className="text-sm text-gray-900">
-                                {suggestion.mainText}
-                              </span>
-                              {suggestion.secondaryText && (
-                                <span className="text-xs text-gray-500">
-                                  {suggestion.secondaryText}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            suggestion.description
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                savedDeliveryAddress && (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 space-y-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        Delivery location
-                      </h3>
-                      <p className="text-xs text-gray-600 mt-1">
-                        Delivery location selected for your device
-                      </p>
-                      <p className="text-sm text-gray-900 mt-2">
-                        {formatDetectedLocationLine(savedDeliveryAddress)}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingDeliveryAddress(true)}
-                      className={primaryButtonClass}
-                    >
-                      <span className={primaryButtonOverlayClass} />
-                      <span className={primaryButtonLabelClass}>
-                        Edit Address
-                      </span>
-                    </button>
-
-                    <p className="text-xs text-gray-500">
-                      *Confirmation of your delivery address will ensure best
-                      product availability and order delivery
-                    </p>
-                  </div>
-                )
-              )}
-
-              {detectedLocationAddress && (
-                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 space-y-3">
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900">
-                      Delivery location
-                    </h3>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Delivery location selected for your device
-                    </p>
-                    <p className="text-sm text-gray-900 mt-2">
-                      {formatDetectedLocationLine(detectedLocationAddress)}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={handleSaveDetectedAddress}
-                      className={primaryButtonClass}
-                    >
-                      <span className={primaryButtonOverlayClass} />
-                      <span className={primaryButtonLabelClass}>Save</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDetectedLocationAddress(null)}
-                      className={secondaryButtonClass}
-                    >
-                      <span className={secondaryButtonOverlayClass} />
-                      <span className={secondaryButtonLabelClass}>
-                        Edit address
-                      </span>
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-gray-500">
-                    *Confirmation of your delivery address will ensure best
-                    product availability and order delivery
-                  </p>
-                </div>
-              )}
-
-              {errorMessage && (
-                <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                  {errorMessage}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* <div className="space-y-2">
-                <label className="block text-xs font-semibold text-gray-600">
-                  Enter suburb, city or postcode
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="relative flex-1">
-                    <Search
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Search pickup stores"
-                      value={storeSearch}
-                      onChange={(e) => setStoreSearch(e.target.value)}
-                      className="w-full pl-9 pr-9 py-2.5 border border-gray-300 rounded-full text-base md:text-sm focus:outline-none focus:border-belims-blue focus:ring-1 focus:ring-belims-blue"
-                    />
-                    {storeSearch && (
-                      <button
-                        type="button"
-                        onClick={() => setStoreSearch("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleLocateStores}
-                  className="flex items-center gap-2 text-xs font-semibold text-belims-blue hover:text-belims-navy"
-                >
-                  <MapPin size={14} /> Use my current location
-                </button>
-              </div> */}
-
-              <div className="rounded-lg border border-gray-200 divide-y">
-                {filteredStores.map((store) => {
-                  const isSelected = store.id === selectedPickupStoreId;
-                  const status = getStoreStatus(store);
-                  const statusTone = status.isOpen
-                    ? "text-green-600"
-                    : status.isOpen === false
-                      ? "text-red-600"
-                      : "text-gray-500";
-                  const isExpanded = expandedStoreId === store.id;
-                  return (
-                    <button
-                      key={store.id}
-                      type="button"
-                      onClick={() => setSelectedPickupStoreId(store.id)}
-                      className="w-full text-left p-4 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            isSelected
-                              ? "border-belims-blue"
-                              : "border-gray-300"
-                          }`}
-                        >
-                          {isSelected && (
-                            <div className="w-2.5 h-2.5 rounded-full bg-belims-blue" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex flex-cols-2 justify-between items-center">
-                            <div className="font-semibold text-gray-900 font-heading">
-                              {store.name}
-                            </div>
-                            {store.distance !== undefined && (
-                              <div className="rounded-md bg-gray-100 px-2 py-1 text-[12px] font-semibold text-gray-700">
-                                {store.distance} km
-                              </div>
-                            )}
-                          </div>
-                          <div className="text-sm text-gray-600 mb-3">
-                            Pickup available, usually ready in 24 hours
-                          </div>
-
-                          <div className="text-sm text-gray-600 mb-1">
-                            {store.address}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {store.phone ? store.phone : "Phone unavailable"}
-                          </div>
-
-                          <div className="flex items-center gap-1 text-sm mt-2">
-                            <span className={`${statusTone} font-semibold`}>
-                              {status.label}
-                            </span>
-                            {status.detail && (
-                              <span className="text-gray-400">
-                                · {status.detail}
-                              </span>
-                            )}
-                          </div>
-                          <div
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setExpandedStoreId(isExpanded ? null : store.id);
-                            }}
-                            className="mt-2 text-sm font-semibold text-belims-blue hover:underline cursor-pointer"
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setExpandedStoreId(
-                                  isExpanded ? null : store.id,
-                                );
-                              }
-                            }}
-                          >
-                            View Operating Hours
-                          </div>
-                          {isExpanded && (
-                            <div className="mt-3 text-sm text-gray-600">
-                              <div className="mt-2 space-y-1">
-                                {dayKeys.map((dayKey, index) => (
-                                  <div key={dayKey}>
-                                    {formatHoursLine(
-                                      dayLabels[index],
-                                      store.hours?.[dayKey],
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {filteredStores.length === 0 && (
-                  <div className="p-4 text-xs text-gray-500 text-center">
-                    No stores match your search.
-                  </div>
-                )}
-              </div>
-              {isDev && (
-                <div className="flex items-center gap-3 pt-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={handleResetPickupStore}
-                    className="font-semibold text-gray-500 hover:text-gray-700"
-                  >
-                    Reset store
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleEnableDefaultStore}
-                    className="font-semibold text-gray-500 hover:text-gray-700"
-                  >
-                    Use default store
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* Footer with Buttons */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 space-y-3">
-          {errorMessage && fulfillmentType === "pickup" && (
-            <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-              {errorMessage}
-            </div>
-          )}
-
+        {/* Sticky footer */}
+        <div className="p-5 border-t bg-surface flex-shrink-0">
           {fulfillmentType === "delivery" ? (
-            <div className="grid grid-cols-1 gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.removeItem("deliveryAddressV2");
-                  localStorage.removeItem("deliveryAddress");
-                  setErrorMessage(null);
-                  setInput("");
-                  setSuggestions([]);
-                  setDetectedLocationAddress(null);
-                  setSavedDeliveryAddress(null);
-                  setIsEditingDeliveryAddress(true);
-                  onAddressSelect(null);
-                  emitDeliveryAddressUpdated();
-                }}
-                className={secondaryButtonClass}
-              >
-                <span className={secondaryButtonOverlayClass} />
-                <span className={secondaryButtonLabelClass}>Reset</span>
-              </button>
-            </div>
-          ) : (
             <button
               type="button"
-              onClick={handlePickupSave}
+              onClick={handleUpdatePostalCode}
               className={primaryButtonClass}
             >
               <span className={primaryButtonOverlayClass} />
-              <span className={primaryButtonLabelClass}>Save Pickup Store</span>
+              <span className={primaryButtonLabelClass}>Update Postal Code</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleConfirmPickupSelection}
+              className="group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full bg-belims-blue px-4 py-2 transition-colors hover:bg-belims-navy"
+            >
+              <span className="relative z-10 font-heading font-bold text-white">
+                Confirm Selection
+              </span>
             </button>
           )}
         </div>

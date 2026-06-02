@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Target,
   Loader2,
+  Clock,
 } from "lucide-react";
 import { Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
@@ -18,7 +19,7 @@ import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import { VideoPlayer } from "./VideoPlayer";
 import { generateProductDescription } from "../services/geminiService";
 import { addToRecentlyViewed } from "../services/storageService";
-import { cachedGetJson, getApiBaseUrl } from "../services/wooCommerceService";
+import { getApiBaseUrl } from "../services/wooCommerceService";
 import {
   getFallbackShipping,
   getShippingRates,
@@ -26,6 +27,7 @@ import {
 import {
   buildAddressLabel,
   readStoredAddress,
+  resolveAddressFromPostalCode,
   saveStoredAddress,
 } from "../services/shippingAddress";
 import {
@@ -43,8 +45,6 @@ import { FulfillmentBlock } from "./FulfillmentBlock";
 import { FulfillmentTab } from "./FulfillmentTabs";
 import { ProductAccordions } from "./ProductAccordions";
 import { TradePricingAvailable } from "./TradePricingAvailable";
-import { SocialShareExpertBlock } from "./SocialShareExpertBlock";
-import { BundledProducts } from "./BundledProducts";
 
 interface SingleProductProps {
   product: Product;
@@ -140,7 +140,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 }) => {
   const navigate = useNavigate();
   const getDefaultStore = (stores: Store[]) =>
-    stores.find((store) => store.name.toLowerCase().includes("umzinto")) ||
+    stores.find((store) => store.name?.toLowerCase().includes("umzinto")) ||
     stores[0] ||
     null;
   const shouldSkipDefaultStore = () =>
@@ -158,10 +158,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   // Policies
   const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
   const [ecommercePolicies, setEcommercePolicies] = useState<any>(null);
-  const [expertContact, setExpertContact] = useState<any>(null);
 
   // Store Locator
   const [isLocatorOpen, setIsLocatorOpen] = useState(false);
+  const [isSchedulePickupOpen, setIsSchedulePickupOpen] = useState(false);
+  const [schedulePickupDate, setSchedulePickupDate] = useState("");
+  const [schedulePickupTime, setSchedulePickupTime] = useState("");
   const [storeLocations, setStoreLocations] = useState<Store[]>(STORES);
   const [selectedStore, setSelectedStore] = useState<Store | null>(
     shouldSkipDefaultStore() ? null : getDefaultStore(STORES),
@@ -180,6 +182,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const [legacyDeliveryLabel, setLegacyDeliveryLabel] = useState<string | null>(
     null,
   );
+  const [isResolvingStoredAddress, setIsResolvingStoredAddress] =
+    useState(false);
 
   // Delivery rates
   const [deliveryRates, setDeliveryRates] = useState<ShippingRate[]>([]);
@@ -363,9 +367,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       .then((res) => res.json())
       .then((data) => {
         setEcommercePolicies(data);
-        if (data?.expert_contact) {
-          setExpertContact(data.expert_contact);
-        }
         const rawStores = Array.isArray(data?.store_locations)
           ? data.store_locations
           : [];
@@ -463,20 +464,59 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         }
       })
       .catch((err) => console.error("Failed to fetch policies:", err));
-
-    cachedGetJson<any>(`${apiBase}/site-settings`)
-      .then((data) => {
-        if (data?.ecommerce?.expert_contact) {
-          setExpertContact(data.ecommerce.expert_contact);
-        }
-      })
-      .catch((err) => console.error("Failed to fetch site settings:", err));
   }, [product]);
 
   useEffect(() => {
     refreshStoredAddress();
     hydrateFromSiteStorage();
   }, []);
+
+  useEffect(() => {
+    if (deliveryAddress?.city && deliveryAddress?.province) {
+      setIsResolvingStoredAddress(false);
+      return;
+    }
+
+    const postalCode =
+      deliveryAddress?.postalCode || legacyDeliveryLabel?.trim() || "";
+    if (!postalCode) {
+      setIsResolvingStoredAddress(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsResolvingStoredAddress(true);
+
+    const resolveStoredPostalCode = async () => {
+      const resolvedAddress = await resolveAddressFromPostalCode(postalCode);
+      if (cancelled || !resolvedAddress) {
+        if (!cancelled) setIsResolvingStoredAddress(false);
+        return;
+      }
+
+      setDeliveryAddress(resolvedAddress);
+      setLegacyDeliveryLabel(resolvedAddress.label || postalCode);
+      saveStoredAddress(resolvedAddress);
+      setSharedDeliveryAddress({
+        street: resolvedAddress.street,
+        city: resolvedAddress.city,
+        province: resolvedAddress.province,
+        postalCode: resolvedAddress.postalCode,
+      });
+      setIsResolvingStoredAddress(false);
+    };
+
+    void resolveStoredPostalCode();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    deliveryAddress?.city,
+    deliveryAddress?.postalCode,
+    deliveryAddress?.province,
+    legacyDeliveryLabel,
+  ]);
 
   useEffect(() => {
     setPdpContext({
@@ -559,7 +599,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   }, [syncStoredPickupStore]);
 
   useEffect(() => {
-    if (!isDeliveryModalOpen) refreshStoredAddress();
+    if (!isDeliveryModalOpen) {
+      refreshStoredAddress();
+      hydrateFromSiteStorage();
+    }
   }, [isDeliveryModalOpen]);
 
   useEffect(() => {
@@ -632,7 +675,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     : legacyDeliveryLabel || "";
 
   const hasStructuredAddress = Boolean(
-    deliveryAddress?.city && deliveryAddress?.province,
+    deliveryAddress?.postalCode ||
+    (deliveryAddress?.city && deliveryAddress?.province),
   );
 
   useEffect(() => {
@@ -835,7 +879,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     setMainImage(gallery[prevIndex]);
   };
 
-  const hasDeliveryLocation = Boolean(deliveryAddress?.postalCode);
+  const hasDeliveryLocation = Boolean(
+    deliveryAddress?.postalCode ||
+    legacyDeliveryLabel ||
+    (deliveryAddress?.city && deliveryAddress?.province),
+  );
   const handleSelectFulfillment = (value: FulfillmentTab) => {
     setFulfillmentType(value);
     localStorage.setItem("belims_fulfillment_tab", value);
@@ -1016,8 +1064,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     });
   };
 
-  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-
   return (
     <div className="relative bg-white">
       {/* Full Screen Gallery Modal */}
@@ -1132,6 +1178,161 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           checkingProduct={product}
         />
       )}
+
+      {/* Schedule Pickup Dialog */}
+      {isSchedulePickupOpen &&
+        (() => {
+          const dayKeys = [
+            "sun",
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+          ] as const;
+          const parseTimeToMinutes = (value?: string | null) => {
+            if (!value) return null;
+            const [h, m] = value.split(":").map(Number);
+            if (Number.isNaN(h) || Number.isNaN(m)) return null;
+            return h * 60 + m;
+          };
+          const getAvailableTimes = (dateStr: string) => {
+            if (!dateStr || !selectedStore) return [];
+            const day = new Date(dateStr).getDay();
+            const hours = selectedStore.hours?.[dayKeys[day]];
+            if (!hours || hours.closed || !hours.open || !hours.close)
+              return [];
+            const openMins = parseTimeToMinutes(hours.open);
+            const closeMins = parseTimeToMinutes(hours.close);
+            const breakStart = parseTimeToMinutes(hours.breakStart);
+            const breakEnd = parseTimeToMinutes(hours.breakEnd);
+            if (openMins === null || closeMins === null) return [];
+            return Array.from({ length: 48 }, (_, i) => {
+              const mins = i * 30;
+              const hh = String(Math.floor(mins / 60)).padStart(2, "0");
+              const mm = String(mins % 60).padStart(2, "0");
+              return `${hh}:${mm}`;
+            }).filter((opt) => {
+              const m = parseTimeToMinutes(opt);
+              if (m === null || m < openMins || m > closeMins) return false;
+              if (
+                breakStart !== null &&
+                breakEnd !== null &&
+                m >= breakStart &&
+                m < breakEnd
+              )
+                return false;
+              return true;
+            });
+          };
+          const available = getAvailableTimes(schedulePickupDate);
+          const isTimeDisabled = available.length === 0;
+          const handleSave = () => {
+            if (!schedulePickupDate || !schedulePickupTime) {
+              alert("Please select a pickup date and time.");
+              return;
+            }
+            setPickupSchedule({
+              date: schedulePickupDate,
+              time: schedulePickupTime,
+            });
+            localStorage.setItem(
+              "pickupSchedule",
+              JSON.stringify({
+                date: schedulePickupDate,
+                time: schedulePickupTime,
+              }),
+            );
+            setIsSchedulePickupOpen(false);
+          };
+          return (
+            <div
+              className="fixed inset-0 z-[900] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+              onClick={(e) => {
+                if (e.target === e.currentTarget)
+                  setIsSchedulePickupOpen(false);
+              }}
+            >
+              <div className="relative bg-white w-full max-w-md rounded-lg shadow-lg overflow-hidden flex flex-col">
+                <div className="p-5 bg-belims-blue flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-blue-50 text-belims-blue flex items-center justify-center flex-shrink-0">
+                      <Clock size={18} className="text-belims-blue" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-semibold text-white">
+                        Schedule pickup
+                      </h2>
+                      <p className="text-sm text-white/90">
+                        Choose your preferred pickup date and time.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSchedulePickupOpen(false)}
+                    className="text-white bg-[#3b308e] hover:bg-[#251e62] w-10 h-10 rounded-full transition-colors flex items-center justify-center flex-shrink-0"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      Schedule pickup
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      Choose your preferred pickup date and time.
+                    </p>
+                  </div>
+                  <label className="block text-xs font-semibold text-gray-700">
+                    Date
+                    <input
+                      type="date"
+                      value={schedulePickupDate}
+                      min={new Date().toISOString().split("T")[0]}
+                      onChange={(e) => {
+                        setSchedulePickupDate(e.target.value);
+                        setSchedulePickupTime("");
+                      }}
+                      className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-belims-blue outline-none"
+                    />
+                  </label>
+                  <label className="block text-xs font-semibold text-gray-700">
+                    Time
+                    <input
+                      type="time"
+                      value={schedulePickupTime}
+                      step={1800}
+                      disabled={isTimeDisabled}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (
+                          !val ||
+                          !schedulePickupDate ||
+                          !available.includes(val)
+                        ) {
+                          setSchedulePickupTime("");
+                          return;
+                        }
+                        setSchedulePickupTime(val);
+                      }}
+                      className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-belims-blue outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="w-full rounded bg-belims-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-belims-navy"
+                  >
+                    Save pickup time
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
       {/* Delivery Location Modal */}
       <DeliveryLocationModal
@@ -1285,6 +1486,20 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                       </span>
                     )}
 
+                    {product.brand &&
+                      (onBrandClick ? (
+                        <button
+                          type="button"
+                          onClick={() => onBrandClick(product.brand!)}
+                          className="mb-2 inline-block text-sm font-semibold uppercase tracking-wide text-grey-medium hover:text-brand transition-colors"
+                        >
+                          {product.brand}
+                        </button>
+                      ) : (
+                        <div className="mb-2 text-sm font-semibold uppercase tracking-wide text-grey-medium">
+                          {product.brand}
+                        </div>
+                      ))}
                     <h1 className="text-3xl font-bold text-grey font-heading mb-1">
                       {product.name}
                     </h1>
@@ -1389,9 +1604,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                               isAddToCartLoading ||
                               isBuyNowLoading
                             }
-                            className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey-light text-grey transition-colors disabled:opacity-50"
+                            className="group relative h-11 w-full overflow-hidden rounded-pill bg-belims-blue text-white transition-colors disabled:opacity-50"
                           >
-                            <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                            <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
                             <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors group-hover:text-white">
                               {isAddToCartLoading ? (
                                 <>
@@ -1571,9 +1786,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   pickupSchedule={pickupSchedule}
                   earliestDeliveryEta={earliestDeliveryEta}
                   deliveryRates={deliveryRates}
-                  loadingDeliveryRates={loadingDeliveryRates}
+                  loadingDeliveryRates={
+                    loadingDeliveryRates || isResolvingStoredAddress
+                  }
                   deliveryRatesError={deliveryRatesError}
-                  onSchedulePickup={() => setIsLocatorOpen(true)}
+                  onSchedulePickup={() => setIsSchedulePickupOpen(true)}
                   onViewPickupDetails={handleOpenPickupDetails}
                   onResetPickupStore={handleResetPickupStore}
                   onEnableDefaultStore={handleEnableDefaultStore}
@@ -1713,7 +1930,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             <div className="order-3 lg:order-3 lg:col-span-7">
               {/* Product Description */}
               <div className="mt-10 lg:mt-0">
-                <h3 className="text-2xl font-semibold text-grey mb-3 border-b border-grey pb-3">
+                <h3 className="text-xl font-bold text-grey font-heading mb-3 border-b border-grey pb-3">
                   Product Description
                 </h3>
                 <div className="prose prose-sm max-w-none text-grey-medium text-base [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-grey [&_h3]:mt-4 [&_h3]:mb-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-grey [&_h4]:mt-3 [&_h4]:mb-2 [&_strong]:font-bold [&_strong]:text-grey [&_b]:font-bold [&_b]:text-grey [&_em]:italic [&_i]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:mb-3 [&_ul]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:mb-3 [&_ol]:mt-2 [&_li]:text-grey [&_li]:leading-relaxed [&_p]:mb-2 [&_p]:leading-relaxed [&_br]:content-[''] [&_table]:w-full [&_table]:border-collapse [&_table]:mb-3 [&_th]:border [&_th]:border-grey [&_th]:bg-grey [&_th]:p-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-grey [&_td]:p-2">
@@ -1735,20 +1952,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   ecommercePolicies={ecommercePolicies}
                   expandedPolicy={expandedPolicy}
                   setExpandedPolicy={setExpandedPolicy}
-                />
-                <SocialShareExpertBlock
-                  productName={product.name}
-                  productUrl={shareUrl}
-                  expertName={expertContact?.expert_name}
-                  expertTitle={expertContact?.expert_title}
-                  expertImageUrl={
-                    expertContact?.expert_avatar?.url ||
-                    expertContact?.expert_avatar_url
-                  }
-                  videoChatUrl={expertContact?.expert_video_chat_url}
-                  chatUrl={expertContact?.expert_chat_url}
-                  email={expertContact?.expert_email}
-                  phone={expertContact?.expert_phone}
                 />
               </div>
             </div>
@@ -1865,16 +2068,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   </div>
                 ))}
               </div>
-            </div>
-          </section>
-
-          <section className="py-6 bg-[#F5F691] mb-0">
-            <div className="container mx-auto px-4">
-              <BundledProducts
-                product={product}
-                allProducts={allProducts}
-                addToCart={addToCart}
-              />
             </div>
           </section>
         </>

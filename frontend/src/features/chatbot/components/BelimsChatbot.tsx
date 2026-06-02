@@ -694,19 +694,20 @@ export const BelimsChatbot: React.FC<BelimsChatbotProps> = ({
   const toShippingAddress = (
     address: FulfillmentContext["deliveryAddress"],
   ): ShippingAddress | undefined => {
-    if (!address?.city || !address?.province || !address?.postalCode) {
+    if (!address?.postalCode) {
       return undefined;
     }
 
     return {
       street: address.street ?? "",
-      city: address.city,
-      province: address.province,
+      city: address.city ?? "",
+      province: address.province ?? "",
       postalCode: address.postalCode,
       country: "ZA",
-      label: [address.street, address.city, address.province]
-        .filter(Boolean)
-        .join(", "),
+      label:
+        [address.street, address.city, address.province]
+          .filter(Boolean)
+          .join(", ") || address.postalCode,
     };
   };
 
@@ -2180,7 +2181,9 @@ export const BelimsChatbot: React.FC<BelimsChatbotProps> = ({
     setFulfillment((prev) => ({
       ...prev,
       deliveryAddress: nextAddress,
-      deliveryLocationSet: Boolean(address?.postalCode),
+      deliveryLocationSet: Boolean(
+        address?.postalCode || (address?.city && address?.province),
+      ),
       selectedDeliveryOptionId: null,
       updatedAt: new Date().toISOString(),
     }));

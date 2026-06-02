@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Search, ArrowRight } from "lucide-react";
+import { Search } from "lucide-react";
 import { Product, CategoryNode } from "../types";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 
@@ -15,6 +15,7 @@ interface SearchResultsProps {
   searchQuery: string;
   onViewAllResults: () => void;
   onCategorySelect: (categoryLabel: string) => void;
+  onBrandSelect?: (brand: string) => void;
   onProductSelect: (product: Product) => void;
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
@@ -28,6 +29,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
   searchQuery,
   onViewAllResults,
   onCategorySelect,
+  onBrandSelect,
   onProductSelect,
   addToCart,
   onBuyNow,
@@ -37,7 +39,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 }) => {
   if (!searchResults) return null;
 
-  const displayProducts = searchResults.products.slice(0, 10);
+  const displayProducts = searchResults.products.slice(0, 30);
 
   // Auto-generate suggestions based on search query and products
   const suggestions = useMemo(() => {
@@ -66,15 +68,24 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
     return Array.from(deptSet).slice(0, 10);
   }, [searchResults.categories]);
 
+  // Extract unique brands from matched products
+  const brands = useMemo(() => {
+    const brandSet = new Set<string>();
+    searchResults.products.forEach((product) => {
+      if (product.brand) brandSet.add(product.brand);
+    });
+    return Array.from(brandSet).slice(0, 10);
+  }, [searchResults.products]);
+
   return (
     <div
       className="absolute left-1/2 -translate-x-1/2 w-screen z-50 shadow-lg bg-white border-t border-gray-200"
-      style={{ top: "calc(100% + 19px)" }}
+      style={{ top: "calc(100% + 19px)", maxHeight: "calc(100vh - 160px)" }}
     >
       {/* Main Content */}
-      <div className="w-full container mx-auto flex gap-6 py-6">
+      <div className="w-full container mx-auto flex gap-6 py-6 h-full" style={{ maxHeight: "calc(100vh - 160px)" }}>
         {/* Left Column: Products (75%) */}
-        <div className="flex-1">
+        <div className="flex-1 overflow-y-auto pr-2">
           {displayProducts.length > 0 ? (
             <>
               <h3 className="text-lg font-semibold text-grey mb-4">
@@ -139,8 +150,8 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
           )}
         </div>
 
-        {/* Right Column: Suggestions & Departments (25%) */}
-        <div className="hidden lg:block w-72 pl-6 border-l border-gray-200">
+        {/* Right Column: Suggestions, Departments & Brands (25%) */}
+        <div className="hidden lg:block w-72 pl-6 border-l border-gray-200 overflow-y-auto">
           {/* Suggestions */}
           {suggestions.length > 0 && (
             <div className="mb-8">
@@ -167,7 +178,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 
           {/* Departments */}
           {departments.length > 0 && (
-            <div>
+            <div className="mb-8">
               <h4 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
                 Departments
               </h4>
@@ -180,6 +191,27 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
                     className="block w-full text-left text-sm text-gray-700 hover:text-belims-accent transition-colors"
                   >
                     {dept}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Brands */}
+          {brands.length > 0 && (
+            <div>
+              <h4 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
+                Brands
+              </h4>
+              <div className="space-y-2">
+                {brands.map((brand) => (
+                  <button
+                    key={brand}
+                    type="button"
+                    onClick={() => onBrandSelect?.(brand)}
+                    className="block w-full text-left text-sm text-gray-700 hover:text-belims-accent transition-colors"
+                  >
+                    {brand}
                   </button>
                 ))}
               </div>

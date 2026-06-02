@@ -310,6 +310,32 @@ export const createOrder = async (orderData: any) => {
 };
 
 /**
+ * Validate a WooCommerce coupon code.
+ * Returns the coupon object if valid, throws with a user-facing message if not.
+ */
+export const validateCoupon = async (
+  code: string,
+): Promise<{ code: string; discount_type: string; amount: string }> => {
+  const response = await fetch(
+    `${BASE_URL}/coupons?code=${encodeURIComponent(code.trim())}`,
+    { headers: { "Content-Type": "application/json" } },
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not validate coupon. Please try again.");
+  }
+
+  const data = await response.json();
+  const coupon = Array.isArray(data) ? data[0] : data?.coupon ?? null;
+
+  if (!coupon) {
+    throw new Error("Invalid or expired coupon code.");
+  }
+
+  return coupon;
+};
+
+/**
  * Fetch Customer Orders via custom API
  */
 export const fetchCustomerOrders = async () => {

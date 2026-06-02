@@ -119,7 +119,28 @@ export const readStoredAddress = (): {
 } => {
   const legacyLabel = localStorage.getItem(DELIVERY_ADDRESS_LEGACY_KEY);
   const raw = localStorage.getItem(DELIVERY_ADDRESS_STORAGE_KEY);
+  const legacyPostalCode = legacyLabel?.trim() || "";
   if (!raw) {
+    if (/^\d{4}$/.test(legacyPostalCode)) {
+      console.log("[delivery-address] read legacy postal code", {
+        storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
+        legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
+        storedValue: raw,
+        legacyValue: legacyLabel,
+      });
+      return {
+        address: {
+          street: "",
+          city: "",
+          province: "",
+          postalCode: legacyPostalCode,
+          country: "ZA",
+          label: legacyPostalCode,
+        },
+        legacyLabel,
+      };
+    }
+
     return { address: null, legacyLabel };
   }
 
@@ -128,19 +149,42 @@ export const readStoredAddress = (): {
     if (parsed) {
       const normalizedCountry = (parsed.country || "ZA").toUpperCase();
       if (normalizedCountry === "ZA") {
+        console.log("[delivery-address] read saved address", {
+          storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
+          legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
+          storedValue: raw,
+          legacyValue: legacyLabel,
+          parsed,
+        });
         return {
           address: {
             ...parsed,
             country: "ZA",
+            label:
+              parsed.label ||
+              buildAddressLabel(parsed) ||
+              parsed.postalCode ||
+              legacyPostalCode,
           },
           legacyLabel,
         };
       }
     }
   } catch {
-    // ignore parsing errors
+    console.log("[delivery-address] read failed", {
+      storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
+      legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
+      storedValue: raw,
+      legacyValue: legacyLabel,
+    });
   }
 
+  console.log("[delivery-address] read empty", {
+    storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
+    legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
+    storedValue: raw,
+    legacyValue: legacyLabel,
+  });
   return { address: null, legacyLabel };
 };
 
@@ -148,10 +192,17 @@ export const saveStoredAddress = (address: ShippingAddress | null) => {
   if (!address) {
     localStorage.removeItem(DELIVERY_ADDRESS_STORAGE_KEY);
     localStorage.removeItem(DELIVERY_ADDRESS_LEGACY_KEY);
+    console.log("[delivery-address] removed", {
+      storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
+      legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
+      storedValue: localStorage.getItem(DELIVERY_ADDRESS_STORAGE_KEY),
+      legacyValue: localStorage.getItem(DELIVERY_ADDRESS_LEGACY_KEY),
+    });
+    console.trace("[delivery-address] removal stack");
     return;
   }
 
-  const label = address.label || buildAddressLabel(address);
+  const label = address.label || buildAddressLabel(address) || address.postalCode;
   const payload: ShippingAddress = {
     ...address,
     country: "ZA",
@@ -160,6 +211,13 @@ export const saveStoredAddress = (address: ShippingAddress | null) => {
 
   localStorage.setItem(DELIVERY_ADDRESS_STORAGE_KEY, JSON.stringify(payload));
   localStorage.setItem(DELIVERY_ADDRESS_LEGACY_KEY, label);
+  console.log("[delivery-address] saved", {
+    storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
+    legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
+    payload,
+    storedValue: localStorage.getItem(DELIVERY_ADDRESS_STORAGE_KEY),
+    legacyValue: localStorage.getItem(DELIVERY_ADDRESS_LEGACY_KEY),
+  });
 };
 
 export const mapNominatimAddress = (data: any): ShippingAddress | null => {
@@ -219,4 +277,36 @@ export const mapNominatimAddress = (data: any): ShippingAddress | null => {
       : "");
 
   return { ...draft, label };
+};
+
+export const resolveAddressFromPostalCode = async (
+  postalCode: string,
+): Promise<ShippingAddress | null> => {
+  const trimmedPostalCode = postalCode.trim();
+  if (!trimmedPostalCode) return null;
+
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&countrycodes=za&addressdetails=1&limit=5&q=${encodeURIComponent(`${trimmedPostalCode} South Africa`)}`,
+    );
+
+    if (!response.ok) return null;
+
+    const results = (await response.json()) as any[];
+    if (!Array.isArray(results)) return null;
+
+    for (const result of results) {
+      const mapped = mapNominatimAddress(result);
+      if (mapped?.city && mapped?.province) {
+        return {
+          ...mapped,
+          postalCode: mapped.postalCode || trimmedPostalCode,
+        };
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 };

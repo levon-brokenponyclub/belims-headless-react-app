@@ -51,7 +51,10 @@ const convertToHierarchy = async (): Promise<CategoryNode[]> => {
       return cleaned;
     };
 
-    return rootCategories.map(cleanupNode);
+    const HIDDEN_SLUGS = new Set(["uncategorised", "uncategorized"]);
+    return rootCategories
+      .filter((cat) => !HIDDEN_SLUGS.has(cat.id?.toLowerCase()))
+      .map(cleanupNode);
   } catch (error) {
     console.error("Failed to fetch category hierarchy:", error);
     // Return fallback static categories

@@ -55,6 +55,7 @@ import CollageGrid from "./components/CollageGrid";
 import ProjectInspiration from "./components/ProjectInspiration";
 import { PopularCategories } from "./components/PopularCategories";
 import { getCurrentUser, UserData, logoutUser } from "./services/authService";
+import { saveStoredAddress } from "./services/shippingAddress";
 
 import { Product, CartItem, Store } from "./types";
 import {
@@ -713,6 +714,8 @@ export default function App() {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [cartOrderNote, setCartOrderNote] = useState("");
+  const [cartCoupon, setCartCoupon] = useState("");
   const hasLoadedProductsRef = useRef(false);
   const hasLoadedCategoriesRef = useRef(false);
   const hasPromptedLocationRef = useRef(false);
@@ -1133,6 +1136,10 @@ export default function App() {
         setToast={setToast}
         handleLogin={handleLogin}
         handleLogout={handleLogout}
+        onCartSaveOrderNote={(note: string) => setCartOrderNote(note)}
+        onCartApplyCoupon={(code: string) => setCartCoupon(code)}
+        cartOrderNote={cartOrderNote}
+        cartCoupon={cartCoupon}
       />
     </Router>
   );
@@ -1149,6 +1156,7 @@ function MainApp(props) {
   const [displayLocation, setDisplayLocation] = useState(location);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [isCookieConsentOpen, setIsCookieConsentOpen] = useState(false);
+  const isCheckoutRoute = displayLocation.pathname === "/checkout";
 
   useEffect(() => {
     const isSameLocation =
@@ -1272,21 +1280,23 @@ function MainApp(props) {
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans">
-      <Header
-        selectedStore={props.selectedStore}
-        setSelectedStore={props.setSelectedStore}
-        cartItems={props.cartItems}
-        toggleCart={() => props.setIsCartOpen(true)}
-        toggleStoreLocator={() => props.setIsLocatorOpen(true)}
-        onOpenPaintAssistant={() => props.setIsPaintOpen(true)}
-        onOpenTrackOrder={() => navigate("/track-order")}
-        onOpenOnboarding={() => props.setIsOnboardingOpen(true)}
-        onOpenAiAssistant={() => props.setIsAiAssistantOpen(true)}
-        onCompare={props.addToCompare}
-        products={props.products}
-        currentUser={props.currentUser}
-        setCurrentUser={props.setCurrentUser}
-      />
+      {!isCheckoutRoute && (
+        <Header
+          selectedStore={props.selectedStore}
+          setSelectedStore={props.setSelectedStore}
+          cartItems={props.cartItems}
+          toggleCart={() => props.setIsCartOpen(true)}
+          toggleStoreLocator={() => props.setIsLocatorOpen(true)}
+          onOpenPaintAssistant={() => props.setIsPaintOpen(true)}
+          onOpenTrackOrder={() => navigate("/track-order")}
+          onOpenOnboarding={() => props.setIsOnboardingOpen(true)}
+          onOpenAiAssistant={() => props.setIsAiAssistantOpen(true)}
+          onCompare={props.addToCompare}
+          products={props.products}
+          currentUser={props.currentUser}
+          setCurrentUser={props.setCurrentUser}
+        />
+      )}
 
       <main className="flex-1 w-full px-0 relative">
         <div
@@ -1358,6 +1368,8 @@ function MainApp(props) {
                   onBack={() => navigate(-1)}
                   onClearCart={props.clearCart}
                   onSchedulePickup={() => props.setIsLocatorOpen(true)}
+                  initialOrderNote={props.cartOrderNote}
+                  initialCouponCode={props.cartCoupon}
                 />
               }
             />
@@ -1404,29 +1416,38 @@ function MainApp(props) {
         </div>
       </main>
 
-      <Footer />
+      {!isCheckoutRoute && <Footer />}
 
       {/* <FreeShippingWidget cartItems={props.cartItems} /> */}
 
-      <CartDrawer
-        isOpen={props.isCartOpen}
-        onClose={() => props.setIsCartOpen(false)}
-        items={props.cartItems}
-        updateQuantity={props.updateQuantity}
-        removeItem={props.removeItem}
-        onCheckout={() => {
-          props.setIsCartOpen(false);
-          navigate("/checkout");
-        }}
-        recommendedProducts={
-          props.featuredProducts.length > 0
-            ? props.featuredProducts.slice(0, 8)
-            : props.products.filter((p) => p.onSale).slice(0, 8)
-        }
-        addToCart={props.addToCart}
-      />
+      {!isCheckoutRoute && (
+        <CartDrawer
+          isOpen={props.isCartOpen}
+          onClose={() => props.setIsCartOpen(false)}
+          items={props.cartItems}
+          updateQuantity={props.updateQuantity}
+          removeItem={props.removeItem}
+          onCheckout={() => {
+            props.setIsCartOpen(false);
+            navigate("/checkout");
+          }}
+          onSaveOrderNote={props.onCartSaveOrderNote}
+          onApplyCoupon={props.onCartApplyCoupon}
+          onEstimateShipping={(postalCode: string) => {
+            saveStoredAddress({
+              street: "",
+              city: "",
+              province: "",
+              postalCode,
+              country: "ZA",
+            });
+            window.dispatchEvent(new Event("belims:delivery-address-updated"));
+            window.dispatchEvent(new Event("belims:fulfillment-changed"));
+          }}
+        />
+      )}
 
-      {props.isSearchModalOpen && (
+      {!isCheckoutRoute && props.isSearchModalOpen && (
         <SearchModal
           isOpen={props.isSearchModalOpen}
           onClose={() => props.setIsSearchModalOpen(false)}
@@ -1452,7 +1473,7 @@ function MainApp(props) {
         />
       )}
 
-      {props.isCompareOpen && (
+      {!isCheckoutRoute && props.isCompareOpen && (
         <ComparisonModal
           products={props.comparisonList}
           onClose={() => props.setIsCompareOpen(false)}
@@ -1461,14 +1482,14 @@ function MainApp(props) {
         />
       )}
 
-      {props.priceMatchProduct && (
+      {!isCheckoutRoute && props.priceMatchProduct && (
         <PriceMatchModal
           product={props.priceMatchProduct}
           onClose={() => props.setPriceMatchProduct(null)}
         />
       )}
 
-      {props.isOnboardingOpen && (
+      {!isCheckoutRoute && props.isOnboardingOpen && (
         <OnboardingWizard
           products={props.products}
           onClose={() => {
@@ -1484,7 +1505,7 @@ function MainApp(props) {
         />
       )}
 
-      {props.isAiAssistantOpen && (
+      {!isCheckoutRoute && props.isAiAssistantOpen && (
         <AiAssistant
           products={props.products}
           onClose={() => props.setIsAiAssistantOpen(false)}
@@ -1497,7 +1518,7 @@ function MainApp(props) {
         />
       )}
 
-      {props.isPaintOpen && (
+      {!isCheckoutRoute && props.isPaintOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden relative max-h-[90vh] overflow-y-auto">
             <button
@@ -1524,27 +1545,31 @@ function MainApp(props) {
         />
       )}
 
-      <CookieConsent
-        isOpen={isCookieConsentOpen}
-        onOpen={handleOpenCookieConsent}
-        onClose={handleCloseCookieConsent}
-        onCancel={handleCookieCancel}
-        onAccept={handleCookieAccept}
-      />
+      {!isCheckoutRoute && (
+        <>
+          <CookieConsent
+            isOpen={isCookieConsentOpen}
+            onOpen={handleOpenCookieConsent}
+            onClose={handleCloseCookieConsent}
+            onCancel={handleCookieCancel}
+            onAccept={handleCookieAccept}
+          />
 
-      <BelimsChatbot
-        userId={chatbotUserId}
-        cartId={chatbotCartId}
-        onAddToCart={chatbotAddToCart}
-        onBuyNow={chatbotBuyNow}
-        onCheckout={chatbotCheckout}
-        onEscalateToHuman={chatbotEscalate}
-      />
+          <BelimsChatbot
+            userId={chatbotUserId}
+            cartId={chatbotCartId}
+            onAddToCart={chatbotAddToCart}
+            onBuyNow={chatbotBuyNow}
+            onCheckout={chatbotCheckout}
+            onEscalateToHuman={chatbotEscalate}
+          />
 
-      <MobileBottomNav
-        onSearch={() => props.setIsSearchModalOpen(true)}
-        onCart={() => props.setIsCartOpen(true)}
-      />
+          <MobileBottomNav
+            onSearch={() => props.setIsSearchModalOpen(true)}
+            onCart={() => props.setIsCartOpen(true)}
+          />
+        </>
+      )}
     </div>
   );
 }

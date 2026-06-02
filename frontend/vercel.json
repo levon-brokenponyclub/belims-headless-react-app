@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm ci --include=dev && npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://cms.belims.co.za/wp-json/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

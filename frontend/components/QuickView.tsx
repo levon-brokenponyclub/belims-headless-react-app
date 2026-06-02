@@ -144,9 +144,15 @@ export const QuickView: React.FC<QuickViewProps> = ({
             <div className="mb-2 text-[32px] md:text-[48px] leading-none text-black/10 select-none">
               ⠿⠿⠿⠿
             </div>
-            <div className="mb-1 text-sm font-semibold text-grey-medium tracking-wide">
-              {product.brand || "SonicPulse"}
-            </div>
+            {product.brand && (
+              <Link
+                to={`/shop?brand=${encodeURIComponent(product.brand)}`}
+                onClick={closeQuickView}
+                className="mb-2 inline-block text-sm font-semibold uppercase tracking-wide text-grey-medium hover:text-brand transition-colors"
+              >
+                {product.brand}
+              </Link>
+            )}
             <div className="text-3xl md:text-[52px] font-bold text-grey font-heading leading-[0.95]">
               {product.name}
             </div>

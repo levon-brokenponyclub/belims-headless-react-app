@@ -5,6 +5,7 @@ interface BottomDrawerProps {
   onClose: () => void;
   children: React.ReactNode;
   ariaLabel: string;
+  placement?: "bottom" | "right";
   widthClassName?: string;
   heightClassName?: string;
   initialFocusRef?: React.RefObject<HTMLElement | null>;
@@ -19,6 +20,7 @@ export const BottomDrawer: React.FC<BottomDrawerProps> = ({
   onClose,
   children,
   ariaLabel,
+  placement = "bottom",
   widthClassName = "w-full max-w-[min(1400px,96vw)]",
   heightClassName = "h-[96vh] lg:h-[90vh]",
   initialFocusRef,
@@ -86,9 +88,11 @@ export const BottomDrawer: React.FC<BottomDrawerProps> = ({
     return null;
   }
 
+  const isRightPlacement = placement === "right";
+
   return (
     <div
-      className={`fixed inset-0 z-[1300] flex items-end justify-center p-0 pointer-events-none ${
+      className={`fixed inset-0 z-[1300] pointer-events-none ${
         containerClassName || ""
       }`}
     >
@@ -105,12 +109,22 @@ export const BottomDrawer: React.FC<BottomDrawerProps> = ({
         aria-modal="true"
         aria-label={ariaLabel}
         tabIndex={-1}
-        className={`pointer-events-auto relative z-[1] ${widthClassName} ${heightClassName} rounded-t-[18px] md:rounded-t-[22px] border border-black/10 bg-white shadow-[0_-16px_45px_rgba(15,23,42,0.18)] transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${
-          panelClassName || ""
-        } ${isDrawerVisible ? "translate-y-0" : "translate-y-full"}`}
+        className={`pointer-events-auto relative z-[1] ${widthClassName} ${heightClassName} border border-black/10 bg-white shadow-[0_-16px_45px_rgba(15,23,42,0.18)] transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${
+          isRightPlacement
+            ? "ml-auto h-full rounded-none md:rounded-l-[22px] md:rounded-r-none"
+            : "rounded-t-[18px] md:rounded-t-[22px]"
+        } ${panelClassName || ""} ${
+          isRightPlacement
+            ? isDrawerVisible
+              ? "translate-x-0"
+              : "translate-x-full"
+            : isDrawerVisible
+              ? "translate-y-0"
+              : "translate-y-full"
+        }`}
       >
-        <div className="pointer-events-none absolute inset-0 rounded-t-[inherit] shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]" />
-        {showHandle && (
+        <div className="pointer-events-none absolute inset-0" />
+        {!isRightPlacement && showHandle && (
           <div className="relative h-8 flex items-center justify-center border-b border-gray-100/80 bg-white">
             <span className="w-12 h-1 bg-slate-300 rounded-full" />
           </div>
