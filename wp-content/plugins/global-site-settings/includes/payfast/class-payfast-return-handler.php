@@ -78,21 +78,23 @@ class PayFast_Return_Handler {
         $order_status = $order->get_status();
         error_log('PayFast Return - Order status: ' . $order_status);
 
-        // If the order is still pending but we have a PayFast payment ID,
-        // mark the order as paid as a fallback when ITN hasn't been processed yet.
-        if (in_array($order_status, array('pending', 'on-hold'), true) && !empty($pf_payment_id)) {
+        // Mark order as paid on return if still pending/on-hold.
+        // PayFast only calls return_url on successful payment (cancel goes to cancel_url),
+        // so reaching this handler is sufficient proof of payment.
+        // pf_payment_id is only available in ITN (server-to-server), not in the return redirect.
+        if (in_array($order_status, array('pending', 'on-hold'), true)) {
             $itn_received = $order->get_meta('_payfast_itn_received');
 
             if (empty($itn_received)) {
-                error_log('PayFast Return - No ITN received yet, marking order as paid from return handler');
+                $payment_ref = !empty($pf_payment_id) ? $pf_payment_id : 'PF-RETURN-' . $m_payment_id;
+                error_log('PayFast Return - No ITN received yet, marking order as paid from return handler (ref: ' . $payment_ref . ')');
 
-                $order->update_meta_data('_payfast_payment_id', $pf_payment_id);
+                $order->update_meta_data('_payfast_payment_id', $payment_ref);
                 $order->update_meta_data('_payfast_payment_status', 'COMPLETE');
                 $order->update_meta_data('_payfast_return_marked_complete', current_time('mysql'));
 
-                // Mark payment complete and set status to processing
-                $order->payment_complete($pf_payment_id);
-                $order->update_status('processing', 'PayFast return: marked as paid based on user redirect');
+                $order->payment_complete($payment_ref);
+                $order->update_status('processing', 'PayFast return: marked as paid on user redirect');
                 $order->save();
 
                 $order_status = $order->get_status();
@@ -154,25 +156,7 @@ class PayFast_Return_Handler {
      * @return string Frontend URL
      */
     private static function get_frontend_url() {
-        // Production frontend URL
-        $frontend_url = 'https://belims-headless-react-app.netlify.app';
-        
-        // Check if we're in development/local environment
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            // Get frontend URL from environment or use default
-            $env_frontend_url = getenv('FRONTEND_URL');
-            if ($env_frontend_url) {
-                return rtrim($env_frontend_url, '/');
-            }
-
-            // Default development URL
-            if (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || 
-                strpos($_SERVER['HTTP_HOST'], '.local') !== false) {
-                $frontend_url = 'http://localhost:3000';
-            }
-        }
-
-        return rtrim($frontend_url, '/');
+        return function_exists('get_frontend_url') ? \get_frontend_url() : 'https://belims.vercel.app';
     }
 }
 

@@ -24,13 +24,33 @@ define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
  */
 function get_cors_origin() {
     $environment = get_option('belims_frontend_environment', 'production');
-    
+
     if ($environment === 'development') {
         return 'http://localhost:3000';
     }
-    
-    // Default to production
-    return 'https://belims-headless-react-app.netlify.app';
+
+    $acf_url = function_exists('get_field') ? get_field('headless_frontend_url', 'option') : '';
+    if ($acf_url) {
+        return rtrim($acf_url, '/');
+    }
+
+    return 'https://belims.vercel.app';
+}
+
+function get_frontend_url() {
+    $acf_url = function_exists('get_field') ? get_field('headless_frontend_url', 'option') : '';
+    if ($acf_url) {
+        return rtrim($acf_url, '/');
+    }
+
+    $environment = get_option('belims_frontend_environment', 'production');
+    if ($environment === 'development') {
+        $env_url = getenv('FRONTEND_URL');
+        if ($env_url) return rtrim($env_url, '/');
+        return 'http://localhost:3000';
+    }
+
+    return 'https://belims.vercel.app';
 }
 
 /**
@@ -823,12 +843,70 @@ function global_site_settings_main_page() {
 
                     <script>
                     jQuery(document).ready(function($) {
+                        var latestBrandCountResult = null;
+
                         function getQuickActionBrand() {
                             var selected = ($('#ftg-brand-filter').val() || '').trim();
                             if (selected === '__custom__') {
                                 return ($('#ftg-custom-brand').val() || '').trim();
                             }
                             return selected || 'Assa Abloy';
+                        }
+
+                        function escapeHtml(value) {
+                            return String(value || '')
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                                .replace(/"/g, '&quot;')
+                                .replace(/'/g, '&#039;');
+                        }
+
+                        function toCsvRow(cells) {
+                            return cells.map(function(cell) {
+                                var value = String(cell == null ? '' : cell);
+                                return '"' + value.replace(/"/g, '""') + '"';
+                            }).join(',');
+                        }
+
+                        function buildBrandCountCsv(data, brand) {
+                            var rows = [];
+                            rows.push(toCsvRow(['Brand', brand]));
+                            rows.push(toCsvRow(['Total Unique Products', data.total_unique || 0]));
+                            rows.push(toCsvRow(['Pages Fetched', data.pages_fetched || 0]));
+                            rows.push(toCsvRow(['API URL', data.api_url || '']));
+                            rows.push(toCsvRow(['API URL Template', data.api_url_template || '']));
+                            rows.push('');
+                            rows.push(toCsvRow(['SKU', 'Name', 'Brand', 'FTG One ID']));
+
+                            var products = Array.isArray(data.products) ? data.products : [];
+                            products.forEach(function(product) {
+                                rows.push(toCsvRow([
+                                    product.sku || '',
+                                    product.name || '',
+                                    product.brand || '',
+                                    product.ftg_one_id || ''
+                                ]));
+                            });
+
+                            return rows.join('\n');
+                        }
+
+                        function downloadBrandCountCsv(data, brand) {
+                            var csv = buildBrandCountCsv(data, brand);
+                            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                            var url = window.URL.createObjectURL(blob);
+                            var safeBrand = (brand || 'brand').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
+                            var datePart = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+                            var filename = 'ftg-brand-count-' + (safeBrand || 'brand') + '-' + datePart + '.csv';
+
+                            var link = document.createElement('a');
+                            link.href = url;
+                            link.download = filename;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
                         }
 
                         function updateQuickActionBrandButton() {
@@ -846,6 +924,7 @@ function global_site_settings_main_page() {
                             var brand = getQuickActionBrand();
                             var btn = $(this);
                             var status = $('#ftg-brand-count-status');
+                            latestBrandCountResult = null;
                             btn.prop('disabled', true).text('Checking...');
                             status.text('Fetching ' + brand + ' total from FTG...');
                             fetch('<?php echo rest_url('belims/v1/ftg/brand-count'); ?>?brand=' + encodeURIComponent(brand))
@@ -854,12 +933,21 @@ function global_site_settings_main_page() {
                                     btn.prop('disabled', false);
                                     updateQuickActionBrandButton();
                                     if (data && data.success) {
+                                        latestBrandCountResult = data;
                                         var firstProductText = '';
                                         if (data.first_product && data.first_product.sku) {
                                             var firstName = data.first_product.name || 'Unnamed Product';
-                                            firstProductText = '<br/>Product: <strong>' + firstName + '</strong> - <code>' + data.first_product.sku + '</code>';
+                                            firstProductText = '<br/>Product: <strong>' + escapeHtml(firstName) + '</strong> - <code>' + escapeHtml(data.first_product.sku) + '</code>';
                                         }
-                                        status.html(brand + ' products available in FTG: <strong>' + data.total_unique + '</strong> (pages fetched: ' + (data.pages_fetched || 0) + ')' + firstProductText);
+                                        var apiUrlText = data.api_url ? '<br/>API URL: <code>' + escapeHtml(data.api_url) + '</code>' : '';
+                                        var returnedCount = Array.isArray(data.products) ? data.products.length : 0;
+                                        var downloadButton = '<br/><button type="button" id="ftg-brand-count-download" class="button button-secondary" style="margin-top:8px;">Download Returned Products</button>';
+                                        status.html(
+                                            escapeHtml(brand) + ' products available in FTG: <strong>' + (data.total_unique || 0) + '</strong> (pages fetched: ' + (data.pages_fetched || 0) + ', returned: ' + returnedCount + ')' +
+                                            firstProductText +
+                                            apiUrlText +
+                                            downloadButton
+                                        );
                                     } else {
                                         status.text('Unable to fetch count: ' + (data && data.message ? data.message : 'Unknown error'));
                                     }
@@ -869,6 +957,16 @@ function global_site_settings_main_page() {
                                     updateQuickActionBrandButton();
                                     status.text('Request failed: ' + err);
                                 });
+                        });
+
+                        $(document).on('click', '#ftg-brand-count-download', function() {
+                            var brand = getQuickActionBrand();
+                            if (!latestBrandCountResult || !latestBrandCountResult.success) {
+                                $('#ftg-brand-count-status').text('No brand-count results available to download yet.');
+                                return;
+                            }
+
+                            downloadBrandCountCsv(latestBrandCountResult, brand);
                         });
 
                         $('#belims-clear-cache').on('click', function() {
@@ -1030,7 +1128,7 @@ function global_site_settings_main_page() {
                             </div>
                         <?php else: ?>
                             <div id="ftg-sync-controls">
-                                <div style="margin: 0 0 15px 0; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                                <div style="margin: 0 0 20px 0; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
                                     <div>
                                         <label for="ftg-brand-filter" style="display: block; margin-bottom: 5px; font-weight: 500;">Catalogue Brand:</label>
                                         <select id="ftg-brand-filter" class="regular-text" style="min-width: 220px;">
@@ -1040,46 +1138,79 @@ function global_site_settings_main_page() {
                                             <option value="__custom__">Other (type below)</option>
                                         </select>
                                     </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">&nbsp;</label>
+                                        <button type="button" id="ftg-search-brands" class="button button-secondary">
+                                            🔎 Search Available Brands
+                                        </button>
+                                    </div>
                                     <div id="ftg-custom-brand-wrap" style="display:none;">
                                         <label for="ftg-custom-brand" style="display: block; margin-bottom: 5px; font-weight: 500;">Custom Brand:</label>
                                         <input type="text" id="ftg-custom-brand" class="regular-text" placeholder="Enter FTG brand name" style="min-width: 220px;" />
                                     </div>
                                 </div>
-                                <button type="button" id="ftg-test-connection" class="button button-secondary" style="margin-right: 10px;">
-                                    🔗 Test Connection
-                                </button>
-                                <button type="button" id="ftg-inspect-product" class="button button-secondary" style="margin-right: 10px;">
-                                    🔍 Inspect Product
-                                </button>
-                                <button type="button" id="ftg-test-sync" class="button button-secondary" style="margin-right: 10px;">
-                                    ✅ Test Brand Sync
-                                </button>
-                                <button type="button" id="ftg-sync-products" class="button button-primary" style="margin-right: 10px;">
-                                    🔄 Sync Brand Catalogue
-                                </button>
-                                <button type="button" id="ftg-cleanup-attributes" class="button button-secondary" style="margin-right: 10px;">
-                                    🧹 Cleanup Duplicate Attributes
-                                </button>
-                                <button type="button" id="ftg-disconnect" class="button button-secondary" style="margin-left: 10px; color: var(--belims-red) !important; border-color: var(--belims-red) !important;">
-                                    🔌 Disconnect FTG
-                                </button>
-                                <div id="ftg-sync-status" style="margin-top: 15px;"></div>
-                            </div>
 
-                            <!-- Sync Specific Product by SKU -->
-                            <div id="ftg-sync-sku-section" style="margin-top: 30px; padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px;">
-                                <h4 style="margin-top: 0;">Sync Specific Product by SKU</h4>
-                                <p style="margin-top: 0; color: #666;">Enter a product SKU to sync just that product from FTG.</p>
-                                <div style="display: flex; gap: 10px; align-items: flex-end;">
-                                    <div style="flex: 1; max-width: 250px;">
-                                        <label for="ftg-sku-input" style="display: block; margin-bottom: 5px; font-weight: 500;">Product SKU:</label>
-                                        <input type="text" id="ftg-sku-input" placeholder="e.g., ING-12345" class="regular-text" />
+                                <div style="margin-bottom: 20px; padding: 16px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px;">
+                                    <h4 style="margin: 0 0 12px 0;">Connection</h4>
+                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                        <button type="button" id="ftg-test-connection" class="button button-secondary">
+                                            🔗 Test Connection
+                                        </button>
+                                        <button type="button" id="ftg-disconnect" class="button button-secondary" style="color: var(--belims-red) !important; border-color: var(--belims-red) !important;">
+                                            🔌 Disconnect FTG
+                                        </button>
                                     </div>
-                                    <button type="button" id="ftg-sync-single-btn" class="button button-primary">
-                                        ✅ Sync Product
-                                    </button>
                                 </div>
-                                <div id="ftg-sync-single-result" style="margin-top: 15px;"></div>
+
+                                <div style="margin-bottom: 20px; padding: 16px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px;">
+                                    <h4 style="margin: 0 0 12px 0;">Tools</h4>
+                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                        <button type="button" id="ftg-inspect-product" class="button button-secondary">
+                                            🔍 Inspect Product
+                                        </button>
+                                        <button type="button" id="ftg-check-catalogue-count" class="button button-secondary">
+                                            📊 Check Catalogue Count
+                                        </button>
+                                        <button type="button" id="ftg-count-display-on-web" class="button button-secondary">
+                                            🌐 Count Display On Web Active
+                                        </button>
+                                        <button type="button" id="ftg-export-brand-products" class="button button-secondary">
+                                            📥 Export Brand Products
+                                        </button>
+                                        <button type="button" id="ftg-cleanup-attributes" class="button button-secondary">
+                                            🧹 Cleanup Duplicate Attributes
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div style="margin-top: 20px; padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px;">
+                                    <h4 style="margin-top: 0;">Sync</h4>
+                                    <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                                        <button type="button" id="ftg-test-sync" class="button button-secondary">
+                                            ✅ Test Sync
+                                        </button>
+                                        <div style="max-width: 250px;">
+                                            <label for="ftg-sku-input" style="display: block; margin-bottom: 5px; font-weight: 500;">Product SKU:</label>
+                                            <input type="text" id="ftg-sku-input" placeholder="e.g., ING-12345" class="regular-text" />
+                                        </div>
+                                        <button type="button" id="ftg-sync-single-btn" class="button button-secondary">
+                                            ✅ Sync Single Product
+                                        </button>
+                                        <button type="button" id="ftg-sync-products" class="button button-primary">
+                                            🔄 SYNC CATALOGUE
+                                        </button>
+                                        <button type="button" id="ftg-sync-all-products" class="button button-primary" style="background:#1d2327; border-color:#1d2327;">
+                                            ⚡ SYNC ALL BRANDS
+                                        </button>
+                                        <label for="ftg-sync-all-dry-run" style="display:flex; align-items:center; gap:6px; margin:0 0 4px 6px;">
+                                            <input type="checkbox" id="ftg-sync-all-dry-run" />
+                                            Dry Run (counts only, no writes)
+                                        </label>
+                                    </div>
+                                    <div id="ftg-sync-single-result" style="margin-top: 15px;"></div>
+                                </div>
+
+                                <div id="ftg-sync-status" style="margin-top: 15px;"></div>
                             </div>
                             
                             <style>
@@ -1128,6 +1259,8 @@ function global_site_settings_main_page() {
                             
                             <script>
                             jQuery(document).ready(function($) {
+                                var ftgBrands = [];
+
                                 function getSelectedFtgBrand() {
                                     var selected = ($('#ftg-brand-filter').val() || '').trim();
                                     if (selected === '__custom__') {
@@ -1136,23 +1269,186 @@ function global_site_settings_main_page() {
                                     return selected;
                                 }
 
-                                function getSelectedFtgBrandLabel() {
-                                    return getSelectedFtgBrand() || 'Selected Brand';
-                                }
-
                                 function updateFtgBrandControls() {
                                     var selected = $('#ftg-brand-filter').val();
                                     var showCustom = selected === '__custom__';
                                     $('#ftg-custom-brand-wrap').toggle(showCustom);
+                                }
 
-                                    var label = getSelectedFtgBrandLabel();
-                                    $('#ftg-test-sync').text('✅ Test ' + label + ' Sync');
-                                    $('#ftg-sync-products').text('🔄 Sync ' + label + ' Catalogue');
+                                function getInitialBrandOptions() {
+                                    var options = [];
+                                    $('#ftg-brand-filter option').each(function() {
+                                        var value = ($(this).val() || '').trim();
+                                        if (value && value !== '__custom__') {
+                                            options.push(value);
+                                        }
+                                    });
+                                    return options;
+                                }
+
+                                function populateFtgBrandDropdown(ftgBrands) {
+                                    var select = $('#ftg-brand-filter');
+                                    var currentValue = (select.val() || '').trim();
+                                    var currentCustom = ($('#ftg-custom-brand').val() || '').trim();
+                                    var merged = [];
+                                    var seen = {};
+                                    var initial = getInitialBrandOptions();
+
+                                    initial.concat(Array.isArray(ftgBrands) ? ftgBrands : []).forEach(function(brand) {
+                                        var clean = (brand || '').toString().trim();
+                                        if (!clean) return;
+                                        var key = clean.toLowerCase();
+                                        if (seen[key]) return;
+                                        seen[key] = clean;
+                                        merged.push(clean);
+                                    });
+
+                                    select.empty();
+                                    merged.forEach(function(brand) {
+                                        select.append($('<option></option>').val(brand).text(brand));
+                                    });
+                                    select.append($('<option></option>').val('__custom__').text('Other (type below)'));
+                                    ftgBrands = merged.slice();
+
+                                    if (currentValue === '__custom__') {
+                                        select.val('__custom__');
+                                    } else if (currentValue && seen[currentValue.toLowerCase()]) {
+                                        select.val(seen[currentValue.toLowerCase()]);
+                                    } else if (currentValue) {
+                                        select.val('__custom__');
+                                        $('#ftg-custom-brand').val(currentValue);
+                                    } else if (merged.length) {
+                                        select.val(merged[0]);
+                                    } else {
+                                        select.val('__custom__');
+                                    }
+
+                                    if (currentCustom) {
+                                        $('#ftg-custom-brand').val(currentCustom);
+                                    }
+
+                                    updateFtgBrandControls();
+                                    select.trigger('change');
+                                }
+
+                                function fetchFtgBrands(onSuccess, onError, forceRefresh) {
+                                    var url = '<?php echo rest_url('belims/v1/ftg/brands'); ?>';
+                                    if (forceRefresh) {
+                                        url += '?refresh=1';
+                                    }
+                                    $.ajax({
+                                        url: url,
+                                        method: 'GET',
+                                        timeout: 120000, // 2 min timeout for uncached fetch
+                                        beforeSend: function(xhr) {
+                                            xhr.setRequestHeader('X-WP-Nonce', '<?php echo wp_create_nonce('wp_rest'); ?>');
+                                        },
+                                        success: function(response) {
+                                            if (typeof onSuccess === 'function') onSuccess(response);
+                                        },
+                                        error: function(xhr) {
+                                            if (typeof onError === 'function') onError(xhr);
+                                        }
+                                    });
+                                }
+
+                                function loadFtgBrands() {
+                                    fetchFtgBrands(function(response) {
+                                        if (response && response.success && Array.isArray(response.brands) && response.brands.length) {
+                                            populateFtgBrandDropdown(response.brands);
+                                        }
+                                    });
+                                }
+
+                                function toCsvRow(cells) {
+                                    return cells.map(function(cell) {
+                                        var value = String(cell == null ? '' : cell);
+                                        return '"' + value.replace(/"/g, '""') + '"';
+                                    }).join(',');
+                                }
+
+                                function downloadCsv(filename, csvContent) {
+                                    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                                    var url = window.URL.createObjectURL(blob);
+                                    var link = document.createElement('a');
+                                    link.href = url;
+                                    link.download = filename;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    window.URL.revokeObjectURL(url);
                                 }
 
                                 $('#ftg-brand-filter').on('change', updateFtgBrandControls);
                                 $('#ftg-custom-brand').on('input', updateFtgBrandControls);
                                 updateFtgBrandControls();
+                                loadFtgBrands();
+
+                                $('#ftg-search-brands').on('click', function() {
+                                    var btn = $(this);
+                                    var status = $('#ftg-sync-status');
+                                    btn.prop('disabled', true).text('Searching...');
+                                    status.html('<p>Searching available brands from FTG...</p>');
+
+                                    fetchFtgBrands(function(response) {
+                                        btn.prop('disabled', false).text('🔎 Search Available Brands');
+
+                                        if (!response || !response.success || !Array.isArray(response.brands)) {
+                                            status.html('<div class="notice notice-warning inline"><p>⚠️ No brands returned from FTG.</p></div>');
+                                            return;
+                                        }
+
+                                        var brands = response.brands.filter(function(brand) {
+                                            return (brand || '').toString().trim() !== '';
+                                        });
+
+                                        if (!brands.length) {
+                                            status.html('<div class="notice notice-warning inline"><p>⚠️ No brands returned from FTG.</p></div>');
+                                            return;
+                                        }
+
+                                        populateFtgBrandDropdown(brands);
+                                        var html = '<div class="notice notice-success inline"><p>✅ Found ' + brands.length + ' brand(s) in FTG.</p>';
+                                        var statsMap = {};
+                                        if (Array.isArray(response.brand_stats)) {
+                                            response.brand_stats.forEach(function(item) {
+                                                var name = (item && item.brand) ? item.brand.toString() : '';
+                                                if (!name) return;
+                                                statsMap[name.toLowerCase()] = {
+                                                    count: Number(item.count || 0),
+                                                    stockZeroCount: Number(item.stock_zero_count || 0),
+                                                    noPriceCount: Number(item.no_price_count || 0)
+                                                };
+                                            });
+                                        }
+
+                                        html += '<div style="max-height:240px; overflow:auto; margin-top:10px;">';
+                                        html += '<table class="widefat striped"><thead><tr><th>Brand</th><th style="width:130px;">Product Count</th><th style="width:190px;">Stock Count = 0</th><th style="width:180px;">Products With No Price</th></tr></thead><tbody>';
+                                        var totalProductCount = 0;
+                                        var totalStockZeroCount = 0;
+                                        var totalNoPriceCount = 0;
+                                        brands.forEach(function(brand) {
+                                            var stat = statsMap[brand.toLowerCase()] || {};
+                                            var count = Number(stat.count || 0);
+                                            var stockZeroCount = Number(stat.stockZeroCount || 0);
+                                            var noPriceCount = Number(stat.noPriceCount || 0);
+                                            totalProductCount += count;
+                                            totalStockZeroCount += stockZeroCount;
+                                            totalNoPriceCount += noPriceCount;
+                                            html += '<tr><td>' + brand + '</td><td><strong>' + count + '</strong></td><td><strong>' + stockZeroCount + '</strong></td><td><strong>' + noPriceCount + '</strong></td></tr>';
+                                        });
+                                        var activeProductEstimate = totalProductCount - (totalStockZeroCount + totalNoPriceCount);
+                                        html += '<tr><td><strong>Total</strong></td><td><strong>' + totalProductCount + '</strong></td><td><strong>' + totalStockZeroCount + '</strong></td><td><strong>' + totalNoPriceCount + '</strong></td></tr>';
+                                        html += '<tr><td><strong>Total Products - (No Stock + No Price)</strong></td><td><strong>' + activeProductEstimate + '</strong></td><td>-</td><td>-</td></tr>';
+                                        html += '</tbody></table></div></div>';
+                                        status.html(html);
+                                    }, function(xhr) {
+                                        btn.prop('disabled', false).text('🔎 Search Available Brands');
+                                        var errorMsg = xhr.responseJSON?.message
+                                            || (xhr.status ? 'HTTP ' + xhr.status + ' — ' + (xhr.responseText || '').substring(0, 120) : 'Failed to fetch FTG brands (no response)');
+                                        status.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
+                                    }, true); // true = force-refresh cache
+                                });
 
                                 $('#ftg-cleanup-attributes').on('click', function() {
                                     if (!confirm('Clean up duplicate attributes (Range, Color)? This will remove duplicate attribute terms.')) return;
@@ -1292,7 +1588,143 @@ function global_site_settings_main_page() {
                                         }
                                     });
                                 });
-                                
+
+                                $('#ftg-check-catalogue-count').on('click', function() {
+                                    var selectedBrand = getSelectedFtgBrand();
+                                    var btn = $(this);
+                                    var status = $('#ftg-sync-status');
+
+                                    if (!selectedBrand) {
+                                        status.html('<div class="notice notice-error inline"><p>⚠️ Please select or enter a brand before checking count.</p></div>');
+                                        return;
+                                    }
+
+                                    btn.prop('disabled', true).text('Checking...');
+                                    status.html('<p>Fetching ' + selectedBrand + ' catalogue count from FTG...</p>');
+
+                                    fetch('<?php echo rest_url('belims/v1/ftg/brand-count'); ?>?brand=' + encodeURIComponent(selectedBrand))
+                                        .then(function(r) { return r.json(); })
+                                        .then(function(data) {
+                                            btn.prop('disabled', false).text('📊 Check Catalogue Count');
+                                            if (data && data.success) {
+                                                var returnedCount = Array.isArray(data.products) ? data.products.length : 0;
+                                                var endpoint = data.api_url || '-';
+                                                var productsHtml = '';
+
+                                                if (returnedCount > 0) {
+                                                    productsHtml += '<div style="margin-top:10px; max-height:260px; overflow:auto;">';
+                                                    productsHtml += '<table class="widefat striped">';
+                                                    productsHtml += '<thead><tr><th style="width:140px;">SKU</th><th>Name</th><th style="width:140px;">Brand</th><th style="width:140px;">FTG ID</th></tr></thead><tbody>';
+                                                    data.products.forEach(function(product) {
+                                                        var sku = (product && product.sku) ? product.sku : '';
+                                                        var name = (product && product.name) ? product.name : '';
+                                                        var brand = (product && product.brand) ? product.brand : '';
+                                                        var ftgId = (product && product.ftg_one_id) ? product.ftg_one_id : '';
+                                                        productsHtml += '<tr><td><code>' + sku + '</code></td><td>' + name + '</td><td>' + brand + '</td><td><code>' + ftgId + '</code></td></tr>';
+                                                    });
+                                                    productsHtml += '</tbody></table></div>';
+                                                } else {
+                                                    productsHtml = '<p style="margin-top:10px;">No returned products.</p>';
+                                                }
+
+                                                status.html(
+                                                    '<div class="notice notice-success inline">' +
+                                                        '<p>✅ ' + selectedBrand + ' products in FTG: <strong>' + (data.total_unique || 0) + '</strong> (pages fetched: ' + (data.pages_fetched || 0) + ', returned: ' + returnedCount + ')</p>' +
+                                                        '<p><strong>API Endpoint:</strong> <code>' + endpoint + '</code></p>' +
+                                                        '<p><strong>Returned Products:</strong></p>' +
+                                                        productsHtml +
+                                                    '</div>'
+                                                );
+                                            } else {
+                                                status.html('<div class="notice notice-warning inline"><p>⚠️ Unable to fetch count: ' + (data && data.message ? data.message : 'Unknown error') + '</p></div>');
+                                            }
+                                        })
+                                        .catch(function(err) {
+                                            btn.prop('disabled', false).text('📊 Check Catalogue Count');
+                                            status.html('<div class="notice notice-error inline"><p>❌ Request failed: ' + err + '</p></div>');
+                                        });
+                                });
+
+                                $('#ftg-count-display-on-web').on('click', function() {
+                                    var btn = $(this);
+                                    var status = $('#ftg-sync-status');
+
+                                    btn.prop('disabled', true).text('Counting...');
+                                    status.html('<p>Checking FTG products with Display on web active...</p>');
+
+                                    fetch('<?php echo rest_url('belims/v1/ftg/display-on-web-count'); ?>')
+                                        .then(function(r) { return r.json(); })
+                                        .then(function(data) {
+                                            btn.prop('disabled', false).text('🌐 Count Display On Web Active');
+                                            if (data && data.success) {
+                                                status.html(
+                                                    '<div class="notice notice-success inline">' +
+                                                        '<p>✅ Display on web active products in FTG: <strong>' + (data.display_on_web_active_count || 0) + '</strong></p>' +
+                                                        '<p>Total products scanned: <strong>' + (data.total_products || 0) + '</strong> (pages fetched: ' + (data.pages_fetched || 0) + ')</p>' +
+                                                    '</div>'
+                                                );
+                                            } else {
+                                                status.html('<div class="notice notice-warning inline"><p>⚠️ Unable to count Display on web active products: ' + (data && data.message ? data.message : 'Unknown error') + '</p></div>');
+                                            }
+                                        })
+                                        .catch(function(err) {
+                                            btn.prop('disabled', false).text('🌐 Count Display On Web Active');
+                                            status.html('<div class="notice notice-error inline"><p>❌ Request failed: ' + err + '</p></div>');
+                                        });
+                                });
+
+                                $('#ftg-export-brand-products').on('click', function() {
+                                    var selectedBrand = getSelectedFtgBrand();
+                                    var btn = $(this);
+                                    var status = $('#ftg-sync-status');
+
+                                    if (!selectedBrand) {
+                                        status.html('<div class="notice notice-error inline"><p>⚠️ Please select or enter a brand before exporting.</p></div>');
+                                        return;
+                                    }
+
+                                    btn.prop('disabled', true).text('Exporting...');
+                                    status.html('<p>Preparing export for ' + selectedBrand + ' products...</p>');
+
+                                    fetch('<?php echo rest_url('belims/v1/ftg/brand-count'); ?>?brand=' + encodeURIComponent(selectedBrand))
+                                        .then(function(r) { return r.json(); })
+                                        .then(function(data) {
+                                            btn.prop('disabled', false).text('📥 Export Brand Products');
+
+                                            if (!data || !data.success) {
+                                                status.html('<div class="notice notice-warning inline"><p>⚠️ Unable to export products: ' + (data && data.message ? data.message : 'Unknown error') + '</p></div>');
+                                                return;
+                                            }
+
+                                            var products = Array.isArray(data.products) ? data.products : [];
+                                            if (!products.length) {
+                                                status.html('<div class="notice notice-warning inline"><p>⚠️ No products found for ' + selectedBrand + '.</p></div>');
+                                                return;
+                                            }
+
+                                            var rows = [];
+                                            rows.push(toCsvRow(['Brand', 'Product', 'SKU']));
+                                            products.forEach(function(product) {
+                                                rows.push(toCsvRow([
+                                                    product.brand || selectedBrand,
+                                                    product.name || '',
+                                                    product.sku || ''
+                                                ]));
+                                            });
+
+                                            var safeBrand = selectedBrand.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'brand';
+                                            var datePart = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+                                            var fileName = 'ftg-products-' + safeBrand + '-' + datePart + '.csv';
+                                            downloadCsv(fileName, rows.join('\n'));
+
+                                            status.html('<div class="notice notice-success inline"><p>✅ Export complete for ' + selectedBrand + '. Exported <strong>' + products.length + '</strong> products.</p></div>');
+                                        })
+                                        .catch(function(err) {
+                                            btn.prop('disabled', false).text('📥 Export Brand Products');
+                                            status.html('<div class="notice notice-error inline"><p>❌ Export failed: ' + err + '</p></div>');
+                                        });
+                                });
+
                                 $('#ftg-test-sync').on('click', function() {
                                     var selectedBrand = getSelectedFtgBrand();
                                     if (!selectedBrand) {
@@ -1300,13 +1732,13 @@ function global_site_settings_main_page() {
                                         return;
                                     }
 
-                                    if (!confirm('Test sync 400 ' + selectedBrand + ' products from FTG?')) return;
+                                    if (!confirm('Test sync first 10 ' + selectedBrand + ' products from FTG?')) return;
                                     
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
                                     
                                     btn.prop('disabled', true).text('Testing...');
-                                    status.html('<p>⏳ Syncing 400 ' + selectedBrand + ' products from FTG in batches of 50...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Starting sync...</p>');
+                                    status.html('<p>⏳ Syncing first 10 ' + selectedBrand + ' products from FTG...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Starting sync...</p>');
                                     
                                     // Track totals across all batches
                                     var totalSynced = 0;
@@ -1316,8 +1748,8 @@ function global_site_settings_main_page() {
                                     var allSkippedItems = [];
                                     
                                     function syncBatch(offset) {
-                                        var limit = 400;
-                                        var batchSize = 50; // Process 50 products at a time
+                                        var limit = 10;
+                                        var batchSize = 10; // Test sync only first 10 products
                                         var payload = {
                                             collection_token: '<?php echo esc_js($ftg_token); ?>',
                                             brand: selectedBrand,
@@ -1360,14 +1792,14 @@ function global_site_settings_main_page() {
                                                         syncBatch(response.next_offset);
                                                     } else {
                                                         // All done!
-                                                        btn.prop('disabled', false);
+                                                        btn.prop('disabled', false).text('✅ Test Sync');
                                                         updateFtgBrandControls();
                                                         $('.ftg-progress-fill').css('width', '100%').text('100%');
                                                         $('.ftg-progress-text').html('Sync complete!');
                                                         
                                                         var skippedMsg = totalSkipped > 0 ? '<br/><span style="color: #856404;">⚠️ Skipped ' + totalSkipped + ' products (no price/invalid data)</span>' : '';
                                                         var errorMsg = totalErrors.length > 0 ? '<br/><span style="color: #dc3232;">❌ ' + totalErrors.length + ' errors occurred</span>' : '';
-                                                        var summaryHtml = '<div class="notice notice-success inline"><p>✅ Test sync completed! ' + totalSynced + ' ' + selectedBrand + ' products synced.' + skippedMsg + errorMsg + '<br/>Check WooCommerce → Products to see the imported items.</p></div>';
+                                                        var summaryHtml = '<div class="notice notice-success inline"><p>✅ Test sync completed (first 10 products). ' + totalSynced + ' ' + selectedBrand + ' products synced.' + skippedMsg + errorMsg + '<br/>Check WooCommerce → Products to see the imported items.</p></div>';
 
                                                         // Build details table
                                                         var detailsHtml = '<div class="ftg-sync-details">';
@@ -1448,14 +1880,14 @@ function global_site_settings_main_page() {
                                                         status.html(summaryHtml + detailsHtml);
                                                     }
                                                 } else {
-                                                    btn.prop('disabled', false);
+                                                    btn.prop('disabled', false).text('✅ Test Sync');
                                                     updateFtgBrandControls();
                                                     var message = response.message || 'Unknown error';
                                                     status.html('<div class="notice notice-warning inline"><p>⚠️ ' + message + '</p></div>');
                                                 }
                                             },
                                             error: function(xhr) {
-                                                btn.prop('disabled', false);
+                                                btn.prop('disabled', false).text('✅ Test Sync');
                                                 updateFtgBrandControls();
                                                 var errorMsg = xhr.responseJSON?.message || 'Sync failed';
                                                 status.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
@@ -1475,56 +1907,271 @@ function global_site_settings_main_page() {
                                     }
 
                                     if (!confirm('Start ' + selectedBrand + ' catalogue sync from FTG? This may take several minutes.')) return;
-                                    
+
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
                                     var startTime = Date.now();
-                                    
+                                    var totalSynced = 0;
+                                    var totalSkipped = 0;
+                                    var totalErrors = [];
+
                                     btn.prop('disabled', true).text('Syncing...');
                                     status.html('<p>⏳ Starting ' + selectedBrand + ' catalogue sync from FTG...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Fetching products...</p>');
 
-                                    var payload = {
-                                        collection_token: '<?php echo esc_js($ftg_token); ?>',
-                                        brand: selectedBrand,
-                                        limit: 500
-                                    };
-                                    
-                                    $.ajax({
-                                        url: '<?php echo rest_url('belims/v1/ftg/sync'); ?>',
-                                        method: 'POST',
-                                        data: JSON.stringify(payload),
-                                        contentType: 'application/json',
-                                        timeout: 180000,
-                                        beforeSend: function(xhr) {
-                                            xhr.setRequestHeader('X-WP-Nonce', '<?php echo wp_create_nonce('wp_rest'); ?>');
-                                        },
-                                        success: function(response) {
-                                            btn.prop('disabled', false);
-                                            updateFtgBrandControls();
-                                            
-                                            if (response.success) {
-                                                $('.ftg-progress-fill').css('width', '100%').text('100%');
-                                                
-                                                var totalTime = Math.round((Date.now() - startTime) / 1000);
-                                                var skippedMsg = response.skipped > 0 ? ' (' + response.skipped + ' skipped)' : '';
-                                                var errorMsg = response.errors && response.errors.length > 0 ? '<br/><span style="color: #dc3232;">⚠️ ' + response.errors.length + ' errors occurred. Check error log for details.</span>' : '';
-                                                
-                                                status.html('<div class="notice notice-success inline"><p>✅ ' + selectedBrand + ' catalogue sync completed in ' + totalTime + ' seconds!<br/>' + response.synced + ' products synced' + skippedMsg + errorMsg + '</p></div>');
-                                                setTimeout(function() { location.reload(); }, 2000);
-                                            } else {
-                                                var errors = response.errors?.join(', ') || 'Unknown error';
-                                                status.html('<div class="notice notice-error inline"><p>⚠️ Sync completed with errors: ' + errors + '</p></div>');
+                                    function syncFullBatch(offset) {
+                                        var payload = {
+                                            collection_token: '<?php echo esc_js($ftg_token); ?>',
+                                            brand: selectedBrand,
+                                            offset: offset,
+                                            batch_size: 50
+                                            // no limit — sync all products for the brand
+                                        };
+
+                                        $.ajax({
+                                            url: '<?php echo rest_url('belims/v1/ftg/sync'); ?>',
+                                            method: 'POST',
+                                            data: JSON.stringify(payload),
+                                            contentType: 'application/json',
+                                            timeout: 180000,
+                                            beforeSend: function(xhr) {
+                                                xhr.setRequestHeader('X-WP-Nonce', '<?php echo wp_create_nonce('wp_rest'); ?>');
+                                            },
+                                            success: function(response) {
+                                                if (response.success) {
+                                                    totalSynced  += response.synced  || 0;
+                                                    totalSkipped += response.skipped || 0;
+                                                    if (response.errors && response.errors.length) {
+                                                        totalErrors = totalErrors.concat(response.errors);
+                                                    }
+
+                                                    var progress = response.progress || 0;
+                                                    $('.ftg-progress-fill').css('width', progress + '%').text(progress + '%');
+                                                    $('.ftg-progress-text').html('Syncing... ' + totalSynced + ' products synced so far');
+
+                                                    if (response.has_more) {
+                                                        syncFullBatch(response.next_offset);
+                                                    } else {
+                                                        btn.prop('disabled', false).text('🔄 SYNC CATALOGUE');
+                                                        updateFtgBrandControls();
+                                                        $('.ftg-progress-fill').css('width', '100%').text('100%');
+
+                                                        var totalTime  = Math.round((Date.now() - startTime) / 1000);
+                                                        var skippedMsg = totalSkipped > 0 ? ' (' + totalSkipped + ' skipped)' : '';
+                                                        var errorMsg   = totalErrors.length > 0 ? '<br/><span style="color:#dc3232;">⚠️ ' + totalErrors.length + ' errors. Check error log.</span>' : '';
+
+                                                        status.html('<div class="notice notice-success inline"><p>✅ ' + selectedBrand + ' catalogue sync completed in ' + totalTime + 's!<br/>' + totalSynced + ' products synced' + skippedMsg + errorMsg + '</p></div>');
+                                                        setTimeout(function() { location.reload(); }, 2000);
+                                                    }
+                                                } else {
+                                                    btn.prop('disabled', false).text('🔄 SYNC CATALOGUE');
+                                                    updateFtgBrandControls();
+                                                    var errors = (response.errors && response.errors.length) ? response.errors.join(', ') : (response.message || 'Unknown error');
+                                                    status.html('<div class="notice notice-error inline"><p>⚠️ Sync failed: ' + errors + '</p></div>');
+                                                }
+                                            },
+                                            error: function(xhr) {
+                                                btn.prop('disabled', false).text('🔄 SYNC CATALOGUE');
+                                                updateFtgBrandControls();
+                                                var errorMsg = xhr.responseJSON?.message || 'Sync failed';
+                                                status.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
                                             }
-                                        },
-                                        error: function(xhr) {
-                                            btn.prop('disabled', false);
-                                            updateFtgBrandControls();
-                                            var errorMsg = xhr.responseJSON?.message || 'Sync failed';
-                                            status.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
-                                        }
-                                    });
+                                        });
+                                    }
+
+                                    syncFullBatch(0);
                                 });
-                                
+
+                                // Sync ALL brands sequentially
+                                $('#ftg-sync-all-products').on('click', function() {
+                                    var dryRun = $('#ftg-sync-all-dry-run').is(':checked');
+                                    var confirmMessage = dryRun
+                                        ? 'Run DRY RUN for ALL brands from FTG? This will fetch counts only and will not write any products.'
+                                        : 'Sync ALL brands from FTG? This will sync every brand and every product. This may take a long time.';
+                                    if (!confirm(confirmMessage)) return;
+
+                                    var btn = $(this);
+                                    var status = $('#ftg-sync-status');
+                                    var dryRunToggle = $('#ftg-sync-all-dry-run');
+
+                                    // Use the cached brand list if available, otherwise fetch fresh
+                                    var brandsToSync = Array.isArray(ftgBrands) && ftgBrands.length
+                                        ? ftgBrands.slice()
+                                        : null;
+
+                                    if (!brandsToSync || !brandsToSync.length) {
+                                        status.html('<p>⏳ Fetching brand list from FTG...</p>');
+                                        fetchFtgBrands(function(response) {
+                                            if (response && response.success && Array.isArray(response.brands) && response.brands.length) {
+                                                startSyncAllBrands(response.brands.filter(function(b) { return (b || '').trim() !== ''; }));
+                                            } else {
+                                                status.html('<div class="notice notice-error inline"><p>❌ Could not load brand list from FTG. Search Available Brands first.</p></div>');
+                                            }
+                                        }, function(xhr) {
+                                            status.html('<div class="notice notice-error inline"><p>❌ Failed to load brands: ' + (xhr.responseJSON?.message || 'error') + '</p></div>');
+                                        });
+                                        return;
+                                    }
+
+                                    startSyncAllBrands(brandsToSync);
+
+                                    function startSyncAllBrands(brands) {
+                                        btn.prop('disabled', true).text(dryRun ? 'Dry run in progress...' : 'Syncing all brands...');
+                                        dryRunToggle.prop('disabled', true);
+
+                                        var totalBrands     = brands.length;
+                                        var brandIndex      = 0;
+                                        var grandTotalSynced  = 0;
+                                        var grandTotalSkipped = 0;
+                                        var grandTotalAvailable = 0;
+                                        var grandTotalErrors  = [];
+                                        var startTime       = Date.now();
+                                        var brandResults    = [];
+
+                                        function renderOverallProgress() {
+                                            var pct = totalBrands > 0 ? Math.round((brandIndex / totalBrands) * 100) : 0;
+                                            var currentBrand = brandIndex < totalBrands ? brands[brandIndex] : 'Done';
+                                            var progressText = dryRun
+                                                ? grandTotalAvailable + ' products counted so far across ' + brandIndex + ' brands (dry run)'
+                                                : grandTotalSynced + ' products synced so far across ' + brandIndex + ' brands';
+                                            status.html(
+                                                '<p>⏳ Syncing all brands: <strong>' + brandIndex + ' / ' + totalBrands + '</strong> complete — current: <em>' + currentBrand + '</em></p>' +
+                                                '<div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width:' + pct + '%">' + pct + '%</div></div>' +
+                                                '<p class="ftg-progress-text">' + progressText + '</p>'
+                                            );
+                                        }
+
+                                        function syncNextBrand() {
+                                            if (brandIndex >= totalBrands) {
+                                                // All brands done
+                                                btn.prop('disabled', false).text('⚡ SYNC ALL BRANDS');
+                                                dryRunToggle.prop('disabled', false);
+                                                updateFtgBrandControls();
+                                                var totalTime  = Math.round((Date.now() - startTime) / 1000);
+                                                var skippedMsg = grandTotalSkipped > 0 ? ' (' + grandTotalSkipped + ' skipped)' : '';
+                                                var errMsg     = grandTotalErrors.length > 0 ? '<br/><span style="color:#dc3232;">⚠️ ' + grandTotalErrors.length + ' errors across all brands.</span>' : '';
+                                                var resultsHtml = brandResults.map(function(r) {
+                                                    if (dryRun) {
+                                                        return '<li><strong>' + r.brand + '</strong>: ' + (r.counted || 0) + ' products counted' + (r.errors ? ' (' + r.errors + ' errors)' : '') + '</li>';
+                                                    }
+                                                    return '<li><strong>' + r.brand + '</strong>: ' + r.synced + ' synced, ' + r.skipped + ' skipped' + (r.errors ? ' (' + r.errors + ' errors)' : '') + '</li>';
+                                                }).join('');
+                                                var headline = dryRun
+                                                    ? '✅ Dry run complete in ' + totalTime + 's! ' + grandTotalAvailable + ' total products counted (no writes).'
+                                                    : '✅ All brands synced in ' + totalTime + 's! ' + grandTotalSynced + ' total products synced' + skippedMsg + errMsg;
+                                                status.html(
+                                                    '<div class="notice notice-success inline">' +
+                                                    '<p>' + headline + (dryRun ? errMsg : '') + '</p>' +
+                                                    '<ul style="margin:8px 0 0 20px;">' + resultsHtml + '</ul>' +
+                                                    '</div>'
+                                                );
+                                                if (!dryRun) {
+                                                    setTimeout(function() { location.reload(); }, 3000);
+                                                }
+                                                return;
+                                            }
+
+                                            var brand = brands[brandIndex];
+                                            var brandSynced  = 0;
+                                            var brandSkipped = 0;
+                                            var brandCounted = 0;
+                                            var brandErrors  = [];
+
+                                            renderOverallProgress();
+
+                                            if (dryRun) {
+                                                $.ajax({
+                                                    url: '<?php echo rest_url('belims/v1/ftg/brand-count'); ?>?summary_only=1&brand=' + encodeURIComponent(brand),
+                                                    method: 'GET',
+                                                    timeout: 180000,
+                                                    beforeSend: function(xhr) {
+                                                        xhr.setRequestHeader('X-WP-Nonce', '<?php echo wp_create_nonce('wp_rest'); ?>');
+                                                    },
+                                                    success: function(response) {
+                                                        if (response && response.success) {
+                                                            brandCounted = Number(response.total_unique || 0);
+                                                            grandTotalAvailable += brandCounted;
+                                                            brandResults.push({ brand: brand, counted: brandCounted, skipped: 0, errors: 0 });
+                                                        } else {
+                                                            var errMsg = (response && response.message) ? response.message : 'Unknown error';
+                                                            grandTotalErrors.push(brand + ': ' + errMsg);
+                                                            brandResults.push({ brand: brand, counted: 0, skipped: 0, errors: 1 });
+                                                        }
+                                                        brandIndex++;
+                                                        syncNextBrand();
+                                                    },
+                                                    error: function(xhr) {
+                                                        var errMsg = xhr.responseJSON?.message || 'Request failed';
+                                                        grandTotalErrors.push(brand + ': ' + errMsg);
+                                                        brandResults.push({ brand: brand, counted: 0, skipped: 0, errors: 1 });
+                                                        brandIndex++;
+                                                        syncNextBrand();
+                                                    }
+                                                });
+                                                return;
+                                            }
+
+                                            function syncBrandBatch(offset) {
+                                                $.ajax({
+                                                    url: '<?php echo rest_url('belims/v1/ftg/sync'); ?>',
+                                                    method: 'POST',
+                                                    data: JSON.stringify({
+                                                        collection_token: '<?php echo esc_js($ftg_token); ?>',
+                                                        brand: brand,
+                                                        limit: null,
+                                                        offset: offset,
+                                                        batch_size: 50
+                                                    }),
+                                                    contentType: 'application/json',
+                                                    timeout: 180000,
+                                                    beforeSend: function(xhr) {
+                                                        xhr.setRequestHeader('X-WP-Nonce', '<?php echo wp_create_nonce('wp_rest'); ?>');
+                                                    },
+                                                    success: function(response) {
+                                                        if (response.success) {
+                                                            brandSynced  += response.synced  || 0;
+                                                            brandSkipped += response.skipped || 0;
+                                                            if (response.errors && response.errors.length) {
+                                                                brandErrors = brandErrors.concat(response.errors);
+                                                            }
+
+                                                            if (response.has_more) {
+                                                                syncBrandBatch(response.next_offset);
+                                                            } else {
+                                                                // Brand complete — move to next
+                                                                grandTotalSynced  += brandSynced;
+                                                                grandTotalSkipped += brandSkipped;
+                                                                grandTotalErrors   = grandTotalErrors.concat(brandErrors);
+                                                                brandResults.push({ brand: brand, synced: brandSynced, skipped: brandSkipped, errors: brandErrors.length });
+                                                                brandIndex++;
+                                                                syncNextBrand();
+                                                            }
+                                                        } else {
+                                                            // Non-fatal: log error and move to next brand
+                                                            var errMsg = (response.errors && response.errors.length) ? response.errors.join(', ') : (response.message || 'Unknown error');
+                                                            grandTotalErrors.push(brand + ': ' + errMsg);
+                                                            brandResults.push({ brand: brand, synced: brandSynced, skipped: brandSkipped, errors: 1 });
+                                                            brandIndex++;
+                                                            syncNextBrand();
+                                                        }
+                                                    },
+                                                    error: function(xhr) {
+                                                        // Non-fatal: log error and move to next brand
+                                                        var errMsg = xhr.responseJSON?.message || 'Request failed';
+                                                        grandTotalErrors.push(brand + ': ' + errMsg);
+                                                        brandResults.push({ brand: brand, synced: brandSynced, skipped: brandSkipped, errors: 1 });
+                                                        brandIndex++;
+                                                        syncNextBrand();
+                                                    }
+                                                });
+                                            }
+
+                                            syncBrandBatch(0);
+                                        }
+
+                                        syncNextBrand();
+                                    }
+                                });
+
                                 // Sync single product by SKU
                                 $('#ftg-sync-single-btn').on('click', function() {
                                     var sku = $('#ftg-sku-input').val().trim();
@@ -1551,7 +2198,7 @@ function global_site_settings_main_page() {
                                             xhr.setRequestHeader('X-WP-Nonce', '<?php echo wp_create_nonce('wp_rest'); ?>');
                                         },
                                         success: function(response) {
-                                            btn.prop('disabled', false).text('✅ Sync Product');
+                                            btn.prop('disabled', false).text('✅ Sync Single Product');
                                             
                                             if (response.success) {
                                                 var html = '<div class="notice notice-success inline"><p>✅ ' + response.message + '</p>';
@@ -1597,7 +2244,7 @@ function global_site_settings_main_page() {
                                             }
                                         },
                                         error: function(xhr) {
-                                            btn.prop('disabled', false).text('✅ Sync Product');
+                                            btn.prop('disabled', false).text('✅ Sync Single Product');
                                             var errorMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Sync failed';
                                             resultDiv.html('<div class="notice notice-error inline"><p>❌ ' + errorMsg + '</p></div>');
                                         }

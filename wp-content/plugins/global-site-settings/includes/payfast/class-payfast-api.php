@@ -74,7 +74,7 @@ class PayFast_API {
             'passPhrase' => $payfast_settings['pass_phrase'] ?? '',
             'testMode' => !empty($payfast_settings['testmode']) && $payfast_settings['testmode'] === 'yes',
             'returnUrl' => home_url('/?payfast_return=1'),
-            'cancelUrl' => 'https://belims-headless-react-app.netlify.app/checkout',
+            'cancelUrl' => (function_exists('get_frontend_url') ? \get_frontend_url() : 'https://belims.vercel.app') . '/checkout',
             'notifyUrl' => rest_url('belims/v1/payfast/itn'),
         ));
     }
@@ -125,7 +125,7 @@ class PayFast_API {
             'merchant_id' => $payfast_settings['merchant_id'],
             'merchant_key' => $payfast_settings['merchant_key'],
             'return_url' => $return_url,
-            'cancel_url' => home_url('/payfast-cancel'),
+            'cancel_url' => (function_exists('get_frontend_url') ? \get_frontend_url() : 'https://belims.vercel.app') . '/checkout',
             'notify_url' => rest_url('belims/v1/payfast/itn'),
             'name_first' => sanitize_text_field($name_parts[0] ?? ''),
             'name_last' => sanitize_text_field($name_parts[1] ?? ''),
