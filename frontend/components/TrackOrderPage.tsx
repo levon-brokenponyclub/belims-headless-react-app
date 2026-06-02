@@ -8,23 +8,9 @@ import {
   normalizeTrackingResult,
 } from "./TrackingProgressCard";
 
-// Get track endpoint based on environment
-function getTrackEndpoint(): string {
-  if (
-    typeof window !== "undefined" &&
-    window.location.hostname === "localhost"
-  ) {
-    const ngrokUrl =
-      sessionStorage.getItem("ngrok_url") || localStorage.getItem("ngrok_url");
-    if (ngrokUrl) {
-      return ngrokUrl + "/wp-json/belims/v1/track";
-    }
-    return "http://belims-headless.local/wp-json/belims/v1/track";
-  }
-  return "https://cms.belims.co.za/wp-json/belims/v1/track";
-}
+import { getApiBaseUrl } from "../services/wooCommerceService";
 
-const TRACK_ENDPOINT = getTrackEndpoint();
+const TRACK_ENDPOINT = getApiBaseUrl() + "/track";
 
 export const TrackOrderPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();

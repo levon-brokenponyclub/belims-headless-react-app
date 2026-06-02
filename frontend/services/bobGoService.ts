@@ -23,8 +23,9 @@ interface ShippingRate {
   total_price: number;
   expected_delivery_date?: string;
 }
-// Directly call the CMS WordPress REST API (BobGo/uAfrica plugin)
-const API_BASE_URL = "https://cms.belims.co.za/wp-json/belims/v1";
+import { getApiBaseUrl } from "./wooCommerceService";
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Development/fallback shipping options for local testing
 const DEV_STANDARD_SHIPPING: ShippingRate = {
