@@ -104,6 +104,14 @@ export const Header: React.FC<HeaderProps> = ({
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
   const [isDeliveryLocationModalOpen, setIsDeliveryLocationModalOpen] =
     useState(false);
+  const [deliveryLocationModalType, setDeliveryLocationModalType] = useState<
+    "pickup" | "delivery"
+  >("delivery");
+
+  const openDeliveryLocationPanel = (type: "pickup" | "delivery") => {
+    setDeliveryLocationModalType(type);
+    setIsDeliveryLocationModalOpen(true);
+  };
   const [fulfillmentType, setFulfillmentType] = useState<
     "pickup" | "delivery" | null
   >(null);
@@ -504,7 +512,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center divide-x divide-white/40">
                   <button
                     type="button"
-                    onClick={() => setIsDeliveryLocationModalOpen(true)}
+                    onClick={() => openDeliveryLocationPanel("pickup")}
                     className="flex items-center gap-3 px-3 text-left w-full whitespace-nowrap"
                   >
                     <MapPin size={15} className="flex-shrink-0" />
@@ -520,7 +528,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsDeliveryLocationModalOpen(true)}
+                    onClick={() => openDeliveryLocationPanel("delivery")}
                     className="flex items-center gap-3 px-3 text-left pl-6"
                   >
                     <Truck size={15} className="flex-shrink-0" />
@@ -883,7 +891,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="container mx-auto px-4">
             <button
               type="button"
-              onClick={() => setIsDeliveryLocationModalOpen(true)}
+              onClick={() => openDeliveryLocationPanel("delivery")}
               className="flex items-center justify-between w-full py-2.5"
             >
               <div className="flex items-center gap-3">
@@ -1471,6 +1479,7 @@ export const Header: React.FC<HeaderProps> = ({
       <DeliveryLocationModal
         isOpen={isDeliveryLocationModalOpen}
         onClose={() => setIsDeliveryLocationModalOpen(false)}
+        initialFulfillmentType={deliveryLocationModalType}
         currentAddress={deliveryAddress || undefined}
         onAddressSelect={handleAddressSelect}
         currentStore={selectedStore}
