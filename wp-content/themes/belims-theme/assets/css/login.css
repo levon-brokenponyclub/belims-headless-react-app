@@ -1,0 +1,73 @@
+/*
+ * Belims Theme — Login Page Styles
+ */
+
+/* ========================
+PAGE BACKGROUND
+======================== */
+
+body.login {
+    background-color: #f2f3f7;
+}
+
+/* ========================
+LOGIN BUTTON
+======================== */
+
+body.login #wp-submit {
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+    -webkit-tap-highlight-color: transparent;
+    --belims-blue: #1e40af;
+    --belims-light: #3b82f6;
+    --belims-accent: #f97316;
+    --color-canvas: #f9f9f9;
+    --color-surface: #ffffff;
+    --color-ink: #322783;
+    --color-muted: #565969;
+    --color-soft: #ecf0f1;
+    --color-subtle: #e0e0e0;
+    --color-brand: #312883;
+    --color-accent: #f97316;
+    --color-red-muted: #c4301c;
+    --color-grey: #111111;
+    --color-grey-light: #f3f4f6;
+    --color-grey-medium: #666666;
+    -webkit-font-smoothing: antialiased;
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: solid;
+    border-color: #e5e7eb;
+    font-family: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    font-size: 100%;
+    font-weight: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    margin: 0;
+    padding: 0;
+    text-transform: none;
+    -webkit-appearance: button;
+    background-image: none;
+    cursor: pointer;
+    position: relative;
+    height: 2.75rem;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 10rem;
+    background-color: var(--color-grey);
+    color: rgb(255 255 255 / 1);
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(.4, 0, .2, 1);
+    transition-duration: .15s;
+}
+
+/* ========================
+NAV LINKS
+======================== */
+
+.login #backtoblog a,
+.login #nav a {
+    color: #fff;
+}

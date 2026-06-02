@@ -77,6 +77,20 @@ class Belims_FTG_Sync_Endpoint {
             'callback' => array($this, 'get_brand_count'),
             'permission_callback' => '__return_true', // read-only; safe to expose
         ));
+
+        // Get all available FTG brands
+        register_rest_route('belims/v1', '/ftg/brands', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_available_brands'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
+        // Count products with Display on web active in FTG
+        register_rest_route('belims/v1', '/ftg/display-on-web-count', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_display_on_web_count'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
         
         // Get product filters (Range, Color, Brand)
         register_rest_route('belims/v1', '/products/filters', array(
@@ -288,25 +302,30 @@ class Belims_FTG_Sync_Endpoint {
             } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
                 $page_products = $ftg_result['data'];
             }
-            
+
+            // Track raw page size BEFORE filtering — needed for pagination termination.
+            // Using the filtered count caused early exit when a page had no brand matches
+            // even though later pages still contained matching products.
+            $raw_page_count = count($page_products);
+
             // Apply brand filter while paginating to avoid over-fetching
             if ($brand_filter !== null) {
-                $page_products = array_filter($page_products, function($product) use ($brand_filter) {
+                $page_products = array_values(array_filter($page_products, function($product) use ($brand_filter) {
                     $product_data = $product['productData'] ?? $product;
                     $brand = $product_data['brand'] ?? '';
                     return strcasecmp($brand, $brand_filter) === 0;
-                });
+                }));
             }
-            
+
             $products = array_merge($products, $page_products);
-            error_log('Page ' . $page . ' returned ' . count($page_products) . ' products; cumulative total: ' . count($products));
-            
+            error_log('Page ' . $page . ' returned ' . count($page_products) . ' brand-matched products (raw: ' . $raw_page_count . '); cumulative total: ' . count($products));
+
             // Stop early when we've collected enough for the requested limit
             if ($limit !== null && $limit > 0 && count($products) >= $limit) {
                 break;
             }
             $page++;
-        } while (!empty($page_products) && $page <= $max_pages && ($limit === null || count($products) < $limit));
+        } while ($raw_page_count > 0 && $page <= $max_pages && ($limit === null || count($products) < $limit));
         
         error_log('Total products retrieved from FTG (all pages): ' . count($products));
 
@@ -446,15 +465,15 @@ class Belims_FTG_Sync_Endpoint {
         error_log('Skipped (no price/name): ' . $skipped_count);
         error_log('Errors: ' . count($errors));
         
-        // Calculate if there are more products to process
-        $total_requested = $limit ?? count($products);
+        // Calculate if there are more products to process.
+        // Use $total_available (captured before array_slice) so $limit=null syncs the full brand.
+        $total_requested = $limit ?? $total_available;
         $next_offset = $offset + $batch_size;
-        // Check against the actual available count when filtering by brand
         $total_to_sync = ($total_available > 0) ? min($total_requested, $total_available) : $total_requested;
         $has_more = ($next_offset < $total_to_sync);
         $progress = ($total_to_sync > 0) ? min(100, round(($next_offset / $total_to_sync) * 100)) : 100;
-        
-        error_log('Progress calculation: offset=' . $offset . ', batch_size=' . $batch_size . ', next_offset=' . $next_offset . ', total_requested=' . $total_requested . ', has_more=' . ($has_more ? 'yes' : 'no') . ', progress=' . $progress . '%');
+
+        error_log('Progress calculation: offset=' . $offset . ', batch_size=' . $batch_size . ', next_offset=' . $next_offset . ', total_available=' . $total_available . ', total_requested=' . $total_requested . ', has_more=' . ($has_more ? 'yes' : 'no') . ', progress=' . $progress . '%');
         
         // BATCH IMAGE DOWNLOAD: If we skipped images during creation, download them now (async)
         if (defined('FTG_SKIP_IMAGE_DOWNLOAD') && FTG_SKIP_IMAGE_DOWNLOAD) {
@@ -542,8 +561,18 @@ class Belims_FTG_Sync_Endpoint {
     public function get_brand_count($request) {
         $collection_token = $request->get_param('collection_token') ?: get_field('ftg_collection_token', 'option');
         $brand = $request->get_param('brand') ?: 'Assa Abloy';
+        $summary_only_param = strtolower(trim((string) $request->get_param('summary_only')));
+        $summary_only = in_array($summary_only_param, array('1', 'true', 'yes', 'on'), true);
         $per_page = 100;
         $max_pages = 50;
+        $api_url = 'https://gateway.ftgone.co.za/v2/products/' . rawurlencode($collection_token) . '?' . http_build_query(array(
+            'PageSize' => $per_page,
+            'PageNumber' => 1,
+        ));
+        $api_url_template = 'https://gateway.ftgone.co.za/v2/products/' . rawurlencode($collection_token) . '?' . http_build_query(array(
+            'PageSize' => $per_page,
+            'PageNumber' => '{page}',
+        ));
 
         if (empty($collection_token)) {
             return new WP_Error('missing_token', 'Collection token required', array('status' => 400));
@@ -574,6 +603,10 @@ class Belims_FTG_Sync_Endpoint {
             } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
                 $page_products = $ftg_result['data'];
             }
+
+            // Keep the raw page size for pagination termination.
+            // If we terminate on filtered count, brands that appear on later pages are missed.
+            $raw_page_count = count($page_products);
             
             error_log("brand-count: page $page returned " . count($page_products) . " total products before filtering");
 
@@ -596,10 +629,11 @@ class Belims_FTG_Sync_Endpoint {
             error_log("brand-count: PageNumber $page has " . count($page_products) . " $brand products; cumulative: " . count($products));
             $products = array_merge($products, $page_products);
             $page++;
-        } while (!empty($page_products) && $page <= $max_pages);
+        } while ($raw_page_count > 0 && $page <= $max_pages);
 
         $products = $this->deduplicate_products_by_sku($products);
         $first_product = null;
+        $returned_products = array();
 
         if (!empty($products[0])) {
             $first_product_data = $products[0]['productData'] ?? $products[0];
@@ -609,14 +643,338 @@ class Belims_FTG_Sync_Endpoint {
             );
         }
 
+        if (!$summary_only) {
+            foreach ($products as $product) {
+                $product_data = $product['productData'] ?? $product;
+                $returned_products[] = array(
+                    'name' => $product_data['description1'] ?? $product_data['description2'] ?? $product_data['description3'] ?? 'Unnamed Product',
+                    'sku' => $product_data['productCode'] ?? $product_data['mdrProductCode'] ?? $product_data['altProductCode'] ?? '',
+                    'brand' => $product_data['brand'] ?? '',
+                    'ftg_one_id' => $product['ftgOneId'] ?? $product_data['ftgOneId'] ?? '',
+                );
+            }
+        }
+
         return rest_ensure_response(array(
             'success' => true,
             'brand' => $brand,
+            'summary_only' => $summary_only,
             'total_unique' => count($products),
             'first_product' => $first_product,
+            'api_url' => $api_url,
+            'api_url_template' => $api_url_template,
             'pages_fetched' => $page - 1,
             'page_sizes' => $page_sizes,
+            'products' => $returned_products,
         ));
+    }
+
+    /**
+     * Return all unique brands available in FTG for the configured collection token.
+     * Results are cached in a transient for 24 hours. Pass ?refresh=1 to force refetch.
+     */
+    public function get_available_brands($request) {
+        set_time_limit(300);
+
+        error_log('=== FTG Get Available Brands called ===');
+
+        $force_refresh = (bool) $request->get_param('refresh');
+        $cache_key = 'belims_ftg_brands_cache';
+
+        if (!$force_refresh) {
+            $cached = get_transient($cache_key);
+            if ($cached !== false) {
+                error_log('=== FTG Brands: returning cached result (' . count($cached['brands']) . ' brands) ===');
+                return rest_ensure_response($cached);
+            }
+        }
+
+        $collection_token = $request->get_param('collection_token') ?: get_field('ftg_collection_token', 'option');
+
+        if (empty($collection_token)) {
+            return new WP_Error('missing_token', 'Collection token required', array('status' => 400));
+        }
+
+        $per_page = 100;
+        $max_pages = 50;
+        $page = 1;
+        $pages_fetched = 0;
+        $seen = array();
+        $brands = array();
+        $brand_counts = array();
+        $brand_stock_zero_counts = array();
+        $brand_no_price_counts = array();
+
+        do {
+            error_log('=== FTG Brands: fetching page ' . $page . ' ===');
+
+            $ftg_result = $this->ftg_api->get_products($collection_token, array(
+                'PageSize' => $per_page,
+                'PageNumber' => $page,
+            ));
+
+            if (isset($ftg_result['error'])) {
+                error_log('=== FTG Brands error on page ' . $page . ': ' . $ftg_result['error'] . ' ===');
+                return new WP_Error('ftg_error', $ftg_result['error'], array('status' => 500));
+            }
+
+            $page_products = array();
+            if (isset($ftg_result['data']['response']) && is_array($ftg_result['data']['response'])) {
+                $page_products = $ftg_result['data']['response'];
+            } elseif (isset($ftg_result['data']['data']) && is_array($ftg_result['data']['data'])) {
+                $page_products = $ftg_result['data']['data'];
+            } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
+                $page_products = $ftg_result['data'];
+            }
+
+            error_log('=== FTG Brands: page ' . $page . ' returned ' . count($page_products) . ' products ===');
+
+            foreach ($page_products as $product) {
+                $product_data = $product['productData'] ?? $product;
+                $brand = trim((string) ($product_data['brand'] ?? ''));
+                if ($brand === '') {
+                    continue;
+                }
+
+                $key = strtolower($brand);
+                if (!isset($brand_counts[$key])) {
+                    $brand_counts[$key] = 0;
+                    $brand_stock_zero_counts[$key] = 0;
+                    $brand_no_price_counts[$key] = 0;
+                }
+                $brand_counts[$key]++;
+
+                $stock_qty = 0;
+                if (isset($product_data['additionalErpDetails']['stockQuantity'])) {
+                    $stock_qty = intval($product_data['additionalErpDetails']['stockQuantity']);
+                } elseif (isset($product_data['stockQuantity'])) {
+                    $stock_qty = intval($product_data['stockQuantity']);
+                } elseif (isset($product_data['quantity'])) {
+                    $stock_qty = intval($product_data['quantity']);
+                }
+                if ($stock_qty <= 0) {
+                    $brand_stock_zero_counts[$key]++;
+                }
+
+                $price_excl_vat = isset($product_data['sellingPrice']) ? floatval($product_data['sellingPrice']) : 0;
+                if ($price_excl_vat <= 0 && isset($product_data['price'])) {
+                    $price_excl_vat = floatval($product_data['price']);
+                }
+                if ($price_excl_vat <= 0) {
+                    $brand_no_price_counts[$key]++;
+                }
+
+                if (isset($seen[$key])) {
+                    continue;
+                }
+
+                $seen[$key] = true;
+                $brands[] = $brand;
+            }
+
+            $pages_fetched++;
+            $page++;
+        } while (!empty($page_products) && $page <= $max_pages);
+
+        natcasesort($brands);
+        $brands = array_values($brands);
+        $brand_stats = array();
+        foreach ($brands as $brand_name) {
+            $key = strtolower($brand_name);
+            $brand_stats[] = array(
+                'brand' => $brand_name,
+                'count' => (int) ($brand_counts[$key] ?? 0),
+                'stock_zero_count' => (int) ($brand_stock_zero_counts[$key] ?? 0),
+                'no_price_count' => (int) ($brand_no_price_counts[$key] ?? 0),
+            );
+        }
+
+        $result = array(
+            'success' => true,
+            'total_brands' => count($brands),
+            'pages_fetched' => $pages_fetched,
+            'brands' => $brands,
+            'brand_stats' => $brand_stats,
+        );
+
+        // Cache for 24 hours — brands change infrequently
+        set_transient($cache_key, $result, 24 * HOUR_IN_SECONDS);
+        error_log('=== FTG Brands: completed. ' . count($brands) . ' brands found across ' . $pages_fetched . ' pages. Cached. ===');
+
+        return rest_ensure_response($result);
+    }
+
+    /**
+     * Return count of FTG products where "Display on web" is active.
+     */
+    public function get_display_on_web_count($request) {
+        $collection_token = $request->get_param('collection_token') ?: get_field('ftg_collection_token', 'option');
+
+        if (empty($collection_token)) {
+            return new WP_Error('missing_token', 'Collection token required', array('status' => 400));
+        }
+
+        $per_page = 100;
+        $max_pages = 50;
+        $page = 1;
+        $pages_fetched = 0;
+        $total_products = 0;
+        $display_on_web_active = 0;
+
+        do {
+            $ftg_result = $this->ftg_api->get_products($collection_token, array(
+                'PageSize' => $per_page,
+                'PageNumber' => $page,
+            ));
+
+            if (isset($ftg_result['error'])) {
+                return new WP_Error('ftg_error', $ftg_result['error'], array('status' => 500));
+            }
+
+            $page_products = array();
+            if (isset($ftg_result['data']['response']) && is_array($ftg_result['data']['response'])) {
+                $page_products = $ftg_result['data']['response'];
+            } elseif (isset($ftg_result['data']['data']) && is_array($ftg_result['data']['data'])) {
+                $page_products = $ftg_result['data']['data'];
+            } elseif (isset($ftg_result['data']) && is_array($ftg_result['data'])) {
+                $page_products = $ftg_result['data'];
+            }
+
+            foreach ($page_products as $product) {
+                $product_data = $product['productData'] ?? $product;
+                $total_products++;
+                if ($this->is_display_on_web_active($product_data)) {
+                    $display_on_web_active++;
+                }
+            }
+
+            $pages_fetched++;
+            $page++;
+        } while (!empty($page_products) && $page <= $max_pages);
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'total_products' => $total_products,
+            'display_on_web_active_count' => $display_on_web_active,
+            'pages_fetched' => $pages_fetched,
+        ));
+    }
+
+    /**
+     * Detect FTG "Display on web" flag using common field names and truthy values.
+     */
+    private function is_display_on_web_active($product_data) {
+        $candidate_keys = array(
+            'displayOnWeb',
+            'display_on_web',
+            'displayOnWebsite',
+            'display_on_website',
+            'showOnWeb',
+            'show_on_web',
+            'showOnWebsite',
+            'show_on_website',
+            'webActive',
+            'web_active',
+            'isWebActive',
+            'is_web_active',
+            'onlineActive',
+            'online_active',
+            'isOnline',
+            'is_online',
+        );
+
+        foreach ($candidate_keys as $key) {
+            if (!array_key_exists($key, $product_data)) {
+                continue;
+            }
+
+            $value = $product_data[$key];
+            if (is_bool($value)) {
+                return $value;
+            }
+
+            if (is_numeric($value)) {
+                return (int) $value === 1;
+            }
+
+            if (is_string($value)) {
+                $normalized = strtolower(trim($value));
+                return in_array($normalized, array('1', 'true', 'yes', 'y', 'active', 'enabled', 'on'), true);
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resolve an existing WooCommerce product by SKU or FTG identifiers.
+     *
+     * WooCommerce's standard SKU lookup can occasionally miss products that
+     * still have a unique SKU reserved in the lookup table. When that happens,
+     * creating a new product throws "already present in the lookup table".
+     */
+    private function resolve_existing_product_id($sku, $ftg_id = '') {
+        global $wpdb;
+
+        if (empty($sku) && empty($ftg_id)) {
+            return 0;
+        }
+
+        $candidate_ids = array();
+
+        if (!empty($sku)) {
+            $wc_product_id = wc_get_product_id_by_sku($sku);
+            if (!empty($wc_product_id)) {
+                $candidate_ids[] = (int) $wc_product_id;
+            }
+
+            $lookup_product_id = $wpdb->get_var($wpdb->prepare(
+                "SELECT product_id FROM {$wpdb->wc_product_meta_lookup} WHERE sku = %s LIMIT 1",
+                $sku
+            ));
+            if (!empty($lookup_product_id)) {
+                $candidate_ids[] = (int) $lookup_product_id;
+            }
+
+            $meta_product_ids = $wpdb->get_col($wpdb->prepare(
+                "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ('_sku', '_ftg_product_code') AND meta_value = %s",
+                $sku
+            ));
+            if (!empty($meta_product_ids)) {
+                $candidate_ids = array_merge($candidate_ids, array_map('intval', $meta_product_ids));
+            }
+        }
+
+        if (!empty($ftg_id)) {
+            $ftg_product_ids = $wpdb->get_col($wpdb->prepare(
+                "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_ftg_one_id' AND meta_value = %s",
+                (string) $ftg_id
+            ));
+            if (!empty($ftg_product_ids)) {
+                $candidate_ids = array_merge($candidate_ids, array_map('intval', $ftg_product_ids));
+            }
+        }
+
+        $candidate_ids = array_values(array_unique(array_filter(array_map('intval', $candidate_ids))));
+
+        foreach ($candidate_ids as $candidate_id) {
+            $post = get_post($candidate_id);
+            if (!$post || !in_array($post->post_type, array('product', 'product_variation'), true)) {
+                continue;
+            }
+
+            if ($post->post_status === 'trash') {
+                wp_untrash_post($candidate_id);
+                $post = get_post($candidate_id);
+            }
+
+            $product = wc_get_product($candidate_id);
+            if ($product) {
+                return (int) $candidate_id;
+            }
+        }
+
+        return 0;
     }
     
     /**
@@ -639,12 +997,21 @@ class Belims_FTG_Sync_Endpoint {
                 );
             }
             
-            $existing_product_id = wc_get_product_id_by_sku($sku);
+            $existing_product_id = $this->resolve_existing_product_id($sku, $ftg_id);
             
             if ($existing_product_id) {
                 $product = wc_get_product($existing_product_id);
+                if (!$product) {
+                    return array(
+                        'success' => false,
+                        'error' => 'Existing product found for SKU but could not be loaded',
+                        'sku' => $sku,
+                    );
+                }
+                error_log('Resolved existing product for SKU ' . $sku . ': product ID ' . $existing_product_id);
             } else {
                 $product = new WC_Product_Simple();
+                error_log('Creating new product for SKU ' . $sku);
             }
 
             $previous = array(
@@ -1677,4 +2044,3 @@ class Belims_FTG_Sync_Endpoint {
     }
 
     }
-
