@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Anchor,
+  ChevronLeft,
+  ChevronRight,
   Droplet,
   Hand,
   PaintBucket,
@@ -11,143 +14,183 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-const categoryMedia: Record<string, { image?: string; icon?: LucideIcon }> = {
-  Sale: {
-    image: "/images/development/collection-sales.webp",
-  },
-  Adhesives: {
-    icon: Droplet,
-  },
-  "General Purpose Adhesive": {
-    icon: PaintBucket,
-  },
-  "Nail-in Anchors": {
-    icon: Anchor,
-  },
-  "Tape and Seal Strips": {
-    icon: Scissors,
-  },
-  "General Purpose Tapes": {
-    icon: Scissors,
-  },
-  Chainsaws: {
-    icon: Zap,
-  },
-  Gloves: {
-    icon: Hand,
-  },
-  "Drill Accessories": {
-    icon: Settings,
-  },
-  "Electrical Hand Tools": {
-    icon: Plug,
-  },
-  "Power Tools": {
-    icon: Zap,
-  },
-  "Pressure Washer": {
-    icon: Droplet,
-  },
-};
+interface CategoryTile {
+  title: string;
+  icon?: LucideIcon;
+  image?: string;
+  accent?: "sale";
+}
 
-const categories = [
+const categories: CategoryTile[] = [
   {
     title: "Sale",
+    image: "/images/development/collection-sales.webp",
+    accent: "sale",
   },
-  {
-    title: "Adhesives",
-  },
-  {
-    title: "General Purpose Adhesive",
-  },
-  {
-    title: "Nail-in Anchors",
-  },
-  {
-    title: "Tape and Seal Strips",
-  },
-  {
-    title: "General Purpose Tapes",
-  },
-  {
-    title: "Chainsaws",
-  },
-  {
-    title: "Gloves",
-  },
-  {
-    title: "Drill Accessories",
-  },
-  {
-    title: "Electrical Hand Tools",
-  },
-  {
-    title: "Power Tools",
-  },
-  {
-    title: "Pressure Washer",
-  },
+  { title: "Adhesives", icon: Droplet },
+  { title: "General Purpose Adhesive", icon: PaintBucket },
+  { title: "Nail-in Anchors", icon: Anchor },
+  { title: "Tape and Seal Strips", icon: Scissors },
+  { title: "General Purpose Tapes", icon: Scissors },
+  { title: "Chainsaws", icon: Zap },
+  { title: "Gloves", icon: Hand },
+  { title: "Drill Accessories", icon: Settings },
+  { title: "Electrical Hand Tools", icon: Plug },
+  { title: "Power Tools", icon: Zap },
+  { title: "Pressure Washer", icon: Droplet },
 ];
 
 export const CategoryGrid: React.FC = () => {
+  const sliderRef = useRef<HTMLDivElement | null>(null);
+  const [pageCount, setPageCount] = useState(1);
+  const [activePage, setActivePage] = useState(0);
+
+  useEffect(() => {
+    const el = sliderRef.current;
+    if (!el) return;
+
+    const recompute = () => {
+      const cw = el.clientWidth || 1;
+      setPageCount(Math.max(1, Math.ceil(el.scrollWidth / cw)));
+      setActivePage(Math.round(el.scrollLeft / cw));
+    };
+
+    recompute();
+    el.addEventListener("scroll", recompute, { passive: true });
+
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+
+    return () => {
+      el.removeEventListener("scroll", recompute);
+      ro.disconnect();
+    };
+  }, []);
+
+  const scrollByPage = (direction: 1 | -1) => {
+    const el = sliderRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * el.clientWidth, behavior: "smooth" });
+  };
+
+  const scrollToPage = (page: number) => {
+    const el = sliderRef.current;
+    if (!el) return;
+    el.scrollTo({ left: page * el.clientWidth, behavior: "smooth" });
+  };
+
   return (
-    <section className="w-full py-14 bg-gray-50">
+    <section className="w-full py-14 bg-surface" aria-label="Shop by categories">
       <div className="container mx-auto px-4">
-        <div className="flex items-start justify-between gap-6 mb-6">
-          <h2 className="font-heading text-2xl md:text-3xl font-semibold text-grey">
+        <div className="flex items-end justify-between gap-4 mb-6">
+          <h2 className="font-heading text-2xl md:text-3xl font-bold text-text">
             Shop By Categories
           </h2>
-          <a
-            href="/shop"
-            className="text-base font-semibold text-grey hover:text-belims-accent inline-flex items-center gap-2"
-          >
-            Shop All Products <span aria-hidden>›</span>
-          </a>
-        </div>
-
-        <div className="rounded-lg border border-black/10 border-b-0 overflow-hidden bg-white">
-          <div className="grid grid-cols-3 lg:grid-cols-6 gap-0">
-            {categories.map((category) =>
-              (() => {
-                const Icon = categoryMedia[category.title]?.icon;
-                const image = categoryMedia[category.title]?.image;
-
-                return (
-                  <article
-                    key={category.title}
-                    className="border border-black/10 -ml-px -mt-px bg-white"
-                  >
-                    <a
-                      href="#"
-                      className="flex h-full flex-col items-center justify-center px-4 py-8 text-center"
-                    >
-                      <span className="flex h-[110px] w-[110px] items-center justify-center rounded-full bg-grey-light overflow-hidden">
-                        {category.title === "Sale" && image ? (
-                          <img
-                            className="h-full w-full object-cover"
-                            alt={category.title}
-                            src={image}
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        ) : Icon ? (
-                          <Icon
-                            size={46}
-                            strokeWidth={1}
-                            className="text-grey"
-                          />
-                        ) : null}
-                      </span>
-                      <span className="mt-4 text-base font-semibold text-gray-900">
-                        {category.title}
-                      </span>
-                    </a>
-                  </article>
-                );
-              })(),
-            )}
+          <div className="flex items-center gap-3">
+            <Link
+              to="/shop"
+              className="hidden sm:inline-flex text-sm font-heading font-bold text-text hover:text-primary items-center gap-2 transition-colors"
+            >
+              Shop All Products <span aria-hidden>›</span>
+            </Link>
+            <div className="hidden md:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => scrollByPage(-1)}
+                aria-label="Scroll categories left"
+                className="btn-icon-circle hover:border-primary hover:text-primary transition-colors"
+              >
+                <ChevronLeft size={18} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollByPage(1)}
+                aria-label="Scroll categories right"
+                className="btn-icon-circle hover:border-primary hover:text-primary transition-colors"
+              >
+                <ChevronRight size={18} strokeWidth={2} />
+              </button>
+            </div>
           </div>
         </div>
+
+        <div
+          ref={sliderRef}
+          className="flex gap-6 md:gap-8 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2"
+          aria-roledescription="carousel"
+          aria-label="Shop by categories"
+        >
+          {categories.map((category) => {
+            const Icon = category.icon;
+            const isSale = category.accent === "sale";
+            return (
+              <Link
+                key={category.title}
+                to={`/shop/${encodeURIComponent(category.title)}`}
+                className="group flex-shrink-0 snap-start flex flex-col items-center gap-3 w-24 md:w-28 lg:w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg"
+                aria-label={category.title}
+              >
+                <div
+                  className={`relative flex items-center justify-center w-24 h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-circle overflow-hidden transition-all duration-300 group-hover:ring-4 group-hover:ring-primary/25 group-hover:shadow-card ${
+                    isSale
+                      ? "bg-primary text-white group-hover:bg-primary/90"
+                      : "bg-surface-muted text-text-secondary group-hover:bg-white"
+                  }`}
+                >
+                  {isSale && category.image ? (
+                    <img
+                      src={category.image}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="max-w-[70%] max-h-[70%] object-contain mix-blend-multiply"
+                    />
+                  ) : Icon ? (
+                    <Icon
+                      size={40}
+                      strokeWidth={1.5}
+                      className="transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <span className="text-lg font-heading font-bold">
+                      {category.title.slice(0, 2)}
+                    </span>
+                  )}
+                </div>
+                <span className="text-center text-sm font-heading font-bold text-text leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                  {category.title}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+
+        {pageCount > 1 && (
+          <div
+            className="flex items-center justify-center gap-2 mt-6"
+            role="tablist"
+            aria-label="Categories pages"
+          >
+            {Array.from({ length: pageCount }).map((_, i) => {
+              const isActive = i === activePage;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-label={`Go to page ${i + 1}`}
+                  onClick={() => scrollToPage(i)}
+                  className={`h-2 rounded-pill transition-all duration-300 ${
+                    isActive
+                      ? "w-6 bg-primary"
+                      : "w-2 bg-border hover:bg-text-tertiary"
+                  }`}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );
