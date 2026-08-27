@@ -113,7 +113,6 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   const timeGreeting = getTimeGreeting();
-  const [isNavbarVisible, setIsNavbarVisible] = useState(true);
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isServicesPanelOpen, setIsServicesPanelOpen] = useState(false);
@@ -151,8 +150,6 @@ export const Header: React.FC<HeaderProps> = ({
     CategoryNode[]
   >([]);
   const megaMenuCloseTimerRef = useRef<number | null>(null);
-  const lastScrollYRef = useRef(0);
-  const topBarRef = useRef<HTMLDivElement | null>(null);
 
   const syncDeliveryFromStorage = React.useCallback(() => {
     const { address, legacyLabel } = readStoredAddress();
@@ -173,28 +170,6 @@ export const Header: React.FC<HeaderProps> = ({
       ),
     );
   }, [selectedStore]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const scrollTrigger = topBarRef.current?.offsetHeight || 46;
-
-      if (currentScrollY <= scrollTrigger) {
-        setIsNavbarVisible(true);
-      } else if (currentScrollY > lastScrollYRef.current + 8) {
-        setIsNavbarVisible(false);
-      } else if (currentScrollY < lastScrollYRef.current - 12) {
-        setIsNavbarVisible(true);
-      }
-
-      lastScrollYRef.current = currentScrollY;
-    };
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   const computeFulfillmentType = (
     stored: string | null,
@@ -527,10 +502,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       {/* ─── Row 1: Topbar utility strip (Nexvo structure) ─── */}
-      <div
-        ref={topBarRef}
-        className="topbar topbar--show-separator-line hidden md:block"
-      >
+      <div className="topbar topbar--show-separator-line hidden md:block">
         <div className="topbar__inner">
           <div className="topbar__column topbar__left">
             <ul className="topbar__menu">
@@ -947,13 +919,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* ─── Row 3: White secondary nav (Sixty60 pattern) ─── */}
-          <div
-            className={`hidden md:block bg-surface text-text border-b border-border overflow-hidden transition-[max-height,opacity,transform] duration-200 ease-out ${
-              isNavbarVisible
-                ? "max-h-[400px] opacity-100 translate-y-0"
-                : "max-h-0 opacity-0 -translate-y-2 pointer-events-none"
-            }`}
-          >
+          <div className="hidden md:block bg-surface text-text border-b border-border">
             <div className="flex items-center justify-between gap-6 px-6 lg:px-[50px] py-3">
               {/* Left cluster */}
               <div className="flex items-center gap-5 min-w-0">
