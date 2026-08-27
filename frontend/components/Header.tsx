@@ -592,7 +592,7 @@ export const Header: React.FC<HeaderProps> = ({
       <header className="font-sans overflow-x-clip overflow-y-visible text-white sticky top-0 z-[1200]">
         <section className="w-full overflow-x-clip overflow-y-visible bg-belims-blue text-white shadow-[5px_0_30px_0_rgb(0_0_0_/_.08)]">
           {/* ─── Row 2: Sixty60-style logo row ─── */}
-          <div className="relative hidden md:flex w-full items-center gap-4 bg-belims-blue text-white px-6 lg:px-8 py-4">
+          <div className="relative hidden md:flex w-full items-center gap-4 bg-belims-blue text-white px-6 lg:px-[50px] py-4">
             <Link
               to="/"
               aria-label="Belims home"
@@ -954,7 +954,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : "max-h-0 opacity-0 -translate-y-2 pointer-events-none"
             }`}
           >
-            <div className="flex items-center justify-between gap-6 px-6 lg:px-8 py-3">
+            <div className="flex items-center justify-between gap-6 px-6 lg:px-[50px] py-3">
               {/* Left cluster */}
               <div className="flex items-center gap-5 min-w-0">
                 <div
