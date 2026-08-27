@@ -143,7 +143,7 @@ export const CategoryGrid: React.FC = () => {
                       alt=""
                       loading="lazy"
                       decoding="async"
-                      className="max-w-[70%] max-h-[70%] object-contain mix-blend-multiply"
+                      className="max-w-[70%] max-h-[70%] object-contain"
                     />
                   ) : Icon ? (
                     <Icon
