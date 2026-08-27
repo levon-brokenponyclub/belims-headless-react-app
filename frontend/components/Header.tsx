@@ -590,9 +590,9 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <header className="font-sans overflow-x-clip overflow-y-visible text-white sticky top-0 z-[1200]">
-        <section className="w-full overflow-x-clip overflow-y-visible bg-surface-dark text-white shadow-[5px_0_30px_0_rgb(0_0_0_/_.08)]">
+        <section className="w-full overflow-x-clip overflow-y-visible bg-belims-blue text-white shadow-[5px_0_30px_0_rgb(0_0_0_/_.08)]">
           {/* ─── Row 2: Sixty60-style logo row ─── */}
-          <div className="relative hidden md:flex w-full items-center gap-4 bg-surface-dark text-white px-6 lg:px-8 py-4">
+          <div className="relative hidden md:flex w-full items-center gap-4 bg-belims-blue text-white px-6 lg:px-8 py-4">
             <Link
               to="/"
               aria-label="Belims home"
@@ -617,7 +617,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="flex-shrink-0 text-primary"
               />
               <span className="flex flex-col leading-tight min-w-0">
-                <span className="text-eyebrow text-white/60">
+                <span className="text-[12px] font-bold uppercase tracking-normal text-white/60">
                   Delivering to
                 </span>
                 <span className="text-sm font-bold text-white truncate">
@@ -772,7 +772,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <User size={26} strokeWidth={1.75} className="text-white" />
               <span className="flex flex-col leading-tight text-left">
-                <span className="text-eyebrow text-white/60">
+                <span className="text-[12px] font-bold uppercase tracking-normal text-white/60">
                   {timeGreeting}
                 </span>
                 <span className="text-sm font-bold text-white">
