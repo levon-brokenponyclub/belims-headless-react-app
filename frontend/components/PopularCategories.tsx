@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { WooCommerceCategory } from "../types";
 import { fetchCategories } from "../services/wooCommerceService";
 
@@ -266,7 +265,6 @@ const categoryMedia: Record<
 export const PopularCategories: React.FC = () => {
   const [categories, setCategories] = useState<WooCommerceCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const sliderRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -309,30 +307,6 @@ export const PopularCategories: React.FC = () => {
       return [...categoryPool, ...fallbackCategories.slice(0, 1)];
     return fallbackCategories.slice(0, 2);
   }, [categoryPool]);
-
-  const sliderCategories = useMemo(() => {
-    const featuredSlugs = new Set(featuredCategories.map((cat) => cat.slug));
-    const rest = categoryPool.filter((cat) => !featuredSlugs.has(cat.slug));
-    const list = rest.length >= 10 ? rest : [...rest, ...categoryPool];
-    const unique = new Map<string, WooCommerceCategory>();
-    list.forEach((cat) => {
-      if (!unique.has(cat.slug)) unique.set(cat.slug, cat);
-    });
-    return Array.from(unique.values()).slice(0, 10);
-  }, [categoryPool, featuredCategories]);
-
-  const scrollByAmount = () =>
-    sliderRef.current?.clientWidth ? sliderRef.current.clientWidth * 0.65 : 320;
-
-  const handlePrev = () => {
-    if (!sliderRef.current) return;
-    sliderRef.current.scrollBy({ left: -scrollByAmount(), behavior: "smooth" });
-  };
-
-  const handleNext = () => {
-    if (!sliderRef.current) return;
-    sliderRef.current.scrollBy({ left: scrollByAmount(), behavior: "smooth" });
-  };
 
   const featuredStyles = ["bg-[#F7E6E8]", "bg-[#E5F4EA]"];
 
@@ -417,151 +391,7 @@ export const PopularCategories: React.FC = () => {
           })}
         </div>
 
-        <QuickShopsCarousel
-          items={isLoading ? fallbackCategories : sliderCategories}
-          sliderRef={sliderRef}
-          onPrev={handlePrev}
-          onNext={handleNext}
-        />
       </div>
     </section>
-  );
-};
-
-interface QuickShopsCarouselProps {
-  items: WooCommerceCategory[];
-  sliderRef: React.RefObject<HTMLDivElement>;
-  onPrev: () => void;
-  onNext: () => void;
-}
-
-const QuickShopsCarousel: React.FC<QuickShopsCarouselProps> = ({
-  items,
-  sliderRef,
-  onPrev,
-  onNext,
-}) => {
-  const [pageCount, setPageCount] = useState(1);
-  const [activePage, setActivePage] = useState(0);
-
-  useEffect(() => {
-    const el = sliderRef.current;
-    if (!el) return;
-
-    const recompute = () => {
-      const cw = el.clientWidth || 1;
-      setPageCount(Math.max(1, Math.ceil(el.scrollWidth / cw)));
-      setActivePage(Math.round(el.scrollLeft / cw));
-    };
-
-    recompute();
-    el.addEventListener("scroll", recompute, { passive: true });
-
-    const ro = new ResizeObserver(recompute);
-    ro.observe(el);
-
-    return () => {
-      el.removeEventListener("scroll", recompute);
-      ro.disconnect();
-    };
-  }, [items.length, sliderRef]);
-
-  const scrollToPage = (page: number) => {
-    const el = sliderRef.current;
-    if (!el) return;
-    el.scrollTo({ left: page * el.clientWidth, behavior: "smooth" });
-  };
-
-  return (
-    <div className="mt-10">
-      <div className="flex items-end justify-between gap-4 mb-5">
-        <h3 className="font-heading font-bold text-xl md:text-2xl uppercase tracking-widest text-text">
-          Quick Shops
-        </h3>
-        <div className="hidden md:flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onPrev}
-            aria-label="Scroll quick shops left"
-            className="btn-icon-circle hover:border-primary hover:text-primary transition-colors"
-          >
-            <ChevronLeft size={18} strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            onClick={onNext}
-            aria-label="Scroll quick shops right"
-            className="btn-icon-circle hover:border-primary hover:text-primary transition-colors"
-          >
-            <ChevronRight size={18} strokeWidth={2} />
-          </button>
-        </div>
-      </div>
-
-      <div
-        ref={sliderRef}
-        className="flex gap-6 md:gap-8 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2"
-        aria-roledescription="carousel"
-        aria-label="Quick shops"
-      >
-        {items.map((cat, index) => {
-          const media = categoryMedia[cat.name];
-          return (
-            <Link
-              key={`${cat.slug}-${index}`}
-              to={`/shop/${encodeURIComponent(cat.slug)}`}
-              className="group flex-shrink-0 snap-start flex flex-col items-center gap-3 w-24 md:w-28 lg:w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-lg"
-              aria-label={cat.name}
-            >
-              <div className="relative flex items-center justify-center w-24 h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-circle bg-surface-muted overflow-hidden transition-all duration-300 group-hover:bg-white group-hover:ring-4 group-hover:ring-primary/25 group-hover:shadow-card">
-                {media?.slider || media?.icon ? (
-                  <img
-                    src={media?.slider || media?.icon}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    className="max-w-[70%] max-h-[70%] object-contain transition-transform duration-300 group-hover:scale-105"
-                  />
-                ) : (
-                  <span className="text-lg font-heading font-bold text-text-secondary">
-                    {cat.name.slice(0, 2)}
-                  </span>
-                )}
-              </div>
-              <span className="text-center text-sm font-heading font-bold text-text leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-                {cat.name}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-
-      {pageCount > 1 && (
-        <div
-          className="flex items-center justify-center gap-2 mt-6"
-          role="tablist"
-          aria-label="Quick shops pages"
-        >
-          {Array.from({ length: pageCount }).map((_, i) => {
-            const isActive = i === activePage;
-            return (
-              <button
-                key={i}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                aria-label={`Go to page ${i + 1}`}
-                onClick={() => scrollToPage(i)}
-                className={`h-2 rounded-pill transition-all duration-300 ${
-                  isActive
-                    ? "w-6 bg-primary"
-                    : "w-2 bg-border hover:bg-text-tertiary"
-                }`}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 };
