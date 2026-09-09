@@ -352,6 +352,36 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
     ? formatScheduledPickup(pickupSchedule.date, pickupSchedule.time)
     : null;
 
+  const [deliveryExpanded, setDeliveryExpanded] = React.useState(false);
+
+  const deliveryOptions = React.useMemo(
+    () => deliveryRates.map((rate, index) => ({ id: `rate-${index}`, ...rate })),
+    [deliveryRates],
+  );
+  const selectedDeliveryOption = deliveryOptions.find(
+    (o) => o.id === selectedDeliveryOptionId,
+  );
+  const deliverySummaryLine = getDeliverySummaryLine({
+    hasAddress: deliveryLocationSet,
+    selectedOption: selectedDeliveryOption,
+  });
+  const { fastestOptionId, cheapestOptionId } = getDeliveryOptionMarkers(
+    deliveryOptions.map((o) => ({
+      id: o.id,
+      total_price: o.total_price,
+      expected_delivery_date: o.expected_delivery_date,
+    })),
+  );
+  const earliestDeliveryOption =
+    deliveryOptions.find((o) => o.id === fastestOptionId) ?? deliveryOptions[0] ?? null;
+  const earliestDeliverySummary = earliestDeliveryOption
+    ? `Earliest: ${earliestDeliveryOption.service_name} — ${
+        earliestDeliveryOption.total_price === 0
+          ? "FREE"
+          : formatCurrency(earliestDeliveryOption.total_price)
+      } — ${formatDeliveryEtaText(earliestDeliveryOption.expected_delivery_date)}`
+    : null;
+
   React.useEffect(() => {
     if (selectedType === "delivery") {
       deliveryPanelRef.current?.focus();
@@ -360,67 +390,116 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
 
   return (
     <div className="w-full space-y-4">
+      <style>{`
+        .pickup-card {
+          cursor: pointer;
+          transition: box-shadow 0.2s;
+        }
+        .pickup-card:hover {
+          box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .pickup-arrow {
+          position: relative;
+          overflow: hidden;
+          transition: border-color 0.25s ease, color 0.25s ease;
+        }
+        .pickup-arrow::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 9999px;
+          background: #111;
+          transform: scaleX(0);
+          transform-origin: left center;
+          transition: transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .pickup-card:hover .pickup-arrow {
+          border-color: #111;
+          color: #fff;
+        }
+        .pickup-card:hover .pickup-arrow::before {
+          transform: scaleX(1);
+        }
+        .pickup-arrow svg {
+          position: relative;
+          z-index: 1;
+          transition: transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94), color 0.22s ease;
+        }
+        .pickup-card:hover .pickup-arrow svg {
+          transform: translateX(2px);
+          color: #fff;
+          stroke: #fff;
+        }
+      `}</style>
+
       <p className="text-base font-bold text-grey font-heading">Fulfillment</p>
 
-      <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-        {!pickupStore ? (
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-neutral-500">No store selected.</p>
-            <button
-              type="button"
-              onClick={() => onViewPickupDetails?.()}
-              className="shrink-0 text-sm font-medium text-neutral-950 underline underline-offset-2"
-            >
-              Select store
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-neutral-950">
-                Pickup at:{" "}
-                <span className="font-semibold">{pickupStore.name}</span>
+      {/* ── Pickup card ── */}
+      <div
+        className="pickup-card"
+        style={{ background: "#fff", border: "1px solid #e5e5e5", borderRadius: "6px", padding: "14px 16px", display: "flex", alignItems: "center", gap: "12px" }}
+        onClick={() => pickupStore ? onSchedulePickup?.() : onViewPickupDetails?.()}
+      >
+        {/* Storefront icon */}
+        <div style={{ flexShrink: 0, color: "#374151" }}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3.75 10.9055V16.875H16.25V10.9055" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M4.21875 3.125H15.7812C15.917 3.12503 16.0491 3.16926 16.1575 3.25101C16.2659 3.33277 16.3447 3.44759 16.382 3.57812L17.5 7.5H2.5L3.62031 3.57812C3.65754 3.44798 3.73601 3.33343 3.84393 3.25172C3.95185 3.17 4.08338 3.12553 4.21875 3.125Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M7.5 7.5V8.75C7.5 9.41304 7.23661 10.0489 6.76777 10.5178C6.29893 10.9866 5.66304 11.25 5 11.25C4.33696 11.25 3.70107 10.9866 3.23223 10.5178C2.76339 10.0489 2.5 9.41304 2.5 8.75V7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M12.5 7.5V8.75C12.5 9.41304 12.2366 10.0489 11.7678 10.5178C11.2989 10.9866 10.663 11.25 10 11.25C9.33696 11.25 8.70107 10.9866 8.23223 10.5178C7.76339 10.0489 7.5 9.41304 7.5 8.75V7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M17.5 7.5V8.75C17.5 9.41304 17.2366 10.0489 16.7678 10.5178C16.2989 10.9866 15.663 11.25 15 11.25C14.337 11.25 13.7011 10.9866 13.2322 10.5178C12.7634 10.0489 12.5 9.41304 12.5 8.75V7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+
+        {/* Info */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
+          {!pickupStore ? (
+            <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#111" }}>
+              Select a pickup store
+            </p>
+          ) : (
+            <>
+              <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#111" }}>
+                Pickup at: <span>{pickupStore.name}</span>
               </p>
-              <p className="mt-1 text-sm text-neutral-500">
+              <p style={{ margin: 0, fontSize: "14px", color: "#6b7280" }}>
                 {scheduledLabel ? (
                   <>Scheduled: {scheduledLabel}</>
                 ) : pickupStatus ? (
                   <>
-                    <span
-                      className={`font-semibold ${
-                        pickupStatusPrimary === "Open"
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
-                    >
+                    <span style={{ fontWeight: 600, color: pickupStatusPrimary === "Open" ? "#16a34a" : "#dc2626" }}>
                       {pickupStatusPrimary}
                     </span>
-                    {pickupStatusDetail ? (
-                      <span> - {pickupStatusDetail}</span>
-                    ) : null}
+                    {pickupStatusDetail ? ` - ${pickupStatusDetail}` : null}
                   </>
                 ) : (
-                  "Check hours"
+                  "Check store hours"
                 )}
               </p>
-              <p className="mt-1 text-sm text-neutral-500">
-                Distance: {pickupDistanceLabel}
-              </p>
-              {!isPickupAvailable ? (
-                <p className="mt-1 text-sm text-neutral-500">
-                  Pickup unavailable, please check another store
+              {pickupDistanceLabel && (
+                <p style={{ margin: 0, fontSize: "14px", color: "#6b7280" }}>
+                  Distance: {pickupDistanceLabel}
                 </p>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              onClick={() => onSchedulePickup?.()}
-              className="shrink-0 text-sm font-medium text-neutral-950 underline underline-offset-2"
-            >
-              {scheduledLabel ? "Change" : "Schedule"}
-            </button>
-          </div>
-        )}
+              )}
+              {!isPickupAvailable && (
+                <p style={{ margin: 0, fontSize: "14px", color: "#dc2626" }}>
+                  Pickup unavailable — check another store
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Arrow — swipe animation matches CategoryGrid */}
+        <span
+          className="pickup-arrow"
+          aria-hidden="true"
+          style={{ flexShrink: 0, width: "32px", height: "32px", borderRadius: "9999px", border: "1px solid #d1d5db", background: "transparent", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+            <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
       </div>
 
       <div
@@ -430,53 +509,148 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
         className="space-y-3 focus:outline-none"
       >
         {!deliveryLocationSet ? (
-          <div className="rounded-lg bg-grey-light px-4 py-4">
-            <div className="space-y-2">
-              <p className="text-sm text-grey-medium">
-                Add your address to see delivery options, rates and arrival
-                dates.
-              </p>
-              <button
-                type="button"
-                onClick={() => onSetDeliveryLocation?.()}
-                className="text-sm font-semibold text-grey underline"
-              >
-                Add address
-              </button>
+          /* No address — same card style as pickup */
+          <div
+            className="pickup-card"
+            style={{ background: "#fff", border: "1px solid #e5e5e5", borderRadius: "6px", padding: "14px 16px", display: "flex", alignItems: "center", gap: "12px" }}
+            onClick={() => onSetDeliveryLocation?.()}
+          >
+            {/* Truck icon */}
+            <div style={{ flexShrink: 0, color: "#374151" }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1.25 4.375H12.5V13.75H1.25V4.375Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12.5 7.5H15.625L18.75 10.625V13.75H12.5V7.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="4.375" cy="14.375" r="1.25" stroke="currentColor" strokeWidth="1.5"/>
+                <circle cx="15.625" cy="14.375" r="1.25" stroke="currentColor" strokeWidth="1.5"/>
+              </svg>
             </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px" }}>
+              <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#111" }}>Add delivery address</p>
+              <p style={{ margin: 0, fontSize: "14px", color: "#6b7280" }}>See rates and arrival dates</p>
+            </div>
+            <span
+              className="pickup-arrow"
+              aria-hidden="true"
+              style={{ flexShrink: 0, width: "32px", height: "32px", borderRadius: "9999px", border: "1px solid #d1d5db", background: "transparent", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+                <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
           </div>
         ) : (
-          <>
-            <div className="rounded-lg bg-grey-light px-4 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="min-w-0 text-sm text-grey">
-                  <span className="font-semibold">Deliver to:</span>{" "}
-                  <span className="text-grey-medium">
-                    {getDeliveryAddressText(deliveryAddress)}
-                  </span>
-                </p>
-                <button
-                  type="button"
-                  onClick={() => onEditDeliveryLocation?.()}
-                  className="shrink-0 text-sm font-semibold text-grey underline"
-                >
-                  Edit
-                </button>
+          /* ── Unified delivery card ── */
+          <div style={{ background: "#fff", border: "1px solid #e5e5e5", borderRadius: "6px", overflow: "hidden" }}>
+            {/* Header row — click to toggle */}
+            <button
+              type="button"
+              className="pickup-card w-full text-left"
+              aria-expanded={deliveryExpanded}
+              style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: "12px", background: "transparent", border: "none", width: "100%", cursor: "pointer" }}
+              onClick={() => setDeliveryExpanded((prev) => !prev)}
+            >
+              <div style={{ flexShrink: 0, color: "#374151" }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1.25 4.375H12.5V13.75H1.25V4.375Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12.5 7.5H15.625L18.75 10.625V13.75H12.5V7.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="4.375" cy="14.375" r="1.25" stroke="currentColor" strokeWidth="1.5"/>
+                  <circle cx="15.625" cy="14.375" r="1.25" stroke="currentColor" strokeWidth="1.5"/>
+                </svg>
               </div>
-            </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "3px", textAlign: "left" }}>
+                <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#111" }}>Delivering to:</p>
+                <p style={{ margin: 0, fontSize: "14px", color: "#6b7280" }}>{getDeliveryAddressText(deliveryAddress)}</p>
+                {selectedDeliveryOption ? (
+                  <p style={{ margin: 0, fontSize: "14px", color: "#374151" }}>{deliverySummaryLine}</p>
+                ) : earliestDeliverySummary ? (
+                  <p style={{ margin: 0, fontSize: "14px", color: "#6b7280" }}>{earliestDeliverySummary}</p>
+                ) : null}
+              </div>
+              {/* Expand/collapse chevron */}
+              <span
+                aria-hidden="true"
+                style={{
+                  flexShrink: 0, width: "32px", height: "32px", borderRadius: "9999px",
+                  border: "1px solid #d1d5db", background: "transparent", color: "#374151",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "transform 0.22s ease, border-color 0.22s ease",
+                  transform: deliveryExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+                  <path d="M7.5 3.75L13.75 10L7.5 16.25" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>
+            </button>
 
-            <DeliveryOptionsAccordion
-              isActive={true}
-              hasAddress={deliveryLocationSet}
-              deliveryRates={deliveryRates}
-              selectedDeliveryOptionId={selectedDeliveryOptionId}
-              onSelectDeliveryOption={onSelectDeliveryOption}
-              loading={loading}
-              errorMessage={deliveryRatesError}
-              onAddAddress={onSetDeliveryLocation}
-              onChangeAddress={onEditDeliveryLocation || onSetDeliveryLocation}
-            />
-          </>
+            {/* Expanded delivery options */}
+            {deliveryExpanded && (
+              <div style={{ borderTop: "1px solid #e5e5e5", padding: "16px" }} className="space-y-3">
+                {loading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={`del-skel-${i}`} className="h-16 animate-pulse rounded-lg border border-subtle bg-white" />
+                    ))}
+                  </div>
+                ) : deliveryRatesError ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-red-muted">{deliveryRatesError}</p>
+                    <button type="button" onClick={() => (onEditDeliveryLocation ?? onSetDeliveryLocation)?.()}
+                      className="text-sm font-semibold text-grey underline">Change address</button>
+                  </div>
+                ) : deliveryOptions.length === 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-grey-medium">Delivery isn't available for this address. Try another address or use Pickup.</p>
+                    <button type="button" onClick={() => (onEditDeliveryLocation ?? onSetDeliveryLocation)?.()}
+                      className="text-sm font-semibold text-grey underline">Change address</button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {deliveryOptions.map((option) => {
+                      const isSelected = selectedDeliveryOptionId === option.id;
+                      const badgeText = option.id === fastestOptionId ? "Fastest"
+                        : option.id === cheapestOptionId ? "Best value" : null;
+                      return (
+                        <label
+                          key={option.id}
+                          htmlFor={option.id}
+                          className={`block w-full cursor-pointer rounded-lg border px-4 py-4 transition-all ${
+                            isSelected ? "border-brand bg-brand/10" : "border-subtle bg-white hover:border-grey hover:bg-soft"
+                          }`}
+                        >
+                          <input id={option.id} type="radio" name="delivery-option"
+                            checked={isSelected} onChange={() => onSelectDeliveryOption(option.id)}
+                            className="sr-only" />
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${isSelected ? "border-brand bg-brand" : "border-subtle bg-white"}`}>
+                                {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 text-base font-bold text-grey font-heading">
+                                  <span className="truncate">{option.service_name}</span>
+                                  {badgeText === "Best value" && <Pill tone="success">Budget</Pill>}
+                                  {badgeText === "Fastest" && <Pill tone="warning" icon={<Zap size={12} />}>Faster</Pill>}
+                                </div>
+                                <div className="mt-1 text-sm text-grey-medium">{formatDeliveryEtaText(option.expected_delivery_date)}</div>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <div className="text-lg font-bold text-grey">
+                                {option.total_price === 0 ? "FREE" : formatCurrency(option.total_price)}
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                <button type="button" onClick={() => onEditDeliveryLocation?.()}
+                  className="text-sm font-semibold text-grey underline mt-1">Change address</button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

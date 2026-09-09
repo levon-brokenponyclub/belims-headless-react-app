@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
     base: "/",
     server: {
       port: 3000,
+      strictPort: true, // WP CORS allowlist is locked to :3000 — fail loudly instead of drifting to :3001
       host: "0.0.0.0",
       proxy: {
         // Mirror Netlify redirect: /api/* -> CMS /wp-json/*
