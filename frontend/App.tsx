@@ -311,8 +311,6 @@ const HomePage = ({
 
   return (
     <>
-      <CategoryGrid />
-
       <HeroBanner />
 
       {/* <FilterSearch
@@ -334,6 +332,8 @@ const HomePage = ({
       <FeaturedGrid />
       {/* Collage Grid */}
       <CollageGrid />
+
+      <CategoryGrid />
 
       <DealsSection
         products={products}
