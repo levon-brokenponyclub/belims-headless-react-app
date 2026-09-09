@@ -509,6 +509,11 @@ export const Header: React.FC<HeaderProps> = ({
                   Wishlist
                 </Link>
               </li>
+              <li className="topbar__menu-item">
+                <Link to="/track-order" className="block">
+                  Track Your Order
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -1261,15 +1266,13 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="px-4 py-3 font-bold text-lg border-b border-subtle font-heading text-ink">
                         Extra Links
                       </div>
-                      <button
-                        onClick={() => {
-                          setIsAccountPanelOpen(false);
-                          onOpenTrackOrder();
-                        }}
+                      <Link
+                        to="/track-order"
+                        onClick={() => setIsAccountPanelOpen(false)}
                         className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors text-left"
                       >
                         Track Order
-                      </button>
+                      </Link>
                       <Link
                         to="/account/cards"
                         onClick={() => setIsAccountPanelOpen(false)}

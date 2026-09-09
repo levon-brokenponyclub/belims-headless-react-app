@@ -1236,7 +1236,7 @@ export const Archive: React.FC<ArchiveProps> = ({
   return (
     <div className="shopify-section section-collection-template bg-white">
       {/* Breadcrumb Section */}
-      <nav className=" bg-white" aria-label="Breadcrumb">
+      <nav className="bg-white border-b border-gray-100" aria-label="Breadcrumb">
         <div className="container mx-auto px-4 py-3">
           <ol className="flex items-center space-x-2 text-base text-grey">
             <li>
@@ -1297,6 +1297,81 @@ export const Archive: React.FC<ArchiveProps> = ({
           </ol>
         </div>
       </nav>
+
+      {/* Sort/filter toolbar */}
+      <div className="border-b border-gray-200 bg-white">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3 text-gray-500">
+              <span className="text-sm">
+                <span className="font-medium text-gray-900">
+                  {filteredProducts.length}
+                </span>{" "}
+                products
+              </span>
+              <div className="flex items-center gap-1 rounded-md border border-gray-200 p-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  aria-pressed={viewMode === "grid"}
+                  className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
+                    viewMode === "grid"
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                  title="Grid view"
+                >
+                  <LayoutGrid size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  aria-pressed={viewMode === "list"}
+                  className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
+                    viewMode === "list"
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                  title="List view"
+                >
+                  <List size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button
+                className="lg:hidden flex items-center gap-2 font-bold text-gray-700 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-50"
+                onClick={() => setMobileFiltersOpen(true)}
+              >
+                <Filter size={18} /> Filters
+              </button>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500 hidden sm:inline">
+                  Sort by:
+                </span>
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="appearance-none bg-transparent border-none py-2 pl-2 pr-8 text-gray-900 font-medium focus:ring-0 cursor-pointer text-sm"
+                  >
+                    <option value="featured">Featured</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="name">Name: A-Z</option>
+                  </select>
+                  <ChevronDown
+                    size={14}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="container mx-auto px-4 pb-12">
         <div className="flex flex-col lg:flex-row gap-8">
@@ -1799,75 +1874,6 @@ export const Archive: React.FC<ArchiveProps> = ({
 
           {/* Main Product Grid */}
           <div className="flex-1">
-            {/* Toolbar */}
-            <div className="flex flex-wrap gap-4 justify-between items-center mb-8 pb-4 border-b border-gray-200">
-              <div className="flex items-center gap-3 text-gray-500">
-                <span className="font-medium text-gray-900">
-                  {filteredProducts.length}
-                </span>{" "}
-                products
-                <div className="flex items-center gap-1 rounded-md border border-gray-200 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("grid")}
-                    aria-pressed={viewMode === "grid"}
-                    className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
-                      viewMode === "grid"
-                        ? "bg-gray-900 text-white"
-                        : "text-gray-500 hover:text-gray-900"
-                    }`}
-                    title="Grid view"
-                  >
-                    <LayoutGrid size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("list")}
-                    aria-pressed={viewMode === "list"}
-                    className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
-                      viewMode === "list"
-                        ? "bg-gray-900 text-white"
-                        : "text-gray-500 hover:text-gray-900"
-                    }`}
-                    title="List view"
-                  >
-                    <List size={14} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <button
-                  className="lg:hidden flex items-center gap-2 font-bold text-gray-700 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-50"
-                  onClick={() => setMobileFiltersOpen(true)}
-                >
-                  <Filter size={18} /> Filters
-                </button>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 hidden sm:inline">
-                    Sort by:
-                  </span>
-                  <div className="relative">
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as any)}
-                      className="appearance-none bg-transparent border-none py-2 pl-2 pr-8 text-gray-900 font-medium focus:ring-0 cursor-pointer text-sm"
-                    >
-                      <option value="featured">Featured</option>
-                      <option value="price-asc">Price: Low to High</option>
-                      <option value="price-desc">Price: High to Low</option>
-                      <option value="name">Name: A-Z</option>
-                    </select>
-                    <ChevronDown
-                      size={14}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Active Filter Chips */}
             {selectedFilterChips.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 mb-6">
