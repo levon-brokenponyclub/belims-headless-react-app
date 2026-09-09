@@ -65,6 +65,7 @@ import {
   fetchCategories,
   getApiBaseUrl,
 } from "./services/wooCommerceService";
+import { isProductPurchasable } from "./utils/price";
 
 import {
   STORES,
@@ -993,10 +994,15 @@ export default function App() {
         console.log(
           `[Performance][Optimized] Products API fetched in ${productsFetchMs.toFixed(0)}ms (products: ${apiProducts?.length || 0})`,
         );
-        if (apiProducts?.length) setProducts(apiProducts);
+        const validProducts = (apiProducts ?? []).filter(isProductPurchasable);
+        console.log(
+          `[Inventory] Filtered ${(apiProducts?.length ?? 0) - validProducts.length} unpurchasable products (backorder/zero-price/out-of-stock)`,
+        );
+        if (validProducts.length) setProducts(validProducts);
 
         const apiFeatured = await fetchFeaturedProducts();
-        if (apiFeatured?.length) setFeaturedProducts(apiFeatured);
+        const validFeatured = (apiFeatured ?? []).filter(isProductPurchasable);
+        if (validFeatured.length) setFeaturedProducts(validFeatured);
       } catch (error) {
         console.error("Failed to load products:", error);
       } finally {

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { CATEGORY_TREE, initializeCategoryTree } from "../categoryTree";
 import { fetchProducts, getApiBaseUrl } from "../services/wooCommerceService";
+import { isProductPurchasable } from "../utils/price";
 import { SkeletonProductCard } from "./Skeleton";
 
 interface FilterOption {
@@ -163,9 +164,10 @@ export const Archive: React.FC<ArchiveProps> = ({
     fetchProducts(category, undefined, { signal: controller.signal })
       .then((items) => {
         if (!isMounted) return;
-        setCategoryScopedProducts(items);
+        const validItems = items.filter(isProductPurchasable);
+        setCategoryScopedProducts(validItems);
         console.log(
-          `[Archive Debug] API fetchProducts("${category}") returned ${items.length} items`,
+          `[Archive Debug] API fetchProducts("${category}") returned ${items.length} items, ${validItems.length} valid`,
         );
       })
       .catch(() => {
@@ -199,7 +201,8 @@ export const Archive: React.FC<ArchiveProps> = ({
     fetchProducts(undefined, searchQuery, { signal: controller.signal })
       .then((items) => {
         if (!isMounted) return;
-        setSearchScopedProducts(items);
+        const validItems = items.filter(isProductPurchasable);
+        setSearchScopedProducts(validItems);
       })
       .catch(() => {
         if (!isMounted) return;
