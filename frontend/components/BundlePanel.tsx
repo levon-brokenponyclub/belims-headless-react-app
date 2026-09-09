@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Check, ShoppingCart, Package } from "lucide-react";
 import { Product, BundleCandidate } from "../types";
-import { formatCurrency } from "../utils/price";
+import { formatCurrency, isValidPrice } from "../utils/price";
 
 interface BundlePanelProps {
   isOpen: boolean;
@@ -19,6 +19,9 @@ export const BundlePanel: React.FC<BundlePanelProps> = ({
   addToCart,
 }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Filter out any bundle candidates with zero or invalid prices
+  const validCandidates = candidates.filter((c) => isValidPrice(c.price));
 
   // Reset when closed or product changes
   useEffect(() => {
@@ -39,7 +42,7 @@ export const BundlePanel: React.FC<BundlePanelProps> = ({
   else if (count >= 3) discountRate = 0.1;
 
   const mainPrice = mainProduct.price;
-  const addonsPrice = candidates
+  const addonsPrice = validCandidates
     .filter((c) => selectedIds.includes(c.id))
     .reduce((acc, c) => acc + c.price, 0);
 
@@ -48,10 +51,29 @@ export const BundlePanel: React.FC<BundlePanelProps> = ({
   const total = subtotal - discountAmount;
 
   const handleBuyBundle = () => {
-    // In a real app, this would add a "Grouped Product" or multiple items with metadata to cart
-    alert(
-      `Added bundle with ${count} items to cart! Savings: ${formatCurrency(discountAmount)}`,
+    // Add the main product first
+    addToCart({ ...mainProduct });
+
+    // Add each selected valid add-on as a separate cart item
+    const selectedCandidates = validCandidates.filter((c) =>
+      selectedIds.includes(c.id),
     );
+    for (const candidate of selectedCandidates) {
+      // Shape candidate into a minimal Product for the cart
+      addToCart({
+        id: candidate.id,
+        name: candidate.name,
+        price: candidate.price,
+        regular_price: candidate.regular_price,
+        image: candidate.image,
+        category: candidate.category ?? "",
+        rating: candidate.rating ?? 0,
+        reviews: candidate.reviews ?? 0,
+        stock: candidate.stock ?? 1,
+        maxStock: candidate.stock ?? 1,
+      } as Product);
+    }
+
     onClose();
   };
 
@@ -107,37 +129,43 @@ export const BundlePanel: React.FC<BundlePanelProps> = ({
           <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wide mb-2">
             Select Add-ons
           </h3>
-          {candidates.map((item) => {
-            const isSelected = selectedIds.includes(item.id);
-            return (
-              <div
-                key={item.id}
-                onClick={() => toggleSelection(item.id)}
-                className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? "border-belims-blue bg-white shadow-md" : "border-gray-200 bg-white hover:border-blue-200"}`}
-              >
+          {validCandidates.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-6">
+              No add-ons available for this product.
+            </p>
+          ) : (
+            validCandidates.map((item) => {
+              const isSelected = selectedIds.includes(item.id);
+              return (
                 <div
-                  className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected ? "bg-belims-blue border-belims-blue text-white" : "border-gray-300 bg-gray-50"}`}
+                  key={item.id}
+                  onClick={() => toggleSelection(item.id)}
+                  className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? "border-belims-blue bg-white shadow-md" : "border-gray-200 bg-white hover:border-blue-200"}`}
                 >
-                  {isSelected && <Check size={14} strokeWidth={3} />}
-                </div>
-                <img
-                  src={item.image}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-12 h-12 object-contain p-1"
-                  alt=""
-                />
-                <div className="flex-1">
-                  <div className="text-sm font-bold text-gray-900 line-clamp-2">
-                    {item.name}
+                  <div
+                    className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isSelected ? "bg-belims-blue border-belims-blue text-white" : "border-gray-300 bg-gray-50"}`}
+                  >
+                    {isSelected && <Check size={14} strokeWidth={3} />}
                   </div>
-                  <div className="text-xs text-gray-500 font-bold">
-                    {formatCurrency(item.price)}
+                  <img
+                    src={item.image}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-12 h-12 object-contain p-1"
+                    alt=""
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm font-bold text-gray-900 line-clamp-2">
+                      {item.name}
+                    </div>
+                    <div className="text-xs text-gray-500 font-bold">
+                      {formatCurrency(item.price)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
         {/* Footer / Totals */}

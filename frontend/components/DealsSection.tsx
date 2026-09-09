@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../types";
+import { isProductPurchasable } from "../utils/price";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { SkeletonProductCard } from "./Skeleton";
 
@@ -70,6 +71,9 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
 
   const tabProducts = useMemo(() => {
     const filtered = products.filter((product) => {
+      // Never surface backorder or zero-price products in deal slots
+      if (!isProductPurchasable(product)) return false;
+
       const consumerType = product.deals_resolved?.consumer?.bestDeal?.type;
       const tradeType = product.deals_resolved?.trade?.bestDeal?.type;
 
@@ -182,9 +186,12 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
   const indicatorPct =
     maxIndex === 0 ? 100 : Math.min(100, (index / maxIndex) * 100);
 
-  // Hide section if no deals available across all tabs
+  // Hide section if no purchasable deals are available across all tabs
   const hasAnyDeals = useMemo(() => {
     return products.some((product) => {
+      // Only count purchasable products (no backorder, valid price, in stock)
+      if (!isProductPurchasable(product)) return false;
+
       const consumerType = product.deals_resolved?.consumer?.bestDeal?.type;
       const tradeType = product.deals_resolved?.trade?.bestDeal?.type;
       return (

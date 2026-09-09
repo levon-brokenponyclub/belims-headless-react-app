@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../types";
+import { isProductPurchasable } from "../utils/price";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 
 interface TradeDealsProps {
@@ -26,8 +27,9 @@ export const TradeDeals: React.FC<TradeDealsProps> = ({
     return products
       .filter(
         (product) =>
-          product.category?.trim().toLowerCase() === "hand tools" ||
-          product.category?.trim().toLowerCase().includes("hand tools"),
+          isProductPurchasable(product) &&
+          (product.category?.trim().toLowerCase() === "hand tools" ||
+            product.category?.trim().toLowerCase().includes("hand tools")),
       )
       .slice(0, 6);
   }, [products]);

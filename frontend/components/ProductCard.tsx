@@ -11,7 +11,7 @@ import {
   Eye,
 } from "lucide-react";
 import { Product } from "../types";
-import { formatCurrency } from "../utils/price";
+import { formatCurrency, isProductPurchasable } from "../utils/price";
 import { QuickView } from "./QuickView";
 
 interface ProductCardProps {
@@ -352,6 +352,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   // Add to cart (wire price mode)
   // ----------------------------
   const addWithPriceMode = (mode: "retail" | "trade") => {
+    // Block backorder and zero/invalid price products
+    if (!isProductPurchasable(product)) return;
+
     const p = { ...product };
 
     if (mode === "trade" && isTradeSpecial && tradeBest?.deal_id) {
@@ -403,14 +406,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const closeQuickView = actionHelpers.closeQuickView;
 
   const handleQuickViewAddToCart = (quantity: number) => {
-    if (product.stock <= 0) return;
+    if (!isProductPurchasable(product)) return;
     for (let count = 0; count < quantity; count += 1) {
       addWithPriceMode(isTradeSpecial ? "trade" : "retail");
     }
   };
 
   const handleQuickViewBuyNow = (quantity: number) => {
-    if (product.stock <= 0) return;
+    if (!isProductPurchasable(product)) return;
     handleQuickViewAddToCart(quantity);
     onBuyNow?.(product);
     closeQuickView();

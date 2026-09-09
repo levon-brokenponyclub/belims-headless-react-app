@@ -312,6 +312,8 @@ const HomePage = ({
 
   return (
     <>
+      <CategoryGrid />
+
       <HeroBanner />
 
       {/* <FilterSearch
@@ -345,7 +347,6 @@ const HomePage = ({
       />
 
       {/* Featured Category Spotlights */}
-      <CategoryGrid />
 
       <TradeDeals
         products={products}
@@ -1006,6 +1007,20 @@ export default function App() {
   }, []);
 
   const addToCart = (product: Product) => {
+    // Guard: block backorder products and zero/invalid prices
+    if (product.stock_status === "onbackorder") {
+      console.warn("[addToCart] Blocked: product is on backorder", product.id);
+      return;
+    }
+    const effectivePrice =
+      (product.deals_resolved?.consumer?.price ?? product.price) as number;
+    const priceNum =
+      typeof effectivePrice === "string" ? parseFloat(effectivePrice) : effectivePrice;
+    if (!Number.isFinite(priceNum) || priceNum <= 0) {
+      console.warn("[addToCart] Blocked: product has zero or invalid price", product.id, effectivePrice);
+      return;
+    }
+
     setCartItems((prev) => {
       const exists = prev.find((item) => item.id === product.id);
       if (exists) {

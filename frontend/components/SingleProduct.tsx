@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
-import { formatCurrency } from "../utils/price";
+import { formatCurrency, isProductPurchasable } from "../utils/price";
 import { StockBar } from "./StockBar";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import { VideoPlayer } from "./VideoPlayer";
@@ -856,12 +856,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   };
 
   const handleAddToCartClick = () => {
-    if (product.stock === 0 || isAddToCartLoading || isBuyNowLoading) return;
+    if (!isProductPurchasable(product) || isAddToCartLoading || isBuyNowLoading) return;
     runActionWithIndicator("add", handleAddToCart);
   };
 
   const handleBuyNowClick = () => {
-    if (product.stock === 0 || isAddToCartLoading || isBuyNowLoading) return;
+    if (!isProductPurchasable(product) || isAddToCartLoading || isBuyNowLoading) return;
     runActionWithIndicator("buy", handleBuyNowAction);
   };
 
@@ -1475,31 +1475,35 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 {/* ProductSummary */}
                 <div className="bg-white">
                   <div className="pb-0">
-                    {dealBadgeLabel && (
-                      <span
-                        className={[
-                          "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold uppercase mb-4",
-                          badgeToneClass,
-                        ].join(" ")}
-                      >
-                        {dealBadgeLabel}
-                      </span>
+                    {/* Brand + Badge — inline chip row */}
+                    {(product.brand || dealBadgeLabel) && (
+                      <div className={`flex flex-wrap items-center gap-2 ${dealBadgeLabel ? "mb-4" : "mb-3"}`}>
+                        {product.brand &&
+                          (onBrandClick ? (
+                            <button
+                              type="button"
+                              onClick={() => onBrandClick(product.brand!)}
+                              className="inline-block rounded border border-gray-200 bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-gray-500 hover:border-brand hover:text-brand transition-colors"
+                            >
+                              {product.brand}
+                            </button>
+                          ) : (
+                            <span className="inline-block rounded border border-gray-200 bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-gray-500">
+                              {product.brand}
+                            </span>
+                          ))}
+                        {dealBadgeLabel && (
+                          <span
+                            className={[
+                              "inline-flex items-center rounded px-2.5 py-1 text-xs font-bold uppercase",
+                              badgeToneClass,
+                            ].join(" ")}
+                          >
+                            {dealBadgeLabel}
+                          </span>
+                        )}
+                      </div>
                     )}
-
-                    {product.brand &&
-                      (onBrandClick ? (
-                        <button
-                          type="button"
-                          onClick={() => onBrandClick(product.brand!)}
-                          className="mb-2 inline-block text-sm font-semibold uppercase tracking-wide text-grey-medium hover:text-brand transition-colors"
-                        >
-                          {product.brand}
-                        </button>
-                      ) : (
-                        <div className="mb-2 text-sm font-semibold uppercase tracking-wide text-grey-medium">
-                          {product.brand}
-                        </div>
-                      ))}
                     <h1 className="text-3xl font-bold text-grey font-heading mb-1">
                       {product.name}
                     </h1>
@@ -1579,7 +1583,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         <div className="flex items-center border border-gray-300 rounded-sm bg-white h-11">
                           <button
                             onClick={() => setQty(Math.max(1, qty - 1))}
-                            className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded-sm"
+                            disabled={qty <= 1}
+                            className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <Minus size={15} />
                           </button>
@@ -1588,9 +1593,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           </div>
                           <button
                             onClick={() =>
-                              setQty(Math.min(product.stock, qty + 1))
+                              setQty(Math.min(product.stock ?? 1, qty + 1))
                             }
-                            className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded"
+                            disabled={qty >= (product.stock ?? 1)}
+                            className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <Plus size={15} />
                           </button>
@@ -1600,7 +1606,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           <button
                             onClick={handleAddToCartClick}
                             disabled={
-                              product.stock === 0 ||
+                              !isProductPurchasable(product) ||
                               isAddToCartLoading ||
                               isBuyNowLoading
                             }
@@ -1613,7 +1619,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                   <Loader2 size={16} className="animate-spin" />
                                   Adding...
                                 </>
-                              ) : product.stock > 0 ? (
+                              ) : isProductPurchasable(product) ? (
                                 "Add to cart"
                               ) : (
                                 "Out of Stock"
@@ -1626,7 +1632,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         type="button"
                         onClick={handleBuyNowClick}
                         disabled={
-                          product.stock === 0 ||
+                          !isProductPurchasable(product) ||
                           isAddToCartLoading ||
                           isBuyNowLoading
                         }
@@ -1992,7 +1998,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             <button
               onClick={handleAddToCartClick}
               disabled={
-                product.stock === 0 || isAddToCartLoading || isBuyNowLoading
+                !isProductPurchasable(product) || isAddToCartLoading || isBuyNowLoading
               }
               className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey-light text-grey transition-colors disabled:opacity-50 md:w-[140px]"
             >
@@ -2003,7 +2009,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                     <Loader2 size={16} className="animate-spin" />
                     Adding...
                   </>
-                ) : product.stock > 0 ? (
+                ) : isProductPurchasable(product) ? (
                   "Add to cart"
                 ) : (
                   "Out of Stock"
@@ -2015,7 +2021,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               type="button"
               onClick={handleBuyNowClick}
               disabled={
-                product.stock === 0 || isAddToCartLoading || isBuyNowLoading
+                !isProductPurchasable(product) || isAddToCartLoading || isBuyNowLoading
               }
               className="group relative hidden h-11 w-full overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50 md:block md:w-[140px]"
             >
