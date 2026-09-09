@@ -333,8 +333,6 @@ const HomePage = ({
       {/* Collage Grid */}
       <CollageGrid />
 
-      <CategoryGrid />
-
       <DealsSection
         products={products}
         isLoadingProducts={isLoadingProducts}
@@ -344,6 +342,8 @@ const HomePage = ({
         isAuthenticated={isAuthenticated}
         isTradeApproved={isTradeApproved}
       />
+
+      <CategoryGrid />
 
       {/* Featured Category Spotlights */}
 
