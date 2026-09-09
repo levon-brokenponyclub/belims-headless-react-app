@@ -25,8 +25,6 @@ import { MobileBottomNav } from "./components/MobileBottomNav";
 import { SearchModal } from "./components/SearchModal";
 /* import { FreeShippingWidget } from "./components/FreeShippingWidget"; */
 import { OnboardingWizard } from "./components/OnboardingWizard";
-import { AiAssistant } from "./components/AiAssistant.tsx";
-import { BelimsChatbot } from "./src/features/chatbot/components/BelimsChatbot";
 import { PriceMatchModal } from "./components/PriceMatchModal";
 import { ComparisonModal } from "./components/ComparisonModal";
 import { Footer } from "./components/Footer";
@@ -682,7 +680,6 @@ export default function App() {
     // const hasSeen = localStorage.getItem("hasSeenOnboarding");
     // return !hasSeen;
   });
-  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [storeLocations, setStoreLocations] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(
     shouldSkipDefaultStore() ? null : getDefaultStore(STORES),
@@ -1126,8 +1123,6 @@ export default function App() {
         setIsPaintOpen={setIsPaintOpen}
         isOnboardingOpen={isOnboardingOpen}
         setIsOnboardingOpen={setIsOnboardingOpen}
-        isAiAssistantOpen={isAiAssistantOpen}
-        setIsAiAssistantOpen={setIsAiAssistantOpen}
         isSearchModalOpen={isSearchModalOpen}
         setIsSearchModalOpen={setIsSearchModalOpen}
         selectedStore={selectedStore}
@@ -1242,59 +1237,6 @@ function MainApp(props) {
     setIsCookieConsentOpen(false);
   };
 
-  const chatbotUserId = props.currentUser?.id
-    ? String(props.currentUser.id)
-    : undefined;
-  const chatbotCartId = `belims-cart-${chatbotUserId ?? "guest"}`;
-
-  const chatbotAddToCart = async (productId) => {
-    const normalizedId = String(productId);
-    let product = props.products.find(
-      (item) => String(item.id) === normalizedId,
-    );
-
-    if (!product) {
-      product = await fetchProductById(normalizedId);
-    }
-
-    if (!product) {
-      props.showToast?.("Product not found", "error");
-      return;
-    }
-
-    props.addToCart(product);
-  };
-
-  const chatbotBuyNow = async (productId) => {
-    const normalizedId = String(productId);
-    let product = props.products.find(
-      (item) => String(item.id) === normalizedId,
-    );
-
-    if (!product) {
-      product = await fetchProductById(normalizedId);
-    }
-
-    if (!product) {
-      props.showToast?.("Product not found", "error");
-      return;
-    }
-
-    props.handleBuyNow(product);
-  };
-
-  const chatbotCheckout = () => {
-    props.setIsCartOpen(false);
-    navigate("/checkout");
-  };
-
-  const chatbotEscalate = () => {
-    props.showToast?.(
-      "Support team notified. We'll follow up shortly.",
-      "success",
-    );
-  };
-
   const handleProductClick = (product: Product) => {
     navigate(`/product/${product.id}`);
   };
@@ -1309,9 +1251,8 @@ function MainApp(props) {
           toggleCart={() => props.setIsCartOpen(true)}
           toggleStoreLocator={() => props.setIsLocatorOpen(true)}
           onOpenPaintAssistant={() => props.setIsPaintOpen(true)}
-          onOpenTrackOrder={() => navigate("/track-order")}
+          onOpenTrackOrder={() => props.navigate("/track-order")}
           onOpenOnboarding={() => props.setIsOnboardingOpen(true)}
-          onOpenAiAssistant={() => props.setIsAiAssistantOpen(true)}
           onCompare={props.addToCompare}
           products={props.products}
           currentUser={props.currentUser}
@@ -1526,19 +1467,6 @@ function MainApp(props) {
         />
       )}
 
-      {!isCheckoutRoute && props.isAiAssistantOpen && (
-        <AiAssistant
-          products={props.products}
-          onClose={() => props.setIsAiAssistantOpen(false)}
-          onNavigateToProduct={handleProductClick}
-          addToCart={props.addToCart}
-          onBuyNow={props.handleBuyNow}
-          onCompare={props.addToCompare}
-          isAuthenticated={isAuthenticated}
-          isTradeApproved={isTradeApproved}
-        />
-      )}
-
       {!isCheckoutRoute && props.isPaintOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden relative max-h-[90vh] overflow-y-auto">
@@ -1574,15 +1502,6 @@ function MainApp(props) {
             onClose={handleCloseCookieConsent}
             onCancel={handleCookieCancel}
             onAccept={handleCookieAccept}
-          />
-
-          <BelimsChatbot
-            userId={chatbotUserId}
-            cartId={chatbotCartId}
-            onAddToCart={chatbotAddToCart}
-            onBuyNow={chatbotBuyNow}
-            onCheckout={chatbotCheckout}
-            onEscalateToHuman={chatbotEscalate}
           />
 
           <MobileBottomNav

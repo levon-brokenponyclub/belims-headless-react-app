@@ -76,7 +76,6 @@ interface HeaderProps {
   onOpenPaintAssistant: () => void;
   onOpenTrackOrder: () => void;
   onOpenOnboarding: () => void;
-  onOpenAiAssistant: () => void;
   onCompare?: (product: Product) => void;
   products?: Product[];
   currentUser: UserData | null;
@@ -104,7 +103,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPaintAssistant,
   onOpenTrackOrder,
   onOpenOnboarding,
-  onOpenAiAssistant,
   onCompare,
   products = [],
   currentUser,
@@ -1205,25 +1203,16 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     Protection Plans
                   </Link>
-                  <button
-                    onClick={() => {
-                      setIsServicesPanelOpen(false);
-                      onOpenPaintAssistant();
-                    }}
-                    className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors text-left"
-                  >
-                    Paint Assistant
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsServicesPanelOpen(false);
-                      onOpenAiAssistant();
-                    }}
-                    className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors text-left"
-                  >
-                    AI Helper
-                  </button>
-                </div>
+                   <button
+                     onClick={() => {
+                       setIsServicesPanelOpen(false);
+                       onOpenPaintAssistant();
+                     }}
+                     className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors text-left"
+                   >
+                     Paint Assistant
+                   </button>
+                 </div>
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Product, CategoryNode } from "../types";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import {
@@ -50,10 +50,15 @@ export const Archive: React.FC<ArchiveProps> = ({
   isAuthenticated = false,
   isTradeApproved = false,
 }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sortBy, setSortBy] = useState<
     "featured" | "price-asc" | "price-desc" | "name"
   >("featured");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+
+  const initialMin = Math.max(0, parseInt(searchParams.get("price_min") || "0", 10) || 0);
+  const initialMax = Math.max(initialMin, parseInt(searchParams.get("price_max") || "10000", 10) || 10000);
+  const [priceRange, setPriceRange] = useState<[number, number]>([initialMin, initialMax]);
+  const [priceInput, setPriceInput] = useState<[string, string]>([String(initialMin), String(initialMax)]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const categorySliderWidth = useWindowWidth();
@@ -84,7 +89,6 @@ export const Archive: React.FC<ArchiveProps> = ({
 
   // Additional local filters
   const [filterInStock, setFilterInStock] = useState(false);
-  const [filterBackOrder, setFilterBackOrder] = useState(false);
   const [selectedDealTypes, setSelectedDealTypes] = useState<string[]>([]);
   const [selectedRanges, setSelectedRanges] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
@@ -517,11 +521,8 @@ export const Archive: React.FC<ArchiveProps> = ({
     );
 
     // 5.5 Additional Facets
-    if (filterInStock && !filterBackOrder) {
+    if (filterInStock) {
       filtered = filtered.filter((p) => p.stock > 0);
-    }
-    if (filterBackOrder && !filterInStock) {
-      filtered = filtered.filter((p) => p.stock <= 0);
     }
 
     if (selectedDealTypes.length > 0) {
@@ -564,7 +565,6 @@ export const Archive: React.FC<ArchiveProps> = ({
     priceRange,
     sortBy,
     filterInStock,
-    filterBackOrder,
     selectedDealTypes,
     selectedFacetBrands,
     selectedCategories,
@@ -632,11 +632,8 @@ export const Archive: React.FC<ArchiveProps> = ({
     );
 
     // 5.5 Additional Facets (Availability, Deal Types)
-    if (filterInStock && !filterBackOrder) {
+    if (filterInStock) {
       filtered = filtered.filter((p) => p.stock > 0);
-    }
-    if (filterBackOrder && !filterInStock) {
-      filtered = filtered.filter((p) => p.stock <= 0);
     }
 
     if (selectedDealTypes.length > 0) {
@@ -657,7 +654,6 @@ export const Archive: React.FC<ArchiveProps> = ({
     searchQuery,
     priceRange,
     filterInStock,
-    filterBackOrder,
     selectedDealTypes,
     selectedFacetBrands,
     selectedRanges,
@@ -765,15 +761,12 @@ export const Archive: React.FC<ArchiveProps> = ({
 
   const availabilityCounts = useMemo(() => {
     let inStock = 0;
-    let backOrder = 0;
     filteredProducts.forEach((product) => {
       if (product.stock > 0) {
         inStock += 1;
-      } else {
-        backOrder += 1;
       }
     });
-    return { inStock, backOrder };
+    return { inStock };
   }, [filteredProducts]);
 
   const dealTypeCounts = useMemo(() => {
@@ -788,10 +781,29 @@ export const Archive: React.FC<ArchiveProps> = ({
     return counts;
   }, [filteredProducts]);
 
+  useEffect(() => {
+    setPriceInput([String(priceRange[0]), String(priceRange[1])]);
+  }, [priceRange]);
+
   // Get min/max price for slider
   const maxPrice = useMemo(() => {
     return Math.max(...products.map((p) => p.price), 1000);
   }, [products]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const [min, max] = priceRange;
+      if (min === 0 && max >= maxPrice) {
+        searchParams.delete("price_min");
+        searchParams.delete("price_max");
+      } else {
+        searchParams.set("price_min", String(min));
+        searchParams.set("price_max", String(max));
+      }
+      setSearchParams(searchParams, { replace: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [priceRange, maxPrice, searchParams, setSearchParams]);
 
   const title = brand
     ? `${brand} Products`
@@ -1032,6 +1044,13 @@ export const Archive: React.FC<ArchiveProps> = ({
   const categoryTranslatePct =
     (categorySliderIndex * 100) / categorySlidesPerView;
 
+  const parsePrice = (raw: string, fallback: number, min = 0, max = maxPrice) => {
+    const cleaned = raw.replace(/[^0-9]/g, "");
+    const num = parseInt(cleaned, 10);
+    if (!Number.isFinite(num) || cleaned === "") return fallback;
+    return Math.max(min, Math.min(max, num));
+  };
+
   const toggleBrand = (b: string) => {
     if (selectedFacetBrands.includes(b)) {
       setSelectedFacetBrands((prev) => prev.filter((x) => x !== b));
@@ -1124,14 +1143,6 @@ export const Archive: React.FC<ArchiveProps> = ({
       });
     }
 
-    if (filterBackOrder) {
-      chips.push({
-        key: "availability-back-order",
-        label: "Back Order",
-        onRemove: () => setFilterBackOrder(false),
-      });
-    }
-
     selectedDealTypes.forEach((type) => {
       const match = dealTypeOptions.find((deal) => deal.id === type);
       if (!match) return;
@@ -1176,14 +1187,23 @@ export const Archive: React.FC<ArchiveProps> = ({
       });
     });
 
+    if (priceRange[0] > 0 || priceRange[1] < maxPrice) {
+      chips.push({
+        key: "price-range",
+        label: `R${priceRange[0]} – R${priceRange[1]}`,
+        onRemove: () => setPriceRange([0, maxPrice]),
+      });
+    }
+
     return chips;
   }, [
     filterInStock,
-    filterBackOrder,
     selectedDealTypes,
     selectedRanges,
     selectedColors,
     selectedFacetBrands,
+    priceRange,
+    maxPrice,
     dealTypeOptions,
     rangeFilters,
     colorFilters,
@@ -1191,7 +1211,6 @@ export const Archive: React.FC<ArchiveProps> = ({
 
   const clearAllFilters = () => {
     setFilterInStock(false);
-    setFilterBackOrder(false);
     setSelectedDealTypes([]);
     setSelectedRanges([]);
     setSelectedColors([]);
@@ -1383,7 +1402,7 @@ export const Archive: React.FC<ArchiveProps> = ({
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Facet Filters Sidebar */}
           <aside className="hidden lg:block w-60 flex-shrink-0">
-            <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto bg-white px-0">
+            <div className="bg-white px-0">
               <div className="divide-y divide-gray-100">
                 <div className="py-7 flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-gray-900">
@@ -1560,29 +1579,6 @@ export const Archive: React.FC<ArchiveProps> = ({
                               {availabilityCounts.inStock}
                             </span>
                           </li>
-                          <li className="flex items-center justify-between gap-3">
-                            <label
-                              htmlFor="availability-back-order"
-                              className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer"
-                            >
-                              <span className="plp-radio plp-radio--subtle">
-                                <input
-                                  id="availability-back-order"
-                                  type="checkbox"
-                                  className="plp-radio__input"
-                                  checked={filterBackOrder}
-                                  onChange={(e) =>
-                                    setFilterBackOrder(e.target.checked)
-                                  }
-                                />
-                                <span className="plp-radio__symbol"></span>
-                              </span>
-                              <span>Back Order</span>
-                            </label>
-                            <span className="text-xs text-gray-500">
-                              {availabilityCounts.backOrder}
-                            </span>
-                          </li>
                         </ul>
                       </div>
                     </details>
@@ -1643,10 +1639,20 @@ export const Archive: React.FC<ArchiveProps> = ({
                             <div className="flex items-center rounded-lg border border-gray-200 bg-white px-3">
                               <span className="text-gray-500 pr-2">R</span>
                               <input
-                                readOnly
                                 className="w-full bg-transparent border-l border-l-gray-200 border-0 focus:ring-0 px-2 py-2.5 text-sm font-medium text-gray-900 focus:outline-none"
                                 type="text"
-                                value={priceRange[0]}
+                                inputMode="numeric"
+                                value={priceInput[0]}
+                                onChange={(e) => {
+                                  const next = parsePrice(e.target.value, priceRange[0], 0, priceRange[1]);
+                                  setPriceInput([String(next), priceInput[1]]);
+                                  setPriceRange([next, priceRange[1]]);
+                                }}
+                                onBlur={() => {
+                                  const clamped = Math.min(Number(priceInput[0]), priceRange[1]);
+                                  setPriceInput([String(clamped), priceInput[1]]);
+                                  setPriceRange([clamped, priceRange[1]]);
+                                }}
                               />
                             </div>
                           </div>
@@ -1655,10 +1661,20 @@ export const Archive: React.FC<ArchiveProps> = ({
                             <div className="flex items-center rounded-lg border border-gray-300 bg-white px-3">
                               <span className="text-gray-500 pr-2">R</span>
                               <input
-                                readOnly
                                 className="w-full bg-transparent border-l border-l-gray-200 border-0 focus:ring-0 px-2 py-2.5 text-sm font-medium text-gray-900 focus:outline-none"
                                 type="text"
-                                value={priceRange[1]}
+                                inputMode="numeric"
+                                value={priceInput[1]}
+                                onChange={(e) => {
+                                  const next = parsePrice(e.target.value, priceRange[1], priceRange[0], maxPrice);
+                                  setPriceInput([priceInput[0], String(next)]);
+                                  setPriceRange([priceRange[0], next]);
+                                }}
+                                onBlur={() => {
+                                  const clamped = Math.max(Number(priceInput[1]), priceRange[0]);
+                                  setPriceInput([priceInput[0], String(clamped)]);
+                                  setPriceRange([priceRange[0], clamped]);
+                                }}
                               />
                             </div>
                           </div>
@@ -1681,12 +1697,13 @@ export const Archive: React.FC<ArchiveProps> = ({
                             className="range-thumb"
                             type="range"
                             value={priceRange[0]}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
                               setPriceRange([
-                                parseInt(e.target.value),
-                                Math.max(priceRange[1], priceRange[0]),
-                              ])
-                            }
+                                Math.min(val, priceRange[1]),
+                                Math.max(priceRange[1], val),
+                              ]);
+                            }}
                             style={{ zIndex: 3 }}
                           />
                           <input
@@ -1695,12 +1712,13 @@ export const Archive: React.FC<ArchiveProps> = ({
                             className="range-thumb"
                             type="range"
                             value={priceRange[1]}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
                               setPriceRange([
-                                Math.min(priceRange[0], priceRange[1]),
-                                parseInt(e.target.value),
-                              ])
-                            }
+                                Math.min(priceRange[0], val),
+                                Math.max(val, priceRange[0]),
+                              ]);
+                            }}
                             style={{ zIndex: 4 }}
                           />
                         </div>
@@ -1950,6 +1968,33 @@ export const Archive: React.FC<ArchiveProps> = ({
               </div>
             </div>
 
+            {/* Active Filter Chips */}
+            {selectedFilterChips.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mb-6">
+                <span className="text-sm font-medium text-gray-500">
+                  Active filters:
+                </span>
+                {selectedFilterChips.map((chip) => (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    onClick={chip.onRemove}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:border-belims-blue hover:text-belims-blue transition-colors"
+                  >
+                    {chip.label}
+                    <X size={12} className="text-gray-400" />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="text-xs font-medium text-belims-blue hover:text-belims-accent ml-2"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+
             {/* Grid */}
             {showSkeletons ? (
               <ul
@@ -2107,7 +2152,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                 <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
                   Availability
                 </h4>
-                <label className="flex items-center space-x-3 mb-3">
+                <label className="flex items-center space-x-3">
                   <input
                     type="checkbox"
                     className="h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
@@ -2115,15 +2160,6 @@ export const Archive: React.FC<ArchiveProps> = ({
                     onChange={(e) => setFilterInStock(e.target.checked)}
                   />
                   <span>In Stock Only</span>
-                </label>
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
-                    checked={filterBackOrder}
-                    onChange={(e) => setFilterBackOrder(e.target.checked)}
-                  />
-                  <span>Back Order</span>
                 </label>
               </div>
 
