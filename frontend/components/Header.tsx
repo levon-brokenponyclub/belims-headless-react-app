@@ -505,16 +505,6 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="topbar__column topbar__left">
             <ul className="topbar__menu">
               <li className="topbar__menu-item">
-                <Link to="/help-center" className="block">
-                  Help Center
-                </Link>
-              </li>
-              <li className="topbar__menu-item">
-                <button type="button" onClick={onOpenTrackOrder}>
-                  Track Your Order
-                </button>
-              </li>
-              <li className="topbar__menu-item">
                 <Link to="/wishlist" className="block">
                   Wishlist
                 </Link>
@@ -1121,9 +1111,6 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                   <div className="px-4 py-3 border-b border-subtle text-ink">
                     Track Order
-                  </div>
-                  <div className="px-4 py-3 border-b border-subtle text-ink">
-                    Help Center
                   </div>
                 </div>
               </div>
