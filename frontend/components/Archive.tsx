@@ -1298,106 +1298,6 @@ export const Archive: React.FC<ArchiveProps> = ({
         </div>
       </nav>
 
-      {categorySliderItems.length > 0 && (
-        <section className="bg-white border-b border-gray-100 mb-6">
-          <div className="container mx-auto px-4 py-4 pb-8">
-            {/* <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Explore categories
-                </h2>
-                <p className="text-sm text-gray-600">
-                  {categoryContextNode?.label
-                    ? `Browse ${categoryContextNode.label} subcategories.`
-                    : "Browse popular categories."}
-                </p>
-              </div>
-              <div
-                className={`items-center gap-2 ${
-                  categorySliderMaxIndex > 0 ? "flex" : "hidden"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={categorySliderPrev}
-                  aria-label="Previous categories"
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  onClick={categorySliderNext}
-                  aria-label="Next categories"
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
-                >
-                  ›
-                </button>
-              </div>
-            </div> */}
-
-            <div
-              className="relative overflow-hidden"
-              aria-roledescription="carousel"
-            >
-              <div
-                className="-mx-3 flex transition-transform duration-500 ease-out"
-                style={{ transform: `translateX(-${categoryTranslatePct}%)` }}
-              >
-                {categorySliderItems.map((label) => {
-                  const isSale = label.toLowerCase() === "sale";
-                  const media = categoryMedia[label];
-                  return (
-                    <div
-                      key={label}
-                      className="shrink-0 px-3"
-                      style={{ width: `${100 / categorySlidesPerView}%` }}
-                    >
-                      <Link
-                        to={`/shop/${encodeURIComponent(label)}`}
-                        className="group relative flex h-full w-full items-center overflow-hidden rounded-full border border-white bg-white px-3 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
-                      >
-                        <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                        <span className="relative z-10 flex items-center gap-3 min-w-0">
-                          <span
-                            className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors group-hover:bg-white ${
-                              isSale
-                                ? "bg-belims-accent text-white"
-                                : "bg-grey-light"
-                            }`}
-                          >
-                            {isSale ? (
-                              <span className="text-[10px] font-bold uppercase leading-none">
-                                Sale
-                              </span>
-                            ) : media?.icon ? (
-                              <img
-                                src={media.icon}
-                                alt=""
-                                className="h-6 w-6 object-contain"
-                                loading="lazy"
-                                decoding="async"
-                              />
-                            ) : (
-                              <span className="text-xs font-semibold text-grey">
-                                {label.slice(0, 2)}
-                              </span>
-                            )}
-                          </span>
-                          <span className="truncate text-sm font-semibold transition-colors group-hover:text-white">
-                            {label}
-                          </span>
-                        </span>
-                      </Link>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
       <div className="container mx-auto px-4 pb-12">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Facet Filters Sidebar */}
@@ -2096,7 +1996,7 @@ export const Archive: React.FC<ArchiveProps> = ({
       {/* Mobile Filters Modal */}
       {mobileFiltersOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end"
+          className="fixed inset-0 z-[1300] bg-black/50 backdrop-blur-sm flex justify-end"
           onClick={() => setMobileFiltersOpen(false)}
         >
           <div
@@ -2114,6 +2014,49 @@ export const Archive: React.FC<ArchiveProps> = ({
             </div>
 
             <div className="space-y-8">
+              {/* Mobile Category Search */}
+              <div>
+                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                  Category
+                </h4>
+                <label className="relative block mb-3">
+                  <span className="sr-only">Search categories</span>
+                  <Search
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
+                  <input
+                    type="search"
+                    value={sidebarSearch}
+                    onChange={(e) => setSidebarSearch(e.target.value)}
+                    placeholder="Search categories"
+                    className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                  />
+                </label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {filteredCategoryList.map((sub) => (
+                    <label
+                      key={sub.id}
+                      className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                        checked={selectedCategories.some(
+                          (selected) =>
+                            selected.toLowerCase() === sub.label.toLowerCase(),
+                        )}
+                        onChange={() => toggleCategory(sub.label)}
+                      />
+                      <span>{sub.label}</span>
+                      <span className="text-xs text-gray-500 ml-auto">
+                        {categoryCounts[sub.label.toLowerCase()] || 0}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {/* Mobile Price */}
               <div>
                 <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
@@ -2124,25 +2067,33 @@ export const Archive: React.FC<ArchiveProps> = ({
                     type="number"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                     placeholder="Min"
-                    value={priceRange[0]}
-                    onChange={(e) =>
-                      setPriceRange([
-                        parseInt(e.target.value) || 0,
-                        priceRange[1],
-                      ])
-                    }
+                    value={priceInput[0]}
+                    onChange={(e) => {
+                      const next = parsePrice(e.target.value, priceRange[0], 0, priceRange[1]);
+                      setPriceInput([String(next), priceInput[1]]);
+                      setPriceRange([next, priceRange[1]]);
+                    }}
+                    onBlur={() => {
+                      const clamped = Math.min(Number(priceInput[0]), priceRange[1]);
+                      setPriceInput([String(clamped), priceInput[1]]);
+                      setPriceRange([clamped, priceRange[1]]);
+                    }}
                   />
                   <input
                     type="number"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                     placeholder="Max"
-                    value={priceRange[1]}
-                    onChange={(e) =>
-                      setPriceRange([
-                        priceRange[0],
-                        parseInt(e.target.value) || maxPrice,
-                      ])
-                    }
+                    value={priceInput[1]}
+                    onChange={(e) => {
+                      const next = parsePrice(e.target.value, priceRange[1], priceRange[0], maxPrice);
+                      setPriceInput([priceInput[0], String(next)]);
+                      setPriceRange([priceRange[0], next]);
+                    }}
+                    onBlur={() => {
+                      const clamped = Math.max(Number(priceInput[1]), priceRange[0]);
+                      setPriceInput([priceInput[0], String(clamped)]);
+                      setPriceRange([priceRange[0], clamped]);
+                    }}
                   />
                 </div>
               </div>
@@ -2185,6 +2136,93 @@ export const Archive: React.FC<ArchiveProps> = ({
                   ))}
                 </div>
               </div>
+
+              {/* Mobile Brand Filter */}
+              {uniqueBrands.length > 0 && !brand && (
+                <div>
+                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                    Brand
+                  </h4>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {uniqueBrands.map((b) => (
+                      <label
+                        key={b}
+                        className="flex items-center space-x-3"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                          checked={selectedFacetBrands.includes(b)}
+                          onChange={() => toggleBrand(b)}
+                        />
+                        <span>{b}</span>
+                        <span className="text-xs text-gray-500 ml-auto">
+                          {brandCounts[b.toLowerCase()] || 0}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mobile Range Filter */}
+              {rangeFilters.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                    Range
+                  </h4>
+                  <div className="space-y-3">
+                    {rangeFilters.map((r) => (
+                      <label
+                        key={r.slug}
+                        className="flex items-center space-x-3"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                          checked={selectedRanges.includes(r.slug)}
+                          onChange={() => toggleRange(r.slug)}
+                        />
+                        <span>{r.name}</span>
+                        <span className="text-xs text-gray-500 ml-auto">
+                          {r.count}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mobile Color Filter */}
+              {colorFilters.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                    Color
+                  </h4>
+                  <div className="space-y-3">
+                    {colorFilters.map((c) => (
+                      <label
+                        key={c.slug}
+                        className="flex items-center space-x-3"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                          checked={selectedColors.includes(c.slug)}
+                          onChange={() => toggleColor(c.slug)}
+                        />
+                        <span className="flex items-center">
+                          <span className="bg-gray-300 ring-1 ring-gray-200 rounded-full w-3.5 h-3.5 inline-block mr-2"></span>
+                          {c.name}
+                        </span>
+                        <span className="text-xs text-gray-500 ml-auto">
+                          {c.count}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-8 pt-6 border-t border-gray-100">
