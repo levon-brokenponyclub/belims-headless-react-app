@@ -73,7 +73,12 @@
 - Added expandable delivery options accordion with fastest/cheapest markers.
 - Added hover animations and arrow swipe effects matching the CategoryGrid style.
 
+### 7. Home page section order
+- Moved `<CategoryGrid />` from the top of the home page to directly above `<DealsSection />`.
+- Current order: HeroBanner → ShopByCategory → FeaturedGrid → CollageGrid → DealsSection → CategoryGrid → TradeDeals → PopularCategories.
+
 ## Commits
+- `a5dcc78` frontend: swap DealsSection and CategoryGrid order on home page
 - `9128234` frontend: match Checkers category hero style for archive breadcrumbs and toolbar
 - `8ac1ea4` frontend: link Track Order to /track-order and remove Help Center
 - `bb2b5fd` frontend: remove category pills and expand mobile filter panel
