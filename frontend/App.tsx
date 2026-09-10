@@ -52,6 +52,7 @@ import { CountdownTimer } from "./components/CountdownTimer";
 import CollageGrid from "./components/CollageGrid";
 import ProjectInspiration from "./components/ProjectInspiration";
 import { PopularCategories } from "./components/PopularCategories";
+import { ComingSoon } from "./components/ComingSoon";
 import { getCurrentUser, UserData, logoutUser } from "./services/authService";
 import { saveStoredAddress } from "./services/shippingAddress";
 
@@ -1270,14 +1271,7 @@ function MainApp(props) {
           <Routes location={displayLocation}>
             <Route
               path="/"
-              element={
-                <HomePage
-                  {...props}
-                  handleProductClick={handleProductClick}
-                  isAuthenticated={isAuthenticated}
-                  isTradeApproved={isTradeApproved}
-                />
-              }
+              element={<ComingSoon />}
             />
             <Route
               path="/product/:id"
