@@ -5,9 +5,11 @@ export const ComingSoon = () => {
     <div className="min-h-screen flex items-center justify-center bg-belims-navy text-white">
       <div className="container mx-auto px-4 text-center">
         <div className="max-w-2xl mx-auto">
-          <div className="w-20 h-20 mx-auto mb-8 bg-white/10 rounded-full flex items-center justify-center">
-            <span className="text-3xl font-bold font-heading">B</span>
-          </div>
+          <img
+            src="/images/belims-logo-white.png"
+            alt="Belims"
+            className="w-20 h-20 mx-auto mb-8 object-contain"
+          />
           <h1 className="text-4xl md:text-6xl font-bold mb-4 font-heading">
             Coming Soon
           </h1>

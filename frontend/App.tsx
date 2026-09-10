@@ -1247,7 +1247,7 @@ function MainApp(props) {
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans">
-      {!isCheckoutRoute && (
+      {!isCheckoutRoute && !SHOW_COMING_SOON && (
         <Header
           selectedStore={props.selectedStore}
           setSelectedStore={props.setSelectedStore}
@@ -1386,11 +1386,11 @@ function MainApp(props) {
         </div>
       </main>
 
-      {!isCheckoutRoute && <Footer />}
+      {!isCheckoutRoute && !SHOW_COMING_SOON && <Footer />}
 
       {/* <FreeShippingWidget cartItems={props.cartItems} /> */}
 
-      {!isCheckoutRoute && (
+      {!isCheckoutRoute && !SHOW_COMING_SOON && (
         <CartDrawer
           isOpen={props.isCartOpen}
           onClose={() => props.setIsCartOpen(false)}
@@ -1417,7 +1417,7 @@ function MainApp(props) {
         />
       )}
 
-      {!isCheckoutRoute && props.isSearchModalOpen && (
+      {!isCheckoutRoute && !SHOW_COMING_SOON && props.isSearchModalOpen && (
         <SearchModal
           isOpen={props.isSearchModalOpen}
           onClose={() => props.setIsSearchModalOpen(false)}
@@ -1426,7 +1426,7 @@ function MainApp(props) {
         />
       )}
 
-      {props.isLocatorOpen && (
+      {!SHOW_COMING_SOON && props.isLocatorOpen && (
         <StoreLocator
           currentStore={props.selectedStore}
           stores={props.storeLocations}
@@ -1443,7 +1443,7 @@ function MainApp(props) {
         />
       )}
 
-      {!isCheckoutRoute && props.isCompareOpen && (
+      {!isCheckoutRoute && !SHOW_COMING_SOON && props.isCompareOpen && (
         <ComparisonModal
           products={props.comparisonList}
           onClose={() => props.setIsCompareOpen(false)}
@@ -1452,14 +1452,14 @@ function MainApp(props) {
         />
       )}
 
-      {!isCheckoutRoute && props.priceMatchProduct && (
+      {!isCheckoutRoute && !SHOW_COMING_SOON && props.priceMatchProduct && (
         <PriceMatchModal
           product={props.priceMatchProduct}
           onClose={() => props.setPriceMatchProduct(null)}
         />
       )}
 
-      {!isCheckoutRoute && props.isOnboardingOpen && (
+      {!isCheckoutRoute && !SHOW_COMING_SOON && props.isOnboardingOpen && (
         <OnboardingWizard
           products={props.products}
           onClose={() => {
@@ -1475,7 +1475,7 @@ function MainApp(props) {
         />
       )}
 
-      {!isCheckoutRoute && props.isPaintOpen && (
+      {!isCheckoutRoute && !SHOW_COMING_SOON && props.isPaintOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden relative max-h-[90vh] overflow-y-auto">
             <button
@@ -1502,7 +1502,7 @@ function MainApp(props) {
         />
       )}
 
-      {!isCheckoutRoute && (
+      {!isCheckoutRoute && !SHOW_COMING_SOON && (
         <>
           <CookieConsent
             isOpen={isCookieConsentOpen}
