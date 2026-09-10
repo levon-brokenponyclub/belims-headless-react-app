@@ -35,10 +35,14 @@ function woocommerce_payfast_init() {
 
 	require_once plugin_basename( 'includes/class-wc-gateway-payfast.php' );
 	require_once plugin_basename( 'includes/class-wc-gateway-payfast-privacy.php' );
-	load_plugin_textdomain( 'woocommerce-gateway-payfast', false, trailingslashit( dirname( plugin_basename( __FILE__ ) ) ) );
 	add_filter( 'woocommerce_payment_gateways', 'woocommerce_payfast_add_gateway' );
 }
 add_action( 'plugins_loaded', 'woocommerce_payfast_init', 0 );
+
+add_action( 'init', 'woocommerce_payfast_load_textdomain' );
+function woocommerce_payfast_load_textdomain() {
+	load_plugin_textdomain( 'woocommerce-gateway-payfast', false, trailingslashit( dirname( plugin_basename( __FILE__ ) ) ) );
+}
 
 /**
  * Add links to the plugin action links.
