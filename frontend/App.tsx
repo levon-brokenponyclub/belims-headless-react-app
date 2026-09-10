@@ -53,6 +53,10 @@ import CollageGrid from "./components/CollageGrid";
 import ProjectInspiration from "./components/ProjectInspiration";
 import { PopularCategories } from "./components/PopularCategories";
 import { ComingSoon } from "./components/ComingSoon";
+
+const SHOW_COMING_SOON =
+  import.meta.env.VERCEL_ENV === "production" ||
+  import.meta.env.VITE_COMING_SOON === "true";
 import { getCurrentUser, UserData, logoutUser } from "./services/authService";
 import { saveStoredAddress } from "./services/shippingAddress";
 
@@ -1271,7 +1275,18 @@ function MainApp(props) {
           <Routes location={displayLocation}>
             <Route
               path="/"
-              element={<ComingSoon />}
+              element={
+                SHOW_COMING_SOON ? (
+                  <ComingSoon />
+                ) : (
+                  <HomePage
+                    {...props}
+                    handleProductClick={handleProductClick}
+                    isAuthenticated={isAuthenticated}
+                    isTradeApproved={isTradeApproved}
+                  />
+                )
+              }
             />
             <Route
               path="/product/:id"
