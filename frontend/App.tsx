@@ -55,7 +55,6 @@ import { PopularCategories } from "./components/PopularCategories";
 import { ComingSoon } from "./components/ComingSoon";
 
 const SHOW_COMING_SOON =
-  import.meta.env.VERCEL_ENV === "production" ||
   import.meta.env.VITE_COMING_SOON === "true";
 import { getCurrentUser, UserData, logoutUser } from "./services/authService";
 import { saveStoredAddress } from "./services/shippingAddress";
