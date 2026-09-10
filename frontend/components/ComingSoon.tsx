@@ -8,7 +8,7 @@ export const ComingSoon = () => {
           <img
             src="/images/belims-logo-white.png"
             alt="Belims"
-            className="w-20 h-20 mx-auto mb-8 object-contain"
+            className="h-12 mx-auto mb-8 object-contain"
           />
           <h1 className="text-4xl md:text-6xl font-bold mb-4 font-heading">
             Coming Soon
