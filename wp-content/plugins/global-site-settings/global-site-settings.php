@@ -12,8 +12,8 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('GLOBAL_SITE_SETTINGS_VERSION', '2.2.0');
-define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-09-10 19:00:14');
+define('GLOBAL_SITE_SETTINGS_VERSION', '2.3.0');
+define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-09-10 19:56:35');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -114,6 +114,11 @@ function global_site_settings_init() {
     foreach ($files as $file) {
         $path = GLOBAL_SITE_SETTINGS_PLUGIN_DIR . $file;
         if (file_exists($path)) require_once $path;
+    }
+
+    // Instantiate dashboard widgets class
+    if (class_exists('Belims_Dashboard_Widgets')) {
+        new Belims_Dashboard_Widgets();
     }
 
     add_action('rest_api_init', 'global_site_settings_register_endpoints');
@@ -606,7 +611,7 @@ function global_site_settings_admin_color_css() {
         #adminmenu li.current a.menu-top { background: var(--belims-admin-accent) !important; }
         #adminmenu .wp-submenu a:hover { color: var(--belims-admin-accent) !important; }
 
-        .wp-core-ui .button-primary { background: var(--belims-admin-accent) !important; border-color: var(--belims-admin-accent-dark) !important; }
+        .wp-core-ui .button-primary { background: var(--belims-admin-accent) !important; border-color: var(--belims-admin-accent-dark) !important; color: #ffffff !important; }
         .wp-core-ui .button-primary:hover { background: var(--belims-admin-accent-dark) !important; }
         .wp-core-ui .button-primary:active { background: var(--belims-admin-accent-darker) !important; }
 
