@@ -712,6 +712,7 @@ export default function App() {
     null,
   );
   const [categoryPills, setCategoryPills] = useState<string[]>(CATEGORY_PILLS);
+  const hasCheckedAuthRef = useRef(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [toast, setToast] = useState<{
     message: string;
@@ -917,6 +918,9 @@ export default function App() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (hasCheckedAuthRef.current) return;
+      hasCheckedAuthRef.current = true;
+
       const user = await getCurrentUser();
       setCurrentUser(user);
     };
