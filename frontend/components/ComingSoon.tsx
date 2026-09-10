@@ -10,9 +10,6 @@ export const ComingSoon = () => {
             alt="Belims"
             className="h-12 mx-auto mb-8 object-contain"
           />
-          <h1 className="text-4xl md:text-4xl font-semibold text-white mb-4 font-heading">
-            Coming Soon
-          </h1>
           <p className="text-lg md:text-xl text-white/80 mb-8 font-body">
             We&apos;re building something great. Our new online store is launching
             shortly.

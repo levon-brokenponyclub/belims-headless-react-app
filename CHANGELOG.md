@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-10 — Coming Soon page and environment gating
+
+### 1. Coming Soon splash page
+- Added `frontend/components/ComingSoon.tsx` with logo, contact CTAs, and copyright.
+- Replaced initial "B" icon with `/images/belims-logo-white.png`.
+- Removed `<h1>` heading from Coming Soon page.
+- Reduced logo height from `h-20` to `h-12`.
+
+### 2. Environment-gated production splash
+- Root route now shows `ComingSoon` only when `VITE_COMING_SOON=true`.
+- Preview deployments show the full site; production shows the splash.
+
+### 3. App shell isolation
+- Hidden on Coming Soon: `Header`, `Footer`, `CartDrawer`, `SearchModal`, `StoreLocator`, `ComparisonModal`, `PriceMatchModal`, `OnboardingWizard`, `PaintAssistant`, `CookieConsent`, and `MobileBottomNav`.
+
 ## 2026-09-09 — Frontend hardening, filter UX, and archive restructure
 
 ### 1. Inventory / pricing guards
