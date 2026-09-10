@@ -122,12 +122,6 @@ export const readStoredAddress = (): {
   const legacyPostalCode = legacyLabel?.trim() || "";
   if (!raw) {
     if (/^\d{4}$/.test(legacyPostalCode)) {
-      console.log("[delivery-address] read legacy postal code", {
-        storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
-        legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
-        storedValue: raw,
-        legacyValue: legacyLabel,
-      });
       return {
         address: {
           street: "",
@@ -149,13 +143,6 @@ export const readStoredAddress = (): {
     if (parsed) {
       const normalizedCountry = (parsed.country || "ZA").toUpperCase();
       if (normalizedCountry === "ZA") {
-        console.log("[delivery-address] read saved address", {
-          storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
-          legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
-          storedValue: raw,
-          legacyValue: legacyLabel,
-          parsed,
-        });
         return {
           address: {
             ...parsed,
@@ -171,20 +158,7 @@ export const readStoredAddress = (): {
       }
     }
   } catch {
-    console.log("[delivery-address] read failed", {
-      storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
-      legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
-      storedValue: raw,
-      legacyValue: legacyLabel,
-    });
   }
-
-  console.log("[delivery-address] read empty", {
-    storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
-    legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
-    storedValue: raw,
-    legacyValue: legacyLabel,
-  });
   return { address: null, legacyLabel };
 };
 
@@ -192,13 +166,6 @@ export const saveStoredAddress = (address: ShippingAddress | null) => {
   if (!address) {
     localStorage.removeItem(DELIVERY_ADDRESS_STORAGE_KEY);
     localStorage.removeItem(DELIVERY_ADDRESS_LEGACY_KEY);
-    console.log("[delivery-address] removed", {
-      storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
-      legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
-      storedValue: localStorage.getItem(DELIVERY_ADDRESS_STORAGE_KEY),
-      legacyValue: localStorage.getItem(DELIVERY_ADDRESS_LEGACY_KEY),
-    });
-    console.trace("[delivery-address] removal stack");
     return;
   }
 
@@ -211,13 +178,6 @@ export const saveStoredAddress = (address: ShippingAddress | null) => {
 
   localStorage.setItem(DELIVERY_ADDRESS_STORAGE_KEY, JSON.stringify(payload));
   localStorage.setItem(DELIVERY_ADDRESS_LEGACY_KEY, label);
-  console.log("[delivery-address] saved", {
-    storageKey: DELIVERY_ADDRESS_STORAGE_KEY,
-    legacyKey: DELIVERY_ADDRESS_LEGACY_KEY,
-    payload,
-    storedValue: localStorage.getItem(DELIVERY_ADDRESS_STORAGE_KEY),
-    legacyValue: localStorage.getItem(DELIVERY_ADDRESS_LEGACY_KEY),
-  });
 };
 
 export const mapNominatimAddress = (data: any): ShippingAddress | null => {

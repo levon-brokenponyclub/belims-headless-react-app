@@ -300,9 +300,9 @@ const HomePage = ({
     const rafA = window.requestAnimationFrame(() => {
       rafB = window.requestAnimationFrame(() => {
         const loadTimeMs = performance.now();
-        console.log(
-          `[Performance][Optimized] Home page loaded with products in ${loadTimeMs.toFixed(0)}ms (products: ${products.length})`,
-        );
+        // console.log(
+        //   `[Performance][Optimized] Home page loaded with products in ${loadTimeMs.toFixed(0)}ms (products: ${products.length})`,
+        // );
         homeLoadLoggedRef.current = true;
       });
     });
@@ -992,13 +992,13 @@ export default function App() {
         const productsFetchStart = performance.now();
         const apiProducts = await fetchProducts();
         const productsFetchMs = performance.now() - productsFetchStart;
-        console.log(
-          `[Performance][Optimized] Products API fetched in ${productsFetchMs.toFixed(0)}ms (products: ${apiProducts?.length || 0})`,
-        );
+        // console.log(
+        //   `[Performance][Optimized] Products API fetched in ${productsFetchMs.toFixed(0)}ms (products: ${apiProducts?.length || 0})`,
+        // );
         const validProducts = (apiProducts ?? []).filter(isProductPurchasable);
-        console.log(
-          `[Inventory] Filtered ${(apiProducts?.length ?? 0) - validProducts.length} unpurchasable products (backorder/zero-price/out-of-stock)`,
-        );
+        // console.log(
+        //   `[Inventory] Filtered ${(apiProducts?.length ?? 0) - validProducts.length} unpurchasable products (backorder/zero-price/out-of-stock)`,
+        // );
         if (validProducts.length) setProducts(validProducts);
 
         const apiFeatured = await fetchFeaturedProducts();

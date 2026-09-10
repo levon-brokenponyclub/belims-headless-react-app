@@ -204,7 +204,7 @@ export const fetchProducts = async (
     }
 
     const url = params.toString() ? `${endpoint}?${params}` : endpoint;
-    console.log(`Fetching products from: ${url}`);
+    // console.log(`Fetching products from: ${url}`);
 
     const data = await cachedGetJson<any[]>(url);
 
@@ -233,7 +233,7 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
     params.append("view", "listing");
     params.append("fields", DEFAULT_LISTING_FIELDS.join(","));
     const url = `${BASE_URL}/products?${params.toString()}`;
-    console.log(`Fetching featured products from: ${url}`);
+    // console.log(`Fetching featured products from: ${url}`);
 
     const data = await cachedGetJson<any[]>(url);
     return (data as Product[]).map((item) =>
@@ -279,7 +279,7 @@ export const fetchProductById = async (
 export const fetchCategories = async (): Promise<WooCommerceCategory[]> => {
   try {
     const url = `${BASE_URL}/categories`;
-    console.log(`Fetching categories from: ${url}`);
+    // console.log(`Fetching categories from: ${url}`);
 
     return await cachedGetJson<WooCommerceCategory[]>(url);
   } catch (error) {
