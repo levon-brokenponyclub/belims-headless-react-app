@@ -4,8 +4,6 @@
  * Plugin URI: https://belims.co.za
  * Description: Unified plugin for Belims site settings, ACF field groups, REST API endpoints, and third-party integrations (WooCommerce, FTG, BobGo, AI).
  * Version: 2.2.0
- * Author: Belims Team & Co Pilot
- * Author URI: https://belims.co.za
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: global-site-settings
@@ -15,7 +13,7 @@
 if (!defined('ABSPATH')) exit;
 
 define('GLOBAL_SITE_SETTINGS_VERSION', '2.2.0');
-define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-06-02 08:19:11');
+define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-09-10 19:00:14');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -78,7 +76,7 @@ add_filter('rest_pre_serve_request', function($served, $result, $request, $serve
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-WP-Nonce');
     header('Access-Control-Allow-Credentials: true');
-    
+
     return $served;
 }, 10, 4);
 
@@ -102,12 +100,16 @@ function global_site_settings_init() {
         // BobGo Shipping integration
         'includes/bobgo-shipping/init.php', // Clean REST endpoint leveraging uAfrica/BobGo plugin
         'includes/bobgo-shipping/class-bobgo-api.php',
-        'includes/bobgo-shipping/class-bobgo-order-handler.php',
+        // class-bobgo-order-handler.php disabled — BobGo receives orders via its WC webhook
+        // subscription (uafrica_service_code meta → WC webhook → BobGo). Direct API requires
+        // API keys which the current BobGo plan does not support.
         'includes/bobgo-shipping/class-bobgo-webhook-endpoint.php',
-        // PayFast Payment Gateway integration
+         // PayFast Payment Gateway integration
         'includes/payfast/class-payfast-api.php',
         'includes/payfast/class-payfast-return-handler.php', // PayFast return redirect
         'includes/payfast/class-payfast-admin-page.php', // PayFast testing/admin page
+        // Dashboard Widgets
+        'includes/class-dashboard-widgets.php',
     ];
     foreach ($files as $file) {
         $path = GLOBAL_SITE_SETTINGS_PLUGIN_DIR . $file;
@@ -202,7 +204,7 @@ function global_site_settings_register_product_taxonomies() {
             )
         );
     }
-    
+
     // Register product_color taxonomy
     if (!taxonomy_exists('product_color')) {
         register_taxonomy(
@@ -255,7 +257,7 @@ add_action('admin_init', 'global_site_settings_acf_form_head');
 add_action('wp_ajax_clear_ftg_credentials', 'clear_ftg_credentials_handler');
 function clear_ftg_credentials_handler() {
     check_ajax_referer('clear_ftg_creds', 'nonce');
-    
+
     if (!current_user_can('manage_options')) {
         wp_send_json_error('Unauthorized');
         return;
@@ -266,11 +268,11 @@ function clear_ftg_credentials_handler() {
     update_field('ftg_password', '', 'option');
     update_field('ftg_collection_token', '', 'option');
     update_field('ftg_enabled', false, 'option');
-    
+
     // Clear stored auth token
     delete_option('belims_ftg_auth_token');
     delete_option('belims_ftg_token_expiry');
-    
+
     wp_send_json_success('FTG credentials cleared');
 }
 
@@ -294,17 +296,43 @@ function global_site_settings_register_bobgo_settings() {
 add_action('admin_init', 'global_site_settings_register_bobgo_settings');
 
 /**
+ * AJAX: Switch frontend environment (development / production)
+ */
+add_action('wp_ajax_switch_frontend_environment', 'switch_frontend_environment_handler');
+function switch_frontend_environment_handler() {
+    check_ajax_referer('switch_env_nonce', 'nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+        return;
+    }
+
+    $env = sanitize_text_field($_POST['environment'] ?? '');
+    if (!in_array($env, array('development', 'production'), true)) {
+        wp_send_json_error('Invalid environment');
+        return;
+    }
+
+    update_option('belims_frontend_environment', $env);
+
+    wp_send_json_success(array(
+        'environment' => $env,
+        'cors_origin' => get_cors_origin(),
+    ));
+}
+
+/**
  * AJAX handler to test BobGo connection
  */
 add_action('wp_ajax_test_bobgo_connection', 'test_bobgo_connection_handler');
 function test_bobgo_connection_handler() {
     check_ajax_referer('bobgo_nonce', 'nonce');
-    
+
     if (!current_user_can('manage_options')) {
         wp_send_json_error('Unauthorized');
         return;
     }
-    
+
     if (!class_exists('BobGo_API')) {
         wp_send_json_error('BobGo API not available');
         return;
@@ -325,6 +353,112 @@ function test_bobgo_connection_handler() {
     }
 
     wp_send_json_success('Connected to BobGo ' . ucfirst($api->get_environment()) . ' successfully!');
+}
+
+/**
+ * AJAX: Check an order's BobGo sync state
+ */
+add_action('wp_ajax_belims_check_order_sync', 'belims_check_order_sync_handler');
+function belims_check_order_sync_handler() {
+    check_ajax_referer('bobgo_nonce', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+        return;
+    }
+
+    $order_id = intval($_POST['order_id'] ?? 0);
+    if (!$order_id) {
+        wp_send_json_error('No order ID supplied');
+        return;
+    }
+
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        wp_send_json_error('Order #' . $order_id . ' not found');
+        return;
+    }
+
+    $shipping_items = [];
+    foreach ($order->get_items('shipping') as $item) {
+        $shipping_items[] = [
+            'method_title' => $item->get_method_title(),
+            'method_id'    => $item->get_method_id(),
+            'total'        => $order->get_currency() . ' ' . $item->get_total(),
+            'service_code' => $item->get_meta('bobgo_service_level'),
+        ];
+    }
+
+    $bobgo_shipment_id  = $order->get_meta('_bobgo_shipment_id');
+    $bobgo_tracking_url = $order->get_meta('_bobgo_tracking_url');
+    $bobgo_order_ref    = $order->get_meta('_bobgo_order_reference');
+
+    wp_send_json_success([
+        'order_id'         => $order_id,
+        'order_status'     => $order->get_status(),
+        'shipping_items'   => $shipping_items,
+        'bobgo_synced'     => !empty($bobgo_shipment_id),
+        'shipment_id'      => $bobgo_shipment_id ?: '—',
+        'tracking_url'     => $bobgo_tracking_url ?: '—',
+        'order_reference'  => $bobgo_order_ref ?: '—',
+    ]);
+}
+
+/**
+ * AJAX: Manually trigger BobGo order sync
+ */
+add_action('wp_ajax_belims_trigger_order_sync', 'belims_trigger_order_sync_handler');
+function belims_trigger_order_sync_handler() {
+    check_ajax_referer('bobgo_nonce', 'nonce');
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+        return;
+    }
+
+    $order_id = intval($_POST['order_id'] ?? 0);
+    if (!$order_id) {
+        wp_send_json_error('No order ID supplied');
+        return;
+    }
+
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        wp_send_json_error('Order #' . $order_id . ' not found');
+        return;
+    }
+
+    if (!class_exists('BobGo_Order_Handler')) {
+        wp_send_json_error('BobGo_Order_Handler class not available');
+        return;
+    }
+
+    // Fix legacy orders where method_id was not saved (pre-fix orders have blank method_id).
+    // is_bobgo_shipping() checks method_id, so patch it now so the sync can proceed.
+    $patched = false;
+    foreach ($order->get_items('shipping') as $item) {
+        if (empty($item->get_method_id())) {
+            $item->set_method_id('bobgo_shipping');
+            $item->save();
+            $patched = true;
+        }
+    }
+
+    // Clear the WC order-items cache so create_bobgo_order() reads the patched data, not the cached copy.
+    wp_cache_delete('order-items-' . $order_id, 'orders');
+    clean_post_cache($order_id);
+
+    $handler = new BobGo_Order_Handler();
+    $handler->create_bobgo_order($order_id);
+
+    // create_bobgo_order() saves _bobgo_order_id on success (shipment is a separate step).
+    $order = wc_get_order($order_id);
+    $bobgo_order_id = $order->get_meta('_bobgo_order_id');
+    if ($bobgo_order_id) {
+        $msg = 'BobGo order created: ' . $bobgo_order_id;
+        if ($patched) $msg .= ' (legacy order — method_id was patched)';
+        wp_send_json_success($msg);
+    } else {
+        wp_send_json_error('Sync ran but no BobGo order ID was saved. Check order #' . $order_id . ' notes for details.');
+    }
 }
 
 /**
@@ -360,7 +494,7 @@ add_action('admin_footer', 'global_site_settings_render_bobgo_env_badge');
 //     if (is_admin() || $GLOBALS['pagenow'] === 'wp-login.php' || wp_doing_ajax()) {
 //         return;
 //     }
-//     
+//
 //     // Redirect any frontend page to login if not logged in
 //     if (!is_user_logged_in()) {
 //         auth_redirect();
@@ -429,23 +563,23 @@ function global_site_settings_admin_color_css() {
     if (!function_exists('get_field')) {
         return;
     }
-    
+
     $admin_colors = get_field('admin_dashboard_colors', 'option');
-    
+
     if (!$admin_colors) {
         return; // Use default CSS colors
     }
-    
+
     $admin_bar_bg = $admin_colors['admin_bar_bg'] ?? '#322783';
     $admin_menu_bg = $admin_colors['admin_menu_bg'] ?? '#322783';
     $admin_submenu_bg = $admin_colors['admin_submenu_bg'] ?? '#4a3fc2';
     $admin_menu_text = $admin_colors['admin_menu_text'] ?? '#ffffff';
     $admin_accent = $admin_colors['admin_accent'] ?? '#e40613';
-    
+
     // Calculate darker shades for hover states
     $admin_accent_dark = adjust_brightness($admin_accent, -20);
     $admin_accent_darker = adjust_brightness($admin_accent, -40);
-    
+
     ?>
     <style id="belims-admin-colors">
         :root {
@@ -457,33 +591,33 @@ function global_site_settings_admin_color_css() {
             --belims-admin-accent-dark: <?php echo esc_attr($admin_accent_dark); ?>;
             --belims-admin-accent-darker: <?php echo esc_attr($admin_accent_darker); ?>;
         }
-        
+
         /* Apply custom colors to WordPress admin */
         #wpadminbar { background: var(--belims-admin-bar-bg) !important; }
         #wpadminbar .ab-item, #wpadminbar a.ab-item { color: var(--belims-admin-menu-text) !important; }
         #wpadminbar .ab-top-menu > li:hover > .ab-item { background: var(--belims-admin-submenu-bg) !important; }
         #wpadminbar .ab-submenu { background: var(--belims-admin-submenu-bg) !important; }
         #wpadminbar .quicklinks .menupop ul li a:hover { background: var(--belims-admin-menu-bg) !important; color: var(--belims-admin-accent) !important; }
-        
+
         #adminmenu, #adminmenuback, #adminmenuwrap { background: var(--belims-admin-menu-bg) !important; }
         #adminmenu a { color: var(--belims-admin-menu-text) !important; }
         #adminmenu li.menu-top:hover { background-color: var(--belims-admin-submenu-bg) !important; }
         #adminmenu .wp-submenu { background: var(--belims-admin-submenu-bg) !important; }
         #adminmenu li.current a.menu-top { background: var(--belims-admin-accent) !important; }
         #adminmenu .wp-submenu a:hover { color: var(--belims-admin-accent) !important; }
-        
+
         .wp-core-ui .button-primary { background: var(--belims-admin-accent) !important; border-color: var(--belims-admin-accent-dark) !important; }
         .wp-core-ui .button-primary:hover { background: var(--belims-admin-accent-dark) !important; }
         .wp-core-ui .button-primary:active { background: var(--belims-admin-accent-darker) !important; }
-        
+
         a { color: var(--belims-admin-accent) !important; }
         a:hover { color: var(--belims-admin-accent-dark) !important; }
-        
+
         input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus, textarea:focus, select:focus {
             border-color: var(--belims-admin-accent) !important;
             box-shadow: 0 0 0 1px var(--belims-admin-accent) !important;
         }
-        
+
         #adminmenu .awaiting-mod, #adminmenu .update-plugins { background: var(--belims-admin-accent) !important; }
         .nav-tab-active { color: var(--belims-admin-accent) !important; }
     </style>
@@ -499,11 +633,11 @@ function adjust_brightness($hex, $steps) {
     $r = hexdec(substr($hex, 0, 2));
     $g = hexdec(substr($hex, 2, 2));
     $b = hexdec(substr($hex, 4, 2));
-    
+
     $r = max(0, min(255, $r + $steps));
     $g = max(0, min(255, $g + $steps));
     $b = max(0, min(255, $b + $steps));
-    
+
     return '#' . str_pad(dechex($r), 2, '0', STR_PAD_LEFT)
                 . str_pad(dechex($g), 2, '0', STR_PAD_LEFT)
                 . str_pad(dechex($b), 2, '0', STR_PAD_LEFT);
@@ -542,7 +676,7 @@ function global_site_settings_enqueue_admin_assets($hook) {
         GLOBAL_SITE_SETTINGS_VERSION,
         true
     );
-    
+
     // Localize script with nonces and AJAX URL
     wp_localize_script('global-site-settings-admin', 'bpcAdminData', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
@@ -602,7 +736,7 @@ function global_site_settings_main_page() {
     if (file_exists($ftg_file)) {
         require_once $ftg_file;
     }
-    
+
     // Load BobGo shipping page content function
     $bobgo_file = GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/bobgo-shipping/admin-bobgo-settings-page.php';
     if (file_exists($bobgo_file)) {
@@ -620,7 +754,7 @@ function global_site_settings_main_page() {
     // Integration statuses for dashboard summary
     $ftg_enabled = (bool) get_field('ftg_enabled', 'option');
     $bobgo_enabled = (bool) get_field('bobgo_enabled', 'option');
-    
+
     // Load new dashboard template
     /* $dashboard_template = GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/dashboard-template.php';
     if (file_exists($dashboard_template)) {
@@ -633,7 +767,7 @@ function global_site_settings_main_page() {
         <div class="bpc-admin-sidebar">
             <div class="bpc-admin-logo">
                 <h2>
-                    Settings  
+                    Settings
                 </h2>
             </div>
             <nav class="bpc-admin-nav">
@@ -641,7 +775,7 @@ function global_site_settings_main_page() {
                 <a class="bpc-nav-item" data-tab="dashboard">
                     Dashboard
                 </a>
-                
+
                 <div class="bpc-nav-group-title">Settings</div>
                 <a class="bpc-nav-item" data-tab="branding">
                     Branding
@@ -649,12 +783,12 @@ function global_site_settings_main_page() {
                 <a class="bpc-nav-item" data-tab="ecommerce">
                     Ecommerce
                 </a>
-                
+
                 <div class="bpc-nav-group-title">Integrations</div>
                 <a class="bpc-nav-item" data-tab="ftg-sync">
                     FTG Sync
                 </a>
-                <a class="bpc-nav-item" data-tab="cors-security"> 
+                <a class="bpc-nav-item" data-tab="cors-security">
                     CORS & Security
                 </a>
                 <a class="bpc-nav-item" data-tab="woocommerce">
@@ -669,13 +803,13 @@ function global_site_settings_main_page() {
                 <a class="bpc-nav-item" data-tab="ai-services">
                     AI Services
                 </a>
-                
+
                 <div class="bpc-nav-group-title">Tools</div>
                 <a class="bpc-nav-item" data-tab="payfast-testing">
                     PayFast Testing
                 </a>
             </nav>
-            
+
             <div style="padding: 20px; border-top: 1px solid var(--bpc-border); margin-top: auto; color: var(--bpc-text-muted); font-size: 12px;">
                 Version <?php echo GLOBAL_SITE_SETTINGS_VERSION; ?><br>By Broken Pony Club<br>For Belims Hardware
             </div>
@@ -685,12 +819,12 @@ function global_site_settings_main_page() {
         <div class="bpc-admin-content">
             <!-- Dashboard Tab -->
             <div id="tab-dashboard" class="bpc-tab-content">
-                
+
                     <div class="bpc-card-header">
                         <h2 class="bpc-card-title">Belims Hardware</h2>
                         <p class="bpc-card-description">Site content & API management</p>
                     </div>
-                    
+
                     <style>
                     .bpc-status-pill {
                         display: inline-flex;
@@ -750,11 +884,11 @@ function global_site_settings_main_page() {
                             </span>
                         </div>
                     </div>
-                    
-                    
+
+
 
                     <div class="bpc-grid">
-                        
+
                         <div class="bpc-panel">
                             <div>
                                 <h4>Find The Gap</h4>
@@ -780,7 +914,7 @@ function global_site_settings_main_page() {
                                     </label>
                                 </div>
                             </form>
-                        </div>  
+                        </div>
 
                         <div class="bpc-panel">
                             <div>
@@ -807,7 +941,7 @@ function global_site_settings_main_page() {
                                     </label>
                                 </div>
                             </form>
-                        </div>  
+                        </div>
                     </div>
 
                     <script>
@@ -820,7 +954,7 @@ function global_site_settings_main_page() {
                         });
                     });
                     </script>
-                    
+
                     <h3>Quick Actions</h3>
                     <p class="bpc-actions">
                         <button class="bpc-btn-primary" onclick="jQuery('.bpc-nav-item[data-tab=\'ftg-sync\']').click()">
@@ -976,7 +1110,7 @@ function global_site_settings_main_page() {
                         });
                     });
                     </script>
-                
+
             </div>
 
             <!-- FTG Sync Tab -->
@@ -986,7 +1120,7 @@ function global_site_settings_main_page() {
                         <h2 class="bpc-card-title">Find The Gap Integration</h2>
                         <p class="bpc-card-description">Configure FTG API credentials and sync products to WooCommerce.</p>
                     </div>
-                    
+
                     <?php
                     // Handle form submission
                     if (isset($_POST['save_ftg_credentials']) && check_admin_referer('save_ftg_credentials_action', 'ftg_nonce')) {
@@ -998,7 +1132,7 @@ function global_site_settings_main_page() {
                         }
                         echo '<div class="notice notice-success inline" style="margin-bottom: 20px;"><p>✅ FTG credentials saved!</p></div>';
                     }
-                    
+
                     // Get FTG credentials
                     $ftg_enabled = get_field('ftg_enabled', 'option');
                     $ftg_email = get_field('ftg_email', 'option');
@@ -1007,10 +1141,10 @@ function global_site_settings_main_page() {
                     $last_sync = get_option('belims_ftg_last_sync');
                     $last_sync_text = $last_sync ? date_i18n('F j, Y, g:i a', $last_sync) : 'Never';
                     ?>
-                    
+
                     <form method="post" action="">
                         <?php wp_nonce_field('save_ftg_credentials_action', 'ftg_nonce'); ?>
-                        
+
                         <table class="bpc-modern-table">
                             <tr>
                                 <th>Enable Find The Gap Integration</th>
@@ -1023,7 +1157,7 @@ function global_site_settings_main_page() {
                                 </td>
                             </tr>
                         </table>
-                        
+
                         <div id="ftg-credentials-section" style="<?php echo $ftg_enabled ? '' : 'display:none;'; ?>">
                             <table class="bpc-modern-table">
                                 <tr>
@@ -1056,13 +1190,13 @@ function global_site_settings_main_page() {
                                     </td>
                                 </tr>
                             </table>
-                            
+
                             <div class="bpc-submit-bar">
                                 <input type="submit" name="save_ftg_credentials" class="bpc-btn-primary" value="Save FTG Credentials" />
                             </div>
                         </div>
                     </form>
-                    
+
                     <script>
                     jQuery(document).ready(function($) {
                         $('#ftg-enabled-toggle').on('change', function() {
@@ -1072,23 +1206,23 @@ function global_site_settings_main_page() {
                                 $('#ftg-credentials-section').slideUp();
                             }
                         });
-                        
+
                         // Get FTG Token button
                         $('#get-ftg-token').on('click', function() {
                             var btn = $(this);
                             var status = $('#token-status');
-                            
+
                             var email = $('input[name="ftg_email"]').val();
                             var password = $('input[name="ftg_password"]').val();
-                            
+
                             if (!email || !password) {
                                 status.html('<p style="color: #d63638;">⚠️ Please enter email and password first.</p>');
                                 return;
                             }
-                            
+
                             btn.prop('disabled', true).text('Getting Token...');
                             status.html('<p>🔄 Fetching token from FTG...</p>');
-                            
+
                             $.ajax({
                                 url: '<?php echo rest_url('belims/v1/ftg/login'); ?>',
                                 method: 'POST',
@@ -1099,7 +1233,7 @@ function global_site_settings_main_page() {
                                 },
                                 success: function(response) {
                                     btn.prop('disabled', false).text('🔑 Get Token');
-                                    
+
                                     if (response.success && response.collection_token) {
                                         $('#ftg-token-input').val(response.collection_token);
                                         status.html('<p style="color: #00a32a;">✅ Token retrieved and saved automatically!</p>');
@@ -1116,12 +1250,12 @@ function global_site_settings_main_page() {
                         });
                     });
                     </script>
-                    
+
                     <?php if ($ftg_enabled): ?>
                     <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--bpc-border);">
                         <h3>Product Sync</h3>
                         <p>Last Sync: <strong><?php echo esc_html($last_sync_text); ?></strong></p>
-                        
+
                         <?php if (!$ftg_token): ?>
                             <div class="notice notice-warning inline">
                                 <p>⚠️ Please configure your FTG Collection Token above before syncing.</p>
@@ -1212,7 +1346,7 @@ function global_site_settings_main_page() {
 
                                 <div id="ftg-sync-status" style="margin-top: 15px;"></div>
                             </div>
-                            
+
                             <style>
                             .ftg-progress-bar {
                                 width: 100%;
@@ -1256,7 +1390,7 @@ function global_site_settings_main_page() {
                                 font-weight: 600;
                             }
                             </style>
-                            
+
                             <script>
                             jQuery(document).ready(function($) {
                                 var ftgBrands = [];
@@ -1452,13 +1586,13 @@ function global_site_settings_main_page() {
 
                                 $('#ftg-cleanup-attributes').on('click', function() {
                                     if (!confirm('Clean up duplicate attributes (Range, Color)? This will remove duplicate attribute terms.')) return;
-                                    
+
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
-                                    
+
                                     btn.prop('disabled', true).text('Cleaning...');
                                     status.html('<p>⏳ Cleaning up duplicate attributes...</p>');
-                                    
+
                                     $.ajax({
                                         url: '<?php echo rest_url('belims/v1/ftg/cleanup-attributes'); ?>',
                                         method: 'POST',
@@ -1468,12 +1602,12 @@ function global_site_settings_main_page() {
                                         },
                                         success: function(response) {
                                             btn.prop('disabled', false).text('🧹 Cleanup Duplicate Attributes');
-                                            
+
                                             if (response.success) {
                                                 var reportHtml = '<div class="notice notice-success inline"><p>✅ Cleanup Complete</p>';
                                                 reportHtml += '<ul style="margin: 10px 0 0 20px;">';
                                                 for (var attr in response.report) {
-                                                    reportHtml += '<li>' + attr + ': Removed ' + response.report[attr].duplicates_removed + 
+                                                    reportHtml += '<li>' + attr + ': Removed ' + response.report[attr].duplicates_removed +
                                                                   ' duplicates, ' + response.report[attr].terms_remaining + ' terms remaining</li>';
                                                 }
                                                 reportHtml += '</ul></div>';
@@ -1489,16 +1623,16 @@ function global_site_settings_main_page() {
                                         }
                                     });
                                 });
-                                
+
                                 $('#ftg-disconnect').on('click', function() {
                                     if (!confirm('Disconnect from FTG? This will clear all saved credentials and tokens.')) return;
-                                    
+
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
-                                    
+
                                     btn.prop('disabled', true).text('Disconnecting...');
                                     status.html('<p>Clearing FTG credentials...</p>');
-                                    
+
                                     // Clear ACF fields
                                     $.ajax({
                                         url: ajaxurl,
@@ -1524,14 +1658,14 @@ function global_site_settings_main_page() {
                                         }
                                     });
                                 });
-                                
+
                                 $('#ftg-test-connection').on('click', function() {
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
-                                    
+
                                     btn.prop('disabled', true).text('Testing...');
                                     status.html('<p>Testing FTG API connection...</p>');
-                                    
+
                                     $.ajax({
                                         url: '<?php echo rest_url('belims/v1/ftg/instances'); ?>',
                                         method: 'GET',
@@ -1549,17 +1683,17 @@ function global_site_settings_main_page() {
                                         }
                                     });
                                 });
-                                
+
                                 $('#ftg-inspect-product').on('click', function() {
                                     var sku = prompt('Enter product SKU to inspect:', 'RCKT1213');
                                     if (!sku) return;
-                                    
+
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
-                                    
+
                                     btn.prop('disabled', true).text('Fetching...');
                                     status.html('<p>🔍 Fetching product: ' + sku + '</p>');
-                                    
+
                                     $.ajax({
                                         url: '<?php echo rest_url('belims/v1/ftg/product/'); ?>' + sku,
                                         method: 'GET',
@@ -1568,7 +1702,7 @@ function global_site_settings_main_page() {
                                         },
                                         success: function(response) {
                                             btn.prop('disabled', false).text('🔍 Inspect Product');
-                                            
+
                                             var html = '<div class="notice notice-success inline" style="max-height: 400px; overflow-y: auto;"><h4>✅ Product Found: ' + response.sku + '</h4>';
                                             html += '<p><strong>Name:</strong> ' + response.name + '</p>';
                                             html += '<p><strong>Price:</strong> R' + response.price.selling_price + ' (excl VAT) | R' + response.price.selling_price_with_vat.toFixed(2) + ' (incl VAT)</p>';
@@ -1578,7 +1712,7 @@ function global_site_settings_main_page() {
                                             html += '<p><strong>Brand:</strong> ' + (response.meta.brand || 'N/A') + '</p>';
                                             html += '<details style="margin-top: 10px;"><summary style="cursor: pointer; font-weight: 600;">View Raw Data</summary><pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto;">' + JSON.stringify(response.raw_data, null, 2) + '</pre></details>';
                                             html += '</div>';
-                                            
+
                                             status.html(html);
                                         },
                                         error: function(xhr) {
@@ -1733,20 +1867,20 @@ function global_site_settings_main_page() {
                                     }
 
                                     if (!confirm('Test sync first 10 ' + selectedBrand + ' products from FTG?')) return;
-                                    
+
                                     var btn = $(this);
                                     var status = $('#ftg-sync-status');
-                                    
+
                                     btn.prop('disabled', true).text('Testing...');
                                     status.html('<p>⏳ Syncing first 10 ' + selectedBrand + ' products from FTG...</p><div class="ftg-progress-bar"><div class="ftg-progress-fill" style="width: 0%">0%</div></div><p class="ftg-progress-text">Starting sync...</p>');
-                                    
+
                                     // Track totals across all batches
                                     var totalSynced = 0;
                                     var totalSkipped = 0;
                                     var totalErrors = [];
                                     var allSyncedItems = [];
                                     var allSkippedItems = [];
-                                    
+
                                     function syncBatch(offset) {
                                         var limit = 10;
                                         var batchSize = 10; // Test sync only first 10 products
@@ -1757,7 +1891,7 @@ function global_site_settings_main_page() {
                                             offset: offset,
                                             batch_size: batchSize
                                         };
-                                        
+
                                         $.ajax({
                                             url: '<?php echo rest_url('belims/v1/ftg/sync'); ?>',
                                             method: 'POST',
@@ -1781,12 +1915,12 @@ function global_site_settings_main_page() {
                                                     if (response.skipped_items && Array.isArray(response.skipped_items)) {
                                                         allSkippedItems = allSkippedItems.concat(response.skipped_items);
                                                     }
-                                                    
+
                                                     // Update progress bar
                                                     var progress = response.progress || 0;
                                                     $('.ftg-progress-fill').css('width', progress + '%').text(progress + '%');
                                                     $('.ftg-progress-text').html('Syncing products... (' + totalSynced + ' synced so far)');
-                                                    
+
                                                     // Continue to next batch if there are more products
                                                     if (response.has_more) {
                                                         syncBatch(response.next_offset);
@@ -1796,7 +1930,7 @@ function global_site_settings_main_page() {
                                                         updateFtgBrandControls();
                                                         $('.ftg-progress-fill').css('width', '100%').text('100%');
                                                         $('.ftg-progress-text').html('Sync complete!');
-                                                        
+
                                                         var skippedMsg = totalSkipped > 0 ? '<br/><span style="color: #856404;">⚠️ Skipped ' + totalSkipped + ' products (no price/invalid data)</span>' : '';
                                                         var errorMsg = totalErrors.length > 0 ? '<br/><span style="color: #dc3232;">❌ ' + totalErrors.length + ' errors occurred</span>' : '';
                                                         var summaryHtml = '<div class="notice notice-success inline"><p>✅ Test sync completed (first 10 products). ' + totalSynced + ' ' + selectedBrand + ' products synced.' + skippedMsg + errorMsg + '<br/>Check WooCommerce → Products to see the imported items.</p></div>';
@@ -1894,11 +2028,11 @@ function global_site_settings_main_page() {
                                             }
                                         });
                                     }
-                                    
+
                                     // Start with offset 0
                                     syncBatch(0);
                                 });
-                                
+
                                 $('#ftg-sync-products').on('click', function() {
                                     var selectedBrand = getSelectedFtgBrand();
                                     if (!selectedBrand) {
@@ -2177,15 +2311,15 @@ function global_site_settings_main_page() {
                                     var sku = $('#ftg-sku-input').val().trim();
                                     var btn = $(this);
                                     var resultDiv = $('#ftg-sync-single-result');
-                                    
+
                                     if (!sku) {
                                         resultDiv.html('<div class="notice notice-error inline"><p>⚠️ Please enter a SKU</p></div>');
                                         return;
                                     }
-                                    
+
                                     btn.prop('disabled', true).text('Syncing...');
                                     resultDiv.html('<p>⏳ Syncing product: ' + sku + '...</p>');
-                                    
+
                                     $.ajax({
                                         url: '<?php echo rest_url('belims/v1/ftg/sync/product'); ?>',
                                         method: 'POST',
@@ -2199,7 +2333,7 @@ function global_site_settings_main_page() {
                                         },
                                         success: function(response) {
                                             btn.prop('disabled', false).text('✅ Sync Single Product');
-                                            
+
                                             if (response.success) {
                                                 var html = '<div class="notice notice-success inline"><p>✅ ' + response.message + '</p>';
                                                 if (response.product_name) {
@@ -2250,7 +2384,7 @@ function global_site_settings_main_page() {
                                         }
                                     });
                                 });
-                                
+
                                 // Allow Enter key to trigger sync
                                 $('#ftg-sku-input').on('keypress', function(e) {
                                     if (e.key === 'Enter' || e.keyCode === 13) {
@@ -2266,18 +2400,6 @@ function global_site_settings_main_page() {
                 </div>
             </div>
 
-            <?php /* BobGo Shipping Tab - Commented out, using official BobGo plugin for admin UI
-            <div id="tab-bobgo-shipping" class="bpc-tab-content">
-                <?php 
-                if (function_exists('render_bobgo_shipping_settings_tab')) {
-                    render_bobgo_shipping_settings_tab();
-                } else {
-                    echo '<div class="bpc-card"><p>BobGo settings not available.</p></div>';
-                }
-                ?>
-            </div>
-            */ ?>
-
             <!-- Branding Tab -->
             <div id="tab-branding" class="bpc-tab-content">
                 <div class="bpc-card">
@@ -2285,7 +2407,7 @@ function global_site_settings_main_page() {
                         <h2 class="bpc-card-title">Branding Settings</h2>
                         <p class="bpc-card-description">Configure Site Settings Branding</p>
                     </div>
-                    <?php 
+                    <?php
                     if (function_exists('acf_form')) {
                         acf_form(array(
                             'post_id'    => 'options',
@@ -2321,14 +2443,14 @@ function global_site_settings_main_page() {
                         <h2 class="bpc-card-title">Frontend Environment</h2>
                         <p class="bpc-card-description">Switch between development and production frontends.</p>
                     </div>
-                    
+
                     <?php
                     $current_env = get_option('belims_frontend_environment', 'production');
                     ?>
-                    
+
                     <div class="bpc-panel bpc-inline">
                         <div style="flex: 1;">
-                            <div style="font-weight: 600; margin-bottom: 8px;">Active Environment: 
+                            <div style="font-weight: 600; margin-bottom: 8px;">Active Environment:
                                 <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; <?php echo $current_env === 'production' ? 'background: #d1fae5; color: #065f46;' : 'background: #fef3c7; color: #92400e;'; ?>">
                                     <?php echo ucfirst($current_env); ?>
                                 </span>
@@ -2348,23 +2470,23 @@ function global_site_settings_main_page() {
                             </button>
                         </div>
                     </div>
-                    
+
                     <div id="env-switch-status" style="margin-top: 15px;"></div>
-                    
+
                     <script>
                     jQuery(document).ready(function($) {
                         $('#switch-to-dev').on('click', function() {
                             switchEnvironment('development', $(this));
                         });
-                        
+
                         $('#switch-to-prod').on('click', function() {
                             switchEnvironment('production', $(this));
                         });
-                        
+
                         function switchEnvironment(env, btn) {
                             var statusDiv = $('#env-switch-status');
                             statusDiv.html('<p>🔄 Switching to ' + env + '...</p>');
-                            
+
                             $.ajax({
                                 url: ajaxurl,
                                 method: 'POST',
@@ -2391,20 +2513,20 @@ function global_site_settings_main_page() {
                     });
                     </script>
                 </div>
-                
+
                 <!-- CORS Settings Card -->
                 <div class="bpc-card" style="margin-top: 20px;">
                     <div class="bpc-card-header">
                         <h2 class="bpc-card-title">CORS Settings</h2>
                         <p class="bpc-card-description">Configure Cross-Origin Resource Sharing settings for headless frontend.</p>
                     </div>
-                    
-                    <?php 
+
+                    <?php
                     // Debug: Show current CORS setting being used
                     $cors_field = function_exists('get_field') ? get_field('headless_frontend_url', 'option') : '';
                     $cors_option = get_option('belims_cors_origin', '');
                     $active_cors = !empty($cors_field) ? $cors_field : $cors_option;
-                    
+
                     if (!empty($active_cors) || !empty($cors_field) || !empty($cors_option)) {
                         echo '<div class="bpc-callout bpc-callout--info" style="margin-bottom: 20px;">';
                         echo '<strong>Current Active CORS Setting:</strong><br>';
@@ -2418,8 +2540,8 @@ function global_site_settings_main_page() {
                         echo '</div>';
                     }
                     ?>
-                    
-                    <?php 
+
+                    <?php
                     if (function_exists('acf_form')) {
                         // Show only CORS + Woo REST credentials here (exclude BobGo fields)
                         acf_form(array(
@@ -2451,7 +2573,7 @@ function global_site_settings_main_page() {
                             <span class="dashicons dashicons-shield" style="margin-top: 3px;"></span> Verify CORS
                         </button>
                     </div>
-                    
+
                     <div id="cors-verification-results" style="margin-top: 15px;"></div>
 
                     <script>
@@ -2460,8 +2582,8 @@ function global_site_settings_main_page() {
                         $('#test-cors-config').on('click', function() {
                             var btn = $(this);
                             var results = $('#cors-verification-results');
-                            var testOrigin = prompt("Enter a frontend URL to simulate a request from:", "https://belims-headless-react-app.netlify.app");
-                            
+                            var testOrigin = prompt("Enter a frontend URL to simulate a request from:", "https://www.belims.co.za");
+
                             if (!testOrigin) return;
 
                             btn.prop('disabled', true).html('Verifying...');
@@ -2476,11 +2598,11 @@ function global_site_settings_main_page() {
                                 },
                                 complete: function(xhr) {
                                     btn.prop('disabled', false).html('<span class="dashicons dashicons-shield" style="margin-top: 3px;"></span> Verify CORS');
-                                    
+
                                     var acao = xhr.getResponseHeader('Access-Control-Allow-Origin');
                                     var html = '<div style="padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff;">';
                                     html += '<h4 style="margin-top:0;">CORS Analysis:</h4>';
-                                    
+
                                     if (acao === '*' || acao === testOrigin) {
                                         html += '<div style="color: #059669; font-weight: 600;">✅ Success! CORS is properly configured.</div>';
                                         html += '<div style="font-size: 12px; margin-top: 5px;">Response Header: <code>Access-Control-Allow-Origin: ' + acao + '</code></div>';
@@ -2515,29 +2637,29 @@ function global_site_settings_main_page() {
                             echo '<div class="notice notice-error inline" style="margin-bottom: 20px;"><p>❌ Error: Please select a valid CSV file.</p></div>';
                         } else {
                             $csv_file = $_FILES['csv_file']['tmp_name'];
-                            
+
                             if (!is_readable($csv_file)) {
                                 echo '<div class="notice notice-error inline" style="margin-bottom: 20px;"><p>❌ Error: Cannot read CSV file.</p></div>';
                             } else {
                                 $handle = fopen($csv_file, 'r');
                                 $header = fgetcsv($handle); // Skip header
-                                
+
                                 $updated = 0;
                                 $created = 0;
                                 $failed = 0;
-                                
+
                                 while (($row = fgetcsv($handle)) !== false) {
                                     $sku = trim($row[0] ?? '');
                                     $title = trim($row[1] ?? '');
                                     $description = trim($row[3] ?? '');
-                                    
+
                                     if (empty($sku) || empty($description)) {
                                         $failed++;
                                         continue;
                                     }
-                                    
+
                                     $product_id = wc_get_product_id_by_sku($sku);
-                                    
+
                                     if ($product_id) {
                                         $product = wc_get_product($product_id);
                                         $product->set_description($description);
@@ -2553,9 +2675,9 @@ function global_site_settings_main_page() {
                                         $created++;
                                     }
                                 }
-                                
+
                                 fclose($handle);
-                                
+
                                 echo '<div class="notice notice-success inline" style="margin-bottom: 20px;">';
                                 echo '<p>✅ Import Complete!</p>';
                                 echo '<ul style="margin: 10px 0; padding-left: 20px;">';
@@ -2571,7 +2693,7 @@ function global_site_settings_main_page() {
 
                     <form method="post" action="" enctype="multipart/form-data" class="bpc-panel">
                         <?php wp_nonce_field('import_products_action', 'import_nonce'); ?>
-                        
+
                         <div style="margin-bottom: 20px;">
                             <label for="csv_file" style="display: block; margin-bottom: 8px; font-weight: 500;">
                                 📁 Select CSV File:
@@ -2617,17 +2739,17 @@ function global_site_settings_main_page() {
                             'limit' => -1,
                             'status' => ['publish', 'draft'],
                         ]);
-                        
+
                         if (empty($products)) {
                             echo '<div class="notice notice-warning inline" style="margin-bottom: 20px;"><p>⚠️ No products found to export.</p></div>';
                         } else {
                             // Generate CSV
                             ob_start();
                             $csv = fopen('php://output', 'w');
-                            
+
                             // Write header
                             fputcsv($csv, ['SKU', 'Title', 'URL', 'Description', 'Price', 'Status']);
-                            
+
                             // Write product rows
                             foreach ($products as $product) {
                                 fputcsv($csv, [
@@ -2639,10 +2761,10 @@ function global_site_settings_main_page() {
                                     $product->get_status(),
                                 ]);
                             }
-                            
+
                             fclose($csv);
                             $csv_content = ob_get_clean();
-                            
+
                             // Download file
                             header('Content-Type: text/csv; charset=utf-8');
                             header('Content-Disposition: attachment; filename="WooCommerce_Products_' . date('Y-m-d_H-i-s') . '.csv"');
@@ -2654,7 +2776,7 @@ function global_site_settings_main_page() {
 
                     <form method="post" action="" class="bpc-panel">
                         <?php wp_nonce_field('export_products_action', 'export_nonce'); ?>
-                        
+
                         <p style="color: #64748b; font-size: 13px; margin-bottom: 15px;">
                             Click the button below to export all products (published and draft) with their SKU, title, URL, description, price, and status.
                         </p>
@@ -2675,12 +2797,12 @@ function global_site_settings_main_page() {
                             e.preventDefault();
                             var btn = $(this);
                             var originalText = btn.html();
-                            
+
                             btn.prop('disabled', true).html('⏳ Exporting...');
-                            
+
                             // Download CSV via AJAX
                             window.location.href = '<?php echo admin_url('admin-ajax.php?action=export_woocommerce_products'); ?>';
-                            
+
                             setTimeout(function() {
                                 btn.prop('disabled', false).html(originalText);
                             }, 2000);
@@ -2734,7 +2856,7 @@ function global_site_settings_main_page() {
                             <span class="dashicons dashicons-rest-api" style="margin-top: 3px;"></span> Test Endpoints
                         </button>
                     </div>
-                    
+
                     <div id="wc-verification-results" style="margin-top: 15px;"></div>
 
                     <script>
@@ -2743,19 +2865,19 @@ function global_site_settings_main_page() {
                         $('#test-wc-endpoints').on('click', function() {
                             var btn = $(this);
                             var results = $('#wc-verification-results');
-                            
+
                             btn.prop('disabled', true).html('Testing...');
                             results.html('<p>🔄 Testing WooCommerce endpoints...</p>');
-                            
+
                             var endpoints = [
                                 '<?php echo rest_url('belims/v1/products'); ?>',
                                 '<?php echo rest_url('belims/v1/categories'); ?>'
                             ];
-                            
+
                             var completed = 0;
                             var html = '<div style="background: white; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px;">';
                             html += '<h4 style="margin-top:0;">API Status:</h4>';
-                            
+
                             endpoints.forEach(function(url) {
                                 $.ajax({
                                     url: url,
@@ -2797,13 +2919,13 @@ function global_site_settings_main_page() {
                         update_field('bobgo_enabled', isset($_POST['bobgo_enabled']) ? 1 : 0, 'option');
                         echo '<div class="notice notice-success inline" style="margin-bottom: 20px;"><p>✅ BobGo settings saved!</p></div>';
                     }
-                    
+
                     $bobgo_enabled = get_field('bobgo_enabled', 'option');
                     ?>
-                    
+
                     <form method="post" action="">
                         <?php wp_nonce_field('save_bobgo_enabled_action', 'bobgo_nonce'); ?>
-                        
+
                         <table class="bpc-modern-table">
                             <tr>
                                 <th>Enable BobGo Integration</th>
@@ -2816,16 +2938,16 @@ function global_site_settings_main_page() {
                                 </td>
                             </tr>
                         </table>
-                        
+
                         <div class="bpc-submit-bar">
                             <input type="submit" name="save_bobgo_enabled" class="bpc-btn-primary" value="Save Settings" />
                         </div>
                     </form>
                 </div>
-                
+
                 <!-- BobGo Settings (shown only if enabled) -->
                 <div id="bobgo-settings-section" style="<?php echo $bobgo_enabled ? '' : 'display:none;'; ?> margin-top: 20px;">
-                    <?php 
+                    <?php
                     if (function_exists('render_bobgo_shipping_settings_tab')) {
                         render_bobgo_shipping_settings_tab();
                     } else {
@@ -2833,7 +2955,7 @@ function global_site_settings_main_page() {
                     }
                     ?>
                 </div>
-                
+
                 <script>
                 jQuery(document).ready(function($) {
                     $('#bobgo-enabled-toggle').on('change', function() {
@@ -2854,14 +2976,14 @@ function global_site_settings_main_page() {
                         <h2 class="bpc-card-title">Payment Gateways</h2>
                         <p class="bpc-card-description">Configure payment gateway integrations.</p>
                     </div>
-                    
+
                     <div class="bpc-callout bpc-callout--warning" style="margin-bottom: 20px;">
                         <p style="margin: 0;">
                             <strong>💳 Payment Gateway Configuration:</strong><br>
                             Payment gateways are managed through WooCommerce settings.
                         </p>
                     </div>
-                    
+
                     <h3>Active Payment Methods:</h3>
                     <p>Configure your payment gateways through WooCommerce:</p>
                     <ul>
@@ -2871,7 +2993,7 @@ function global_site_settings_main_page() {
                         <li><strong>PayGate</strong></li>
                         <li><strong>Other WooCommerce payment plugins</strong></li>
                     </ul>
-                    
+
                     <div class="bpc-actions" style="margin-top: 20px;">
                         <a href="<?php echo admin_url('admin.php?page=wc-settings&tab=checkout'); ?>" class="bpc-btn-primary">
                             Go to Payment Settings
@@ -2944,7 +3066,7 @@ function global_site_settings_main_page() {
                         <h2 class="bpc-card-title">PayFast Payment Testing</h2>
                         <p class="bpc-card-description">Test PayFast payment flows without placing real orders.</p>
                     </div>
-                    
+
                     <?php
                     // Render PayFast testing content
                     if (class_exists('PayFast_Admin_Page')) {
@@ -2968,24 +3090,24 @@ add_action('wp_ajax_export_woocommerce_products', function() {
     if (!is_user_logged_in() || !current_user_can('manage_options')) {
         wp_die('Unauthorized - Admin access required', 403);
     }
-    
+
     // Get all products
     $products = wc_get_products([
         'limit' => -1,
         'status' => ['publish', 'draft'],
     ]);
-    
+
     if (empty($products)) {
         wp_die('No products found', 400);
     }
-    
+
     // Generate CSV in memory
     ob_start();
     $output = fopen('php://output', 'w');
-    
+
     // Write header
     fputcsv($output, ['SKU', 'Title', 'URL', 'Description', 'Price', 'Status']);
-    
+
     // Write product rows
     foreach ($products as $product) {
         fputcsv($output, [
@@ -2997,16 +3119,16 @@ add_action('wp_ajax_export_woocommerce_products', function() {
             $product->get_status(),
         ]);
     }
-    
+
     fclose($output);
     $csv_content = ob_get_clean();
-    
+
     // Send as download
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="WooCommerce_Products_' . date('Y-m-d_H-i-s') . '.csv"');
     header('Pragma: no-cache');
     header('Expires: 0');
-    
+
     echo $csv_content;
     wp_die();
 });
@@ -3021,10 +3143,21 @@ add_action('wp_ajax_nopriv_export_woocommerce_products', function() {
 /**
  * Activation / Deactivation hooks
  */
-function global_site_settings_activate() { flush_rewrite_rules(); }
+function global_site_settings_activate() {
+	flush_rewrite_rules();
+	if (!wp_next_scheduled('bpc_daily_speed_test')) {
+		wp_schedule_event(time(), 'daily', 'bpc_daily_speed_test');
+	}
+}
 register_activation_hook(__FILE__, 'global_site_settings_activate');
 
-function global_site_settings_deactivate() { flush_rewrite_rules(); }
+function global_site_settings_deactivate() {
+	flush_rewrite_rules();
+	$timestamp = wp_next_scheduled('bpc_daily_speed_test');
+	if ($timestamp) {
+		wp_unschedule_event($timestamp, 'bpc_daily_speed_test');
+	}
+}
 register_deactivation_hook(__FILE__, 'global_site_settings_deactivate');
 
 /**
@@ -3053,7 +3186,7 @@ function belims_add_ftg_view_row_action($actions, $post) {
     if (!empty($sku)) {
         $ftg_url = 'https://my.ftgone.co.za/ftg/product/?q=' . rawurlencode($sku);
         $actions['view_in_ftg'] = '<a href="' . esc_url($ftg_url) . '" target="_blank" rel="noopener">View in FTG</a>';
-        
+
         // Add Sync Product action
         $sync_url = wp_nonce_url(
             admin_url('admin-ajax.php?action=belims_sync_single_product&product_id=' . $post->ID),
@@ -3071,35 +3204,35 @@ add_filter('post_row_actions', 'belims_add_ftg_view_row_action', 10, 2);
  */
 function belims_sync_single_product_ajax() {
     check_ajax_referer('sync_product_nonce', '_wpnonce');
-    
+
     if (!current_user_can('manage_options')) {
         wp_send_json_error(array('message' => 'Permission denied'));
     }
-    
+
     $product_id = intval($_POST['product_id']);
     $product = wc_get_product($product_id);
-    
+
     if (!$product) {
         wp_send_json_error(array('message' => 'Product not found'));
     }
-    
+
     $sku = $product->get_sku();
     if (empty($sku)) {
         wp_send_json_error(array('message' => 'Product has no SKU'));
     }
-    
+
     // Get FTG token
     $ftg_token = get_option('belims_ftg_collection_token');
     if (empty($ftg_token)) {
         wp_send_json_error(array('message' => 'FTG not connected. Please connect FTG first.'));
     }
-    
+
     // Sync single product
     require_once GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/ftg-sync/class-ftg-sync-endpoint.php';
     $sync_endpoint = new Belims_FTG_Sync_Endpoint();
-    
+
     $result = $sync_endpoint->sync_single_product_by_sku($ftg_token, $sku);
-    
+
     if ($result['success']) {
         wp_send_json_success(array(
             'message' => 'Product synced successfully!',
@@ -3121,31 +3254,31 @@ function belims_enqueue_product_sync_script($hook) {
     if ($hook !== 'edit.php') {
         return;
     }
-    
+
     $screen = get_current_screen();
     if ($screen->post_type !== 'product') {
         return;
     }
-    
+
     ?>
     <script type="text/javascript">
     jQuery(document).ready(function($) {
         // Handle sync product button click
         $('.sync-product-button').on('click', function(e) {
             e.preventDefault();
-            
+
             var $button = $(this);
             var productId = $button.data('product-id');
             var nonce = $button.data('nonce');
-            
+
             if (!confirm('Sync this product from FTG?')) {
                 return;
             }
-            
+
             // Show loading state
             var originalText = $button.text();
             $button.text('Syncing...').prop('disabled', true);
-            
+
             $.ajax({
                 url: ajaxurl,
                 type: 'POST',
@@ -3185,11 +3318,11 @@ add_action('admin_footer', 'belims_enqueue_product_sync_script');
  */
 function belims_add_ftg_sync_status_to_publish_box() {
     global $post;
-    
+
     if ($post->post_type !== 'product') {
         return;
     }
-    
+
     // Get product SKU
     $sku = '';
     if (function_exists('wc_get_product')) {
@@ -3204,14 +3337,14 @@ function belims_add_ftg_sync_status_to_publish_box() {
             $sku = get_post_meta($post->ID, '_ftg_product_code', true);
         }
     }
-    
+
     // Check if product is synced with FTG
     $ftg_last_sync = get_post_meta($post->ID, '_ftg_last_sync', true);
     $ftg_product_code = get_post_meta($post->ID, '_ftg_product_code', true);
-    
+
     $is_synced = !empty($ftg_last_sync) || !empty($ftg_product_code);
     $sync_status = $is_synced ? 'Synced' : 'Not Synced';
-    
+
     ?>
     <div class="misc-pub-section misc-pub-ftg-sync">
         <span class="dashicons dashicons-update" style="color: <?php echo $is_synced ? '#00a32a' : '#999'; ?>;"></span>
@@ -3323,11 +3456,11 @@ add_action('wp_ajax_import_dry_run', function() {
     if (empty($_FILES['csv_file'])) {
         wp_send_json_error(['error' => 'No file uploaded']);
     }
-    
+
     $file = $_FILES['csv_file'];
     $products_preview = [];
     $total_count = 0;
-    
+
     if (($handle = fopen($file['tmp_name'], 'r')) !== false) {
         $header = fgetcsv($handle);
         if ($header === false) {
@@ -3355,16 +3488,16 @@ add_action('wp_ajax_import_dry_run', function() {
         }
 
         $preview_count = 0;
-        
+
         while (($row = fgetcsv($handle)) !== false && $preview_count < 5) {
             $sku = isset($row[$sku_index]) ? trim($row[$sku_index]) : '';
             $title = isset($row[$title_index]) ? trim($row[$title_index]) : '';
             $description = isset($row[$description_index]) ? trim($row[$description_index]) : '';
-            
+
             if ($sku || $title) {
                 $desc_preview = wp_strip_all_tags($description);
                 if (strlen($desc_preview) > 150) $desc_preview = substr($desc_preview, 0, 150) . '...';
-                
+
                 $products_preview[] = [
                     'sku' => $sku,
                     'title' => $title,
@@ -3374,11 +3507,11 @@ add_action('wp_ajax_import_dry_run', function() {
             }
             $total_count++;
         }
-        
+
         while (($row = fgetcsv($handle)) !== false) $total_count++;
         fclose($handle);
     }
-    
+
     wp_send_json([
         'success' => true,
         'total_products' => $total_count,
@@ -3397,13 +3530,13 @@ add_action('wp_ajax_import_execute', function() {
     if (empty($_FILES['csv_file'])) {
         wp_send_json_error(['error' => 'No file uploaded']);
     }
-    
+
     $file = $_FILES['csv_file'];
     $imported = 0;
     $updated = 0;
     $skipped = 0;
     $not_found = 0;
-    
+
     if (($handle = fopen($file['tmp_name'], 'r')) !== false) {
         $header = fgetcsv($handle);
         if ($header === false) {
@@ -3431,7 +3564,7 @@ add_action('wp_ajax_import_execute', function() {
             fclose($handle);
             wp_send_json_error(['error' => 'CSV missing required columns: SKU, Title, Description']);
         }
-        
+
         while (($row = fgetcsv($handle)) !== false) {
             $sku = isset($row[$sku_index]) ? trim($row[$sku_index]) : '';
             $title = isset($row[$title_index]) ? trim($row[$title_index]) : '';
@@ -3439,15 +3572,15 @@ add_action('wp_ajax_import_execute', function() {
             $description = isset($row[$description_index]) ? trim($row[$description_index]) : '';
             $status = ($status_index !== null && isset($row[$status_index])) ? trim($row[$status_index]) : 'publish';
             $status = belims_normalize_import_status($status);
-            
+
             if (!$sku || !$title) {
                 $skipped++;
                 continue;
             }
-            
+
             // Update-only mode: find existing product by SKU, then title fallback
             $product_id = belims_find_product_id_for_update($sku, $title, $url);
-            
+
             if ($product_id) {
                 if (get_post_status($product_id) === 'trash') {
                     wp_untrash_post($product_id);
@@ -3468,10 +3601,10 @@ add_action('wp_ajax_import_execute', function() {
                 $skipped++;
             }
         }
-        
+
         fclose($handle);
     }
-    
+
     wp_send_json([
         'success' => true,
         'imported' => $imported,
@@ -3768,7 +3901,7 @@ add_action('admin_menu', function() {
             ?>
             <div class="wrap">
                 <h1>Product Import with Preview</h1>
-                
+
                 <div style="max-width: 800px; margin: 30px 0;">
                     <h2 style="background: #f0f0f0; padding: 15px; border-radius: 5px;">Step 1: Upload CSV & Preview</h2>
                     <form id="import-dry-run-form" enctype="multipart/form-data" style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
@@ -3785,21 +3918,21 @@ add_action('admin_menu', function() {
                         <button type="button" class="button button-primary" id="dry-run-btn" style="padding: 8px 20px; font-size: 14px;">👁 Preview Import</button>
                     </form>
                 </div>
-                
+
                 <!-- Preview Results -->
                 <div id="preview-results" style="display: none; max-width: 800px; background: #e8f5e9; padding: 20px; border-radius: 5px; border: 2px solid #4caf50;">
                     <h2 style="color: #2e7d32;">✓ Preview Ready: <span id="total-products-span" style="color: #1565c0;">0</span> Products Found</h2>
-                    
+
                     <div style="background: white; border-radius: 3px; padding: 15px; margin: 15px 0; max-height: 500px; overflow-y: auto;">
                         <strong style="display: block; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Sample Products (first 5):</strong>
                         <div id="products-preview-list"></div>
                     </div>
-                    
+
                     <button type="button" class="button button-success" id="confirm-import-btn" style="padding: 10px 30px; font-size: 14px; margin-right: 10px;">✓ Confirm & Import All</button>
                     <button type="button" class="button" id="cancel-import-btn" style="padding: 10px 30px; font-size: 14px;">✗ Cancel</button>
                     <button type="button" class="button" id="restore-trashed-btn" style="padding: 10px 30px; font-size: 14px; margin-left: 10px; border-color: #b45309; color: #92400e;">↺ Restore Imported Trashed SKUs</button>
                 </div>
-                
+
                 <!-- Import Status -->
                 <div id="import-status" style="display: none; max-width: 800px; background: #fff3cd; padding: 20px; border-radius: 5px; border: 2px solid #ffc107;">
                     <h2 style="color: #856404;">✓ Import Complete!</h2>
@@ -3815,7 +3948,7 @@ add_action('admin_menu', function() {
                     <div id="import-progress-text" style="margin-top: 10px; font-weight: 600; color: #1e3a8a;">0%</div>
                 </div>
             </div>
-            
+
             <style>
                 .product-preview-item {
                     background: #f9f9f9;
@@ -3842,13 +3975,13 @@ add_action('admin_menu', function() {
                     line-height: 1.5;
                 }
             </style>
-            
+
             <script>
             jQuery(document).ready(function($) {
                 $('#dry-run-btn').click(function() {
                     var formData = new FormData($('#import-dry-run-form')[0]);
                     formData.append('action', 'import_dry_run');
-                    
+
                     $.ajax({
                         url: ajaxurl,
                         type: 'POST',
@@ -3859,7 +3992,7 @@ add_action('admin_menu', function() {
                             var data = (typeof response === 'string') ? JSON.parse(response) : response;
                             if (data.success) {
                                 $('#total-products-span').text(data.total_products);
-                                
+
                                 var html = '';
                                 $.each(data.preview_products, function(i, product) {
                                     html += '<div class="product-preview-item">';
@@ -3871,7 +4004,7 @@ add_action('admin_menu', function() {
                                 if (!html) {
                                     html = '<div class="product-preview-item"><div class="product-title">No sample rows available. Check CSV columns: SKU, Title, Description.</div></div>';
                                 }
-                                
+
                                 $('#products-preview-list').html(html);
                                 $('#preview-results').show();
                             } else {
@@ -3883,10 +4016,10 @@ add_action('admin_menu', function() {
                         }
                     });
                 });
-                
+
                 $('#confirm-import-btn').click(function() {
                     if (!confirm('Import ' + $('#total-products-span').text() + ' products? This cannot be undone.')) return;
-                    
+
                     $('#confirm-import-btn').prop('disabled', true).text('⏳ Importing...');
 
                     var startForm = new FormData($('#import-dry-run-form')[0]);
@@ -3970,7 +4103,7 @@ add_action('admin_menu', function() {
                         }
                     });
                 });
-                
+
                 $('#cancel-import-btn').click(function() {
                     $('#preview-results').hide();
                     $('#import-dry-run-form')[0].reset();
