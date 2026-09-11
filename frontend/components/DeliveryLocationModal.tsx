@@ -12,6 +12,7 @@ import {
   readStoredAddress,
   saveStoredAddress,
 } from "../services/shippingAddress";
+import { UserData } from "../services/authService";
 
 interface DeliveryLocationModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface DeliveryLocationModalProps {
   onAddressSelect: (address: ShippingAddress | null) => void;
   currentStore?: Store | null;
   onStoreSelect?: (store: Store | null) => void;
+  currentUser?: UserData;
 }
 
 type StoreHours = {
@@ -373,6 +375,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   onAddressSelect,
   currentStore,
   onStoreSelect,
+  currentUser,
 }) => {
   const emitDeliveryAddressUpdated = () => {
     if (typeof window === "undefined") return;
@@ -409,6 +412,24 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     useState<ShippingAddress | null>(null);
   const [isEditingDeliveryAddress, setIsEditingDeliveryAddress] =
     useState(true);
+
+  const mapUserShippingToAddress = (shipping: UserData["shipping"]): ShippingAddress | null => {
+    if (!shipping) return null;
+    const hasAny = shipping.address_1 || shipping.city || shipping.state || shipping.postcode;
+    if (!hasAny) return null;
+    return {
+      street: shipping.address_1 || "",
+      city: shipping.city || "",
+      province: shipping.state || "",
+      postalCode: shipping.postcode || "",
+      country: (shipping.country || "ZA") as ShippingAddress["country"],
+      label:
+        [shipping.address_1, shipping.city, shipping.state, shipping.postcode]
+          .filter(Boolean)
+          .join(", ") ||
+        undefined,
+    };
+  };
 
   const isUmzintoStore = (store: StoreWithStatus) =>
     store.id?.toLowerCase() === "umzinto" ||
@@ -716,7 +737,10 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       });
       const { address: storedAddress, legacyLabel: storedLegacy } =
         readStoredAddress();
-      const initialAddress = currentAddress || storedAddress;
+      const profileAddress = currentUser?.shipping
+        ? mapUserShippingToAddress(currentUser.shipping)
+        : null;
+      const initialAddress = currentAddress || storedAddress || profileAddress;
       const currentLabel = initialAddress
         ? initialAddress.label ||
           buildAddressLabel(initialAddress) ||
@@ -757,6 +781,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   }, [
     currentAddress,
     currentStore,
+    currentUser,
     initialFulfillmentType,
     isOpen,
     remoteStores,

@@ -325,6 +325,10 @@ export const Header: React.FC<HeaderProps> = ({
     legacyDeliveryLabel ||
     userProfileLabel ||
     "Enter Address";
+  const deliveryPostalCode =
+    deliveryAddress?.postalCode?.trim() ||
+    currentUser?.shipping?.postcode?.trim() ||
+    "";
   const hasDeliveryAddress = Boolean(
     deliveryAddress || legacyDeliveryLabel || userProfileLabel,
   );
@@ -547,18 +551,20 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
                 <ChevronRight size={14} className="flex-shrink-0" />
               </button>
-              <button
-                type="button"
-                onClick={() => openDeliveryLocationPanel("delivery")}
-                className="topbar__delivery-item"
-              >
-                <Truck size={15} className="flex-shrink-0" strokeWidth={1.75} />
-                <span className="topbar__delivery-text">
-                  <span>Deliver to:</span>
-                  <span className="truncate">{deliveryLabelText}</span>
-                </span>
-                <ChevronRight size={14} className="flex-shrink-0" />
-              </button>
+               <button
+                 type="button"
+                 onClick={() => openDeliveryLocationPanel("delivery")}
+                 className="topbar__delivery-item"
+               >
+                 <Truck size={15} className="flex-shrink-0" strokeWidth={1.75} />
+                 <span className="topbar__delivery-text">
+                   <span>Deliver to:</span>
+                   <span className="truncate">
+                     {hasDeliveryAddress ? deliveryPostalCode : "Enter your address"}
+                   </span>
+                 </span>
+                 <ChevronRight size={14} className="flex-shrink-0" />
+               </button>
             </div>
           </div>
         </div>
@@ -597,7 +603,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
                 <span className="text-sm font-bold text-white truncate">
                   {hasDeliveryAddress
-                    ? deliveryLabelText
+                    ? deliveryPostalCode || "Enter your address"
                     : "Enter your address"}
                 </span>
               </span>
@@ -902,7 +908,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
                 <div className="flex items-center gap-2 text-sm text-white/90">
                   <span className="truncate max-w-[200px] font-medium">
-                    {deliveryLabelText}
+                    {deliveryPostalCode || deliveryLabelText}
                   </span>
                   <ChevronDown size={14} />
                 </div>
@@ -1383,6 +1389,7 @@ export const Header: React.FC<HeaderProps> = ({
           onAddressSelect={handleAddressSelect}
           currentStore={selectedStore}
           onStoreSelect={setSelectedStore}
+          currentUser={currentUser || undefined}
         />
       </header>
     </>
