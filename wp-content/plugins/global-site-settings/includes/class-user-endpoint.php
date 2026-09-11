@@ -282,6 +282,13 @@ class User_Endpoint {
             }
         }
 
+        $shipping_fields = ['shipping_address_1', 'shipping_city', 'shipping_state', 'shipping_postcode', 'shipping_country'];
+        foreach ($shipping_fields as $field) {
+            if ($request->has_param($field)) {
+                update_user_meta($user_id, $field, sanitize_text_field($request->get_param($field)));
+            }
+        }
+
         // Persist display_name (and any other wp_users fields)
         if (!empty($userdata)) {
             wp_update_user($userdata);
@@ -361,6 +368,13 @@ class User_Endpoint {
                 'state' => get_user_meta($user->ID, 'billing_state', true),
                 'postcode' => get_user_meta($user->ID, 'billing_postcode', true),
                 'country' => get_user_meta($user->ID, 'billing_country', true),
+            ],
+            'shipping' => [
+                'address_1' => get_user_meta($user->ID, 'shipping_address_1', true),
+                'city' => get_user_meta($user->ID, 'shipping_city', true),
+                'state' => get_user_meta($user->ID, 'shipping_state', true),
+                'postcode' => get_user_meta($user->ID, 'shipping_postcode', true),
+                'country' => get_user_meta($user->ID, 'shipping_country', true),
             ],
             'registered_date' => $user->user_registered,
         ];

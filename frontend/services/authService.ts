@@ -276,8 +276,7 @@ export const mapShippingAddressToWoocommerce = (
 
 /**
  * Save a shipping address to the current user's WordPress profile.
- * Persists to both shipping and billing address fields so checkout
- * and account views stay in sync.
+ * Persists to WordPress user meta shipping_* fields.
  */
 export const saveShippingAddress = async (
   address: ShippingAddress,
@@ -288,7 +287,19 @@ export const saveShippingAddress = async (
   }
 
   const apiBase = getApiBaseUrl();
-  const woocommerceAddress = mapShippingAddressToWoocommerce(address);
+
+  const payload = {
+    shipping_address_1: address.street || address.label || "",
+    shipping_city: address.city || "",
+    shipping_state: address.province || "",
+    shipping_postcode: address.postalCode || "",
+    shipping_country: address.country || "ZA",
+    billing_address_1: address.street || address.label || "",
+    billing_city: address.city || "",
+    billing_state: address.province || "",
+    billing_postcode: address.postalCode || "",
+    billing_country: address.country || "ZA",
+  };
 
   try {
     const response = await fetch(`${apiBase}/users/me`, {
@@ -297,10 +308,7 @@ export const saveShippingAddress = async (
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        shipping: woocommerceAddress,
-        billing: woocommerceAddress,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
