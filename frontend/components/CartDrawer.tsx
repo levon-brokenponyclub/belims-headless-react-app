@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
-  Check,
   FileText,
   Loader,
   MapPin,
@@ -9,7 +8,6 @@ import {
   Plus,
   RotateCcw,
   ShoppingBag,
-  Tag,
   Trash2,
   Truck,
   X,
@@ -18,7 +16,6 @@ import { CartItem } from "../types";
 import { FREE_SHIPPING_THRESHOLD } from "../constants";
 import { formatCurrency } from "../utils/price";
 import { getShippingRates } from "../services/bobGoService";
-import { validateCoupon } from "../services/wooCommerceService";
 
 const DRAWER_ANIMATION_MS = 300;
 
@@ -29,12 +26,11 @@ interface CartDrawerProps {
   updateQuantity: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
   onCheckout?: () => void;
-  onApplyCoupon?: (code: string) => void;
   onSaveOrderNote?: (note: string) => void;
   onEstimateShipping?: (postalCode: string) => void;
 }
 
-type AddonPanel = "note" | "shipping" | "coupon" | null;
+type AddonPanel = "note" | "shipping" | null;
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
   isOpen,
@@ -43,7 +39,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   updateQuantity,
   removeItem,
   onCheckout,
-  onApplyCoupon,
   onSaveOrderNote,
   onEstimateShipping,
 }) => {
@@ -53,10 +48,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [activePanel, setActivePanel] = useState<AddonPanel>(null);
   const [noteInput, setNoteInput] = useState("");
   const [postalInput, setPostalInput] = useState("");
-  const [couponInput, setCouponInput] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState("");
-  const [couponLoading, setCouponLoading] = useState(false);
-  const [couponError, setCouponError] = useState<string | null>(null);
   const [detectingLocation, setDetectingLocation] = useState(false);
 
   type ShippingRate = { service_name: string; total_price: number; expected_delivery_date?: string };
@@ -319,7 +310,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               [
                 { id: "note" as const, label: "Order note", icon: <FileText className="h-3 w-3" /> },
                 { id: "shipping" as const, label: "Estimate Shipping", icon: <Truck className="h-3 w-3" /> },
-                { id: "coupon" as const, label: "Coupon", icon: appliedCoupon ? <Check className="h-3 w-3" /> : <Tag className="h-3 w-3" /> },
               ]
             ).map(({ id, label, icon }) => (
               <button
@@ -329,9 +319,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                   activePanel === id
                     ? "border-neutral-950 bg-neutral-950 text-white"
-                    : appliedCoupon && id === "coupon"
-                      ? "border-green-600 bg-green-50 text-green-700"
-                      : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400"
+                    : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-400"
                 }`}
               >
                 {icon}
@@ -390,7 +378,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         ) : null}
 
         {/* Addon panels — slide up from bottom of drawer */}
-        {(["note", "shipping", "coupon"] as const).map((panel) => {
+        {(["note", "shipping"] as const).map((panel) => {
           const isPanelOpen = activePanel === panel;
           return (
             <div
@@ -404,9 +392,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <p className="text-sm font-semibold text-neutral-950">
                   {panel === "note"
                     ? "Order note"
-                    : panel === "shipping"
-                      ? "Estimate Shipping"
-                      : "Coupon"}
+                    : "Estimate Shipping"}
                 </p>
                 <button
                   type="button"
@@ -503,69 +489,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         </ul>
                       </div>
                     ) : null}
-                  </>
-                )}
-
-                {panel === "coupon" && (
-                  <>
-                    {appliedCoupon ? (
-                      <div className="flex items-center justify-between rounded-lg bg-green-50 px-4 py-3">
-                        <p className="text-sm font-medium text-green-800">
-                          <Check className="inline h-4 w-4 mr-1" />
-                          {appliedCoupon} applied
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAppliedCoupon("");
-                            setCouponInput("");
-                          }}
-                          className="text-xs text-neutral-500 underline hover:text-neutral-950"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ) : null}
-                    <input
-                      type="text"
-                      placeholder="Enter discount code here"
-                      value={couponInput}
-                      onChange={(e) => {
-                        setCouponInput(e.target.value);
-                        setCouponError(null);
-                      }}
-                      className="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm text-neutral-950 placeholder:text-neutral-400 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400"
-                    />
-                    {couponError ? (
-                      <p className="text-sm text-red-600">{couponError}</p>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const code = couponInput.trim();
-                        if (!code) return;
-                        setCouponLoading(true);
-                        setCouponError(null);
-                        try {
-                          await validateCoupon(code);
-                          onApplyCoupon?.(code);
-                          setAppliedCoupon(code);
-                          setActivePanel(null);
-                        } catch (err: any) {
-                          setCouponError(err?.message ?? "Invalid coupon code.");
-                        } finally {
-                          setCouponLoading(false);
-                        }
-                      }}
-                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-neutral-950 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60"
-                      disabled={!couponInput.trim() || couponLoading}
-                    >
-                      {couponLoading ? (
-                        <Loader className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Apply"
-                      )}
-                    </button>
                   </>
                 )}
               </div>

@@ -1406,7 +1406,6 @@ function MainApp(props) {
             navigate("/checkout");
           }}
           onSaveOrderNote={props.onCartSaveOrderNote}
-          onApplyCoupon={props.onCartApplyCoupon}
           onEstimateShipping={(postalCode: string) => {
             saveStoredAddress({
               street: "",
