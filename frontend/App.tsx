@@ -1264,11 +1264,12 @@ function MainApp(props) {
           toggleStoreLocator={() => props.setIsLocatorOpen(true)}
           onOpenPaintAssistant={() => props.setIsPaintOpen(true)}
           onOpenTrackOrder={() => props.navigate("/track-order")}
-          onOpenOnboarding={() => props.setIsOnboardingOpen(true)}
+          onOpenOnboarding={() => props.setOnboardingOpen(true)}
           onCompare={props.addToCompare}
           products={props.products}
           currentUser={props.currentUser}
           setCurrentUser={props.setCurrentUser}
+          cartCoupon={props.cartCoupon}
         />
       )}
 

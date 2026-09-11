@@ -80,6 +80,7 @@ interface HeaderProps {
   products?: Product[];
   currentUser: UserData | null;
   setCurrentUser: (user: UserData | null) => void;
+  cartCoupon?: { code: string; discount_type: string; amount: string } | null;
   /** Optional live delivery-promise data driving the secondary-nav ETA pills. */
   deliveryPromise?: {
     fastestEta?: string;
@@ -107,6 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
   products = [],
   currentUser,
   setCurrentUser,
+  cartCoupon,
   deliveryPromise,
 }) => {
   const navigate = useNavigate();
@@ -336,6 +338,16 @@ export const Header: React.FC<HeaderProps> = ({
     (sum, item) => sum + (Number(item.price) || 0) * item.quantity,
     0,
   );
+  const cartDiscount = useMemo(() => {
+    if (!cartCoupon) return 0;
+    const amount = parseFloat(cartCoupon.amount);
+    if (isNaN(amount) || amount <= 0) return 0;
+    if (cartCoupon.discount_type === "percent") {
+      return cartSubtotal * (amount / 100);
+    }
+    return amount;
+  }, [cartCoupon, cartSubtotal]);
+  const cartTotal = Math.max(0, cartSubtotal - cartDiscount);
 
   // Initialize category tree from API
   useEffect(() => {
@@ -768,7 +780,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={toggleCart}
-              aria-label={`Cart, ${cartCount} items, ${formatCurrency(cartSubtotal)}`}
+              aria-label={`Cart, ${cartCount} items, ${formatCurrency(cartTotal)}`}
               className="relative flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.08] transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60"
             >
               <span className="relative">
@@ -784,7 +796,7 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </span>
               <span className="text-sm font-bold text-white tabular-nums">
-                {formatCurrency(cartSubtotal)}
+                {formatCurrency(cartTotal)}
               </span>
             </button>
           </div>
