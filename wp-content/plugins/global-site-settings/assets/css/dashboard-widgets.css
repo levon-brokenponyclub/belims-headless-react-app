@@ -1,0 +1,425 @@
+/**
+ * Belims Dashboard Widgets CSS
+ * Styles for: Website Speed Test, Order Processing Monitor, Live Inventory HUD, Site Settings Summary
+ */
+
+/* =============================================================================
+   COMMON WIDGET BASE
+============================================================================ */
+.bpc-speed-widget,
+.bpc-order-monitor,
+.bpc-inventory-hud {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+}
+
+/* =============================================================================
+   SPEED TEST WIDGET
+============================================================================ */
+
+.bpc-speed-widget {
+	position: relative;
+}
+
+.bpc-speed-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+}
+
+.bpc-speed-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: #1e293b;
+	margin: 0;
+}
+
+.bpc-speed-label {
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.bpc-score-circle {
+	width: 140px;
+	height: 140px;
+	margin: 0 auto 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.bpc-score-svg {
+	width: 100%;
+	height: 100%;
+	transform: rotate(-90deg);
+}
+
+.bpc-score-svg .bpc-score-track {
+	fill: none;
+	stroke: #e2e8f0;
+	stroke-width: 3;
+}
+
+.bpc-score-svg .bpc-score-fill {
+	fill: none;
+	stroke-linecap: round;
+	stroke-width: 3;
+	transition: stroke-dashoffset 0.6s ease, stroke 0.3s ease;
+}
+
+.bpc-score-svg .bpc-score-number {
+	font-size: 32px;
+	font-weight: 700;
+	text-anchor: middle;
+	dominant-baseline: middle;
+	fill: #1e2937;
+	transform: rotate(90deg);
+}
+
+.bpc-speed-meta {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+
+.bpc-last-test {
+	font-size: 12px;
+	color: #94a3b8;
+}
+
+.bpc-run-test {
+	padding: 6px 16px;
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.bpc-testing .bpc-run-test {
+	pointer-events: none;
+}
+
+/* =============================================================================
+   ORDER PROCESSING MONITOR
+============================================================================ */
+
+.bpc-order-monitor h3 {
+	margin: 0 0 4px 0;
+	color: #1e293b;
+	font-size: 16px;
+	font-weight: 600;
+}
+
+.bpc-monitor-period {
+	font-size: 12px;
+	color: #94a3b8;
+}
+
+.bpc-monitor-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 12px;
+	margin: 16px 0;
+}
+
+.bpc-monitor-card {
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 10px;
+	padding: 16px;
+	text-align: center;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+	transition: box-shadow 0.2s ease;
+}
+
+.bpc-monitor-card:hover {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.bpc-risk-card {
+	background: #fef2f2;
+	border-color: #fecdd3;
+}
+
+.bpc-risk-card .bpc-card-icon {
+	color: #dc2626;
+}
+
+.bpc-risk-card .bpc-card-title {
+	color: #dc2626;
+}
+
+.bpc-card-icon {
+	font-size: 20px;
+	margin-bottom: 8px;
+	color: #64748b;
+}
+
+.bpc-card-icon .dashicons {
+	font-size: 20px;
+	width: 20px;
+	height: 20px;
+}
+
+.bpc-card-title {
+	font-size: 12px;
+	font-weight: 600;
+	color: #64748b;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 6px;
+}
+
+.bpc-card-amount {
+	font-size: 22px;
+	font-weight: 700;
+	color: #1e293b;
+	margin-bottom: 10px;
+}
+
+.bpc-card-bar {
+	background: #f1f5f9;
+	border-radius: 4px;
+	height: 6px;
+	overflow: hidden;
+	margin-bottom: 6px;
+}
+
+.bpc-progress {
+	height: 100%;
+	border-radius: 4px;
+	transition: width 0.4s ease;
+}
+
+.bpc-card-perc {
+	font-size: 11px;
+	color: #94a3b8;
+	font-weight: 500;
+}
+
+.bpc-monitor-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid #e2e8f0;
+}
+
+.bpc-monitor-footer .button {
+	font-size: 12px;
+	padding: 6px 14px;
+}
+
+/* =============================================================================
+   LIVE INVENTORY HUD
+============================================================================ */
+
+.bpc-inventory-controls {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	margin-bottom: 12px;
+	flex-wrap: wrap;
+}
+
+.bpc-inventory-search {
+	flex: 1;
+	min-width: 200px;
+}
+
+.bpc-inventory-search input {
+	width: 100%;
+	padding: 8px 12px;
+	border: 1px solid #d1d5db;
+	border-radius: 6px;
+	font-size: 13px;
+}
+
+.bpc-inventory-search input:focus {
+	border-color: #322783;
+	box-shadow: 0 0 0 2px rgba(50, 39, 131, 0.2);
+	outline: none;
+}
+
+.bpc-inventory-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.bpc-inventory-actions .button {
+	font-size: 12px;
+	padding: 6px 14px;
+}
+
+.bpc-inventory-summary {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12px;
+	font-size: 13px;
+	color: #64748b;
+}
+
+.bpc-low-stock-count {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	color: #dc2626;
+	font-weight: 600;
+}
+
+.bpc-inventory-table-wrapper {
+	position: relative;
+	overflow-x: auto;
+	max-height: 400px;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+}
+
+.bpc-loading {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 24px;
+	height: 24px;
+	border: 3px solid #e2e8f0;
+	border-top-color: #322783;
+	border-radius: 50%;
+	animation: bpc-spin 0.8s linear infinite;
+	z-index: 10;
+}
+
+@keyframes bpc-spin {
+	to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.bpc-inventory-table {
+	margin: 0;
+	font-size: 13px;
+}
+
+.bpc-inventory-table th {
+	background: #f8fafc;
+	font-weight: 600;
+	text-align: left;
+	padding: 8px 12px;
+	border-bottom: 2px solid #e2e8f0;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: #64748b;
+}
+
+.bpc-inventory-table td {
+	padding: 8px 12px;
+	border-bottom: 1px solid #f1f5f9;
+}
+
+.bpc-inventory-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.bpc-inventory-table tbody tr:hover {
+	background: #f8fafc;
+}
+
+.bpc-low-stock-row {
+	background: #fef2f2 !important;
+}
+
+.bpc-low-stock-row td:first-child {
+	color: #dc2626;
+	font-weight: 600;
+}
+
+.bpc-inventory-empty {
+	text-align: center;
+	padding: 24px;
+	color: #94a3b8;
+}
+
+.bpc-settings-summary {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+}
+
+.bpc-settings-summary-intro {
+	margin: 0 0 14px;
+	color: #64748b;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.bpc-settings-summary-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 0 0 16px;
+	font-size: 13px;
+}
+
+.bpc-settings-summary-table td {
+	padding: 8px 0;
+	border-bottom: 1px solid #e5e7eb;
+	vertical-align: top;
+}
+
+.bpc-settings-summary-table tr:last-child td {
+	border-bottom: 0;
+}
+
+.bpc-settings-summary-table td:first-child {
+	width: 42%;
+	color: #475569;
+}
+
+.bpc-settings-summary-table code {
+	display: inline-block;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	vertical-align: middle;
+}
+
+.bpc-settings-summary-note {
+	color: #16a34a;
+	font-size: 12px;
+}
+
+.bpc-settings-summary-status {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.bpc-settings-summary-status--success {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.bpc-settings-summary-status--warning {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.bpc-settings-summary-button {
+	text-decoration: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+	.bpc-monitor-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.bpc-inventory-controls {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.bpc-inventory-summary {
+		flex-direction: column;
+		gap: 6px;
+	}
+}
