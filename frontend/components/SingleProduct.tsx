@@ -30,6 +30,7 @@ import {
   resolveAddressFromPostalCode,
   saveStoredAddress,
 } from "../services/shippingAddress";
+import { UserData } from "../services/authService";
 import {
   hydrateFromSiteStorage,
   setDeliveryAddress as setSharedDeliveryAddress,
@@ -56,6 +57,7 @@ interface SingleProductProps {
   onBrandClick?: (brand: string) => void;
   isAuthenticated?: boolean;
   isTradeApproved?: boolean;
+  currentUser?: UserData | null;
 }
 
 type ShippingTier = "Express" | "Standard" | "Economy";
@@ -137,6 +139,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   onBrandClick,
   isAuthenticated = false,
   isTradeApproved = false,
+  currentUser,
 }) => {
   const navigate = useNavigate();
   const getDefaultStore = (stores: Store[]) =>
@@ -350,8 +353,31 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   const refreshStoredAddress = () => {
     const { address, legacyLabel } = readStoredAddress();
-    setDeliveryAddress(address);
-    setLegacyDeliveryLabel(legacyLabel);
+    if (address) {
+      setDeliveryAddress(address);
+      setLegacyDeliveryLabel(legacyLabel);
+      return;
+    }
+
+    if (currentUser?.shipping) {
+      const profileAddress: ShippingAddress = {
+        street: currentUser.shipping.address_1 || "",
+        city: currentUser.shipping.city || "",
+        province: currentUser.shipping.state || "",
+        postalCode: currentUser.shipping.postcode || "",
+        country: (currentUser.shipping.country || "ZA") as ShippingAddress["country"],
+      };
+      setDeliveryAddress(profileAddress);
+      setLegacyDeliveryLabel(
+        [currentUser.shipping.address_1, currentUser.shipping.city, currentUser.shipping.state, currentUser.shipping.postcode]
+          .filter(Boolean)
+          .join(", ") || null,
+      );
+      return;
+    }
+
+    setDeliveryAddress(null);
+    setLegacyDeliveryLabel(null);
   };
 
   useEffect(() => {
@@ -469,7 +495,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   useEffect(() => {
     refreshStoredAddress();
     hydrateFromSiteStorage();
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     if (deliveryAddress?.city && deliveryAddress?.province) {
@@ -1341,6 +1367,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         initialFulfillmentType={deliveryModalMode}
         currentAddress={deliveryAddress || undefined}
         currentStore={selectedStore || undefined}
+        currentUser={currentUser || undefined}
         onStoreSelect={(store) => {
           setSelectedStore(store || null);
           if (store) {

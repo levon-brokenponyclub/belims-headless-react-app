@@ -97,6 +97,7 @@ const ProductPage = ({
   setPriceMatchProduct,
   isAuthenticated,
   isTradeApproved,
+  currentUser,
 }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -193,6 +194,7 @@ const ProductPage = ({
       }
       isAuthenticated={isAuthenticated}
       isTradeApproved={isTradeApproved}
+      currentUser={currentUser}
     />
   );
 };
@@ -1305,6 +1307,7 @@ function MainApp(props) {
                   setPriceMatchProduct={props.setPriceMatchProduct}
                   isAuthenticated={isAuthenticated}
                   isTradeApproved={isTradeApproved}
+                  currentUser={props.currentUser}
                 />
               }
             />
