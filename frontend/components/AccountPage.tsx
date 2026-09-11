@@ -13,11 +13,17 @@ import {
   Truck,
   PlusCircle,
 } from "lucide-react";
-import { UserData, updateUserProfile } from "../services/authService";
+import {
+  UserData,
+  updateUserProfile,
+  saveShippingAddress,
+} from "../services/authService";
 import { fetchCustomerOrders } from "../services/wooCommerceService";
-import { Order } from "../types";
+import { ShippingAddress, Order } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { formatNumberWithSeparators } from "../utils/price";
+import { readStoredAddress } from "../services/shippingAddress";
+import { DeliveryLocationModal } from "./DeliveryLocationModal";
 
 interface AccountPageProps {
   user: UserData | null;
@@ -34,6 +40,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsMessage, setDetailsMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+  const [addressSaveMessage, setAddressSaveMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
@@ -114,6 +125,35 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
       });
     } finally {
       setSavingDetails(false);
+    }
+  };
+
+  const handleAddNewAddress = () => {
+    setAddressSaveMessage(null);
+    setIsDeliveryModalOpen(true);
+  };
+
+  const handleAddressSelect = async (address: ShippingAddress | null) => {
+    if (!address) {
+      setIsDeliveryModalOpen(false);
+      return;
+    }
+
+    setAddressSaveMessage(null);
+    try {
+      await saveShippingAddress(address);
+      setAddressSaveMessage({
+        type: "success",
+        text: "Address saved to your profile.",
+      });
+      window.dispatchEvent(new Event("user-updated"));
+    } catch (error: any) {
+      setAddressSaveMessage({
+        type: "error",
+        text: error.message || "Failed to save address.",
+      });
+    } finally {
+      setIsDeliveryModalOpen(false);
     }
   };
 
@@ -358,71 +398,153 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     </div>
   );
 
-  const renderAddresses = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center sm:px-0 px-4">
-        <h3 className="font-bold text-gray-900 text-lg">My Addresses</h3>
-        <button className="bg-belims-blue text-white text-sm px-4 py-2 rounded font-bold hover:bg-belims-light transition-all flex items-center gap-2">
-          <PlusCircle size={18} /> Add New
-        </button>
-      </div>
+  const renderAddresses = () => {
+    const billingAddress = user.billing;
+    const shippingAddress = user.shipping;
+    const savedDeliveryAddress = readStoredAddress().address;
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg border-2 border-belims-blue shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-3">
-            <span className="bg-belims-blue text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold uppercase tracking-tighter absolute top-0 right-0">
-              Default
-            </span>
+    const hasBilling =
+      billingAddress?.address_1 ||
+      billingAddress?.city ||
+      billingAddress?.postcode;
+
+    const hasShipping =
+      shippingAddress?.address_1 ||
+      shippingAddress?.city ||
+      shippingAddress?.postcode;
+
+    const savedAddressLines = savedDeliveryAddress
+      ? [
+          savedDeliveryAddress.street || savedDeliveryAddress.label,
+          savedDeliveryAddress.city,
+          savedDeliveryAddress.province,
+          savedDeliveryAddress.postalCode,
+          savedDeliveryAddress.country,
+        ].filter(Boolean)
+      : [];
+
+    return (
+      <div className="space-y-6">
+        {addressSaveMessage && (
+          <div
+            className={`mb-6 p-4 rounded-lg border ${
+              addressSaveMessage.type === "success"
+                ? "bg-green-50 border-green-200 text-green-800"
+                : "bg-red-50 border-red-200 text-red-800"
+            }`}
+          >
+            {addressSaveMessage.text}
           </div>
-          <div className="flex items-center gap-2 mb-4">
-            <MapPin size={20} className="text-belims-blue" />
-            <h4 className="font-bold text-gray-900">Primary Billing</h4>
-          </div>
-           <div className="text-sm text-gray-600 space-y-1 mb-6">
-             <p className="font-bold text-gray-800">
-               {user.first_name} {user.last_name}
-             </p>
-             <p>{user.billing?.address_1 || ""}</p>
-             <p>
-               {user.billing?.city || ""}{user.billing?.city ? ", " : ""}{user.billing?.state || ""}
-             </p>
-             <p>{user.billing?.postcode || ""}</p>
-             <p>{user.billing?.country || ""}</p>
-           </div>
-          <div className="flex gap-4 border-t border-gray-100 pt-4">
-            <button className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide">
-              Edit Address
-            </button>
-            <button className="text-gray-400 text-xs font-bold hover:text-red-600 hover:underline uppercase tracking-wide">
-              Delete
-            </button>
-          </div>
+        )}
+
+        <div className="flex justify-between items-center sm:px-0 px-4">
+          <h3 className="font-bold text-gray-900 text-lg">My Addresses</h3>
+          <button
+            onClick={handleAddNewAddress}
+            className="bg-belims-blue text-white text-sm px-4 py-2 rounded font-bold hover:bg-belims-light transition-all flex items-center gap-2"
+          >
+            <PlusCircle size={18} /> Add New
+          </button>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors">
-          <div className="flex items-center gap-2 mb-4">
-            <Truck size={20} className="text-gray-400" />
-            <h4 className="font-bold text-gray-900">Job Site A</h4>
-          </div>
-          <div className="text-sm text-gray-600 space-y-1 mb-6">
-            <p className="font-bold text-gray-800">Site Foreman</p>
-            <p>12 Construction Way</p>
-            <p>Sandton, Johannesburg</p>
-            <p>2196</p>
-            <p>South Africa</p>
-          </div>
-          <div className="flex gap-4 border-t border-gray-100 pt-4">
-            <button className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide">
-              Edit Address
-            </button>
-            <button className="text-gray-400 text-xs font-bold hover:text-red-600 hover:underline uppercase tracking-wide">
-              Delete
-            </button>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {hasBilling && billingAddress && (
+            <div className="bg-white p-6 rounded-lg border-2 border-belims-blue shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3">
+                <span className="bg-belims-blue text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold uppercase tracking-tighter absolute top-0 right-0">
+                  Default
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin size={20} className="text-belims-blue" />
+                <h4 className="font-bold text-gray-900">Billing Address</h4>
+              </div>
+              <div className="text-sm text-gray-600 space-y-1 mb-6">
+                <p className="font-bold text-gray-800">
+                  {user.first_name} {user.last_name}
+                </p>
+                <p>{billingAddress.address_1 || ""}</p>
+                <p>
+                  {[billingAddress.city, billingAddress.state]
+                    .filter(Boolean)
+                    .join(", ")}
+                </p>
+                <p>{billingAddress.postcode || ""}</p>
+                <p>{billingAddress.country || ""}</p>
+              </div>
+              <div className="border-t border-gray-100 pt-4">
+                <button
+                  onClick={handleAddNewAddress}
+                  className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                >
+                  Edit Address
+                </button>
+              </div>
+            </div>
+          )}
+
+          {hasShipping && shippingAddress && (
+            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors">
+              <div className="flex items-center gap-2 mb-4">
+                <Truck size={20} className="text-belims-blue" />
+                <h4 className="font-bold text-gray-900">Shipping Address</h4>
+              </div>
+              <div className="text-sm text-gray-600 space-y-1 mb-6">
+                <p className="font-bold text-gray-800">
+                  {user.first_name} {user.last_name}
+                </p>
+                <p>{shippingAddress.address_1 || ""}</p>
+                <p>
+                  {[shippingAddress.city, shippingAddress.state]
+                    .filter(Boolean)
+                    .join(", ")}
+                </p>
+                <p>{shippingAddress.postcode || ""}</p>
+                <p>{shippingAddress.country || ""}</p>
+              </div>
+              <div className="border-t border-gray-100 pt-4">
+                <button
+                  onClick={handleAddNewAddress}
+                  className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                >
+                  Edit Address
+                </button>
+              </div>
+            </div>
+          )}
+
+          {savedDeliveryAddress && savedAddressLines.length > 0 && (
+            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors">
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin size={20} className="text-gray-400" />
+                <h4 className="font-bold text-gray-900">Saved Delivery</h4>
+              </div>
+              <div className="text-sm text-gray-600 space-y-1 mb-6">
+                {savedAddressLines.map((line, index) => (
+                  <p key={index}>{line}</p>
+                ))}
+              </div>
+              <div className="border-t border-gray-100 pt-4">
+                <button
+                  onClick={handleAddNewAddress}
+                  className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                >
+                  Edit Address
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!hasBilling && !hasShipping && savedAddressLines.length === 0 && (
+            <div className="col-span-full py-12 text-center text-gray-500">
+              <MapPin size={48} className="text-gray-300 mx-auto mb-4" />
+              <p>No addresses saved yet. Click "Add New" to add one.</p>
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderDetails = () => (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -690,6 +812,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           </div>
         </div>
       </div>
+
+      <DeliveryLocationModal
+        isOpen={isDeliveryModalOpen}
+        onClose={() => setIsDeliveryModalOpen(false)}
+        initialFulfillmentType="delivery"
+        onAddressSelect={handleAddressSelect}
+      />
     </div>
   );
 };

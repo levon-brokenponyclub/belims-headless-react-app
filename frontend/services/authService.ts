@@ -2,6 +2,7 @@
 // Integrates with WordPress user system via JWT REST API
 
 import { getApiBaseUrl } from "./wooCommerceService";
+import { ShippingAddress } from "../types";
 
 const TOKEN_KEY = "belims_jwt_token";
 
@@ -15,6 +16,13 @@ export interface UserData {
   phone: string;
   roles: string[];
   billing: {
+    address_1: string;
+    city: string;
+    state: string;
+    postcode: string;
+    country: string;
+  };
+  shipping?: {
     address_1: string;
     city: string;
     state: string;
@@ -250,4 +258,63 @@ export const checkEmailExists = async (email: string): Promise<boolean> => {
  */
 export const logoutUser = async (): Promise<void> => {
   clearAuthToken();
+};
+
+/**
+ * Convert a ShippingAddress (frontend format) to the WordPress
+ * billing/shipping address format expected by the REST API.
+ */
+export const mapShippingAddressToWoocommerce = (
+  address: ShippingAddress,
+) => ({
+  address_1: address.street || address.label || "",
+  city: address.city || "",
+  state: address.province || "",
+  postcode: address.postalCode || "",
+  country: address.country || "ZA",
+});
+
+/**
+ * Save a shipping address to the current user's WordPress profile.
+ * Persists to both shipping and billing address fields so checkout
+ * and account views stay in sync.
+ */
+export const saveShippingAddress = async (
+  address: ShippingAddress,
+): Promise<{ success: boolean; message: string }> => {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("No authentication token. Please log in.");
+  }
+
+  const apiBase = getApiBaseUrl();
+  const woocommerceAddress = mapShippingAddressToWoocommerce(address);
+
+  try {
+    const response = await fetch(`${apiBase}/users/me`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        shipping: woocommerceAddress,
+        billing: woocommerceAddress,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to save address");
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      message: data.message || "Address saved successfully",
+    };
+  } catch (error) {
+    console.error("Save shipping address error:", error);
+    throw error;
+  }
 };
