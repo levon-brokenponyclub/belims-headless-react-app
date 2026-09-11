@@ -208,13 +208,65 @@ class Belims_Orders_Endpoint {
             return new WP_Error('order_not_found', 'Order not found', array('status' => 404));
         }
 
+        // Get line items
+        $line_items = array();
+        foreach ($order->get_items() as $item_id => $item) {
+            $product = $item->get_product();
+            $line_items[] = array(
+                'id' => $item_id,
+                'product_id' => $item->get_product_id(),
+                'name' => $item->get_name(),
+                'quantity' => $item->get_quantity(),
+                'price' => $item->get_subtotal(),
+                'total' => $item->get_total(),
+                'image' => $product ? wp_get_attachment_url($product->get_image_id()) : '',
+            );
+        }
+
+        // Get shipping lines
+        $shipping_lines = array();
+        foreach ($order->get_items('shipping') as $item_id => $item) {
+            $shipping_lines[] = array(
+                'id' => $item_id,
+                'method_title' => $item->get_method_title(),
+                'method_id' => $item->get_method_id(),
+                'total' => $item->get_total(),
+            );
+        }
+
         return rest_ensure_response(array(
             'id' => $order->get_id(),
+            'order_number' => $order->get_order_number(),
             'order_key' => $order->get_order_key(),
             'status' => $order->get_status(),
             'total' => $order->get_total(),
             'currency' => $order->get_currency(),
             'date_created' => $order->get_date_created()->date('Y-m-d H:i:s'),
+            'line_items' => $line_items,
+            'shipping_address' => array(
+                'first_name' => $order->get_shipping_first_name(),
+                'last_name' => $order->get_shipping_last_name(),
+                'street' => $order->get_shipping_address_1(),
+                'city' => $order->get_shipping_city(),
+                'province' => $order->get_shipping_state(),
+                'postalCode' => $order->get_shipping_postcode(),
+                'country' => $order->get_shipping_country(),
+            ),
+            'billing_address' => array(
+                'first_name' => $order->get_billing_first_name(),
+                'last_name' => $order->get_billing_last_name(),
+                'street' => $order->get_billing_address_1(),
+                'city' => $order->get_billing_city(),
+                'province' => $order->get_billing_state(),
+                'postalCode' => $order->get_billing_postcode(),
+                'country' => $order->get_billing_country(),
+                'phone' => $order->get_billing_phone(),
+                'email' => $order->get_billing_email(),
+            ),
+            'payment_method' => $order->get_payment_method_title(),
+            'shipping_lines' => $shipping_lines,
+            'shipping_total' => $order->get_shipping_total(),
+            'total_tax' => $order->get_total_tax(),
         ));
     }
 }
