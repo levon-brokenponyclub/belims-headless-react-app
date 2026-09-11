@@ -719,7 +719,7 @@ export default function App() {
     type: "success" | "error";
   } | null>(null);
   const [cartOrderNote, setCartOrderNote] = useState("");
-  const [cartCoupon, setCartCoupon] = useState("");
+  const [cartCoupon, setCartCoupon] = useState<{ code: string; discount_type: string; amount: string } | null>(null);
   const hasLoadedProductsRef = useRef(false);
   const hasLoadedCategoriesRef = useRef(false);
   const hasPromptedLocationRef = useRef(false);
@@ -1161,7 +1161,7 @@ export default function App() {
         handleLogin={handleLogin}
         handleLogout={handleLogout}
         onCartSaveOrderNote={(note: string) => setCartOrderNote(note)}
-        onCartApplyCoupon={(code: string) => setCartCoupon(code)}
+        onCartApplyCoupon={(coupon) => setCartCoupon(coupon)}
         cartOrderNote={cartOrderNote}
         cartCoupon={cartCoupon}
       />
@@ -1343,7 +1343,7 @@ function MainApp(props) {
                   onClearCart={props.clearCart}
                   onSchedulePickup={() => props.setIsLocatorOpen(true)}
                   initialOrderNote={props.cartOrderNote}
-                  initialCouponCode={props.cartCoupon}
+                  couponDetails={props.cartCoupon}
                 />
               }
             />
@@ -1406,6 +1406,8 @@ function MainApp(props) {
             navigate("/checkout");
           }}
           onSaveOrderNote={props.onCartSaveOrderNote}
+          onApplyCoupon={props.onCartApplyCoupon}
+          couponDetails={props.cartCoupon}
           onEstimateShipping={(postalCode: string) => {
             saveStoredAddress({
               street: "",

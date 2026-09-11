@@ -29,12 +29,13 @@ interface CartDrawerProps {
   updateQuantity: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
   onCheckout?: () => void;
-  onApplyCoupon?: (code: string) => void;
+  onApplyCoupon?: (coupon: { code: string; discount_type: string; amount: string }) => void;
+  couponDetails?: { code: string; discount_type: string; amount: string } | null;
   onSaveOrderNote?: (note: string) => void;
   onEstimateShipping?: (postalCode: string) => void;
 }
 
-type AddonPanel = "note" | "shipping" | null;
+type AddonPanel = "note" | "shipping" | "coupon" | null;
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
   isOpen,
@@ -44,6 +45,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   removeItem,
   onCheckout,
   onApplyCoupon,
+  couponDetails,
   onSaveOrderNote,
   onEstimateShipping,
 }) => {
@@ -141,6 +143,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     () => items.reduce((acc, item) => acc + item.price * item.quantity, 0),
     [items],
   );
+
+  const couponDiscount = useMemo(() => {
+    if (!couponDetails) return 0;
+    const amount = parseFloat(couponDetails.amount);
+    if (isNaN(amount) || amount <= 0) return 0;
+    if (couponDetails.discount_type === "percent") {
+      return subtotal * (amount / 100);
+    }
+    return amount;
+  }, [couponDetails, subtotal]);
 
   const remainingForFreeShip = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
   const progressPercent = Math.min(
@@ -348,6 +360,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <span>Subtotal</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
+              {couponDiscount > 0 ? (
+                <div className="flex items-center justify-between text-[14px] font-normal leading-5 tracking-normal text-green-700">
+                  <span>Discount</span>
+                  <span>-{formatCurrency(couponDiscount)}</span>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between text-[14px] font-normal leading-5 tracking-normal text-[#060606]">
                 <span>Shipping</span>
                 <span>
@@ -361,7 +379,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 className="flex items-center justify-between border-t border-neutral-200 pt-2 text-[16px] font-semibold leading-6 tracking-normal text-[#060606]"
               >
                 <span>Total</span>
-                <span>{formatCurrency(subtotal)}</span>
+                <span>{formatCurrency(Math.max(0, subtotal - couponDiscount))}</span>
               </div>
             </div>
 
@@ -547,8 +565,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         setCouponLoading(true);
                         setCouponError(null);
                         try {
-                          await validateCoupon(code);
-                          onApplyCoupon?.(code);
+                          const result = await validateCoupon(code);
+                          onApplyCoupon?.(result);
                           setAppliedCoupon(code);
                           setActivePanel(null);
                         } catch (err: any) {

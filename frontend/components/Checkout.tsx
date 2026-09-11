@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CartItem, Product, ShippingAddress, Store } from "../types";
-import { CURRENCY_SYMBOL, STORES } from "../constants";
+import { CURRENCY_SYMBOL, FREE_SHIPPING_THRESHOLD, STORES } from "../constants";
 import { formatCurrency } from "../utils/price";
 import {
   getShippingRates,
@@ -14,7 +14,7 @@ import {
   verifyPayment,
 } from "../services/paymentService";
 import { registerUser } from "../services/authService";
-import { getApiBaseUrl } from "../services/wooCommerceService";
+import { getApiBaseUrl, validateCoupon } from "../services/wooCommerceService";
 import {
   ChevronDown,
   ChevronLeft,
@@ -42,6 +42,7 @@ interface CheckoutProps {
   onSchedulePickup?: () => void;
   initialOrderNote?: string;
   initialCouponCode?: string;
+  couponDetails?: { code: string; discount_type: string; amount: string } | null;
 }
 
 type CheckoutStep = "details" | "shipping" | "payment" | "success";
@@ -295,6 +296,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
   onSchedulePickup,
   initialOrderNote = "",
   initialCouponCode = "",
+  couponDetails = null,
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -311,6 +313,8 @@ export const Checkout: React.FC<CheckoutProps> = ({
   );
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("delivery");
   const [promoCode, setPromoCode] = useState(initialCouponCode);
+  const [validatedCoupon, setValidatedCoupon] = useState<{ code: string; discount_type: string; amount: string } | null>(couponDetails ?? null);
+  const [couponError, setCouponError] = useState<string | null>(null);
   const [orderNote, setOrderNote] = useState(initialOrderNote);
   const [pickupStore, setPickupStore] = useState<Store | null>(null);
   const [pickupSchedule, setPickupSchedule] = useState<PickupSchedule | null>(
@@ -354,8 +358,23 @@ export const Checkout: React.FC<CheckoutProps> = ({
     (acc, item) => acc + item.price * item.quantity,
     0,
   );
-  const shippingCost = selectedShipping ? selectedShipping.total_price : 0;
-  const total = subtotal + shippingCost;
+  const shippingCost = selectedShipping
+    ? subtotal >= FREE_SHIPPING_THRESHOLD
+      ? 0
+      : selectedShipping.total_price
+    : 0;
+
+  const couponDiscount = useMemo(() => {
+    if (!validatedCoupon) return 0;
+    const amount = parseFloat(validatedCoupon.amount);
+    if (isNaN(amount) || amount <= 0) return 0;
+    if (validatedCoupon.discount_type === "percent") {
+      return subtotal * (amount / 100);
+    }
+    return amount;
+  }, [validatedCoupon, subtotal]);
+
+  const total = Math.max(0, subtotal + shippingCost - couponDiscount);
   const pickupStatus = getPickupStatus(pickupStore);
   const scheduledLabel = pickupSchedule
     ? formatScheduledPickup(pickupSchedule.date, pickupSchedule.time)
@@ -845,7 +864,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
           : undefined,
         total,
         order_note: orderNote.trim() || undefined,
-        coupon_lines: promoCode.trim() ? [{ code: promoCode.trim() }] : undefined,
+        coupon_lines: validatedCoupon ? [{ code: validatedCoupon.code }] : promoCode.trim() ? [{ code: promoCode.trim() }] : undefined,
       });
 
       if (!order) throw new Error("Order creation failed");
@@ -1060,12 +1079,30 @@ export const Checkout: React.FC<CheckoutProps> = ({
             </div>
             <button
               className="h-10 rounded-md border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50 disabled:pointer-events-none disabled:opacity-50"
-              type="submit"
+              type="button"
               disabled={!promoCode.trim()}
+              onClick={async () => {
+                setCouponError(null);
+                try {
+                  const result = await validateCoupon(promoCode.trim());
+                  setValidatedCoupon(result);
+                } catch (err: any) {
+                  setCouponError(err?.message ?? "Invalid coupon code.");
+                  setValidatedCoupon(null);
+                }
+              }}
             >
               Apply
             </button>
           </form>
+          {couponError ? (
+            <p className="mt-2 text-sm text-red-600">{couponError}</p>
+          ) : null}
+          {validatedCoupon ? (
+            <p className="mt-2 text-sm text-green-700">
+              {validatedCoupon.code} applied
+            </p>
+          ) : null}
         </section>
 
         {orderNote.trim() ? (
@@ -1083,13 +1120,21 @@ export const Checkout: React.FC<CheckoutProps> = ({
               <dt>Subtotal</dt>
               <dd>{formatCurrency(subtotal)}</dd>
             </div>
+            {couponDiscount > 0 ? (
+              <div className="flex justify-between text-green-700">
+                <dt>Discount</dt>
+                <dd>-{formatCurrency(couponDiscount)}</dd>
+              </div>
+            ) : null}
             <div className="flex justify-between">
               <dt>{deliveryType === "pickup" ? "Pickup" : "Shipping"}</dt>
               <dd>
                 {deliveryType === "pickup"
                   ? formatCurrency(0)
                   : selectedShipping
-                    ? formatCurrency(shippingCost)
+                    ? shippingCost === 0
+                      ? "Free"
+                      : formatCurrency(shippingCost)
                     : "Calculated at checkout"}
               </dd>
             </div>
@@ -1179,7 +1224,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
           <span className="min-w-0 flex-1 break-words">
             {deliveryType === "pickup"
               ? "Pickup"
-              : `${selectedShipping?.service_name || "Shipping"} · ${formatCurrency(shippingCost)}`}
+              : `${selectedShipping?.service_name || "Shipping"} · ${shippingCost === 0 ? "Free" : formatCurrency(shippingCost)}`}
           </span>
           {deliveryType === "delivery" ? (
             <button

@@ -91,6 +91,7 @@ function global_site_settings_init() {
         'includes/class-ai-settings-endpoint.php',
         'includes/class-orders-endpoint.php',
         'includes/class-user-endpoint.php', // User registration & management
+        'includes/class-coupon-endpoint.php', // Coupon validation
         'includes/class-user-admin-page.php', // User management admin UI
         'includes/class-ecommerce-settings.php', // Ecommerce policies (Returns, Warranty, Shipping)
         'includes/class-bundled-products.php', // Bundled Products for WooCommerce
@@ -547,6 +548,7 @@ function global_site_settings_register_endpoints() {
         'Belims_AI_Settings_Endpoint',
         'Belims_Orders_Endpoint',
         'User_Endpoint', // User registration & management
+        'Belims_Coupon_Endpoint', // Coupon validation
         'Belims_FTG_Sync_Endpoint',
         'BobGo_Shipping_Proxy_Endpoint',
     ];
