@@ -4,6 +4,7 @@ import { AlertCircle, Loader } from "lucide-react";
 import { getApiBaseUrl } from "../services/wooCommerceService";
 import { OrderDetailsView } from "./OrderDetailsView";
 import { formatNumberWithSeparators } from "../utils/price";
+import { registerUser } from "../services/authService";
 
 interface OrderDetails {
   id: number;
@@ -66,6 +67,7 @@ export const OrderConfirmation: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
+  const [accountCreationMessage, setAccountCreationMessage] = useState<string | null>(null);
 
   const orderId = searchParams.get("order_id");
   const paymentStatus = searchParams.get("payment_status");
@@ -145,6 +147,59 @@ export const OrderConfirmation: React.FC = () => {
 
     return () => clearTimeout(timer);
   }, [orderId, order, pollCount]);
+
+  // Create user account after successful payment if they opted in during checkout
+  useEffect(() => {
+    if (!orderId || !order) return;
+
+    const isPaid =
+      order.status === "processing" ||
+      order.status === "completed" ||
+      paymentStatus === "complete";
+
+    if (!isPaid) return;
+
+    const pendingAccountData = localStorage.getItem("pendingAccountCreation");
+    if (!pendingAccountData) return;
+
+    let cancelled = false;
+
+    const createAccount = async () => {
+      try {
+        const accountData = JSON.parse(pendingAccountData);
+        // Only create account if it matches this order
+        if (accountData.orderId !== orderId) return;
+
+        const result = await registerUser({
+          email: accountData.email,
+          password: accountData.password,
+          first_name: accountData.firstName,
+          last_name: accountData.lastName,
+          phone: accountData.phone,
+        });
+
+        if (!cancelled && result.success) {
+          localStorage.removeItem("pendingAccountCreation");
+          setAccountCreationMessage(
+            `Account created successfully! You can now log in with ${accountData.email}`,
+          );
+        }
+      } catch (accountError) {
+        console.error("Post-payment account creation error:", accountError);
+        if (!cancelled) {
+          setAccountCreationMessage(
+            "Order confirmed, but we couldn't create your account automatically. Please contact support.",
+          );
+        }
+      }
+    };
+
+    createAccount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, order, paymentStatus]);
 
   if (loading) {
     return (
@@ -313,6 +368,13 @@ export const OrderConfirmation: React.FC = () => {
 
   return (
     <div className="bg-gray-50">
+      {accountCreationMessage && (
+        <div className="mx-auto max-w-2xl px-4 pt-6">
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+            {accountCreationMessage}
+          </div>
+        </div>
+      )}
       <OrderDetailsView
         orderNumber={orderNumberStr}
         date={formattedDate}

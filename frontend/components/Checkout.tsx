@@ -762,31 +762,6 @@ export const Checkout: React.FC<CheckoutProps> = ({
         if (cancelled) return;
 
         if (res.success) {
-          // Check if there's a pending account creation
-          const pendingAccountData = localStorage.getItem(
-            "pendingAccountCreation",
-          );
-          if (pendingAccountData) {
-            try {
-              const accountData = JSON.parse(pendingAccountData);
-              // Only create account if it matches this order
-              if (accountData.orderId === returnOrderId) {
-                await registerUser({
-                  email: accountData.email,
-                  password: accountData.password,
-                  first_name: accountData.firstName,
-                  last_name: accountData.lastName,
-                  phone: accountData.phone,
-                });
-                // Clear the pending account data
-                localStorage.removeItem("pendingAccountCreation");
-              }
-            } catch (accountError) {
-              // Don't block order confirmation if account creation fails
-              console.error("Account creation error:", accountError);
-            }
-          }
-
           const ts = Math.floor(Date.now() / 1000);
           onClearCart();
           navigate(
@@ -835,50 +810,6 @@ export const Checkout: React.FC<CheckoutProps> = ({
   const paymentProviderLabel = returnSource
     ? returnSource.toUpperCase()
     : "PAYFAST";
-
-  const handleCreateAccount = async () => {
-    // Check if we have enough customer data to create an account
-    if (!customer.email || !customer.firstName || !customer.lastName) {
-      alert("Please fill in your details before creating an account.");
-      return;
-    }
-
-    // Generate a temporary password or ask user for one
-    const password = prompt(
-      "Create a password for your account (minimum 8 characters):",
-    );
-
-    if (!password || password.length < 8) {
-      alert("Password must be at least 8 characters long.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await registerUser({
-        email: customer.email,
-        password: password,
-        first_name: customer.firstName,
-        last_name: customer.lastName,
-        phone: customer.phone,
-      });
-
-      if (result.success) {
-        alert(
-          `Account created successfully! You can now login with ${customer.email}`,
-        );
-        // Optionally save the data to their profile
-      }
-    } catch (error) {
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Failed to create account. The email may already be registered.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // STEP 1: Details Submit -> Shipping/Pickup details
   const handleDetailsSubmit = async (e: React.FormEvent) => {
