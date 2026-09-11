@@ -13,7 +13,7 @@ import {
   initializePayment,
   verifyPayment,
 } from "../services/paymentService";
-import { registerUser } from "../services/authService";
+import { registerUser, getCurrentUser, UserData } from "../services/authService";
 import { getApiBaseUrl, validateCoupon } from "../services/wooCommerceService";
 import {
   ChevronDown,
@@ -394,38 +394,81 @@ export const Checkout: React.FC<CheckoutProps> = ({
   const pickupDistance =
     pickupStore?.distance ?? getStoredPickupDistance(pickupStore?.id);
 
-  // Auto-populate address from saved delivery location and fetch shipping rates
+  // Auto-populate address from logged-in user profile or saved delivery location and fetch shipping rates
   useEffect(() => {
     const initializeFromSavedLocation = async () => {
-      const { address } = readStoredAddress();
+      let addressToUse: ShippingAddress | null = null;
 
-      if (
-        address &&
-        address.city &&
-        address.province &&
-        !addressAutoPopulated
-      ) {
-        // Auto-populate customer address
-        setCustomer((prev) => ({
-          ...prev,
-          address: address.street || "",
-          city: address.city || "",
-          province: address.province || "",
-          postalCode: address.postalCode || "",
-        }));
-        setAddressAutoPopulated(true);
-        setEditingAddress(false);
+      // Priority 1: Autofill from logged-in user profile
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+        const billing = (user.billing || {}) as UserData['billing'];
+        const shipping = (user.shipping || {}) as UserData['shipping'];
+          const source = billing.address_1 ? billing : shipping;
 
-        // Fetch shipping rates for this location
+          if (source.address_1 || source.city || source.postcode) {
+          addressToUse = {
+            street: source.address_1 || "",
+            city: source.city || "",
+            province: source.state || "",
+            postalCode: source.postcode || "",
+            country: (source.country || "ZA") as ShippingAddress['country'],
+          };
+
+            setCustomer((prev) => ({
+              ...prev,
+              firstName: user.first_name || prev.firstName,
+              lastName: user.last_name || prev.lastName,
+              email: user.email || prev.email,
+              phone: user.phone || prev.phone,
+              address: addressToUse!.street,
+              city: addressToUse!.city,
+              province: addressToUse!.province,
+              postalCode: addressToUse!.postalCode,
+            }));
+            setAddressAutoPopulated(true);
+            setEditingAddress(false);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile for checkout autofill:", error);
+      }
+
+      // Priority 2: Fallback to localStorage if no user profile address
+      if (!addressToUse) {
+        const { address } = readStoredAddress();
+
+        if (
+          address &&
+          address.city &&
+          address.province &&
+          !addressAutoPopulated
+        ) {
+          addressToUse = address;
+          setCustomer((prev) => ({
+            ...prev,
+            address: address.street || "",
+            city: address.city || "",
+            province: address.province || "",
+            postalCode: address.postalCode || "",
+          }));
+          setAddressAutoPopulated(true);
+          setEditingAddress(false);
+        }
+      }
+
+      // Fetch shipping rates for the resolved address
+      if (addressToUse && addressToUse.city && addressToUse.province) {
         setLoadingSavedRates(true);
         try {
           const rates = await getShippingRates({
             destination_address: {
-              street: address.street || "",
-              city: address.city,
-              province: address.province,
-              postal_code: address.postalCode || "",
-              country: address.country || "South Africa",
+              street: addressToUse.street || "",
+              city: addressToUse.city,
+              province: addressToUse.province,
+              postal_code: addressToUse.postalCode || "",
+              country: addressToUse.country || "South Africa",
             },
           });
 
@@ -440,7 +483,6 @@ export const Checkout: React.FC<CheckoutProps> = ({
           }));
 
           setSavedLocationRates(classifiedRates);
-          // Auto-select the fastest rate
           const fastest = selectFastestRate(classifiedRates);
           if (fastest) {
             setSelectedShipping(fastest);
