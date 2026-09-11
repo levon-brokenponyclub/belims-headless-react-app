@@ -1,5 +1,6 @@
 import { Product, WooCommerceCategory } from "../types";
 import { enrichProductWithDeals } from "./dealService";
+import { getAuthHeaders } from "./authService";
 
 /**
  * BELIMS HEADLESS API SERVICE
@@ -344,8 +345,8 @@ export const fetchCustomerOrders = async () => {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        ...getAuthHeaders(),
       },
-      credentials: "include", // Include cookies for authentication
     });
 
     if (!response.ok) {

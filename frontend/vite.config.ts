@@ -20,21 +20,6 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/api/, "/wp-json"),
-          configure: (proxy) => {
-            // WordPress sets auth cookies with Domain=<cms domain> and Secure
-            // when the proxy connects via HTTPS. Strip those so the browser
-            // stores the cookie for the localhost origin and sends it back on
-            // subsequent same-origin requests (credentials: "include").
-            proxy.on("proxyRes", (proxyRes) => {
-              const cookies = proxyRes.headers["set-cookie"];
-              if (!cookies) return;
-              proxyRes.headers["set-cookie"] = cookies.map((cookie) =>
-                cookie
-                  .replace(/;?\s*Domain=[^;]+/gi, "")
-                  .replace(/;?\s*Secure/gi, ""),
-              );
-            });
-          },
         },
       },
     },
