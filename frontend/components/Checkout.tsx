@@ -315,6 +315,13 @@ export const Checkout: React.FC<CheckoutProps> = ({
   const [promoCode, setPromoCode] = useState(initialCouponCode);
   const [validatedCoupon, setValidatedCoupon] = useState<{ code: string; discount_type: string; amount: string } | null>(couponDetails ?? null);
   const [couponError, setCouponError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (couponDetails) {
+      setValidatedCoupon(couponDetails);
+      setPromoCode(couponDetails.code);
+    }
+  }, [couponDetails]);
   const [orderNote, setOrderNote] = useState(initialOrderNote);
   const [pickupStore, setPickupStore] = useState<Store | null>(null);
   const [pickupSchedule, setPickupSchedule] = useState<PickupSchedule | null>(
