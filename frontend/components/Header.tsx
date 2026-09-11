@@ -315,9 +315,19 @@ export const Header: React.FC<HeaderProps> = ({
   ]);
 
   const pickupLabel = selectedStore?.name || "Select Store";
+  const userProfileLabel = currentUser?.shipping
+    ? [currentUser.shipping.address_1, currentUser.shipping.city, currentUser.shipping.state, currentUser.shipping.postcode]
+        .filter(Boolean)
+        .join(", ")
+    : null;
   const deliveryLabelText =
-    deliveryAddress?.postalCode?.trim() || "Enter Address";
-  const hasDeliveryAddress = Boolean(deliveryAddress || legacyDeliveryLabel);
+    deliveryAddress?.postalCode?.trim() ||
+    legacyDeliveryLabel ||
+    userProfileLabel ||
+    "Enter Address";
+  const hasDeliveryAddress = Boolean(
+    deliveryAddress || legacyDeliveryLabel || userProfileLabel,
+  );
   const cartSubtotal = cartItems.reduce(
     (sum, item) => sum + (Number(item.price) || 0) * item.quantity,
     0,
