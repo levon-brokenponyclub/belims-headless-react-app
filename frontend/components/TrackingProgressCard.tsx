@@ -142,6 +142,7 @@ export type NormalizedTracking = {
     orderNo?: string | number;
     courier?: string;
     serviceLevel?: string;
+    customer?: string;
   };
   events: NormalizedEvent[];
 };
@@ -199,6 +200,23 @@ function badgeFromStatus(status?: string) {
     return "In transit";
   if (s.includes("collected") || s.includes("collection")) return "Collected";
   return "Pending collection";
+}
+
+function getStepTimestamps(events: NormalizedEvent[]): Record<StepKey, string | undefined> {
+  const timestamps: Partial<Record<StepKey, string>> = {};
+  const oldestFirst = [...events].reverse();
+
+  for (const ev of oldestFirst) {
+    const label = ev.label.toLowerCase();
+    for (const step of TRACK_STEPS) {
+      if (timestamps[step.key] === undefined && step.match(label)) {
+        timestamps[step.key] = ev.timestamp;
+        break;
+      }
+    }
+  }
+
+  return timestamps as Record<StepKey, string | undefined>;
 }
 
 export function normalizeTrackingResult(data: TrackResponse): {
@@ -271,6 +289,7 @@ export function normalizeTrackingResult(data: TrackResponse): {
       (shipment as any)?.courier_name ||
       (shipment as any)?.courier_slug,
     serviceLevel: shipment?.service_level,
+    customer: shipment?.customer || undefined,
   };
 
   return {
@@ -340,12 +359,15 @@ export const TrackingProgressCard = ({
   const serviceLevel =
     data.details?.serviceLevel || shipment?.service_level || "—";
   const orderNo = data.details?.orderNo || shipment?.order_number || "—";
+  const customer = data.details?.customer || shipment?.customer || "—";
   const etaText = data.etaText || "—";
 
   const orderedEvents = useMemo(() => {
     const events = Array.isArray(data.events) ? data.events : [];
     return newestFirst ? events : [...events].reverse();
   }, [data.events, newestFirst]);
+
+  const stepTimestamps = useMemo(() => getStepTimestamps(data.events || []), [data.events]);
 
   return (
     <div className="space-y-5">
@@ -466,6 +488,7 @@ export const TrackingProgressCard = ({
               const Icon = step.Icon;
               const isDone = idx < activeIdx;
               const isActive = idx === activeIdx;
+              const stepTimestamp = stepTimestamps[step.key];
 
               return (
                 <div key={step.key} className="flex flex-col items-center">
@@ -494,9 +517,9 @@ export const TrackingProgressCard = ({
                     {step.label}
                   </div>
 
-                  {idx === activeIdx && data.events?.length ? (
+                  {stepTimestamp ? (
                     <div className="mt-1 text-[11px] text-gray-500 tabular-nums text-center">
-                      {formatFriendlyDate(data.events[0]?.timestamp)}
+                      {formatFriendlyDate(stepTimestamp)}
                     </div>
                   ) : (
                     <div className="mt-1 h-[14px]" />
@@ -536,6 +559,13 @@ export const TrackingProgressCard = ({
 
             <div className="mt-3 text-gray-500">Order</div>
             <div className="font-bold text-gray-900">{String(orderNo)}</div>
+
+            {customer !== "—" ? (
+              <>
+                <div className="mt-3 text-gray-500">Customer</div>
+                <div className="font-bold text-gray-900">{customer}</div>
+              </>
+            ) : null}
           </div>
 
           <div className="rounded-xl border border-gray-100 p-4">

@@ -76,6 +76,7 @@ export type TrackResponse = {
     orderNo?: string;
     courier?: string;
     serviceLevel?: string;
+    customer?: string;
   };
   events: Array<{
     label: string;
