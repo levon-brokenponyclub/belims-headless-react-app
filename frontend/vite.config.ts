@@ -14,12 +14,27 @@ export default defineConfig(({ mode }) => {
       strictPort: true, // WP CORS allowlist is locked to :3000 — fail loudly instead of drifting to :3001
       host: "0.0.0.0",
       proxy: {
-        // Mirror Netlify redirect: /api/* -> CMS /wp-json/*
+        // Mirror Netlify/Vercel redirect: /api/* -> CMS /wp-json/*
         "/api": {
           target: cmsUrl,
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/api/, "/wp-json"),
+          configure: (proxy) => {
+            // WordPress sets auth cookies with Domain=<cms domain> and Secure
+            // when the proxy connects via HTTPS. Strip those so the browser
+            // stores the cookie for the localhost origin and sends it back on
+            // subsequent same-origin requests (credentials: "include").
+            proxy.on("proxyRes", (proxyRes) => {
+              const cookies = proxyRes.headers["set-cookie"];
+              if (!cookies) return;
+              proxyRes.headers["set-cookie"] = cookies.map((cookie) =>
+                cookie
+                  .replace(/;?\s*Domain=[^;]+/gi, "")
+                  .replace(/;?\s*Secure/gi, ""),
+              );
+            });
+          },
         },
       },
     },
