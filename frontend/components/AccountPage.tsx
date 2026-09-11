@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import {
   User,
   Package,
@@ -311,6 +311,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                     >
                       {getStatusLabel(order.status)}
                     </div>
+                    <Link
+                      to={`/track-order?order-number=${order.order_number}`}
+                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide whitespace-nowrap"
+                    >
+                      Track
+                    </Link>
                     <ChevronRight
                       size={20}
                       className="text-gray-300 group-hover:text-belims-blue transition-colors"
@@ -385,6 +391,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                     >
                       {getStatusLabel(order.status)}
                     </div>
+                    <Link
+                      to={`/track-order?order-number=${order.order_number}`}
+                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Track
+                    </Link>
                     <button className="p-2 hover:bg-white hover:shadow-sm rounded-lg border border-transparent hover:border-gray-200 text-gray-400 hover:text-belims-blue transition-all">
                       <ChevronRight size={20} />
                     </button>
