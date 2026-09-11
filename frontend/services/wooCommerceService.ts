@@ -10,7 +10,7 @@ import { enrichProductWithDeals } from "./dealService";
  *   Uses Netlify proxy: /api/belims/v1/* → cms.belims.co.za/wp-json/belims/v1/*
  *
  * Development (http://localhost:3000):
- *   Uses direct API: http://belims-headless.local/wp-json/belims/v1/*
+ *   Uses Vite proxy: /api/belims/v1/* → cms.belims.co.za/wp-json/belims/v1/*
  *
  * Endpoints:
  * - GET /products
@@ -21,16 +21,16 @@ import { enrichProductWithDeals } from "./dealService";
 
 // Detect environment and set appropriate API base URL
 export function getApiBaseUrl(): string {
-  // In development (localhost:3000)
   if (
     typeof window !== "undefined" &&
     window.location.hostname === "localhost"
   ) {
-    // Use local domain which is reachable
-    return "http://belims-headless.local/wp-json/belims/v1";
+    // Use Vite proxy: /api/belims/v1/* → cms.belims.co.za/wp-json/belims/v1/*
+    // Keeps auth cookies on localhost:3000 origin for proper credentials:"include"
+    return "/api/belims/v1";
   }
 
-  // In production (Netlify) - use relative proxy path
+  // In production (Vercel) - use relative proxy path
   return "/api/belims/v1";
 }
 

@@ -926,9 +926,11 @@ export default function App() {
     };
     checkAuth();
 
-    // Listen for user updates (e.g., from account details save)
-    const handleUserUpdate = () => {
-      checkAuth();
+     // Listen for user updates (e.g., from account details save).
+     // Bypass the hasCheckedAuthRef guard so we always get fresh data.
+    const handleUserUpdate = async () => {
+      const updatedUser = await getCurrentUser();
+      setCurrentUser(updatedUser);
     };
     const handleResetPickupStore = () => {
       if (import.meta.env.DEV) {

@@ -259,7 +259,6 @@ class User_Endpoint {
 
         $user = get_userdata($user_id);
 
-        // Update user data
         $userdata = ['ID' => $user_id];
 
         if ($request->has_param('first_name')) {
@@ -267,6 +266,9 @@ class User_Endpoint {
         }
         if ($request->has_param('last_name')) {
             update_user_meta($user_id, 'last_name', sanitize_text_field($request->get_param('last_name')));
+        }
+        if ($request->has_param('display_name')) {
+            $userdata['display_name'] = sanitize_text_field($request->get_param('display_name'));
         }
         if ($request->has_param('phone')) {
             update_user_meta($user_id, 'billing_phone', sanitize_text_field($request->get_param('phone')));
@@ -279,6 +281,14 @@ class User_Endpoint {
                 update_user_meta($user_id, $field, sanitize_text_field($request->get_param($field)));
             }
         }
+
+        // Persist display_name (and any other wp_users fields)
+        if (!empty($userdata)) {
+            wp_update_user($userdata);
+        }
+
+        // Re-fetch fresh user data so the response reflects all updates
+        $user = get_userdata($user_id);
 
         return rest_ensure_response([
             'success' => true,

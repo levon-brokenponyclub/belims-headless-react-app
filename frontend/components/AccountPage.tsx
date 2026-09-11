@@ -95,7 +95,17 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
         text: result.message || "Account details updated successfully!",
       });
 
-      // Reload user data by dispatching a custom event or calling a parent callback
+      // Update local form state immediately from the server response
+      if (result.user) {
+        setFormData({
+          first_name: result.user.first_name || "",
+          last_name: result.user.last_name || "",
+          display_name: result.user.display_name || "",
+          phone: result.user.phone || "",
+        });
+      }
+
+      // Notify parent to refresh currentUser state
       window.dispatchEvent(new Event("user-updated"));
     } catch (error: any) {
       setDetailsMessage({
@@ -368,17 +378,17 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <MapPin size={20} className="text-belims-blue" />
             <h4 className="font-bold text-gray-900">Primary Billing</h4>
           </div>
-          <div className="text-sm text-gray-600 space-y-1 mb-6">
-            <p className="font-bold text-gray-800">
-              {user.first_name} {user.last_name}
-            </p>
-            <p>{user.billing.address_1}</p>
-            <p>
-              {user.billing.city}, {user.billing.state}
-            </p>
-            <p>{user.billing.postcode}</p>
-            <p>{user.billing.country}</p>
-          </div>
+           <div className="text-sm text-gray-600 space-y-1 mb-6">
+             <p className="font-bold text-gray-800">
+               {user.first_name} {user.last_name}
+             </p>
+             <p>{user.billing?.address_1 || ""}</p>
+             <p>
+               {user.billing?.city || ""}{user.billing?.city ? ", " : ""}{user.billing?.state || ""}
+             </p>
+             <p>{user.billing?.postcode || ""}</p>
+             <p>{user.billing?.country || ""}</p>
+           </div>
           <div className="flex gap-4 border-t border-gray-100 pt-4">
             <button className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide">
               Edit Address
@@ -441,7 +451,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                 type="text"
                 value={formData.first_name}
                 onChange={(e) =>
-                  setFormData({ ...formData, first_name: e.target.value })
+                  setFormData((prev) => ({ ...prev, first_name: e.target.value }))
                 }
                 className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
               />
@@ -454,7 +464,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                 type="text"
                 value={formData.last_name}
                 onChange={(e) =>
-                  setFormData({ ...formData, last_name: e.target.value })
+                  setFormData((prev) => ({ ...prev, last_name: e.target.value }))
                 }
                 className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
               />
@@ -469,7 +479,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
               type="text"
               value={formData.display_name}
               onChange={(e) =>
-                setFormData({ ...formData, display_name: e.target.value })
+                setFormData((prev) => ({
+                  ...prev,
+                  display_name: e.target.value,
+                }))
               }
               className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
             />
@@ -497,9 +510,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <input
               type="tel"
               value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                }
               className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
             />
           </div>
