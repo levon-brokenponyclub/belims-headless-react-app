@@ -1904,14 +1904,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                 <div className="h-2.5 w-2.5 rounded-full bg-neutral-950" />
                               </div>
                               <CreditCard className="h-5 w-5 text-neutral-500" />
-                              <span className="font-medium">Credit card</span>
-                              <div className="ml-auto hidden gap-1 sm:flex">
-                                <div className="h-6 w-10 rounded bg-blue-700" />
-                                <div className="h-6 w-10 rounded bg-red-500" />
-                                <div className="h-6 w-10 rounded bg-sky-500" />
-                              </div>
+                              <span className="font-medium">Payfast</span>
+
                             </label>
-                            <div className="space-y-4 border-t border-neutral-200 bg-neutral-50 p-4">
+                            {/* <div className="space-y-4 border-t border-neutral-200 bg-neutral-50 p-4">
                               <div className="relative">
                                 <input
                                   className={`${inputClass} h-10 pr-12`}
@@ -1936,10 +1932,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                 className={`${inputClass} h-10`}
                                 placeholder="Name on card"
                               />
-                            </div>
+                            </div> */}
                           </div>
 
-                          <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-400">
+                          {/* <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-400">
                             <input
                               className="sr-only"
                               type="radio"
@@ -1955,7 +1951,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                 Pal
                               </span>
                             </span>
-                          </label>
+                          </label> */}
                         </div>
                       </section>
 
