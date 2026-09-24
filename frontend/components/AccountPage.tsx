@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   User,
   Package,
@@ -9,7 +9,6 @@ import {
   Settings,
   ChevronRight,
   Clock,
-  CheckCircle,
   Truck,
   PlusCircle,
 } from "lucide-react";
@@ -17,12 +16,14 @@ import {
   UserData,
   updateUserProfile,
   saveShippingAddress,
+  clearBillingAddress,
+  clearShippingAddress,
 } from "../services/authService";
 import { fetchCustomerOrders } from "../services/wooCommerceService";
 import { ShippingAddress, Order } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { formatNumberWithSeparators } from "../utils/price";
-import { readStoredAddress } from "../services/shippingAddress";
+import { readStoredAddress, saveStoredAddress } from "../services/shippingAddress";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
 
 interface AccountPageProps {
@@ -32,10 +33,12 @@ interface AccountPageProps {
 
 type Tab = "dashboard" | "orders" | "addresses" | "payment" | "details";
 
+const VALID_TABS: Tab[] = ["dashboard", "orders", "addresses", "payment", "details"];
+
 export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
-  const [searchParams] = useSearchParams();
-  const tabParam = searchParams.get("tab") as Tab | null;
-  const [activeTab, setActiveTab] = useState<Tab>(tabParam || "dashboard");
+  const navigate = useNavigate();
+  const { tab: tabParam } = useParams<{ tab?: string }>();
+  const activeTab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "dashboard";
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [savingDetails, setSavingDetails] = useState(false);
@@ -48,6 +51,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<"billing" | "shipping" | "delivery" | null>(null);
+  const [removingAddress, setRemovingAddress] = useState(false);
 
   // Form state for account details
   const [formData, setFormData] = useState({
@@ -56,12 +61,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     display_name: user?.display_name || "",
     phone: user?.phone || "",
   });
-
-  useEffect(() => {
-    if (tabParam) {
-      setActiveTab(tabParam);
-    }
-  }, [tabParam]);
 
   // Fetch orders on component mount
   useEffect(() => {
@@ -157,6 +156,29 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     }
   };
 
+  const handleRemoveAddress = async (type: "billing" | "shipping" | "delivery") => {
+    setRemovingAddress(true);
+    setAddressSaveMessage(null);
+    try {
+      if (type === "delivery") {
+        saveStoredAddress(null);
+        window.dispatchEvent(new Event("belims:delivery-address-updated"));
+      } else if (type === "billing") {
+        await clearBillingAddress();
+        window.dispatchEvent(new Event("user-updated"));
+      } else {
+        await clearShippingAddress();
+        window.dispatchEvent(new Event("user-updated"));
+      }
+      setAddressSaveMessage({ type: "success", text: "Address removed." });
+    } catch (error: any) {
+      setAddressSaveMessage({ type: "error", text: error.message || "Failed to remove address." });
+    } finally {
+      setRemovingAddress(false);
+      setConfirmRemove(null);
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-4 text-center">
@@ -225,9 +247,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <div className="p-2 bg-blue-50 text-belims-blue rounded-lg">
               <Package size={24} />
             </div>
-            <h3 className="font-bold text-gray-900">Total Orders</h3>
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Total Orders</h3>
           </div>
-          <p className="text-3xl font-extrabold text-belims-blue">
+          <p className="text-3xl font-bold text-belims-blue">
             {loadingOrders ? "-" : orders.length}
           </p>
         </div>
@@ -236,9 +258,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <div className="p-2 bg-green-50 text-green-600 rounded-lg">
               <Clock size={24} />
             </div>
-            <h3 className="font-bold text-gray-900">Active Orders</h3>
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Active Orders</h3>
           </div>
-          <p className="text-3xl font-extrabold text-green-600">
+          <p className="text-3xl font-bold text-green-600">
             {loadingOrders ? "-" : activeOrderCount}
           </p>
         </div>
@@ -247,9 +269,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <div className="p-2 bg-orange-50 text-belims-accent rounded-lg">
               <CreditCard size={24} />
             </div>
-            <h3 className="font-bold text-gray-900">Account Balance</h3>
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Account Balance</h3>
           </div>
-          <p className="text-3xl font-extrabold text-belims-accent">
+          <p className="text-3xl font-bold text-belims-accent">
             {CURRENCY_SYMBOL}
             {formatNumberWithSeparators(0)}
           </p>
@@ -258,9 +280,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <h3 className="font-bold text-gray-900">Recent Orders</h3>
+          <h3 className="text-base font-semibold text-gray-900">Recent Orders</h3>
           <button
-            onClick={() => setActiveTab("orders")}
+            onClick={() => navigate("/account/orders")}
             className="text-belims-blue text-sm font-semibold hover:underline flex items-center gap-1"
           >
             View All <ChevronRight size={16} />
@@ -334,7 +356,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
   const renderOrders = () => (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-gray-100">
-        <h3 className="font-bold text-gray-900 text-lg">Order History</h3>
+        <h3 className="font-semibold text-gray-900 text-lg">Order History</h3>
       </div>
       <div className="divide-y divide-gray-100">
         {loadingOrders ? (
@@ -450,7 +472,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
         )}
 
         <div className="flex justify-between items-center sm:px-0 px-4">
-          <h3 className="font-bold text-gray-900 text-lg">My Addresses</h3>
+          <h3 className="font-semibold text-gray-900 text-lg">My Addresses</h3>
           <button
             onClick={handleAddNewAddress}
             className="bg-belims-blue text-white text-sm px-4 py-2 rounded font-bold hover:bg-belims-light transition-all flex items-center gap-2"
@@ -469,7 +491,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
               </div>
               <div className="flex items-center gap-2 mb-4">
                 <MapPin size={20} className="text-belims-blue" />
-                <h4 className="font-bold text-gray-900">Billing Address</h4>
+                <h4 className="text-base font-bold text-gray-900">Billing Address</h4>
               </div>
               <div className="text-sm text-gray-600 space-y-1 mb-6">
                 <p className="font-bold text-gray-800">
@@ -485,12 +507,39 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                 <p>{billingAddress.country || ""}</p>
               </div>
               <div className="border-t border-gray-100 pt-4">
-                <button
-                  onClick={handleAddNewAddress}
-                  className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
-                >
-                  Edit Address
-                </button>
+                {confirmRemove === "billing" ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-600">Remove this address?</span>
+                    <button
+                      onClick={() => handleRemoveAddress("billing")}
+                      disabled={removingAddress}
+                      className="text-xs font-bold text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      {removingAddress ? "Removing..." : "Yes, remove"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove(null)}
+                      className="text-xs font-bold text-gray-500 hover:underline"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={handleAddNewAddress}
+                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove("billing")}
+                      className="text-red-500 text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -499,7 +548,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors">
               <div className="flex items-center gap-2 mb-4">
                 <Truck size={20} className="text-belims-blue" />
-                <h4 className="font-bold text-gray-900">Shipping Address</h4>
+                <h4 className="text-base font-bold text-gray-900">Shipping Address</h4>
               </div>
               <div className="text-sm text-gray-600 space-y-1 mb-6">
                 <p className="font-bold text-gray-800">
@@ -515,12 +564,39 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                 <p>{shippingAddress.country || ""}</p>
               </div>
               <div className="border-t border-gray-100 pt-4">
-                <button
-                  onClick={handleAddNewAddress}
-                  className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
-                >
-                  Edit Address
-                </button>
+                {confirmRemove === "shipping" ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-600">Remove this address?</span>
+                    <button
+                      onClick={() => handleRemoveAddress("shipping")}
+                      disabled={removingAddress}
+                      className="text-xs font-bold text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      {removingAddress ? "Removing..." : "Yes, remove"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove(null)}
+                      className="text-xs font-bold text-gray-500 hover:underline"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={handleAddNewAddress}
+                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove("shipping")}
+                      className="text-red-500 text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -529,7 +605,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors">
               <div className="flex items-center gap-2 mb-4">
                 <MapPin size={20} className="text-gray-400" />
-                <h4 className="font-bold text-gray-900">Saved Delivery</h4>
+                <h4 className="text-base font-bold text-gray-900">
+                  {savedDeliveryAddress.label && savedDeliveryAddress.label !== [savedDeliveryAddress.street, savedDeliveryAddress.city, savedDeliveryAddress.province].filter(Boolean).join(", ")
+                    ? savedDeliveryAddress.label
+                    : "Saved Delivery"}
+                </h4>
               </div>
               <div className="text-sm text-gray-600 space-y-1 mb-6">
                 {savedAddressLines.map((line, index) => (
@@ -537,12 +617,39 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                 ))}
               </div>
               <div className="border-t border-gray-100 pt-4">
-                <button
-                  onClick={handleAddNewAddress}
-                  className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
-                >
-                  Edit Address
-                </button>
+                {confirmRemove === "delivery" ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-600">Remove this address?</span>
+                    <button
+                      onClick={() => handleRemoveAddress("delivery")}
+                      disabled={removingAddress}
+                      className="text-xs font-bold text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      {removingAddress ? "Removing..." : "Yes, remove"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove(null)}
+                      className="text-xs font-bold text-gray-500 hover:underline"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={handleAddNewAddress}
+                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove("delivery")}
+                      className="text-red-500 text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -561,7 +668,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
   const renderDetails = () => (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-gray-100">
-        <h3 className="font-bold text-gray-900 text-lg">Account Details</h3>
+        <h3 className="font-semibold text-gray-900 text-lg">Account Details</h3>
       </div>
       <div className="p-8">
         {detailsMessage && (
@@ -652,7 +759,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           </div>
 
           <div className="pt-6 border-t border-gray-100">
-            <h4 className="font-bold text-gray-900 mb-2">Password Change</h4>
+            <h4 className="font-semibold text-gray-900 mb-2">Password Change</h4>
             <p className="text-sm text-gray-500 mb-6">
               Leave these fields blank if you don't want to change your
               password.
@@ -721,11 +828,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           <aside className="lg:w-1/4">
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden sticky top-32">
               <div className="p-8 border-b border-gray-100 text-center lg:text-left">
-                <div className="w-20 h-20 bg-belims-blue text-white rounded-full flex items-center justify-center mx-auto lg:mx-0 text-2xl font-bold mb-4 shadow-inner">
+                <div className="w-20 h-20 bg-belims-blue text-white rounded-full flex items-center justify-center mx-auto lg:mx-0 text-xl font-bold mb-4 shadow-inner">
                   {user.first_name?.[0] || user.username[0].toUpperCase()}
                   {user.last_name?.[0]}
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-lg font-bold text-gray-900">
                   {user.first_name} {user.last_name}
                 </h2>
                 <p className="text-sm text-gray-500 font-medium">
@@ -743,7 +850,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                   {menuItems.map((item) => (
                     <li key={item.id}>
                       <button
-                        onClick={() => setActiveTab(item.id as Tab)}
+                        onClick={() => navigate(`/account/${item.id}`)}
                         className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-lg font-bold text-sm transition-all ${
                           activeTab === item.id
                             ? "bg-belims-blue text-white shadow-md active:scale-95"
@@ -783,7 +890,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           {/* Main Content */}
           <div className="lg:w-3/4">
             <div className="mb-8">
-              <h1 className="text-3xl font-extrabold text-gray-900 font-heading">
+              <h1 className="text-3xl font-bold text-gray-900 font-heading">
                 {menuItems.find((i) => i.id === activeTab)?.label}
               </h1>
               <p className="text-gray-500 mt-1">
@@ -809,7 +916,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
                   <CreditCard size={32} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   No Saved Cards
                 </h3>
                 <p className="text-gray-500 mb-6 max-w-sm mx-auto">

@@ -29,6 +29,7 @@ import {
 } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { formatCurrency } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
 import { initializeCategoryTree } from "../categoryTree";
 import { logoutUser, UserData } from "../services/authService";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
@@ -452,7 +453,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [searchQuery, flatCategoryList, products]);
 
   const handleProductSelect = (product: Product) => {
-    navigate(`/product/${product.id}`);
+    navigate(buildProductUrl(product));
     setSearchQuery(""); // Clear search
     setSearchResults(null);
   };
@@ -1267,73 +1268,34 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Body */}
               <div className="flex-1 overflow-y-auto bg-soft">
-                {currentUser ? (
-                  <>
-                    {/* Dashboard Button for Logged In Users */}
-                    <div className="bg-surface py-0 mb-2">
-                      <div className="px-4 py-3 font-bold text-lg border-b border-subtle font-heading text-ink">
-                        Account
-                      </div>
-                      <button
-                        onClick={() => {
-                          navigate("/account");
-                          setIsAccountPanelOpen(false);
-                        }}
-                        className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-subtle transition-colors text-left"
-                      >
-                        Dashboard
-                      </button>
-                    </div>
-                  </>
-                ) : null}
-
-                {/* Account Links - Only show when logged in */}
                 {currentUser && (
-                  <>
-                    <div className="bg-surface py-0">
-                      <div className="px-4 py-3 font-bold text-lg border-b border-subtle font-heading text-ink">
-                        Extra Links
-                      </div>
+                  <div className="bg-surface py-0">
+                    {[
+                      { label: "Dashboard", to: "/account/dashboard" },
+                      { label: "Orders", to: "/account/orders" },
+                      { label: "Addresses", to: "/account/addresses" },
+                      { label: "Payment Methods", to: "/account/payment" },
+                      { label: "Account Details", to: "/account/details" },
+                    ].map(({ label, to }) => (
                       <Link
-                        to="/track-order"
-                        onClick={() => setIsAccountPanelOpen(false)}
-                        className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors text-left"
-                      >
-                        Track Order
-                      </Link>
-                      <Link
-                        to="/account/cards"
+                        key={to}
+                        to={to}
                         onClick={() => setIsAccountPanelOpen(false)}
                         className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
                       >
-                        Cards & Accounts
+                        {label}
                       </Link>
-                      <Link
-                        to="/account/pay"
-                        onClick={() => setIsAccountPanelOpen(false)}
-                        className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
-                      >
-                        Pay Credit Card Bill
-                      </Link>
-                      <Link
-                        to="/account/discounts"
-                        onClick={() => setIsAccountPanelOpen(false)}
-                        className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
-                      >
-                        Discount Benefits
-                      </Link>
-                    </div>
-                  </>
+                    ))}
+                  </div>
                 )}
 
-                {/* Contractor/Trade Block - Only show when not logged in OR when logged in but not a contractor */}
-                {(!currentUser ||
-                  !currentUser.roles?.includes("contractor")) && (
+                {/* Contractor/Trade Block - Only show when not logged in */}
+                {!currentUser && (
                   <div className="p-5 bg-canvas border-b">
                     <div className="flex gap-3">
                       <div className="flex-1">
                         <div className="font-bold text-ink mb-2">
-                          Are you a Contractor?
+                          Let's get started
                         </div>
                         <div className="text-sm text-muted mb-3 leading-relaxed">
                           See trade pricing across our range and unlock checkout
@@ -1348,7 +1310,7 @@ export const Header: React.FC<HeaderProps> = ({
                           onClick={() => setIsAccountPanelOpen(false)}
                           className="text-accent font-bold text-sm hover:underline inline-flex items-center gap-1"
                         >
-                          Register for Trade Deals
+                          Let's get started
                           <ArrowRight size={14} />
                         </Link>
                       </div>
@@ -1370,6 +1332,9 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               ) : (
                 <div className="p-5 border-t bg-surface">
+                  <p className="text-sm text-muted mb-4 leading-relaxed">
+                    Sign in or create a profile now for access to the widest range of products all in one place, saving you time and money.
+                  </p>
                   <div className="grid grid-cols-2 gap-3">
                     <Link
                       to="/login"

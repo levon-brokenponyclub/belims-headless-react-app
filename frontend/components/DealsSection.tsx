@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../types";
 import { isProductPurchasable } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { SkeletonProductCard } from "./Skeleton";
 
@@ -269,7 +270,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
                       key={product.id}
                       className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2.15)] sm:basis-[48%] lg:basis-[calc((100%-4rem)/5)] min-w-0"
                       data-slider-item
-                      onClick={() => navigate(`/product/${product.id}`)}
+                      onClick={() => navigate(buildProductUrl(product))}
                     >
                       <ProductCard
                         product={product}

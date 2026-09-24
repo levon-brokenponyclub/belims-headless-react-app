@@ -412,6 +412,8 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     useState<ShippingAddress | null>(null);
   const [isEditingDeliveryAddress, setIsEditingDeliveryAddress] =
     useState(true);
+  const [pendingAddress, setPendingAddress] = useState<ShippingAddress | null>(null);
+  const [pendingAddressName, setPendingAddressName] = useState("");
 
   const mapUserShippingToAddress = (shipping: UserData["shipping"]): ShippingAddress | null => {
     if (!shipping) return null;
@@ -902,6 +904,8 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setDetectedLocationAddress(null);
+      setPendingAddress(null);
+      setPendingAddressName("");
       hasAutoLocatedRef.current = false;
     }
   }, [isOpen]);
@@ -1084,7 +1088,8 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           return;
         }
 
-        handleAddressSaved(address);
+        setPendingAddress(address);
+        setPendingAddressName("");
         return;
       }
 
@@ -1144,7 +1149,8 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         return;
       }
 
-      handleAddressSaved(resolvedAddress);
+      setPendingAddress(resolvedAddress);
+      setPendingAddressName("");
     } catch (error) {
       console.error("Place details error:", error);
       setErrorMessage("Unable to read address details. Try another address.");
@@ -1464,7 +1470,19 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
   const handleSaveDetectedAddress = () => {
     if (!detectedLocationAddress) return;
-    handleAddressSaved(detectedLocationAddress);
+    setPendingAddress(detectedLocationAddress);
+    setPendingAddressName("");
+    setDetectedLocationAddress(null);
+  };
+
+  const handleConfirmPendingAddress = () => {
+    if (!pendingAddress) return;
+    const finalAddress = pendingAddressName.trim()
+      ? { ...pendingAddress, label: pendingAddressName.trim() }
+      : pendingAddress;
+    handleAddressSaved(finalAddress);
+    setPendingAddress(null);
+    setPendingAddressName("");
     onClose();
   };
 
@@ -1812,7 +1830,49 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto bg-soft">
           <div className="px-5 py-5">
-            {fulfillmentType === "delivery" ? (
+            {fulfillmentType === "delivery" && pendingAddress ? (
+              <section className="space-y-5">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 mb-1">Confirm your address</h2>
+                  <p className="text-sm text-gray-500">Optionally give this address a nickname.</p>
+                </div>
+                <div className="border border-subtle px-4 py-4 space-y-1 text-sm text-ink">
+                  {[pendingAddress.street, pendingAddress.city, pendingAddress.province, pendingAddress.postalCode]
+                    .filter(Boolean)
+                    .map((line, i) => <p key={i}>{line}</p>)}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                    Address name <span className="font-normal text-gray-400 normal-case tracking-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={pendingAddressName}
+                    onChange={(e) => setPendingAddressName(e.target.value)}
+                    placeholder="e.g. Home, Office, Warehouse"
+                    className="w-full border border-subtle py-2.5 px-3 text-sm text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleConfirmPendingAddress}
+                    className={primaryButtonClass}
+                  >
+                    <span className={primaryButtonOverlayClass} />
+                    <span className={primaryButtonLabelClass}>Save Address</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setPendingAddress(null); setPendingAddressName(""); setIsEditingDeliveryAddress(true); }}
+                    className={secondaryButtonClass}
+                  >
+                    <span className={secondaryButtonOverlayClass} />
+                    <span className={secondaryButtonLabelClass}>Change</span>
+                  </button>
+                </div>
+              </section>
+            ) : fulfillmentType === "delivery" ? (
               <DeliveryPanel
                 inputRef={inputRef}
                 input={input}
@@ -1853,7 +1913,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
         {/* Sticky footer */}
         <div className="p-5 border-t bg-surface flex-shrink-0">
-          {fulfillmentType === "delivery" ? (
+          {fulfillmentType === "delivery" && pendingAddress ? null : fulfillmentType === "delivery" ? (
             <button
               type="button"
               onClick={handleUpdatePostalCode}

@@ -326,3 +326,81 @@ export const saveShippingAddress = async (
     throw error;
   }
 };
+
+export const clearBillingAddress = async (): Promise<{ success: boolean; message: string }> => {
+  const token = getAuthToken();
+  if (!token) throw new Error("No authentication token. Please log in.");
+  const apiBase = getApiBaseUrl();
+  const response = await fetch(`${apiBase}/users/me`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      billing_address_1: "",
+      billing_city: "",
+      billing_state: "",
+      billing_postcode: "",
+      billing_country: "ZA",
+    }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to clear billing address");
+  }
+  return { success: true, message: "Billing address removed" };
+};
+
+export const clearShippingAddress = async (): Promise<{ success: boolean; message: string }> => {
+  const token = getAuthToken();
+  if (!token) throw new Error("No authentication token. Please log in.");
+  const apiBase = getApiBaseUrl();
+  const response = await fetch(`${apiBase}/users/me`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      shipping_address_1: "",
+      shipping_city: "",
+      shipping_state: "",
+      shipping_postcode: "",
+      shipping_country: "ZA",
+    }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to clear shipping address");
+  }
+  return { success: true, message: "Shipping address removed" };
+};
+
+/**
+ * Exchange a Firebase Phone Auth ID token for a WordPress JWT.
+ *
+ * Requires a custom WP REST endpoint:
+ *   POST /wp-json/belims/v1/auth/firebase-phone
+ *   Body: { firebase_token: string, phone: string }
+ *   Response: { token: string, message: string, user_id: number }
+ *
+ * The WP endpoint must:
+ *   1. Verify the Firebase ID token using firebase-php-jwt or the Firebase Admin SDK.
+ *   2. Find or create a WP user by phone number (stored in user_meta as 'billing_phone').
+ *   3. Issue a JWT via the JWT Auth plugin and return it.
+ */
+export const loginWithFirebasePhone = async (
+  firebaseIdToken: string,
+  phone: string,
+): Promise<{ success: boolean; user: UserData; message: string }> => {
+  const apiBase = getApiBaseUrl();
+  const response = await fetch(`${apiBase}/auth/firebase-phone`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ firebase_token: firebaseIdToken, phone }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Phone authentication failed");
+  }
+  const data = await response.json();
+  if (data.token) setAuthToken(data.token);
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Failed to fetch user data after phone login");
+  return { success: true, user, message: data.message || "Welcome!" };
+};

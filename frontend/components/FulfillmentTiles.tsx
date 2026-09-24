@@ -384,7 +384,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
 
   React.useEffect(() => {
     if (selectedType === "delivery") {
-      deliveryPanelRef.current?.focus();
+      deliveryPanelRef.current?.focus({ preventScroll: true });
     }
   }, [selectedType, focusDeliveryPanelSignal]);
 

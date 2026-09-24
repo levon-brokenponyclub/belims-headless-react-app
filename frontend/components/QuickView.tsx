@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Loader2, Minus, Plus, X } from "lucide-react";
 import { Product } from "../types";
 import { formatCurrency } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
 import { StockBar } from "./StockBar";
 
 interface QuickViewProps {
@@ -345,7 +346,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
             {/* View full details */}
             <div className="pt-4 border-t border-black/5">
               <Link
-                to={`/product/${product.id}`}
+                to={buildProductUrl(product)}
                 onClick={closeQuickView}
                 className="inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline"
               >

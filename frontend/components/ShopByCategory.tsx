@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../types";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
+import { buildProductUrl } from "../utils/product";
 import { SkeletonProductCard } from "./Skeleton";
 
 interface ShopByCategoryProps {
@@ -255,7 +256,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
                       key={product.id}
                       className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2.15)] sm:basis-[48%] lg:basis-[calc((100%-3.75rem)/4)] min-w-0"
                       data-slider-item
-                      onClick={() => navigate(`/product/${product.id}`)}
+                      onClick={() => navigate(buildProductUrl(product))}
                     >
                       <ProductCard
                         product={product}

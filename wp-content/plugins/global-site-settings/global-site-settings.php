@@ -3,7 +3,7 @@
  * Plugin Name: Global Site Settings
  * Plugin URI: https://belims.co.za
  * Description: Unified plugin for Belims site settings, ACF field groups, REST API endpoints, and third-party integrations (WooCommerce, FTG, BobGo, AI).
- * Version: 2.2.0
+ * Version: 2.4.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: global-site-settings
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('GLOBAL_SITE_SETTINGS_VERSION', '2.3.0');
+define('GLOBAL_SITE_SETTINGS_VERSION', '2.4.0');
 define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-09-10 19:56:35');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -92,6 +92,7 @@ function global_site_settings_init() {
         'includes/class-orders-endpoint.php',
         'includes/class-user-endpoint.php', // User registration & management
         'includes/class-coupon-endpoint.php', // Coupon validation
+        'includes/class-firebase-phone-auth.php', // Firebase Phone Authentication
         'includes/class-user-admin-page.php', // User management admin UI
         'includes/class-ecommerce-settings.php', // Ecommerce policies (Returns, Warranty, Shipping)
         'includes/class-bundled-products.php', // Bundled Products for WooCommerce
@@ -549,6 +550,7 @@ function global_site_settings_register_endpoints() {
         'Belims_Orders_Endpoint',
         'User_Endpoint', // User registration & management
         'Belims_Coupon_Endpoint', // Coupon validation
+        'Belims_Firebase_Phone_Auth', // Firebase Phone Authentication
         'Belims_FTG_Sync_Endpoint',
         'BobGo_Shipping_Proxy_Endpoint',
     ];
@@ -793,22 +795,10 @@ function global_site_settings_main_page() {
 
                 <div class="bpc-nav-group-title">Integrations</div>
                 <a class="bpc-nav-item" data-tab="ftg-sync">
-                    FTG Sync
-                </a>
-                <a class="bpc-nav-item" data-tab="cors-security">
-                    CORS & Security
-                </a>
-                <a class="bpc-nav-item" data-tab="woocommerce">
-                    WooCommerce
+                    Products
                 </a>
                 <a class="bpc-nav-item" data-tab="bobgo-shipping">
-                    BobGo Shipping
-                </a>
-                <a class="bpc-nav-item" data-tab="payment-gateways">
-                    Payment Gateways
-                </a>
-                <a class="bpc-nav-item" data-tab="ai-services">
-                    AI Services
+                    Shipping
                 </a>
 
                 <div class="bpc-nav-group-title">Tools</div>
@@ -827,129 +817,421 @@ function global_site_settings_main_page() {
             <!-- Dashboard Tab -->
             <div id="tab-dashboard" class="bpc-tab-content">
 
-                    <div class="bpc-card-header">
-                        <h2 class="bpc-card-title">Belims Hardware</h2>
-                        <p class="bpc-card-description">Site content & API management</p>
-                    </div>
+                    <?php
+                    // Gather additional status data for dashboard
+                    $firebase_configured  = defined('BELIMS_FIREBASE_API_KEY') && BELIMS_FIREBASE_API_KEY !== '';
+                    $jwt_configured       = defined('JWT_AUTH_SECRET_KEY') && JWT_AUTH_SECRET_KEY !== '';
+                    $payfast_merchant_id  = get_option('payfast_merchant_id', '');
+                    $payfast_configured   = !empty($payfast_merchant_id);
+                    $gemini_key           = function_exists('get_field') ? get_field('gemini_api_key', 'option') : '';
+                    $ai_configured        = !empty($gemini_key);
+                    $bobgo_token          = get_option('bobgo_api_token', '');
+                    $bobgo_configured     = !empty($bobgo_token);
+                    $bobgo_env            = get_option('bobgo_environment', 'production');
+                    $ftg_token_exists     = function_exists('get_field') ? !empty(get_field('ftg_collection_token', 'option')) : false;
+                    $last_sync_ts         = belims_get_ftg_last_sync_timestamp();
+                    $last_sync_label      = $last_sync_ts > 0 ? date_i18n('F j, Y, g:i a', $last_sync_ts) : 'Never';
+                    $frontend_url         = get_frontend_url();
+                    $cors_origin          = get_cors_origin();
+                    $environment          = get_option('belims_frontend_environment', 'production');
+                    $php_version          = PHP_VERSION;
+                    $wp_version           = get_bloginfo('version');
+                    $wc_active            = class_exists('WooCommerce');
+                    $wc_version           = $wc_active ? WC()->version : null;
+                    $api_base             = rest_url('belims/v1');
+                    ?>
 
                     <style>
-                    .bpc-status-pill {
-                        display: inline-flex;
-                        align-items: center;
-                        padding: 4px 10px;
-                        border-radius: 999px;
-                        font-size: 12px;
-                        font-weight: 600;
-                        line-height: 1;
-                        border: 1px solid transparent;
-                        gap: 6px;
+                    .bpc-dash-header {
+                        display: flex; align-items: flex-start; justify-content: space-between;
+                        gap: 16px; margin-bottom: 28px;
                     }
-                    .bpc-status-pill.enabled {
-                        background: #ecfdf3;
-                        color: #166534;
-                        border-color: #bbf7d0;
+                    .bpc-dash-header h1 {
+                        margin: 0; font-size: 22px; font-weight: 700;
+                        color: var(--bpc-text-main);
                     }
-                    .bpc-status-pill.disabled {
-                        background: #fef2f2;
-                        color: #991b1f;
-                        border-color: #fecdd3;
+                    .bpc-dash-header p { margin: 4px 0 0; font-size: 13px; color: var(--bpc-text-muted); }
+                    .bpc-env-badge {
+                        display: inline-flex; align-items: center; gap: 6px;
+                        padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+                        border: 1px solid; white-space: nowrap;
                     }
-                    .bpc-status-list {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                    .bpc-env-badge.development {
+                        background: #fef3c7; color: #92400e; border-color: #fde68a;
+                    }
+                    .bpc-env-badge.production {
+                        background: #ecfdf5; color: #065f46; border-color: #a7f3d0;
+                    }
+                    /* Status strip */
+                    .bpc-status-strip {
+                        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                        gap: 12px; margin-bottom: 28px;
+                    }
+                    .bpc-status-chip {
+                        background: #fff; border: 1px solid var(--bpc-border); border-radius: 10px;
+                        padding: 14px 16px; display: flex; flex-direction: column; gap: 4px;
+                    }
+                    .bpc-status-chip-label { font-size: 11px; font-weight: 600; text-transform: uppercase;
+                        letter-spacing: .05em; color: var(--bpc-text-muted); }
+                    .bpc-status-chip-value { font-size: 14px; font-weight: 600; color: var(--bpc-text-main); }
+                    .bpc-status-chip-value a { color: inherit; text-decoration: none; }
+                    .bpc-status-chip-value a:hover { text-decoration: underline; }
+                    /* Section headings */
+                    .bpc-dash-section-title {
+                        font-size: 11px; font-weight: 800; text-transform: uppercase;
+                        letter-spacing: .08em; color: #475569;
+                        margin: 32px 0 14px; padding-bottom: 8px;
+                        border-bottom: 1px solid var(--bpc-border);
+                    }
+                    /* Integration grid */
+                    .bpc-integrations-grid {
+                        display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                        gap: 14px; margin-bottom: 4px;
+                    }
+                    .bpc-integration-card {
+                        background: #fff; border: 1px solid var(--bpc-border); border-radius: 12px;
+                        padding: 18px 20px; transition: border-color .15s, box-shadow .15s;
+                    }
+                    .bpc-integration-card:hover {
+                        border-color: var(--belims-primary);
+                        box-shadow: 0 0 0 3px rgba(50,39,131,.06);
+                    }
+                    .bpc-integration-card-head {
+                        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+                        margin-bottom: 8px;
+                    }
+                    .bpc-integration-card-head h4 { margin: 0; font-size: 14px; font-weight: 600; color: var(--bpc-text-main); }
+                    .bpc-integration-meta { font-size: 12px; color: var(--bpc-text-muted); margin-bottom: 12px; min-height: 16px; }
+                    .bpc-integration-link {
+                        display: inline-flex; align-items: center; gap: 4px;
+                        padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+                        color: var(--belims-primary); border: 1.5px solid var(--belims-primary);
+                        text-decoration: none; cursor: pointer;
+                        transition: background .15s, color .15s;
+                    }
+                    .bpc-integration-link:hover {
+                        background: var(--belims-primary); color: #fff !important;
+                        text-decoration: none;
+                    }
+                    /* Settings nav grid */
+                    .bpc-settings-grid {
+                        display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
                         gap: 12px;
-                        margin: 0 0 24px;
                     }
-                    .bpc-status-row {
-                        border: 1px solid var(--bpc-border);
-                        border-radius: 10px;
-                        padding: 12px 14px;
-                        background: #fff;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        gap: 12px;
+                    .bpc-settings-tile {
+                        background: #fff; border: 1px solid var(--bpc-border); border-radius: 10px;
+                        padding: 16px 40px 16px 18px; cursor: pointer;
+                        transition: border-color .15s, box-shadow .15s;
+                        text-decoration: none; display: block; position: relative;
                     }
-                    .bpc-status-title {
-                        font-weight: 600;
-                        color: var(--bpc-text-primary);
+                    .bpc-settings-tile:hover {
+                        border-color: var(--belims-primary);
+                        box-shadow: 0 0 0 3px rgba(50,39,131,.07);
+                        text-decoration: none;
                     }
+                    .bpc-settings-tile::after {
+                        content: '→'; position: absolute; right: 16px; top: 50%;
+                        transform: translateY(-50%); font-size: 14px;
+                        color: var(--belims-text-muted); opacity: 0;
+                        transition: opacity .15s, right .15s;
+                    }
+                    .bpc-settings-tile:hover::after { opacity: 1; right: 12px; }
+                    .bpc-settings-tile-icon { font-size: 22px; margin-bottom: 8px; display: block; }
+                    .bpc-settings-tile-label { font-size: 13px; font-weight: 600; color: var(--bpc-text-main); margin-bottom: 4px; }
+                    .bpc-settings-tile-desc { font-size: 12px; color: var(--bpc-text-muted); line-height: 1.4; }
+                    /* Quick tools row */
+                    .bpc-quick-tools { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 32px; }
+                    /* API table */
+                    .bpc-api-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                    .bpc-api-table thead th {
+                        text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 700;
+                        text-transform: uppercase; letter-spacing: .05em; color: var(--bpc-text-muted);
+                        border-bottom: 1px solid var(--bpc-border); background: #f8fafc;
+                    }
+                    .bpc-api-table tbody td {
+                        padding: 9px 12px; border-bottom: 1px solid var(--bpc-border);
+                        vertical-align: middle;
+                    }
+                    .bpc-api-table tbody tr:last-child td { border-bottom: none; }
+                    .bpc-api-table tbody tr:hover td { background: #f8fafc; }
+                    .bpc-method-badge {
+                        display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px;
+                        font-weight: 700; font-family: monospace; letter-spacing: .03em;
+                    }
+                    .bpc-method-badge.get  { background: #dbeafe; color: #1e40af; }
+                    .bpc-method-badge.post { background: #dcfce7; color: #166534; }
+                    .bpc-method-badge.put  { background: #fef9c3; color: #854d0e; }
+                    .bpc-method-badge.delete { background: #fee2e2; color: #991b1b; }
+                    .bpc-api-url { font-family: monospace; font-size: 12px; color: var(--bpc-text-main); }
+                    /* Auth badges for API table */
+                    .bpc-auth-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+                    .bpc-auth-badge--public { background: #dcfce7; color: #166534; }
+                    .bpc-auth-badge--jwt    { background: #dbeafe; color: #1e40af; }
+                    .bpc-auth-badge--admin  { background: #ede9fe; color: #7c3aed; }
+                    /* Integration status pills */
+                    .bpc-pill {
+                        display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px;
+                        border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid;
+                    }
+                    .bpc-pill.ok    { background: #ecfdf5; color: #166534; border-color: #bbf7d0; }
+                    .bpc-pill.warn  { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+                    .bpc-pill.error { background: #fee2e2; color: #991b1b; border-color: #fecdd3; }
                     </style>
 
-                    <h3>Integration Status</h3>
-                    <div class="bpc-status-list">
-                        <div class="bpc-status-row">
-                            <span class="bpc-status-title">Find The Gap</span>
-                            <span class="bpc-status-pill <?php echo $ftg_enabled ? 'enabled' : 'disabled'; ?>">
-                                <?php echo $ftg_enabled ? 'Enabled' : 'Disabled'; ?>
+                    <!-- Header -->
+                    <div class="bpc-dash-header">
+                        <div>
+                            <h1>Belims Hardware CMS</h1>
+                            <p>Global Site Settings v<?php echo GLOBAL_SITE_SETTINGS_VERSION; ?> &nbsp;·&nbsp; by Broken Pony Club</p>
+                        </div>
+                        <span class="bpc-env-badge <?php echo esc_attr($environment); ?>">
+                            <?php echo $environment === 'development' ? '⚡ Development' : '✅ Production'; ?>
+                        </span>
+                    </div>
+
+                    <!-- System status strip -->
+                    <div class="bpc-status-strip">
+                        <div class="bpc-status-chip">
+                            <span class="bpc-status-chip-label">WordPress</span>
+                            <span class="bpc-status-chip-value">v<?php echo esc_html($wp_version); ?></span>
+                        </div>
+                        <div class="bpc-status-chip">
+                            <span class="bpc-status-chip-label">WooCommerce</span>
+                            <span class="bpc-status-chip-value">
+                                <?php if ($wc_active): ?>v<?php echo esc_html($wc_version); ?>
+                                <?php else: ?><span style="color:#991b1b;">Not active</span><?php endif; ?>
                             </span>
                         </div>
-                        <div class="bpc-status-row">
-                            <span class="bpc-status-title">BobGo Shipping</span>
-                            <span class="bpc-status-pill <?php echo $bobgo_enabled ? 'enabled' : 'disabled'; ?>">
-                                <?php echo $bobgo_enabled ? 'Enabled' : 'Disabled'; ?>
+                        <div class="bpc-status-chip">
+                            <span class="bpc-status-chip-label">PHP</span>
+                            <span class="bpc-status-chip-value">v<?php echo esc_html($php_version); ?></span>
+                        </div>
+                        <div class="bpc-status-chip">
+                            <span class="bpc-status-chip-label">CORS Origin</span>
+                            <span class="bpc-status-chip-value" style="font-size:12px;word-break:break-all;"><?php echo esc_html($cors_origin); ?></span>
+                        </div>
+                        <div class="bpc-status-chip">
+                            <span class="bpc-status-chip-label">Frontend URL</span>
+                            <span class="bpc-status-chip-value" style="font-size:12px;">
+                                <a href="<?php echo esc_url($frontend_url); ?>" target="_blank"><?php echo esc_html($frontend_url); ?></a>
                             </span>
                         </div>
                     </div>
 
+                    <!-- Integrations -->
+                    <div class="bpc-dash-section-title">Integrations</div>
+                    <div class="bpc-integrations-grid">
 
-
-                    <div class="bpc-grid">
-
-                        <div class="bpc-panel">
-                            <div>
-                                <h4>Find The Gap</h4>
-                                <p>Enable product sync with Find The Gap</p>
-                            </div>
-                            <form method="post" action="" class="feature-status">
-                                <?php wp_nonce_field('save_ftg_enabled_dashboard_action', 'ftg_enabled_dashboard_nonce'); ?>
-                                <input type="hidden" name="save_ftg_enabled_dashboard" value="1" />
-                                <div class="status">
-                                    <span>Status: </span>
-                                    <span class="status-code" data-active-text="Active" data-inactive-text="Inactive">
-                                        <span class="<?php echo $ftg_enabled ? 'active' : 'inactive'; ?>">
-                                            <?php echo $ftg_enabled ? 'Active' : 'Inactive'; ?>
-                                        </span>
-                                    </span>
-                                </div>
-                                <div class="status-switch">
-                                    <label for="ftg-enabled-toggle-dashboard" class="toggle-switch">
+                        <!-- FTG Sync -->
+                        <div class="bpc-integration-card">
+                            <div class="bpc-integration-card-head">
+                                <h4>🔄 FTG Sync</h4>
+                                <form method="post" style="margin:0;">
+                                    <?php wp_nonce_field('save_ftg_enabled_dashboard_action', 'ftg_enabled_dashboard_nonce'); ?>
+                                    <input type="hidden" name="save_ftg_enabled_dashboard" value="1" />
+                                    <label class="toggle-switch">
                                         <input type="checkbox" name="ftg_enabled" id="ftg-enabled-toggle-dashboard" value="1" <?php checked(1, $ftg_enabled); ?> />
-                                        <div class="switch-track">
-                                            <div class="switch-thumb"></div>
-                                        </div>
+                                        <div class="switch-track"><div class="switch-thumb"></div></div>
                                     </label>
-                                </div>
-                            </form>
+                                </form>
+                            </div>
+                            <p class="bpc-integration-meta">
+                                <?php if ($ftg_enabled && $ftg_token_exists): ?>
+                                    Last sync: <?php echo esc_html($last_sync_label); ?>
+                                <?php elseif ($ftg_enabled): ?>
+                                    <span style="color:#92400e;">Token not configured</span>
+                                <?php else: ?>
+                                    Disabled
+                                <?php endif; ?>
+                            </p>
+                            <a class="bpc-integration-link" onclick="jQuery('.bpc-nav-item[data-tab=\'ftg-sync\']').click()">
+                                Configure →
+                            </a>
                         </div>
 
-                        <div class="bpc-panel">
-                            <div>
-                                <h4>BobGo Shipping</h4>
-                                <p>Enable shipping integration with BobGo.</p>
-                            </div>
-                            <form method="post" action="" class="feature-status">
-                                <?php wp_nonce_field('save_bobgo_enabled_dashboard_action', 'bobgo_enabled_dashboard_nonce'); ?>
-                                <input type="hidden" name="save_bobgo_enabled_dashboard" value="1" />
-                                <div class="status">
-                                    <span>Status: </span>
-                                    <span class="status-code" data-active-text="Active" data-inactive-text="Inactive">
-                                        <span class="<?php echo $bobgo_enabled ? 'active' : 'inactive'; ?>">
-                                            <?php echo $bobgo_enabled ? 'Active' : 'Inactive'; ?>
-                                        </span>
-                                    </span>
-                                </div>
-                                <div class="status-switch">
-                                    <label for="bobgo-enabled-toggle-dashboard" class="toggle-switch">
+                        <!-- BobGo Shipping -->
+                        <div class="bpc-integration-card">
+                            <div class="bpc-integration-card-head">
+                                <h4>🚚 BobGo Shipping</h4>
+                                <form method="post" style="margin:0;">
+                                    <?php wp_nonce_field('save_bobgo_enabled_dashboard_action', 'bobgo_enabled_dashboard_nonce'); ?>
+                                    <input type="hidden" name="save_bobgo_enabled_dashboard" value="1" />
+                                    <label class="toggle-switch">
                                         <input type="checkbox" name="bobgo_enabled" id="bobgo-enabled-toggle-dashboard" value="1" <?php checked(1, $bobgo_enabled); ?> />
-                                        <div class="switch-track">
-                                            <div class="switch-thumb"></div>
-                                        </div>
+                                        <div class="switch-track"><div class="switch-thumb"></div></div>
                                     </label>
-                                </div>
-                            </form>
+                                </form>
+                            </div>
+                            <p class="bpc-integration-meta">
+                                <?php if ($bobgo_enabled && $bobgo_configured): ?>
+                                    <span class="bpc-pill ok">● <?php echo ucfirst($bobgo_env); ?></span>
+                                <?php elseif ($bobgo_enabled): ?>
+                                    <span style="color:#92400e;">API token missing</span>
+                                <?php else: ?>
+                                    Disabled
+                                <?php endif; ?>
+                            </p>
+                            <a class="bpc-integration-link" onclick="jQuery('.bpc-nav-item[data-tab=\'bobgo-shipping\']').click()">
+                                Configure →
+                            </a>
                         </div>
+
+                        <!-- Firebase Phone Auth -->
+                        <div class="bpc-integration-card">
+                            <div class="bpc-integration-card-head">
+                                <h4>📱 Firebase Auth</h4>
+                                <?php if ($firebase_configured && $jwt_configured): ?>
+                                    <span class="bpc-pill ok">Active</span>
+                                <?php elseif ($firebase_configured): ?>
+                                    <span class="bpc-pill warn">JWT missing</span>
+                                <?php else: ?>
+                                    <span class="bpc-pill error">Not configured</span>
+                                <?php endif; ?>
+                            </div>
+                            <p class="bpc-integration-meta">
+                                Phone OTP sign-in via Firebase<br>
+                                <?php echo $jwt_configured ? '✓ JWT secret set' : '<span style="color:#92400e;">JWT_AUTH_SECRET_KEY not set</span>'; ?>
+                            </p>
+                            <a class="bpc-integration-link" href="https://console.firebase.google.com" target="_blank">
+                                Firebase Console ↗
+                            </a>
+                        </div>
+
+                        <!-- Payment Gateway -->
+                        <div class="bpc-integration-card">
+                            <div class="bpc-integration-card-head">
+                                <h4>💳 Payment Gateway</h4>
+                                <?php if ($payfast_configured): ?>
+                                    <span class="bpc-pill ok">PayFast</span>
+                                <?php else: ?>
+                                    <span class="bpc-pill warn">Not set</span>
+                                <?php endif; ?>
+                            </div>
+                            <p class="bpc-integration-meta">
+                                <?php echo $payfast_configured ? 'Merchant ID: ' . esc_html(substr($payfast_merchant_id, 0, 4)) . '****' : 'PayFast not configured'; ?>
+                            </p>
+                            <a class="bpc-integration-link" onclick="jQuery('.bpc-nav-item[data-tab=\'payment-gateways\']').click()">
+                                Configure →
+                            </a>
+                        </div>
+
+                        <!-- AI Services -->
+                        <div class="bpc-integration-card">
+                            <div class="bpc-integration-card-head">
+                                <h4>🤖 AI Services</h4>
+                                <?php if ($ai_configured): ?>
+                                    <span class="bpc-pill ok">Gemini</span>
+                                <?php else: ?>
+                                    <span class="bpc-pill error">Not configured</span>
+                                <?php endif; ?>
+                            </div>
+                            <p class="bpc-integration-meta">
+                                Google Gemini for product descriptions
+                            </p>
+                            <a class="bpc-integration-link" onclick="jQuery('.bpc-nav-item[data-tab=\'ai-services\']').click()">
+                                Configure →
+                            </a>
+                        </div>
+
                     </div>
+
+                    <!-- Settings quick links -->
+                    <div class="bpc-dash-section-title">Settings</div>
+                    <div class="bpc-settings-grid">
+                        <?php
+                        $settings_tiles = [
+                            ['tab' => 'branding',         'icon' => '🎨', 'label' => 'Branding',          'desc' => 'Logo, colors, frontend URL and environment'],
+                            ['tab' => 'ecommerce',        'icon' => '🛒', 'label' => 'Ecommerce',         'desc' => 'Returns, warranty and shipping policies'],
+                            ['tab' => 'cors-security',    'icon' => '🔒', 'label' => 'CORS & Security',   'desc' => 'Allowed origins and REST API security'],
+                            ['tab' => 'woocommerce',      'icon' => '🏪', 'label' => 'WooCommerce',       'desc' => 'WooCommerce API and product description import'],
+                            ['tab' => 'ftg-sync',         'icon' => '🔄', 'label' => 'FTG Sync',          'desc' => 'Find The Gap product catalogue sync'],
+                            ['tab' => 'bobgo-shipping',   'icon' => '🚚', 'label' => 'BobGo Shipping',    'desc' => 'Shipping rates, tracking and sandbox mode'],
+                            ['tab' => 'payment-gateways', 'icon' => '💳', 'label' => 'Payment Gateways',  'desc' => 'PayFast credentials and checkout config'],
+                            ['tab' => 'ai-services',      'icon' => '🤖', 'label' => 'AI Services',       'desc' => 'Gemini AI key for product descriptions'],
+                            ['tab' => 'payfast-testing',  'icon' => '🧪', 'label' => 'PayFast Testing',   'desc' => 'Test payment flows in sandbox mode'],
+                        ];
+                        foreach ($settings_tiles as $tile): ?>
+                            <a class="bpc-settings-tile" onclick="jQuery('.bpc-nav-item[data-tab=\'<?php echo esc_js($tile['tab']); ?>\']').click(); return false;" href="#">
+                                <span class="bpc-settings-tile-icon"><?php echo $tile['icon']; ?></span>
+                                <div class="bpc-settings-tile-label"><?php echo esc_html($tile['label']); ?></div>
+                                <div class="bpc-settings-tile-desc"><?php echo esc_html($tile['desc']); ?></div>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <!-- REST API endpoints -->
+                    <div class="bpc-dash-section-title">REST API Endpoints <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;margin-left:6px;"><?php echo esc_html(rtrim($api_base, '/')); ?></span></div>
+                    <div class="bpc-card" style="padding:0;overflow:hidden;">
+                        <table class="bpc-api-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:70px;">Method</th>
+                                    <th>Endpoint</th>
+                                    <th>Description</th>
+                                    <th style="width:90px;">Auth</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $endpoints = [
+                                    // Auth
+                                    ['POST', '/auth/firebase-phone', 'Exchange Firebase Phone ID token for WP JWT', 'Public'],
+                                    // Users
+                                    ['POST', '/users/register',      'Register a new customer or contractor account', 'Public'],
+                                    ['POST', '/users/login',         'Email + password login — returns JWT', 'Public'],
+                                    ['GET',  '/users/me',            'Get current user profile', 'JWT'],
+                                    ['PUT',  '/users/me',            'Update profile, billing and shipping address', 'JWT'],
+                                    // Products
+                                    ['GET',  '/products',            'Paginated product catalogue with deals', 'Public'],
+                                    ['GET',  '/products/{id}',       'Single product with full detail payload', 'Public'],
+                                    // Categories
+                                    ['GET',  '/categories',          'Hierarchical product category tree', 'Public'],
+                                    // Orders
+                                    ['GET',  '/orders',              'Orders for the authenticated customer', 'JWT'],
+                                    ['POST', '/orders',              'Create a new WooCommerce order', 'JWT'],
+                                    // Coupons
+                                    ['POST', '/coupons/validate',    'Validate a coupon code and return discount', 'Public'],
+                                    // Ecommerce policies
+                                    ['GET',  '/ecommerce-policies',  'Returns, warranty, shipping policy content', 'Public'],
+                                    // BobGo
+                                    ['POST', '/bobgo/rates',         'Fetch shipping rates for a destination', 'Public'],
+                                    ['GET',  '/bobgo/tracking/{id}', 'Get shipment tracking status', 'Public'],
+                                    // FTG
+                                    ['POST', '/ftg/sync',            'Trigger FTG product catalogue sync', 'Admin'],
+                                    ['GET',  '/ftg/brands',          'List all FTG brands (cached)', 'Admin'],
+                                    ['GET',  '/ftg/brand-count',     'Count products for a given brand', 'Admin'],
+                                ];
+                                foreach ($endpoints as $ep):
+                                    $method = strtolower($ep[0]);
+                                ?>
+                                <tr>
+                                    <td><span class="bpc-method-badge <?php echo $method; ?>"><?php echo strtoupper($ep[0]); ?></span></td>
+                                    <td><code class="bpc-api-url"><?php echo esc_html($ep[1]); ?></code></td>
+                                    <td style="font-size:13px;color:var(--bpc-text-muted);"><?php echo esc_html($ep[2]); ?></td>
+                                    <td>
+                                        <?php $auth = $ep[3]; ?>
+                                        <span class="bpc-auth-badge bpc-auth-badge--<?php echo strtolower(esc_attr($auth)); ?>"><?php echo esc_html($auth); ?></span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Quick tools -->
+                    <div class="bpc-dash-section-title">Quick Tools</div>
+                    <div class="bpc-quick-tools">
+                        <button class="bpc-btn-primary" onclick="jQuery('.bpc-nav-item[data-tab=\'ftg-sync\']').click()">
+                            FTG Sync
+                        </button>
+                        <button type="button" id="ftg-brand-count" class="bpc-btn-secondary">
+                            Check Assa Abloy Count
+                        </button>
+                        <button type="button" id="belims-clear-cache" class="bpc-btn-secondary">
+                            Clear Cache
+                        </button>
+                    </div>
+                    <div id="ftg-brand-count-status" style="margin-bottom:16px;"></div>
 
                     <script>
                     jQuery(document).ready(function($) {
@@ -961,26 +1243,6 @@ function global_site_settings_main_page() {
                         });
                     });
                     </script>
-
-                    <h3>Quick Actions</h3>
-                    <p class="bpc-actions">
-                        <button class="bpc-btn-primary" onclick="jQuery('.bpc-nav-item[data-tab=\'ftg-sync\']').click()">
-                            Go to FTG Sync
-                        </button>
-                        <button class="bpc-btn-primary" onclick="jQuery('.bpc-nav-item[data-tab=\'apis\']').click()">
-                            Configure APIs
-                        </button>
-                        <button class="bpc-btn-primary" onclick="jQuery('.bpc-nav-item[data-tab=\'api-logs\']').click()">
-                            View API Endpoints
-                        </button>
-                        <button type="button" id="ftg-brand-count" class="bpc-btn-secondary">
-                            Check Assa Abloy Count
-                        </button>
-                        <button type="button" id="belims-clear-cache" class="bpc-btn-secondary">
-                            Clear Cache
-                        </button>
-                    </p>
-                    <div id="ftg-brand-count-status" style="margin-top: 10px;"></div>
 
                     <script>
                     jQuery(document).ready(function($) {
@@ -1145,62 +1407,187 @@ function global_site_settings_main_page() {
                     $ftg_email = get_field('ftg_email', 'option');
                     $ftg_password = get_field('ftg_password', 'option');
                     $ftg_token = get_field('ftg_collection_token', 'option');
-                    $last_sync = get_option('belims_ftg_last_sync');
-                    $last_sync_text = $last_sync ? date_i18n('F j, Y, g:i a', $last_sync) : 'Never';
+                    $last_sync_ts_ftg   = belims_get_ftg_last_sync_timestamp();
+                    $last_sync_text     = $last_sync_ts_ftg > 0 ? date_i18n('F j, Y, g:i a', $last_sync_ts_ftg) : 'Never';
+                    $ftg_cron_frequency = get_option('belims_ftg_cron_frequency', 'disabled');
+                    $ftg_next_scheduled = wp_next_scheduled('belims_ftg_auto_sync');
+                    $ftg_next_run_text  = $ftg_next_scheduled ? date_i18n('F j, Y, g:i a', $ftg_next_scheduled) : 'Not scheduled';
+                    $ftg_cron_nonce     = wp_create_nonce('belims_ftg_cron_nonce');
                     ?>
+
+                    <style>
+                    /* FTG Sync tab */
+                    .ftg-field-row {
+                        display: flex; align-items: flex-start; gap: 24px;
+                        padding: 16px 0; border-bottom: 1px solid var(--bpc-border);
+                    }
+                    .ftg-field-row:last-child { border-bottom: none; }
+                    .ftg-field-label { width: 220px; flex-shrink: 0; padding-top: 6px; }
+                    .ftg-field-label label { font-size: 13px; font-weight: 600; color: var(--bpc-text-main); display: block; }
+                    .ftg-field-desc { font-size: 12px; color: var(--bpc-text-muted); margin: 4px 0 0; line-height: 1.4; }
+                    .ftg-field-control { flex: 1; }
+                    .ftg-field-control input[type="email"],
+                    .ftg-field-control input[type="password"],
+                    .ftg-field-control input[type="text"] { width: 100%; max-width: 360px; }
+                    .ftg-token-row { display: flex; gap: 10px; align-items: flex-start; }
+                    .ftg-token-input-wrap { flex: 1; max-width: 360px; }
+                    /* Product sync section */
+                    .ftg-product-sync { margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--bpc-border); }
+                    .ftg-product-sync h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--bpc-text-main); }
+                    .ftg-last-sync { font-size: 13px; color: var(--bpc-text-muted); margin: 0 0 20px; }
+                    /* Brand toolbar */
+                    .ftg-toolbar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
+                    .ftg-toolbar-group { display: flex; flex-direction: column; gap: 4px; }
+                    .ftg-toolbar-label { font-size: 12px; font-weight: 600; color: var(--bpc-text-main); }
+                    /* Action group cards */
+                    .ftg-action-group {
+                        background: #f8fafc; border: 1px solid var(--bpc-border);
+                        border-radius: 10px; padding: 16px 18px; margin-bottom: 12px;
+                    }
+                    .ftg-action-group-header {
+                        font-size: 11px; font-weight: 700; text-transform: uppercase;
+                        letter-spacing: .06em; color: #64748b;
+                        margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--bpc-border);
+                    }
+                    .ftg-action-group-body { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+                    /* Danger button */
+                    .ftg-btn-danger.button-secondary { color: var(--belims-red) !important; border-color: var(--belims-red) !important; }
+                    .ftg-btn-danger.button-secondary:hover { background: var(--belims-red) !important; color: #fff !important; }
+                    /* Dry run label */
+                    .ftg-dry-run-label {
+                        display: inline-flex; align-items: center; gap: 6px;
+                        font-size: 12px; font-weight: 500; color: var(--bpc-text-muted); margin-left: 4px;
+                    }
+                    /* SKU row */
+                    .ftg-sku-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
+                    .ftg-sku-wrap { display: flex; flex-direction: column; gap: 4px; }
+                    .ftg-sku-wrap label { font-size: 12px; font-weight: 600; color: var(--bpc-text-main); }
+                    .ftg-sku-wrap input { max-width: 200px; }
+                    /* Credentials saved state */
+                    .ftg-credentials-saved {
+                        background: #f8fafc; border: 1px solid var(--bpc-border);
+                        border-radius: 10px; padding: 16px 18px; margin-bottom: 4px;
+                    }
+                    .ftg-saved-row {
+                        display: flex; align-items: center; gap: 16px;
+                        padding: 9px 0; border-bottom: 1px solid var(--bpc-border);
+                    }
+                    .ftg-saved-row:last-of-type { border-bottom: none; }
+                    .ftg-saved-label {
+                        width: 140px; flex-shrink: 0; font-size: 11px; font-weight: 700;
+                        color: var(--bpc-text-muted); text-transform: uppercase; letter-spacing: .05em;
+                    }
+                    .ftg-saved-value { font-size: 13px; color: var(--bpc-text-main); font-weight: 500; font-family: monospace; }
+                    .ftg-saved-actions {
+                        display: flex; gap: 8px; margin-top: 14px; padding-top: 14px;
+                        border-top: 1px solid var(--bpc-border);
+                    }
+                    /* Status areas */
+                    #ftg-sync-status, #ftg-sync-single-result { margin-top: 12px; }
+                    #token-status { margin-top: 10px; }
+                    /* Progress bar */
+                    .ftg-progress-bar {
+                        width: 100%; height: 10px; background: #e2e8f0;
+                        border-radius: 999px; overflow: hidden; margin: 14px 0 4px;
+                    }
+                    .ftg-progress-fill {
+                        height: 100%;
+                        background: linear-gradient(90deg, var(--belims-primary) 0%, #5b52c4 100%);
+                        transition: width 0.3s ease; border-radius: 999px;
+                    }
+                    .ftg-progress-text { font-size: 12px; font-weight: 600; color: var(--belims-primary); margin: 0 0 10px; }
+                    .ftg-sync-details { margin-top: 20px; }
+                    .ftg-sync-details table { margin-top: 10px; }
+                    .ftg-sync-details th { text-align: center; font-weight: 600; }
+                    .ftg-sync-details td { text-align: center; font-size: 18px; font-weight: 600; }
+                    </style>
 
                     <form method="post" action="">
                         <?php wp_nonce_field('save_ftg_credentials_action', 'ftg_nonce'); ?>
 
-                        <table class="bpc-modern-table">
-                            <tr>
-                                <th>Enable Find The Gap Integration</th>
-                                <td>
-                                    <label class="bpc-switch">
-                                        <input type="checkbox" name="ftg_enabled" value="1" <?php checked(1, $ftg_enabled); ?> id="ftg-enabled-toggle" />
-                                        <span class="bpc-slider"></span>
-                                    </label>
-                                    <p class="description">Enable product sync with Find The Gap</p>
-                                </td>
-                            </tr>
-                        </table>
+                        <div class="ftg-field-row">
+                            <div class="ftg-field-label">
+                                <label for="ftg-enabled-toggle">Enable Integration</label>
+                                <p class="ftg-field-desc">Enable product sync with Find The Gap</p>
+                            </div>
+                            <div class="ftg-field-control">
+                                <label class="bpc-switch">
+                                    <input type="checkbox" name="ftg_enabled" value="1" <?php checked(1, $ftg_enabled); ?> id="ftg-enabled-toggle" />
+                                    <span class="bpc-slider"></span>
+                                </label>
+                            </div>
+                        </div>
 
+                        <?php $ftg_credentials_saved = !empty($ftg_email) && !empty($ftg_password) && !empty($ftg_token); ?>
                         <div id="ftg-credentials-section" style="<?php echo $ftg_enabled ? '' : 'display:none;'; ?>">
-                            <table class="bpc-modern-table">
-                                <tr>
-                                    <th>FTG Account Email</th>
-                                    <td>
+
+                            <?php if ($ftg_credentials_saved): ?>
+                            <div id="ftg-credentials-saved" class="ftg-credentials-saved">
+                                <div class="ftg-saved-row">
+                                    <span class="ftg-saved-label">Email</span>
+                                    <span class="ftg-saved-value"><?php echo esc_html($ftg_email); ?></span>
+                                </div>
+                                <div class="ftg-saved-row">
+                                    <span class="ftg-saved-label">Password</span>
+                                    <span class="ftg-saved-value">••••••••••••</span>
+                                </div>
+                                <div class="ftg-saved-row">
+                                    <span class="ftg-saved-label">Token</span>
+                                    <span class="ftg-saved-value"><?php echo esc_html(substr($ftg_token, 0, 8)); ?>••••••••</span>
+                                </div>
+                                <div class="ftg-saved-actions">
+                                    <button type="button" id="ftg-edit-credentials" class="button button-secondary">
+                                        ✏️ Edit Credentials
+                                    </button>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <div id="ftg-credentials-form" <?php echo $ftg_credentials_saved ? 'style="display:none;"' : ''; ?>>
+                                <div class="ftg-field-row">
+                                    <div class="ftg-field-label">
+                                        <label>FTG Account Email</label>
+                                        <p class="ftg-field-desc">Your Find The Gap account email</p>
+                                    </div>
+                                    <div class="ftg-field-control">
                                         <input type="email" name="ftg_email" value="<?php echo esc_attr($ftg_email); ?>" class="regular-text" />
-                                        <p class="description">Your Find The Gap account email</p>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>FTG Account Password</th>
-                                    <td>
+                                    </div>
+                                </div>
+                                <div class="ftg-field-row">
+                                    <div class="ftg-field-label">
+                                        <label>FTG Account Password</label>
+                                        <p class="ftg-field-desc">Stored securely</p>
+                                    </div>
+                                    <div class="ftg-field-control">
                                         <input type="password" name="ftg_password" value="<?php echo esc_attr($ftg_password); ?>" class="regular-text" />
-                                        <p class="description">Your Find The Gap account password (stored securely)</p>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>FTG Collection Token</th>
-                                    <td>
-                                        <div style="display: flex; gap: 10px; align-items: flex-start;">
-                                            <div style="flex: 1;">
+                                    </div>
+                                </div>
+                                <div class="ftg-field-row">
+                                    <div class="ftg-field-label">
+                                        <label>FTG Collection Token</label>
+                                        <p class="ftg-field-desc">Your Find The Gap collection token</p>
+                                    </div>
+                                    <div class="ftg-field-control">
+                                        <div class="ftg-token-row">
+                                            <div class="ftg-token-input-wrap">
                                                 <input type="text" name="ftg_collection_token" id="ftg-token-input" value="<?php echo esc_attr($ftg_token); ?>" class="regular-text" />
-                                                <p class="description">Your Find The Gap collection token</p>
                                             </div>
-                                            <button type="button" id="get-ftg-token" class="button button-secondary" style="margin-top: 0;">
+                                            <button type="button" id="get-ftg-token" class="button button-secondary">
                                                 🔑 Get Token
                                             </button>
                                         </div>
-                                        <div id="token-status" style="margin-top: 10px;"></div>
-                                    </td>
-                                </tr>
-                            </table>
+                                        <div id="token-status"></div>
+                                    </div>
+                                </div>
 
-                            <div class="bpc-submit-bar">
-                                <input type="submit" name="save_ftg_credentials" class="bpc-btn-primary" value="Save FTG Credentials" />
+                                <div class="bpc-submit-bar">
+                                    <input type="submit" name="save_ftg_credentials" class="bpc-btn-primary" value="Save Credentials" />
+                                    <?php if ($ftg_credentials_saved): ?>
+                                    <button type="button" id="ftg-cancel-edit" class="button button-secondary" style="margin-left: 8px;">Cancel</button>
+                                    <?php endif; ?>
+                                </div>
                             </div>
+
                         </div>
                     </form>
 
@@ -1212,6 +1599,68 @@ function global_site_settings_main_page() {
                             } else {
                                 $('#ftg-credentials-section').slideUp();
                             }
+                        });
+
+                        $('#ftg-edit-credentials').on('click', function() {
+                            $('#ftg-credentials-saved').hide();
+                            $('#ftg-credentials-form').slideDown();
+                        });
+
+                        $('#ftg-cancel-edit').on('click', function() {
+                            $('#ftg-credentials-form').slideUp(function() {
+                                $('#ftg-credentials-saved').show();
+                            });
+                        });
+
+                        // Cron frequency save
+                        $('#ftg-save-cron-frequency').on('click', function() {
+                            var btn = $(this);
+                            var cronStatus = $('#ftg-cron-status');
+                            btn.prop('disabled', true).text('Saving...');
+                            $.ajax({
+                                url: ajaxurl,
+                                method: 'POST',
+                                data: {
+                                    action: 'belims_save_ftg_cron_frequency',
+                                    nonce: '<?php echo esc_js($ftg_cron_nonce); ?>',
+                                    frequency: $('#ftg-cron-frequency').val()
+                                },
+                                success: function(response) {
+                                    btn.prop('disabled', false).text('Save');
+                                    if (response.success) {
+                                        cronStatus.html('Next scheduled run: <strong>' + response.data.next_run + '</strong>');
+                                    }
+                                },
+                                error: function() { btn.prop('disabled', false).text('Save'); }
+                            });
+                        });
+
+                        // Cron manual run
+                        $('#ftg-run-cron-now').on('click', function() {
+                            var btn = $(this);
+                            var cronStatus = $('#ftg-cron-status');
+                            if (!confirm('Run FTG auto-sync now? This may take several minutes.')) return;
+                            btn.prop('disabled', true).text('Running...');
+                            cronStatus.html('⏳ Sync running…');
+                            $.ajax({
+                                url: ajaxurl,
+                                method: 'POST',
+                                timeout: 330000,
+                                data: {
+                                    action: 'belims_run_ftg_cron_now',
+                                    nonce: '<?php echo esc_js($ftg_cron_nonce); ?>'
+                                },
+                                success: function(response) {
+                                    btn.prop('disabled', false).text('▶ Run Now');
+                                    if (response.success) {
+                                        cronStatus.html('✅ Sync complete — Last sync: <strong>' + response.data.last_sync + '</strong>');
+                                    }
+                                },
+                                error: function() {
+                                    btn.prop('disabled', false).text('▶ Run Now');
+                                    cronStatus.html('<span style="color:var(--belims-red);">❌ Sync failed or timed out</span>');
+                                }
+                            });
                         });
 
                         // Get FTG Token button
@@ -1259,9 +1708,9 @@ function global_site_settings_main_page() {
                     </script>
 
                     <?php if ($ftg_enabled): ?>
-                    <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--bpc-border);">
+                    <div class="ftg-product-sync">
                         <h3>Product Sync</h3>
-                        <p>Last Sync: <strong><?php echo esc_html($last_sync_text); ?></strong></p>
+                        <p class="ftg-last-sync">Last sync: <strong><?php echo esc_html($last_sync_text); ?></strong></p>
 
                         <?php if (!$ftg_token): ?>
                             <div class="notice notice-warning inline">
@@ -1269,9 +1718,9 @@ function global_site_settings_main_page() {
                             </div>
                         <?php else: ?>
                             <div id="ftg-sync-controls">
-                                <div style="margin: 0 0 20px 0; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
-                                    <div>
-                                        <label for="ftg-brand-filter" style="display: block; margin-bottom: 5px; font-weight: 500;">Catalogue Brand:</label>
+                                <div class="ftg-toolbar">
+                                    <div class="ftg-toolbar-group">
+                                        <label class="ftg-toolbar-label" for="ftg-brand-filter">Catalogue Brand</label>
                                         <select id="ftg-brand-filter" class="regular-text" style="min-width: 220px;">
                                             <option value="Assa Abloy" selected>Assa Abloy</option>
                                             <option value="Ingco">Ingco</option>
@@ -1279,33 +1728,55 @@ function global_site_settings_main_page() {
                                             <option value="__custom__">Other (type below)</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">&nbsp;</label>
-                                        <button type="button" id="ftg-search-brands" class="button button-secondary">
-                                            🔎 Search Available Brands
-                                        </button>
-                                    </div>
-                                    <div id="ftg-custom-brand-wrap" style="display:none;">
-                                        <label for="ftg-custom-brand" style="display: block; margin-bottom: 5px; font-weight: 500;">Custom Brand:</label>
+                                    <button type="button" id="ftg-search-brands" class="button button-secondary">
+                                        🔎 Search Available Brands
+                                    </button>
+                                    <div class="ftg-toolbar-group" id="ftg-custom-brand-wrap" style="display:none;">
+                                        <label class="ftg-toolbar-label" for="ftg-custom-brand">Custom Brand</label>
                                         <input type="text" id="ftg-custom-brand" class="regular-text" placeholder="Enter FTG brand name" style="min-width: 220px;" />
                                     </div>
                                 </div>
 
-                                <div style="margin-bottom: 20px; padding: 16px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px;">
-                                    <h4 style="margin: 0 0 12px 0;">Connection</h4>
-                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <div class="ftg-action-group">
+                                    <div class="ftg-action-group-header">Auto-Sync Schedule</div>
+                                    <div class="ftg-action-group-body">
+                                        <div class="ftg-toolbar-group">
+                                            <label class="ftg-toolbar-label" for="ftg-cron-frequency">Frequency</label>
+                                            <select id="ftg-cron-frequency" class="regular-text" style="min-width: 160px;">
+                                                <option value="disabled" <?php selected($ftg_cron_frequency, 'disabled'); ?>>Disabled</option>
+                                                <option value="hourly" <?php selected($ftg_cron_frequency, 'hourly'); ?>>Hourly</option>
+                                                <option value="twicedaily" <?php selected($ftg_cron_frequency, 'twicedaily'); ?>>Twice Daily</option>
+                                                <option value="daily" <?php selected($ftg_cron_frequency, 'daily'); ?>>Daily</option>
+                                                <option value="weekly" <?php selected($ftg_cron_frequency, 'weekly'); ?>>Weekly</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" id="ftg-save-cron-frequency" class="button button-secondary" style="align-self:flex-end;">
+                                            Save
+                                        </button>
+                                        <button type="button" id="ftg-run-cron-now" class="button button-secondary" style="align-self:flex-end;">
+                                            ▶ Run Now
+                                        </button>
+                                    </div>
+                                    <div id="ftg-cron-status" style="margin-top: 10px; font-size: 12px; color: var(--bpc-text-muted);">
+                                        Next scheduled run: <strong><?php echo esc_html($ftg_next_run_text); ?></strong>
+                                    </div>
+                                </div>
+
+                                <div class="ftg-action-group">
+                                    <div class="ftg-action-group-header">Connection</div>
+                                    <div class="ftg-action-group-body">
                                         <button type="button" id="ftg-test-connection" class="button button-secondary">
                                             🔗 Test Connection
                                         </button>
-                                        <button type="button" id="ftg-disconnect" class="button button-secondary" style="color: var(--belims-red) !important; border-color: var(--belims-red) !important;">
+                                        <button type="button" id="ftg-disconnect" class="button button-secondary ftg-btn-danger">
                                             🔌 Disconnect FTG
                                         </button>
                                     </div>
                                 </div>
 
-                                <div style="margin-bottom: 20px; padding: 16px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px;">
-                                    <h4 style="margin: 0 0 12px 0;">Tools</h4>
-                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <div class="ftg-action-group">
+                                    <div class="ftg-action-group-header">Tools</div>
+                                    <div class="ftg-action-group-body">
                                         <button type="button" id="ftg-inspect-product" class="button button-secondary">
                                             🔍 Inspect Product
                                         </button>
@@ -1324,79 +1795,39 @@ function global_site_settings_main_page() {
                                     </div>
                                 </div>
 
-                                <div style="margin-top: 20px; padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px;">
-                                    <h4 style="margin-top: 0;">Sync</h4>
-                                    <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                                <div class="ftg-action-group">
+                                    <div class="ftg-action-group-header">Sync</div>
+                                    <div class="ftg-action-group-body">
                                         <button type="button" id="ftg-test-sync" class="button button-secondary">
                                             ✅ Test Sync
                                         </button>
-                                        <div style="max-width: 250px;">
-                                            <label for="ftg-sku-input" style="display: block; margin-bottom: 5px; font-weight: 500;">Product SKU:</label>
+                                    </div>
+                                    <div class="ftg-sku-row">
+                                        <div class="ftg-sku-wrap">
+                                            <label for="ftg-sku-input">Product SKU</label>
                                             <input type="text" id="ftg-sku-input" placeholder="e.g., ING-12345" class="regular-text" />
                                         </div>
-                                        <button type="button" id="ftg-sync-single-btn" class="button button-secondary">
+                                        <button type="button" id="ftg-sync-single-btn" class="button button-secondary" style="align-self:flex-end;">
                                             ✅ Sync Single Product
                                         </button>
+                                    </div>
+                                    <div class="ftg-action-group-body" style="margin-top: 12px;">
                                         <button type="button" id="ftg-sync-products" class="button button-primary">
                                             🔄 SYNC CATALOGUE
                                         </button>
                                         <button type="button" id="ftg-sync-all-products" class="button button-primary" style="background:#1d2327; border-color:#1d2327;">
                                             ⚡ SYNC ALL BRANDS
                                         </button>
-                                        <label for="ftg-sync-all-dry-run" style="display:flex; align-items:center; gap:6px; margin:0 0 4px 6px;">
+                                        <label class="ftg-dry-run-label" for="ftg-sync-all-dry-run">
                                             <input type="checkbox" id="ftg-sync-all-dry-run" />
                                             Dry Run (counts only, no writes)
                                         </label>
                                     </div>
-                                    <div id="ftg-sync-single-result" style="margin-top: 15px;"></div>
+                                    <div id="ftg-sync-single-result"></div>
                                 </div>
 
-                                <div id="ftg-sync-status" style="margin-top: 15px;"></div>
+                                <div id="ftg-sync-status"></div>
                             </div>
-
-                            <style>
-                            .ftg-progress-bar {
-                                width: 100%;
-                                height: 30px;
-                                background: #f0f0f0;
-                                border-radius: 15px;
-                                overflow: hidden;
-                                margin: 15px 0;
-                                box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-                            }
-                            .ftg-progress-fill {
-                                height: 100%;
-                                background: linear-gradient(90deg, #0073aa 0%, #00a0d2 100%);
-                                transition: width 0.3s ease;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                color: white;
-                                font-weight: 600;
-                                font-size: 14px;
-                            }
-                            .ftg-progress-text {
-                                text-align: center;
-                                margin: 10px 0;
-                                font-weight: 600;
-                                color: #2271b1;
-                            }
-                            .ftg-sync-details {
-                                margin-top: 20px;
-                            }
-                            .ftg-sync-details table {
-                                margin-top: 10px;
-                            }
-                            .ftg-sync-details th {
-                                text-align: center;
-                                font-weight: 600;
-                            }
-                            .ftg-sync-details td {
-                                text-align: center;
-                                font-size: 18px;
-                                font-weight: 600;
-                            }
-                            </style>
 
                             <script>
                             jQuery(document).ready(function($) {
@@ -2933,18 +3364,18 @@ function global_site_settings_main_page() {
                     <form method="post" action="">
                         <?php wp_nonce_field('save_bobgo_enabled_action', 'bobgo_nonce'); ?>
 
-                        <table class="bpc-modern-table">
-                            <tr>
-                                <th>Enable BobGo Integration</th>
-                                <td>
-                                    <label class="bpc-switch">
-                                        <input type="checkbox" name="bobgo_enabled" value="1" <?php checked(1, $bobgo_enabled); ?> id="bobgo-enabled-toggle" />
-                                        <span class="bpc-slider"></span>
-                                    </label>
-                                    <p class="description">Enable shipping integration with BobGo</p>
-                                </td>
-                            </tr>
-                        </table>
+                        <div class="ftg-field-row">
+                            <div class="ftg-field-label">
+                                <label for="bobgo-enabled-toggle">Enable Shipping</label>
+                                <p class="ftg-field-desc">Enable shipping integration with BobGo</p>
+                            </div>
+                            <div class="ftg-field-control">
+                                <label class="bpc-switch">
+                                    <input type="checkbox" name="bobgo_enabled" value="1" <?php checked(1, $bobgo_enabled); ?> id="bobgo-enabled-toggle" />
+                                    <span class="bpc-slider"></span>
+                                </label>
+                            </div>
+                        </div>
 
                         <div class="bpc-submit-bar">
                             <input type="submit" name="save_bobgo_enabled" class="bpc-btn-primary" value="Save Settings" />
@@ -3164,8 +3595,97 @@ function global_site_settings_deactivate() {
 	if ($timestamp) {
 		wp_unschedule_event($timestamp, 'bpc_daily_speed_test');
 	}
+	$ftg_ts = wp_next_scheduled('belims_ftg_auto_sync');
+	if ($ftg_ts) {
+		wp_unschedule_event($ftg_ts, 'belims_ftg_auto_sync');
+	}
 }
 register_deactivation_hook(__FILE__, 'global_site_settings_deactivate');
+
+// =============================================================================
+// FTG LAST SYNC HELPER + AUTO-SYNC CRON
+// =============================================================================
+
+/**
+ * Normalize belims_ftg_last_sync — may be a Unix timestamp or an array
+ * written by class-ftg-sync-endpoint.php (['time' => mysql_datetime, ...]).
+ */
+function belims_get_ftg_last_sync_timestamp() {
+    $raw = get_option('belims_ftg_last_sync');
+    if (is_array($raw) && !empty($raw['time'])) {
+        $ts = strtotime($raw['time']);
+        return $ts ?: 0;
+    }
+    if (is_numeric($raw) && (int) $raw > 0) {
+        return (int) $raw;
+    }
+    return 0;
+}
+
+/** Schedule/reschedule the FTG auto-sync WP-Cron event. */
+function belims_schedule_ftg_cron($frequency = null) {
+    if (null === $frequency) {
+        $frequency = get_option('belims_ftg_cron_frequency', 'disabled');
+    }
+    $existing = wp_next_scheduled('belims_ftg_auto_sync');
+    if ($existing) {
+        wp_unschedule_event($existing, 'belims_ftg_auto_sync');
+    }
+    if ('disabled' !== $frequency) {
+        wp_schedule_event(time(), $frequency, 'belims_ftg_auto_sync');
+    }
+}
+
+/** Cron callback — runs FTG sync via the REST endpoint. */
+add_action('belims_ftg_auto_sync', 'belims_run_ftg_cron_sync');
+function belims_run_ftg_cron_sync() {
+    $ftg_enabled = function_exists('get_field') ? get_field('ftg_enabled', 'option') : false;
+    if (!$ftg_enabled) return;
+    $token = function_exists('get_field') ? get_field('ftg_collection_token', 'option') : '';
+    if (empty($token)) return;
+
+    $response = wp_remote_post(rest_url('belims/v1/ftg/sync'), array(
+        'body'    => wp_json_encode(array('collection_token' => $token, 'batch_size' => 50)),
+        'headers' => array('Content-Type' => 'application/json', 'X-WP-Nonce' => wp_create_nonce('wp_rest')),
+        'timeout' => 300,
+        'blocking' => true,
+    ));
+
+    if (!is_wp_error($response)) {
+        update_option('belims_ftg_last_sync', time());
+    }
+}
+
+/** AJAX: save cron frequency and reschedule. */
+add_action('wp_ajax_belims_save_ftg_cron_frequency', function() {
+    check_ajax_referer('belims_ftg_cron_nonce', 'nonce');
+    if (!current_user_can('manage_options')) { wp_send_json_error('Unauthorized'); return; }
+
+    $allowed    = array('hourly', 'twicedaily', 'daily', 'weekly', 'disabled');
+    $frequency  = sanitize_text_field($_POST['frequency'] ?? 'disabled');
+    if (!in_array($frequency, $allowed, true)) $frequency = 'daily';
+
+    update_option('belims_ftg_cron_frequency', $frequency);
+    belims_schedule_ftg_cron($frequency);
+
+    $next = wp_next_scheduled('belims_ftg_auto_sync');
+    wp_send_json_success(array(
+        'next_run' => $next ? date_i18n('F j, Y, g:i a', $next) : 'Not scheduled',
+    ));
+});
+
+/** AJAX: run FTG cron sync immediately. */
+add_action('wp_ajax_belims_run_ftg_cron_now', function() {
+    check_ajax_referer('belims_ftg_cron_nonce', 'nonce');
+    if (!current_user_can('manage_options')) { wp_send_json_error('Unauthorized'); return; }
+
+    do_action('belims_ftg_auto_sync');
+
+    $ts = belims_get_ftg_last_sync_timestamp();
+    wp_send_json_success(array(
+        'last_sync' => $ts > 0 ? date_i18n('F j, Y, g:i a', $ts) : 'Just now',
+    ));
+});
 
 /**
  * Add "View in FTG" action link to WooCommerce Products list

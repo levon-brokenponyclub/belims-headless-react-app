@@ -1,6 +1,8 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { loginUser, registerUser, UserData } from "../services/authService";
+import { ConfirmationResult } from "firebase/auth";
+import { loginUser, registerUser, loginWithFirebasePhone, UserData } from "../services/authService";
+import { sendPhoneOTP, getFirebaseIdToken, clearRecaptcha, isFirebaseConfigured } from "../services/firebaseService";
 
 interface AuthPageProps {
   mode: "login" | "register";
@@ -33,9 +35,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Phone OTP state
+  const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
+  const [phoneNumber, setPhoneNumber] = useState("+27");
+  const [otp, setOtp] = useState("");
+  const [phoneStep, setPhoneStep] = useState<"number" | "otp">("number");
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [phoneSubmitting, setPhoneSubmitting] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const recaptchaContainerId = "firebase-recaptcha";
+
   useEffect(() => {
     setRole(defaultRole);
   }, [defaultRole]);
+
+  // Clean up reCAPTCHA widget when component unmounts or auth method changes.
+  useEffect(() => {
+    return () => { clearRecaptcha(recaptchaContainerId); };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +86,41 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       showToast(errorMsg, "error");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSendOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPhoneError(null);
+    setPhoneSubmitting(true);
+    try {
+      const result = await sendPhoneOTP(phoneNumber.trim(), recaptchaContainerId);
+      setConfirmationResult(result);
+      setPhoneStep("otp");
+    } catch (err: any) {
+      setPhoneError(err?.message || "Failed to send OTP. Check the number and try again.");
+    } finally {
+      setPhoneSubmitting(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confirmationResult) return;
+    setPhoneError(null);
+    setPhoneSubmitting(true);
+    try {
+      await confirmationResult.confirm(otp.trim());
+      const idToken = await getFirebaseIdToken();
+      if (!idToken) throw new Error("Could not retrieve authentication token.");
+      const result = await loginWithFirebasePhone(idToken, phoneNumber.trim());
+      onSuccess(result.user);
+      showToast(result.message || "Welcome!", "success");
+      setTimeout(() => navigate("/"), 1000);
+    } catch (err: any) {
+      setPhoneError(err?.message || "Invalid code. Please try again.");
+    } finally {
+      setPhoneSubmitting(false);
     }
   };
 
@@ -130,6 +182,118 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               </p>
             </div>
 
+            {/* invisible reCAPTCHA container required by Firebase */}
+            <div id={recaptchaContainerId} />
+
+            {/* Email / Phone toggle */}
+            {isFirebaseConfigured() && (
+              <div className="mb-5 flex rounded-lg border border-gray-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => { setAuthMethod("email"); setPhoneError(null); clearRecaptcha(recaptchaContainerId); }}
+                  className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                    authMethod === "email"
+                      ? "bg-belims-blue text-white"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMethod("phone"); setError(null); setPhoneStep("number"); }}
+                  className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+                    authMethod === "phone"
+                      ? "bg-belims-blue text-white"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  Phone
+                </button>
+              </div>
+            )}
+
+            {/* Phone OTP flow */}
+            {authMethod === "phone" && (
+              <div className="space-y-4">
+                {phoneStep === "number" ? (
+                  <form onSubmit={handleSendOTP} className="space-y-4">
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700">
+                        Mobile number
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="+27 82 123 4567"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
+                      />
+                      <p className="mt-1 text-xs text-gray-400">
+                        Include country code, e.g. +27 for South Africa.
+                      </p>
+                    </div>
+                    {phoneError && (
+                      <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+                        {phoneError}
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={phoneSubmitting}
+                      className="w-full rounded bg-belims-blue px-4 py-2 text-sm font-semibold text-white hover:bg-belims-accent disabled:opacity-60"
+                    >
+                      {phoneSubmitting ? "Sending..." : "Send verification code"}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleVerifyOTP} className="space-y-4">
+                    <p className="text-sm text-gray-600">
+                      Enter the 6-digit code sent to{" "}
+                      <span className="font-semibold">{phoneNumber}</span>.
+                    </p>
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700">
+                        Verification code
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                        className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-center text-lg font-bold tracking-widest focus:border-belims-blue focus:outline-none"
+                      />
+                    </div>
+                    {phoneError && (
+                      <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+                        {phoneError}
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={phoneSubmitting || otp.length < 6}
+                      className="w-full rounded bg-belims-blue px-4 py-2 text-sm font-semibold text-white hover:bg-belims-accent disabled:opacity-60"
+                    >
+                      {phoneSubmitting ? "Verifying..." : "Verify & Sign In"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setPhoneStep("number"); setOtp(""); setPhoneError(null); }}
+                      className="w-full text-sm text-gray-500 hover:underline"
+                    >
+                      ← Use a different number
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {/* Email/password form */}
+            {authMethod === "email" && (
             <form onSubmit={handleSubmit} className="space-y-4">
               {isRegisterMode && (
                 <div className="space-y-2">
@@ -255,6 +419,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     : "Sign In"}
               </button>
             </form>
+            )} {/* end authMethod === "email" */}
 
             <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-gray-200" />

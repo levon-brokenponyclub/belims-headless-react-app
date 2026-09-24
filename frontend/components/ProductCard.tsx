@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Product } from "../types";
 import { formatCurrency, isProductPurchasable } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
 import { QuickView } from "./QuickView";
 
 interface ProductCardProps {
@@ -463,7 +464,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Image */}
         <Link
-          to={`/product/${product.id}`}
+          to={buildProductUrl(product)}
           className={`relative flex items-center justify-center rounded-lg bg-grey-light overflow-hidden ${
             imageBlockClassName
           } ${isFlat && !isFlatHorizontal ? "" : !isFlatHorizontal ? "p-5" : ""}`}
@@ -707,7 +708,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* Title - Fixed height for 2 lines */}
           <Link
-            to={`/product/${product.id}`}
+            to={buildProductUrl(product)}
             className={`mb-0 mt-0 line-clamp-2 font-heading font-semibold leading-[1.35] text-grey min-h-[35px] ${
               isFlat ? "text-[15px] min-h-[10px] mt-1" : "text-base"
             }`}

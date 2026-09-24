@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.2.0  
+**Version:** 2.4.0  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -13,6 +13,9 @@ Unified plugin for the Belims headless WooCommerce store. Manages REST API endpo
 ```
 global-site-settings/
 ├── global-site-settings.php          # Bootstrap, CORS headers, AJAX handlers, admin menus
+├── assets/
+│   ├── css/admin.css                 # All BPC admin UI styles (variables, layout, components)
+│   └── js/admin.js                   # Admin tab switching and shared JS
 ├── includes/
 │   ├── acf-field-groups.php          # ACF field group registration
 │   ├── class-orders-endpoint.php     # POST /orders — headless checkout order creation
@@ -26,6 +29,49 @@ global-site-settings/
 │   ├── payfast/                      # PayFast payment gateway (see below)
 │   └── ftg-sync/                     # FTG brand sync integration
 ```
+
+---
+
+## Admin UI — Site Settings
+
+Single-page tabbed interface at **WP Admin → Site Settings**.
+
+### Sidebar navigation
+
+| Label | Tab ID | Purpose |
+|-------|--------|---------|
+| Dashboard | `tab-dashboard` | System status, integrations overview, REST API reference |
+| Branding | `tab-branding` | Logo, colours, frontend URL, environment |
+| Ecommerce | `tab-ecommerce` | Returns, warranty, shipping policies |
+| Products | `tab-ftg-sync` | FTG credentials, product sync, cron schedule |
+| Shipping | `tab-bobgo-shipping` | BobGo enable toggle + API settings |
+| PayFast Testing | `tab-payfast-testing` | Sandbox payment flow testing |
+
+CORS & Security, WooCommerce, Payment Gateways, and AI Services tabs exist in the DOM but are removed from the sidebar nav.
+
+### Dashboard tab
+
+- **System strip**: WordPress version, WooCommerce version, PHP version, CORS origin, Frontend URL
+- **Integrations grid**: FTG Sync (with toggle + last sync date), BobGo Shipping (with toggle + env badge), Firebase Auth, Payment Gateway, AI Services — each card links to its config tab
+- **Settings tiles**: Quick-nav grid to all settings tabs
+- **REST API reference table**: All `belims/v1` endpoints with method badges and auth type badges
+
+Last sync on the Dashboard and Products tab both read from `belims_get_ftg_last_sync_timestamp()` and display in `date_i18n('F j, Y, g:i a')` format.
+
+### Products (FTG Sync) tab
+
+**Credentials section** — collapses to a saved summary when email + password + token are all set. "Edit Credentials" expands the form; "Cancel" collapses it back.
+
+**Product Sync section** (visible when enabled + token set):
+- Brand toolbar: dropdown (populated from FTG API) + Search Available Brands + optional Custom Brand input
+- **Auto-Sync Schedule** group: frequency selector (Disabled / Hourly / Twice Daily / Daily / Weekly), Save button, Run Now button, next scheduled run display
+- **Connection** group: Test Connection, Disconnect FTG
+- **Tools** group: Inspect Product, Check Catalogue Count, Count Display On Web Active, Export Brand Products, Cleanup Duplicate Attributes
+- **Sync** group: Test Sync (first 10), SKU field + Sync Single Product, SYNC CATALOGUE, SYNC ALL BRANDS + Dry Run toggle
+
+### Shipping (BobGo) tab
+
+Enable toggle form (field-row layout, auto-saves). Settings section (API token form) collapses to a saved summary when production API token is set. "Edit Settings" / "Cancel" toggle the form.
 
 ---
 
@@ -46,6 +92,13 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `POST` | `/payfast/notify` | None | PayFast ITN (payment notification) |
 | `GET` | `/payfast/return` | None | PayFast return redirect after payment |
 | `GET/POST` | `/user/*` | Varies | Auth, registration, profile |
+| `POST` | `/ftg/login` | Admin | Exchange FTG email+password for collection token |
+| `GET` | `/ftg/brands` | Admin | List all FTG brands (cached) |
+| `GET` | `/ftg/brand-count` | Admin | Count products for a given brand |
+| `POST` | `/ftg/sync` | Admin | Sync FTG products to WooCommerce |
+| `POST` | `/ftg/sync/product` | Admin | Sync a single product by SKU |
+| `GET` | `/ftg/instances` | Admin | Test FTG API connection |
+| `POST` | `/ftg/cleanup-attributes` | Admin | Remove duplicate WC attributes |
 
 ---
 
@@ -58,52 +111,46 @@ CORS origin is controlled by the `belims_frontend_environment` WP option and the
 | Production | Value of ACF `headless_frontend_url` (currently `https://belims.vercel.app`) |
 | Development | `http://localhost:3000` (or `FRONTEND_URL` env var) |
 
-Switch environments via **Site Settings → CORS & Security → Frontend Environment**.
-
 Helper functions available globally:
 - `get_cors_origin()` — returns the current allowed origin
 - `get_frontend_url()` — returns the frontend base URL (used for PayFast return URLs)
 
 ---
 
-## Order Creation (`class-orders-endpoint.php`)
+## FTG Sync (`includes/ftg-sync/`)
 
-`POST /belims/v1/orders`
+Syncs brand/product data from the FTG supplier feed.
 
-**Request body:**
+| File | Purpose |
+|------|---------|
+| `class-ftg-api.php` | FTG API client |
+| `class-ftg-sync-endpoint.php` | REST endpoint + sync logic. Writes `belims_ftg_last_sync` as `['time' => mysql_datetime, ...]` |
+| `admin-ftg-sync-page.php` | Legacy admin page (writes `belims_ftg_last_sync` as Unix timestamp) |
 
-```json
-{
-  "customer": {
-    "firstName": "string",
-    "lastName": "string",
-    "email": "string",
-    "phone": "string",
-    "address": "string",
-    "city": "string",
-    "province": "string",
-    "postalCode": "string"
-  },
-  "items": [
-    { "id": 123, "quantity": 1 }
-  ],
-  "shipping": {
-    "service_name": "Same Day Delivery",
-    "service_code": "bobgo_257655_0_2",
-    "method_id": "bobgo_shipping",
-    "total_price": 175
-  },
-  "order_note": "Please leave at door",
-  "coupon_lines": [
-    { "code": "DISCOUNT10" }
-  ]
-}
+### Last sync storage
+
+`belims_ftg_last_sync` may be stored as either a Unix timestamp (integer) or an array `['time' => 'Y-m-d H:i:s', 'products_synced' => N, ...]` depending on which code path ran. Always read it through:
+
+```php
+belims_get_ftg_last_sync_timestamp(); // returns int Unix timestamp or 0
 ```
 
-**Shipping item notes:**
-- `method_id` must be `bobgo_shipping` — required for BobGo webhook recognition
-- `service_code` is saved as both `bobgo_service_level` and `uafrica_service_code` on the shipping item. The `uafrica_service_code` key is read by the uAfrica WooCommerce plugin's `save_order_meta` hook, which copies it to order-level meta. BobGo reads this meta when it receives the WooCommerce webhook.
-- Coupon codes are applied after the first `calculate_totals()` call, then totals are recalculated.
+### FTG Auto-Sync Cron
+
+| Hook / Option | Value |
+|---------------|-------|
+| WP-Cron event | `belims_ftg_auto_sync` |
+| Frequency option | `belims_ftg_cron_frequency` (default: `'disabled'`) |
+| Allowed values | `disabled`, `hourly`, `twicedaily`, `daily`, `weekly` |
+| Helper | `belims_schedule_ftg_cron($frequency)` — clears existing and reschedules |
+
+The cron callback (`belims_run_ftg_cron_sync`) calls `POST /belims/v1/ftg/sync` with the saved collection token. It only runs when FTG is enabled and a token is configured.
+
+**UI controls** (Products tab → Product Sync → Auto-Sync Schedule):
+- Frequency dropdown → Save button → `wp_ajax_belims_save_ftg_cron_frequency`
+- Run Now button → `wp_ajax_belims_run_ftg_cron_now`
+
+The cron is unscheduled on plugin deactivation.
 
 ---
 
@@ -127,47 +174,20 @@ BobGo connects to WooCommerce as a sales channel and pulls paid orders via the W
 |------|---------|
 | `init.php` | Registers the `/shipping/calculate` REST endpoint |
 | `class-bobgo-rates-endpoint.php` | Proxies address → WC shipping calculator → returns rates |
-| `class-bobgo-api.php` | Direct BobGo API wrapper (Bearer token auth) — not active, kept for future use if API access is enabled |
-| `class-bobgo-order-handler.php` | Direct API order push — **disabled** (not loaded). Direct API requires Bearer token; BobGo plan does not support API keys. Kept for reference. |
+| `class-bobgo-api.php` | Direct BobGo API wrapper (Bearer token auth) — not active, kept for future use |
+| `class-bobgo-order-handler.php` | Direct API order push — **disabled**. Kept for reference. |
 | `class-bobgo-tracking-endpoint.php` | `/track` endpoint — returns shipment tracking status |
 | `class-bobgo-webhook-endpoint.php` | Receives inbound webhooks from BobGo (tracking events) |
-| `admin-bobgo-settings-page.php` | Admin UI: environment toggle, token fields, connection tests, order sync test panel |
+| `admin-bobgo-settings-page.php` | Admin UI: saved/edit state for environment + token fields, connection test |
 
-### Admin UI — Site Settings → BobGo Shipping
+### Saved state
 
-- **Environment toggle**: Production / Sandbox. Controls which BobGo API URL is used if the direct API handler is ever re-enabled.
-- **Test API Token**: Authenticates directly against the BobGo API using the saved Bearer token.
-- **Test Checkout Rates**: Fires a test address through the WC shipping calculator and returns available rates.
-- **Order Sync Test**: Enter a WC order ID to inspect shipping `method_id`, BobGo meta, and sync status. "Trigger Sync" manually runs the order handler (patches legacy `method_id` if blank, then calls `create_bobgo_order()`).
+Settings form collapses when `bobgo_api_token` option is non-empty. Displays environment and masked token. "Edit Settings" / "Cancel" toggle the form via JS.
 
 ### Logging
 
 `class-bobgo-order-handler.php` writes to the WooCommerce logger under source `belims-bobgo`.  
 View logs: **WooCommerce → Status → Logs → select `belims-bobgo`**.
-
----
-
-## PayFast (`includes/payfast/`)
-
-| File | Purpose |
-|------|---------|
-| `class-payfast-api.php` | Builds PayFast payment payload, signature generation |
-| `class-payfast-return-handler.php` | Handles `/payfast/return` — verifies payment, moves order to `processing`, redirects to `get_frontend_url()/order-confirmation?order_id=X&order_key=Y` |
-| `class-payfast-admin-page.php` | Admin test panel |
-
-**Return URL** is built from `get_frontend_url()` which reads the ACF `headless_frontend_url` option. Update this option (WP admin → Options → `headless_frontend_url`) when switching frontend domains.
-
----
-
-## FTG Sync (`includes/ftg-sync/`)
-
-Syncs brand/product data from the FTG supplier feed.
-
-| File | Purpose |
-|------|---------|
-| `class-ftg-api.php` | FTG API client |
-| `class-ftg-sync-endpoint.php` | REST endpoint + sync logic |
-| `admin-ftg-sync-page.php` | Admin UI for triggering and monitoring sync |
 
 ---
 
@@ -182,8 +202,22 @@ Syncs brand/product data from the FTG supplier feed.
 | `clear_ftg_credentials` | Clears saved FTG API credentials |
 | `export_woocommerce_products` | Exports products as CSV/JSON |
 | `belims_sync_single_product` | Triggers FTG sync for a single product |
+| `belims_save_ftg_cron_frequency` | Saves `belims_ftg_cron_frequency` and reschedules `belims_ftg_auto_sync` |
+| `belims_run_ftg_cron_now` | Immediately fires `belims_ftg_auto_sync` action |
 
 All admin AJAX handlers require `manage_options` capability and a valid nonce.
+
+---
+
+## PayFast (`includes/payfast/`)
+
+| File | Purpose |
+|------|---------|
+| `class-payfast-api.php` | Builds PayFast payment payload, signature generation |
+| `class-payfast-return-handler.php` | Handles `/payfast/return` — verifies payment, moves order to `processing`, redirects to `get_frontend_url()/order-confirmation?order_id=X&order_key=Y` |
+| `class-payfast-admin-page.php` | Admin test panel |
+
+**Return URL** is built from `get_frontend_url()` which reads the ACF `headless_frontend_url` option.
 
 ---
 
@@ -200,3 +234,4 @@ Do not override files owned by other plugins (e.g. `uafrica-shipping`).
 - **BobGo API keys**: The current BobGo plan does not allow API key creation. Direct API calls (`class-bobgo-order-handler.php`) are disabled. Order sync relies on the BobGo ↔ WooCommerce channel integration.
 - **SSH writes**: `master_ggrkakuzjf` cannot write files owned by `uhkkwupuum`. Use Cloudways File Manager for all plugin uploads.
 - **CORS**: Only one origin is allowed at a time. The ACF `headless_frontend_url` option overrides all other CORS settings.
+- **FTG last sync format**: Two code paths write different formats to `belims_ftg_last_sync`. Always use `belims_get_ftg_last_sync_timestamp()` to read it.

@@ -14,6 +14,7 @@ import {
 import { Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
 import { formatCurrency, isProductPurchasable } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
 import { StockBar } from "./StockBar";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import { VideoPlayer } from "./VideoPlayer";
@@ -850,7 +851,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   const handleBuyNowAction = () => {
     handleAddToCart();
-    onBuyNow(product);
+    navigate("/checkout");
   };
 
   const runActionWithIndicator = (
@@ -2070,7 +2071,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
       {product.bundleCandidates && product.bundleCandidates.length > 0 && (
         <>
-          <section className="border-y border-gray-200 bg-white">
+          {/* <section className="border-y border-gray-200 bg-white">
             <style>
               {`@keyframes bundle-marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}
             </style>
@@ -2102,7 +2103,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 ))}
               </div>
             </div>
-          </section>
+          </section> */}
         </>
       )}
 
@@ -2137,7 +2138,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       <RecentlyViewed
         addToCart={addToCart}
         onBuyNow={onBuyNow}
-        onProductClick={(p) => navigate(`/product/${p.id}`)}
+        onProductClick={(p) => navigate(buildProductUrl(p))}
         onCompare={onCompare}
         currentProductId={product.id}
         isAuthenticated={isAuthenticated}
