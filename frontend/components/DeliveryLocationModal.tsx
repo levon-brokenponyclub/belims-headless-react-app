@@ -415,6 +415,10 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   const [pendingAddress, setPendingAddress] = useState<ShippingAddress | null>(null);
   const [pendingAddressName, setPendingAddressName] = useState("");
   const [houseNumber, setHouseNumber] = useState("");
+  const [pendingStreet, setPendingStreet] = useState("");
+  const [pendingCity, setPendingCity] = useState("");
+  const [pendingProvince, setPendingProvince] = useState("");
+  const [pendingPostalCode, setPendingPostalCode] = useState("");
 
   const mapUserShippingToAddress = (shipping: UserData["shipping"]): ShippingAddress | null => {
     if (!shipping) return null;
@@ -908,6 +912,10 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       setPendingAddress(null);
       setPendingAddressName("");
       setHouseNumber("");
+      setPendingStreet("");
+      setPendingCity("");
+      setPendingProvince("");
+      setPendingPostalCode("");
       hasAutoLocatedRef.current = false;
     }
   }, [isOpen]);
@@ -1090,8 +1098,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           return;
         }
 
-        setPendingAddress(address);
-        setPendingAddressName("");
+        openPendingAddress(address);
         return;
       }
 
@@ -1151,8 +1158,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         return;
       }
 
-      setPendingAddress(resolvedAddress);
-      setPendingAddressName("");
+      openPendingAddress(resolvedAddress);
     } catch (error) {
       console.error("Place details error:", error);
       setErrorMessage("Unable to read address details. Try another address.");
@@ -1307,7 +1313,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               setSuggestions([]);
               localStorage.setItem("fulfillmentType", "delivery");
               setLoading(false);
-              setDetectedLocationAddress(address);
+              openPendingAddress(address); // go directly to editable confirm screen
             } else {
               throw new Error(`API returned ${response.status}`);
             }
@@ -1459,6 +1465,16 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     emitDeliveryAddressUpdated();
   };
 
+  const openPendingAddress = (address: ShippingAddress) => {
+    setPendingAddress(address);
+    setPendingAddressName("");
+    setHouseNumber("");
+    setPendingStreet(address.street || "");
+    setPendingCity(address.city || "");
+    setPendingProvince(address.province || "");
+    setPendingPostalCode(address.postalCode || "");
+  };
+
   const handleAddressSaved = (address: ShippingAddress) => {
     console.log("[delivery-location-modal] full address save requested", {
       address,
@@ -1475,21 +1491,27 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
   const handleSaveDetectedAddress = () => {
     if (!detectedLocationAddress) return;
-    setPendingAddress(detectedLocationAddress);
-    setPendingAddressName("");
+    if (detectedLocationAddress) openPendingAddress(detectedLocationAddress);
     setDetectedLocationAddress(null);
   };
 
   const handleConfirmPendingAddress = () => {
     if (!pendingAddress) return;
     const trimmedHouseNo = houseNumber.trim();
+    const baseStreet = pendingStreet || pendingAddress.street;
     const mergedStreet = trimmedHouseNo
-      ? [trimmedHouseNo, pendingAddress.street].filter(Boolean).join(" ")
-      : pendingAddress.street;
-    const withHouseNo = { ...pendingAddress, street: mergedStreet };
+      ? [trimmedHouseNo, baseStreet].filter(Boolean).join(" ")
+      : baseStreet;
+    const assembled: ShippingAddress = {
+      ...pendingAddress,
+      street: mergedStreet,
+      city: pendingCity || pendingAddress.city,
+      province: pendingProvince || pendingAddress.province,
+      postalCode: pendingPostalCode || pendingAddress.postalCode,
+    };
     const finalAddress = pendingAddressName.trim()
-      ? { ...withHouseNo, label: pendingAddressName.trim() }
-      : { ...withHouseNo, label: buildAddressLabel(withHouseNo) };
+      ? { ...assembled, label: pendingAddressName.trim() }
+      : { ...assembled, label: buildAddressLabel(assembled) };
     handleAddressSaved(finalAddress);
     setPendingAddress(null);
     setPendingAddressName("");
@@ -1845,8 +1867,10 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               <section className="space-y-5">
                 <div>
                   <h2 className="text-lg font-bold text-gray-900 mb-1">Confirm your address</h2>
-                  <p className="text-sm text-gray-500">Add your house or unit number, then save.</p>
+                  <p className="text-sm text-gray-500">Review and edit your address, then save.</p>
                 </div>
+
+                {/* House / unit number */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
                     House / Unit No. <span className="font-normal text-gray-400 normal-case tracking-normal">(optional)</span>
@@ -1860,11 +1884,57 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                     autoFocus
                   />
                 </div>
-                <div className="border border-subtle px-4 py-4 space-y-1 text-sm text-ink">
-                  {[pendingAddress.street, pendingAddress.city, pendingAddress.province, pendingAddress.postalCode]
-                    .filter(Boolean)
-                    .map((line, i) => <p key={i}>{line}</p>)}
+
+                {/* Editable address fields */}
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Street</label>
+                    <input
+                      type="text"
+                      value={pendingStreet}
+                      onChange={(e) => setPendingStreet(e.target.value)}
+                      placeholder="Street address"
+                      className="w-full border border-subtle py-2.5 px-3 text-sm text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">City</label>
+                      <input
+                        type="text"
+                        value={pendingCity}
+                        onChange={(e) => setPendingCity(e.target.value)}
+                        placeholder="City"
+                        className="w-full border border-subtle py-2.5 px-3 text-sm text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Postal Code</label>
+                      <input
+                        type="text"
+                        value={pendingPostalCode}
+                        onChange={(e) => setPendingPostalCode(e.target.value)}
+                        placeholder="0000"
+                        className="w-full border border-subtle py-2.5 px-3 text-sm text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Province</label>
+                    <select
+                      value={pendingProvince}
+                      onChange={(e) => setPendingProvince(e.target.value)}
+                      className="w-full border border-subtle py-2.5 px-3 text-sm text-ink focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue bg-white"
+                    >
+                      <option value="">Select province</option>
+                      {PROVINCES.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
+
+                {/* Address nickname */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
                     Address name <span className="font-normal text-gray-400 normal-case tracking-normal">(optional)</span>
@@ -1888,7 +1958,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setPendingAddress(null); setPendingAddressName(""); setHouseNumber(""); setIsEditingDeliveryAddress(true); }}
+                    onClick={() => { setPendingAddress(null); setPendingAddressName(""); setHouseNumber(""); setPendingStreet(""); setPendingCity(""); setPendingProvince(""); setPendingPostalCode(""); setIsEditingDeliveryAddress(true); }}
                     className={secondaryButtonClass}
                   >
                     <span className={secondaryButtonOverlayClass} />
