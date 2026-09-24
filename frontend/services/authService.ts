@@ -294,11 +294,6 @@ export const saveShippingAddress = async (
     shipping_state: address.province || "",
     shipping_postcode: address.postalCode || "",
     shipping_country: address.country || "ZA",
-    billing_address_1: address.street || address.label || "",
-    billing_city: address.city || "",
-    billing_state: address.province || "",
-    billing_postcode: address.postalCode || "",
-    billing_country: address.country || "ZA",
   };
 
   try {

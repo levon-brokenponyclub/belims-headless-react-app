@@ -708,10 +708,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
       billingAddress?.city ||
       billingAddress?.postcode;
 
+    // Only show shipping card when it differs from billing (avoids duplicate mirrored cards)
     const hasShipping =
-      shippingAddress?.address_1 ||
-      shippingAddress?.city ||
-      shippingAddress?.postcode;
+      (shippingAddress?.address_1 || shippingAddress?.city || shippingAddress?.postcode) &&
+      (shippingAddress?.address_1 !== billingAddress?.address_1 ||
+       shippingAddress?.city !== billingAddress?.city ||
+       shippingAddress?.postcode !== billingAddress?.postcode);
 
     const savedAddressLines = savedDeliveryAddress
       ? [
