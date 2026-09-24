@@ -45,6 +45,7 @@ import { TrackOrderPage } from "./components/TrackOrderPage";
 import { BrandStrip } from "./components/BrandStrip";
 import { AuthPage } from "./components/AuthPage";
 import { AccountPage } from "./components/AccountPage";
+import { WishlistPage } from "./components/WishlistPage";
 import { Toast } from "./components/Toast";
 import { CookieConsent } from "./components/CookieConsent";
 import { Skeleton, SkeletonLine, SkeletonImage } from "./components/Skeleton";
@@ -1391,6 +1392,10 @@ function MainApp(props) {
                   showToast={props.showToast}
                 />
               }
+            />
+            <Route
+              path="/wishlist"
+              element={<WishlistPage addToCart={addToCart} />}
             />
             <Route path="/track-order" element={<TrackOrderPage />} />
             <Route path="/order-confirmation" element={<OrderConfirmation />} />

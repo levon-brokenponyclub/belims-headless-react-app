@@ -10,7 +10,12 @@ import {
   Target,
   Loader2,
   Clock,
+  Heart,
 } from "lucide-react";
+import {
+  toggleWishlist,
+  isInWishlist,
+} from "../services/wishlistService";
 import { Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
 import { formatCurrency, isProductPurchasable } from "../utils/price";
@@ -155,6 +160,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   // Gallery / image
   const [mainImage, setMainImage] = useState(product.image);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(() => isInWishlist(product.id));
 
   // Qty
   const [qty, setQty] = useState(1);
@@ -1503,35 +1509,57 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 {/* ProductSummary */}
                 <div className="bg-white">
                   <div className="pb-0">
-                    {/* Brand + Badge — inline chip row */}
-                    {(product.brand || dealBadgeLabel) && (
-                      <div className={`flex flex-wrap items-center gap-2 ${dealBadgeLabel ? "mb-4" : "mb-3"}`}>
-                        {product.brand &&
-                          (onBrandClick ? (
-                            <button
-                              type="button"
-                              onClick={() => onBrandClick(product.brand!)}
-                              className="inline-block rounded border border-gray-200 bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-gray-500 hover:border-brand hover:text-brand transition-colors"
-                            >
-                              {product.brand}
-                            </button>
-                          ) : (
-                            <span className="inline-block rounded border border-gray-200 bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-gray-500">
-                              {product.brand}
-                            </span>
-                          ))}
-                        {dealBadgeLabel && (
-                          <span
-                            className={[
-                              "inline-flex items-center rounded px-2.5 py-1 text-xs font-bold uppercase",
-                              badgeToneClass,
-                            ].join(" ")}
+                    {/* Brand + Badge + Wishlist — inline chip row */}
+                    <div className={`flex flex-wrap items-center gap-2 ${dealBadgeLabel ? "mb-4" : "mb-3"}`}>
+                      {product.brand &&
+                        (onBrandClick ? (
+                          <button
+                            type="button"
+                            onClick={() => onBrandClick(product.brand!)}
+                            className="inline-block rounded border border-gray-200 bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-gray-500 hover:border-brand hover:text-brand transition-colors"
                           >
-                            {dealBadgeLabel}
+                            {product.brand}
+                          </button>
+                        ) : (
+                          <span className="inline-block rounded border border-gray-200 bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-gray-500">
+                            {product.brand}
                           </span>
-                        )}
-                      </div>
-                    )}
+                        ))}
+                      {dealBadgeLabel && (
+                        <span
+                          className={[
+                            "inline-flex items-center rounded px-2.5 py-1 text-xs font-bold uppercase",
+                            badgeToneClass,
+                          ].join(" ")}
+                        >
+                          {dealBadgeLabel}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                        onClick={() => {
+                          const nowIn = toggleWishlist({
+                            id: product.id,
+                            name: product.name,
+                            sku: product.sku || "",
+                            price: product.sale_price ?? product.price,
+                            image: product.image || "",
+                            slug: product.slug || "",
+                            brand: product.brand,
+                            category: product.category,
+                          });
+                          setIsWishlisted(nowIn);
+                        }}
+                        className="ml-auto flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-red-50"
+                      >
+                        <Heart
+                          size={20}
+                          className={isWishlisted ? "text-red-500" : "text-gray-300"}
+                          fill={isWishlisted ? "currentColor" : "none"}
+                        />
+                      </button>
+                    </div>
                     <h1 className="text-3xl font-bold text-grey font-heading mb-1">
                       {product.name}
                     </h1>
