@@ -45,12 +45,13 @@ class Belims_Orders_Endpoint {
             return new WP_Error('unauthorized', 'You must be logged in to view orders', array('status' => 401));
         }
 
-        // Get customer orders
+        // Get customer orders — exclude 'pending' (abandoned/unpaid checkouts)
         $customer_orders = wc_get_orders(array(
             'customer_id' => $user_id,
-            'limit' => -1, // Get all orders
-            'orderby' => 'date',
-            'order' => 'DESC',
+            'status'      => array('processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed'),
+            'limit'       => -1,
+            'orderby'     => 'date',
+            'order'       => 'DESC',
         ));
 
         $orders = array();
