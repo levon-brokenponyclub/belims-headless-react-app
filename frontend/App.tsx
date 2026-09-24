@@ -1413,6 +1413,7 @@ function MainApp(props) {
                 <AccountPage
                   user={props.currentUser}
                   onLogout={props.handleLogout}
+                  addToCart={props.addToCart}
                 />
               }
             />
@@ -1422,6 +1423,7 @@ function MainApp(props) {
                 <AccountPage
                   user={props.currentUser}
                   onLogout={props.handleLogout}
+                  addToCart={props.addToCart}
                 />
               }
             />

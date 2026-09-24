@@ -40,7 +40,7 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ addToCart }) => {
       price: item.price,
       regular_price: item.price,
       sale_price: null,
-      images: item.image ? [{ src: item.image }] : [],
+      image: item.image || "",
       slug: item.slug,
       category: item.category || "",
       brand: item.brand,

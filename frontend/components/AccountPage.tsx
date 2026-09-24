@@ -13,6 +13,7 @@ import {
   PlusCircle,
   Heart,
   Trash2,
+  ShoppingCart,
 } from "lucide-react";
 import {
   getWishlist,
@@ -37,13 +38,14 @@ import { DeliveryLocationModal } from "./DeliveryLocationModal";
 interface AccountPageProps {
   user: UserData | null;
   onLogout: () => void;
+  addToCart?: (product: any) => void;
 }
 
 type Tab = "dashboard" | "orders" | "addresses" | "payment" | "details" | "wishlist";
 
 const VALID_TABS: Tab[] = ["dashboard", "orders", "addresses", "payment", "details", "wishlist"];
 
-export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
+export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToCart }) => {
   const navigate = useNavigate();
   const { tab: tabParam } = useParams<{ tab?: string }>();
   const activeTab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "dashboard";
@@ -365,14 +367,44 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                     {item.price > 0 ? `${CURRENCY_SYMBOL}${Number(item.price).toFixed(2)}` : ""}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { removeFromWishlist(item.id); setWishlistItems(getWishlist()); }}
-                  className="shrink-0 flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
-                  aria-label="Remove from wishlist"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <div className="shrink-0 flex flex-col items-end gap-2">
+                  {addToCart && (
+                    <button
+                      type="button"
+                      onClick={() => addToCart({
+                        id: item.id,
+                        name: item.name,
+                        sku: item.sku,
+                        price: item.price,
+                        regular_price: item.price,
+                        sale_price: null,
+                        image: item.image || "",
+                        slug: item.slug,
+                        category: item.category || "",
+                        brand: item.brand,
+                        stock_status: "instock",
+                        stock_quantity: null,
+                        short_description: "",
+                        description: "",
+                        features: [],
+                        breadcrumbs: [],
+                      })}
+                      className="flex items-center gap-1.5 rounded-full bg-belims-blue px-3 py-1.5 text-xs font-semibold text-white hover:bg-belims-accent transition-colors"
+                    >
+                      <ShoppingCart size={12} />
+                      Add to cart
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { removeFromWishlist(item.id); setWishlistItems(getWishlist()); }}
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                    aria-label="Remove from wishlist"
+                  >
+                    <Trash2 size={13} />
+                    Remove
+                  </button>
+                </div>
               </div>
             );
           })}
