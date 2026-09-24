@@ -15,8 +15,13 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-export const firebaseAuth = getAuth(app);
+// Only initialize when a real API key is present — avoids auth/invalid-api-key
+// on deployments where VITE_FIREBASE_* env vars are not set.
+const _app = import.meta.env.VITE_FIREBASE_API_KEY
+  ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0])
+  : null;
+
+export const firebaseAuth = _app ? getAuth(_app) : null!;
 
 let recaptchaVerifier: RecaptchaVerifier | null = null;
 
