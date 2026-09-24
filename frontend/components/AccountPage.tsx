@@ -63,6 +63,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
   } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<"billing" | "shipping" | "delivery" | null>(null);
   const [removingAddress, setRemovingAddress] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [defaultAddressKey, setDefaultAddressKey] = useState<"billing" | "shipping" | "delivery">(
     () => (localStorage.getItem("belims_default_address_key") as "billing" | "shipping" | "delivery") || "billing"
   );
@@ -527,7 +528,113 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
     </div>
   );
 
-  const renderOrders = () => (
+  const renderOrderDetail = (order: Order) => {
+    const shippingCost = parseFloat(order.shipping_lines?.[0]?.total || "0");
+    const subtotal = order.line_items.reduce((acc, item) => acc + parseFloat(item.total), 0);
+    const addr = order.shipping_address;
+    const addrLine = [addr?.street, addr?.city, addr?.province, addr?.postalCode].filter(Boolean).join(", ");
+    return (
+      <div className="space-y-5">
+        {/* Back + header */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSelectedOrder(null)}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <ChevronRight size={16} className="rotate-180" /> Orders
+          </button>
+          <span className="text-gray-300">/</span>
+          <span className="text-sm font-semibold text-gray-700">#{order.order_number}</span>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          {/* Order header */}
+          <div className="p-5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-bold text-gray-900 text-lg">Order #{order.order_number}</p>
+              <p className="text-sm text-gray-500 mt-0.5">Placed on {formatDate(order.date_created)}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
+                {getStatusLabel(order.status)}
+              </span>
+              <Link
+                to={`/track-order?order-number=${order.order_number}`}
+                className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+              >
+                Track
+              </Link>
+            </div>
+          </div>
+
+          {/* Line items */}
+          <div className="divide-y divide-gray-100">
+            {order.line_items.map((item) => (
+              <div key={item.id} className="flex items-center gap-4 p-4">
+                <div className="h-14 w-14 shrink-0 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden">
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="h-full w-full object-contain p-1 mix-blend-multiply" />
+                  ) : (
+                    <Package size={20} className="text-gray-300" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-gray-900 line-clamp-2">{item.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Qty: {item.quantity}</p>
+                </div>
+                <p className="font-bold text-sm text-gray-900 shrink-0">
+                  {order.currency || "ZAR"} {formatNumberWithSeparators(parseFloat(item.total))}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div className="border-t border-gray-100 p-5 space-y-2">
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Subtotal</span>
+              <span>{order.currency || "ZAR"} {formatNumberWithSeparators(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Shipping</span>
+              <span>{shippingCost === 0 ? "Free" : `${order.currency || "ZAR"} ${formatNumberWithSeparators(shippingCost)}`}</span>
+            </div>
+            <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-100">
+              <span>Total</span>
+              <span>{order.currency || "ZAR"} {formatNumberWithSeparators(parseFloat(order.total))}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Delivery + Payment */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Delivery address</p>
+            {addrLine ? (
+              <p className="text-sm text-gray-700 leading-relaxed">{addrLine}</p>
+            ) : (
+              <p className="text-sm text-gray-400">Not available</p>
+            )}
+            {order.shipping_lines?.length > 0 && (
+              <p className="text-xs text-gray-500 mt-2 font-medium">
+                via {order.shipping_lines[0].method_title}
+              </p>
+            )}
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Payment</p>
+            <p className="text-sm text-gray-700 capitalize">
+              {order.payment_method?.replace(/_/g, " ") || "Not specified"}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderOrders = () => {
+    if (selectedOrder) return renderOrderDetail(selectedOrder);
+    return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-gray-100">
         <h3 className="font-semibold text-gray-900 text-lg">Order History</h3>
@@ -541,26 +648,25 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
           </div>
         ) : (
           orders.map((order) => (
-            <div
+            <button
               key={order.id}
-              className="p-6 hover:bg-gray-50 transition-colors cursor-pointer group"
+              type="button"
+              onClick={() => setSelectedOrder(order)}
+              className="w-full p-6 hover:bg-gray-50 transition-colors cursor-pointer group text-left"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                  <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 group-hover:bg-white group-hover:shadow-sm transition-all">
                     <Package size={28} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-gray-900">
-                        #{order.order_number}
-                      </p>
-                      {order.shipping_lines &&
-                        order.shipping_lines.length > 0 && (
-                          <span className="text-[10px] bg-blue-50 text-belims-blue px-2 py-0.5 rounded font-bold uppercase border border-blue-100">
-                            {order.shipping_lines[0].method_title || "Standard"}
-                          </span>
-                        )}
+                      <p className="font-bold text-gray-900">#{order.order_number}</p>
+                      {order.shipping_lines?.length > 0 && (
+                        <span className="text-[10px] bg-blue-50 text-belims-blue px-2 py-0.5 rounded font-bold uppercase border border-blue-100">
+                          {order.shipping_lines[0].method_title || "Standard"}
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-gray-600 mt-0.5">
                       Placed on {formatDate(order.date_created)}
@@ -571,40 +677,27 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
                 <div className="flex items-center justify-between sm:justify-end gap-8 pt-4 sm:pt-0 border-t sm:border-0 border-gray-100">
                   <div className="text-left sm:text-right">
                     <p className="text-sm font-bold text-gray-900">
-                      {order.currency || "ZAR"}{" "}
-                      {formatNumberWithSeparators(parseFloat(order.total))}
+                      {order.currency || "ZAR"} {formatNumberWithSeparators(parseFloat(order.total))}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {order.line_items.length} item
-                      {order.line_items.length !== 1 ? "s" : ""}
+                      {order.line_items.length} item{order.line_items.length !== 1 ? "s" : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div
-                      className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(
-                        order.status,
-                      )}`}
-                    >
+                    <div className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
                     </div>
-                    <Link
-                      to={`/track-order?order-number=${order.order_number}`}
-                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
-                    >
-                      Track
-                    </Link>
-                    <button className="p-2 hover:bg-white hover:shadow-sm rounded-lg border border-transparent hover:border-gray-200 text-gray-400 hover:text-belims-blue transition-all">
-                      <ChevronRight size={20} />
-                    </button>
+                    <ChevronRight size={20} className="text-gray-300 group-hover:text-belims-blue transition-colors" />
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
           ))
         )}
       </div>
     </div>
-  );
+    );
+  };
 
   const renderAddresses = () => {
     const billingAddress = user.billing;
@@ -1064,7 +1157,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
                   {menuItems.map((item) => (
                     <li key={item.id}>
                       <button
-                        onClick={() => navigate(`/account/${item.id}`)}
+                        onClick={() => { if (item.id !== "orders") setSelectedOrder(null); navigate(`/account/${item.id}`); }}
                         className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-lg font-bold text-sm transition-all ${
                           activeTab === item.id
                             ? "bg-belims-blue text-white shadow-md active:scale-95"
