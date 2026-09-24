@@ -370,6 +370,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
   // Single-step checkout state
   const [editingAddress, setEditingAddress] = useState(true);
   const [addressAutoPopulated, setAddressAutoPopulated] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<Array<{ label: string; address: ShippingAddress }>>([]);
 
   // Current location detection for shipping address
   const [locatingAddress, setLocatingAddress] = useState(false);
@@ -445,6 +446,22 @@ export const Checkout: React.FC<CheckoutProps> = ({
             }));
             setAddressAutoPopulated(true);
             setEditingAddress(false);
+
+            // Build saved address list for the selector
+            const options: Array<{ label: string; address: ShippingAddress }> = [];
+            const toAddr = (src: typeof billing, label: string): ShippingAddress | null => {
+              if (!src?.address_1 && !src?.city) return null;
+              return { street: src.address_1 || "", city: src.city || "", province: src.state || "", postalCode: src.postcode || "", country: "ZA" };
+            };
+            const ba = toAddr(billing, "Billing");
+            const sa = toAddr(shipping, "Shipping");
+            if (ba) options.push({ label: "Billing", address: ba });
+            if (sa && (sa.street !== (ba?.street ?? "") || sa.city !== (ba?.city ?? ""))) options.push({ label: "Shipping", address: sa });
+            const { address: storedAddr } = readStoredAddress();
+            if (storedAddr?.city && !options.find(o => o.address.street === storedAddr.street && o.address.city === storedAddr.city)) {
+              options.push({ label: storedAddr.label || "Saved", address: storedAddr });
+            }
+            setSavedAddresses(options);
           }
         }
       } catch (error) {
@@ -1806,23 +1823,57 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       ) : (
                         <>
                           {addressAutoPopulated && !editingAddress ? (
-                            <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-                              <div className="text-sm text-neutral-500">
-                                <p className="font-medium text-neutral-950">
-                                  {customer.address}
-                                </p>
-                                <p>
-                                  {customer.city}, {customer.province}{" "}
-                                  {customer.postalCode}
-                                </p>
+                            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm text-neutral-500">
+                                  <p className="font-medium text-neutral-950">
+                                    {customer.address}
+                                  </p>
+                                  <p>
+                                    {customer.city}, {customer.province}{" "}
+                                    {customer.postalCode}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingAddress(true)}
+                                  className="text-sm font-medium text-neutral-950 underline underline-offset-2"
+                                >
+                                  Edit
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => setEditingAddress(true)}
-                                className="text-sm font-medium text-neutral-950 underline underline-offset-2"
-                              >
-                                Edit
-                              </button>
+                              {savedAddresses.length > 1 && (
+                                <div className="flex flex-wrap gap-1.5 pt-1 border-t border-neutral-200">
+                                  {savedAddresses.map((saved, i) => {
+                                    const isActive =
+                                      customer.address === saved.address.street &&
+                                      customer.city === saved.address.city;
+                                    return (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() =>
+                                          setCustomer((prev) => ({
+                                            ...prev,
+                                            address: saved.address.street,
+                                            city: saved.address.city,
+                                            province: saved.address.province,
+                                            postalCode: saved.address.postalCode,
+                                          }))
+                                        }
+                                        className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                          isActive
+                                            ? "border-belims-blue bg-belims-blue text-white"
+                                            : "border-neutral-200 bg-white text-neutral-600 hover:border-belims-blue hover:text-belims-blue"
+                                        }`}
+                                      >
+                                        <MapPin size={10} />
+                                        {saved.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           ) : null}
 
@@ -1832,6 +1883,48 @@ export const Checkout: React.FC<CheckoutProps> = ({
                               display: editingAddress ? "block" : "none",
                             }}
                           >
+                            {savedAddresses.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Saved addresses</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {savedAddresses.map((saved, i) => {
+                                    const isActive =
+                                      customer.address === saved.address.street &&
+                                      customer.city === saved.address.city;
+                                    return (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => {
+                                          setCustomer((prev) => ({
+                                            ...prev,
+                                            address: saved.address.street,
+                                            city: saved.address.city,
+                                            province: saved.address.province,
+                                            postalCode: saved.address.postalCode,
+                                          }));
+                                          setAddressAutoPopulated(true);
+                                          setEditingAddress(false);
+                                        }}
+                                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                          isActive
+                                            ? "border-belims-blue bg-belims-blue text-white"
+                                            : "border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-belims-blue hover:text-belims-blue"
+                                        }`}
+                                      >
+                                        <MapPin size={11} />
+                                        <span>{saved.label}</span>
+                                        {saved.address.city && (
+                                          <span className="font-normal opacity-70">· {saved.address.city}</span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <hr className="border-neutral-100" />
+                              </div>
+                            )}
+
                             <div className="space-y-1.5">
                               <div className="flex items-center justify-between">
                                 <label
