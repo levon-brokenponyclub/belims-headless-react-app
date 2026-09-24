@@ -53,6 +53,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
   } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<"billing" | "shipping" | "delivery" | null>(null);
   const [removingAddress, setRemovingAddress] = useState(false);
+  const [defaultAddressKey, setDefaultAddressKey] = useState<"billing" | "shipping" | "delivery">(
+    () => (localStorage.getItem("belims_default_address_key") as "billing" | "shipping" | "delivery") || "billing"
+  );
 
   // Form state for account details
   const [formData, setFormData] = useState({
@@ -125,6 +128,46 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     } finally {
       setSavingDetails(false);
     }
+  };
+
+  const handleSetDefault = (type: "billing" | "shipping" | "delivery") => {
+    if (!user) return;
+    const billing = user.billing;
+    const shipping = user.shipping;
+    const { address: deliveryAddress } = readStoredAddress();
+
+    let address: ShippingAddress | null = null;
+    if (type === "billing" && billing) {
+      address = {
+        street: billing.address_1 || "",
+        city: billing.city || "",
+        province: billing.state || "",
+        postalCode: billing.postcode || "",
+        country: "ZA",
+        label: [billing.address_1, billing.city, billing.state, billing.postcode].filter(Boolean).join(", "),
+      };
+    } else if (type === "shipping" && shipping) {
+      address = {
+        street: shipping.address_1 || "",
+        city: shipping.city || "",
+        province: shipping.state || "",
+        postalCode: shipping.postcode || "",
+        country: "ZA",
+        label: [shipping.address_1, shipping.city, shipping.state, shipping.postcode].filter(Boolean).join(", "),
+      };
+    } else if (type === "delivery" && deliveryAddress) {
+      address = deliveryAddress;
+    }
+
+    if (!address) return;
+
+    saveStoredAddress(address);
+    localStorage.setItem("belims_default_address_key", type);
+    localStorage.setItem("fulfillmentType", "delivery");
+    setDefaultAddressKey(type);
+    window.dispatchEvent(new Event("belims:delivery-address-updated"));
+    window.dispatchEvent(new Event("belims:fulfillment-changed"));
+    setAddressSaveMessage({ type: "success", text: "Default delivery address updated." });
   };
 
   const handleAddNewAddress = () => {
@@ -483,12 +526,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {hasBilling && billingAddress && (
-            <div className="bg-white p-6 rounded-lg border-2 border-belims-blue shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-3">
-                <span className="bg-belims-blue text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold uppercase tracking-tighter absolute top-0 right-0">
+            <div className={`bg-white p-6 rounded-lg shadow-sm relative overflow-hidden transition-colors ${
+              defaultAddressKey === "billing" ? "border-2 border-belims-blue" : "border border-gray-200 hover:border-gray-300"
+            }`}>
+              {defaultAddressKey === "billing" && (
+                <span className="bg-belims-blue text-white text-[10px] px-2 py-1 font-bold uppercase tracking-tighter absolute top-0 right-0 rounded-bl-lg">
                   Default
                 </span>
-              </div>
+              )}
               <div className="flex items-center gap-2 mb-4">
                 <MapPin size={20} className="text-belims-blue" />
                 <h4 className="text-base font-bold text-gray-900">Billing Address</h4>
@@ -538,6 +583,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                     >
                       Remove
                     </button>
+                    {defaultAddressKey !== "billing" && (
+                      <button
+                        onClick={() => handleSetDefault("billing")}
+                        className="text-gray-500 text-xs font-bold hover:text-belims-blue hover:underline uppercase tracking-wide ml-auto"
+                      >
+                        Set as Default
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -545,7 +598,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           )}
 
           {hasShipping && shippingAddress && (
-            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors">
+            <div className={`bg-white p-6 rounded-lg shadow-sm relative overflow-hidden transition-colors ${
+              defaultAddressKey === "shipping" ? "border-2 border-belims-blue" : "border border-gray-200 hover:border-gray-300"
+            }`}>
+              {defaultAddressKey === "shipping" && (
+                <span className="bg-belims-blue text-white text-[10px] px-2 py-1 font-bold uppercase tracking-tighter absolute top-0 right-0 rounded-bl-lg">
+                  Default
+                </span>
+              )}
               <div className="flex items-center gap-2 mb-4">
                 <Truck size={20} className="text-belims-blue" />
                 <h4 className="text-base font-bold text-gray-900">Shipping Address</h4>
@@ -595,6 +655,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                     >
                       Remove
                     </button>
+                    {defaultAddressKey !== "shipping" && (
+                      <button
+                        onClick={() => handleSetDefault("shipping")}
+                        className="text-gray-500 text-xs font-bold hover:text-belims-blue hover:underline uppercase tracking-wide ml-auto"
+                      >
+                        Set as Default
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -602,9 +670,16 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           )}
 
           {savedDeliveryAddress && savedAddressLines.length > 0 && (
-            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors">
+            <div className={`bg-white p-6 rounded-lg shadow-sm relative overflow-hidden transition-colors ${
+              defaultAddressKey === "delivery" ? "border-2 border-belims-blue" : "border border-gray-200 hover:border-gray-300"
+            }`}>
+              {defaultAddressKey === "delivery" && (
+                <span className="bg-belims-blue text-white text-[10px] px-2 py-1 font-bold uppercase tracking-tighter absolute top-0 right-0 rounded-bl-lg">
+                  Default
+                </span>
+              )}
               <div className="flex items-center gap-2 mb-4">
-                <MapPin size={20} className="text-gray-400" />
+                <MapPin size={20} className={defaultAddressKey === "delivery" ? "text-belims-blue" : "text-gray-400"} />
                 <h4 className="text-base font-bold text-gray-900">
                   {savedDeliveryAddress.label && savedDeliveryAddress.label !== [savedDeliveryAddress.street, savedDeliveryAddress.city, savedDeliveryAddress.province].filter(Boolean).join(", ")
                     ? savedDeliveryAddress.label
@@ -648,6 +723,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                     >
                       Remove
                     </button>
+                    {defaultAddressKey !== "delivery" && (
+                      <button
+                        onClick={() => handleSetDefault("delivery")}
+                        className="text-gray-500 text-xs font-bold hover:text-belims-blue hover:underline uppercase tracking-wide ml-auto"
+                      >
+                        Set as Default
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
