@@ -414,6 +414,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     useState(true);
   const [pendingAddress, setPendingAddress] = useState<ShippingAddress | null>(null);
   const [pendingAddressName, setPendingAddressName] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
 
   const mapUserShippingToAddress = (shipping: UserData["shipping"]): ShippingAddress | null => {
     if (!shipping) return null;
@@ -906,6 +907,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       setDetectedLocationAddress(null);
       setPendingAddress(null);
       setPendingAddressName("");
+      setHouseNumber("");
       hasAutoLocatedRef.current = false;
     }
   }, [isOpen]);
@@ -1477,12 +1479,18 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
   const handleConfirmPendingAddress = () => {
     if (!pendingAddress) return;
+    const trimmedHouseNo = houseNumber.trim();
+    const mergedStreet = trimmedHouseNo
+      ? [trimmedHouseNo, pendingAddress.street].filter(Boolean).join(" ")
+      : pendingAddress.street;
+    const withHouseNo = { ...pendingAddress, street: mergedStreet };
     const finalAddress = pendingAddressName.trim()
-      ? { ...pendingAddress, label: pendingAddressName.trim() }
-      : pendingAddress;
+      ? { ...withHouseNo, label: pendingAddressName.trim() }
+      : { ...withHouseNo, label: buildAddressLabel(withHouseNo) };
     handleAddressSaved(finalAddress);
     setPendingAddress(null);
     setPendingAddressName("");
+    setHouseNumber("");
     onClose();
   };
 
@@ -1834,7 +1842,20 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               <section className="space-y-5">
                 <div>
                   <h2 className="text-lg font-bold text-gray-900 mb-1">Confirm your address</h2>
-                  <p className="text-sm text-gray-500">Optionally give this address a nickname.</p>
+                  <p className="text-sm text-gray-500">Add your house or unit number, then save.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                    House / Unit No. <span className="font-normal text-gray-400 normal-case tracking-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={houseNumber}
+                    onChange={(e) => setHouseNumber(e.target.value)}
+                    placeholder="e.g. 12, Unit 4B, Flat 2"
+                    className="w-full border border-subtle py-2.5 px-3 text-sm text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                    autoFocus
+                  />
                 </div>
                 <div className="border border-subtle px-4 py-4 space-y-1 text-sm text-ink">
                   {[pendingAddress.street, pendingAddress.city, pendingAddress.province, pendingAddress.postalCode]
@@ -1864,7 +1885,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setPendingAddress(null); setPendingAddressName(""); setIsEditingDeliveryAddress(true); }}
+                    onClick={() => { setPendingAddress(null); setPendingAddressName(""); setHouseNumber(""); setIsEditingDeliveryAddress(true); }}
                     className={secondaryButtonClass}
                   >
                     <span className={secondaryButtonOverlayClass} />
