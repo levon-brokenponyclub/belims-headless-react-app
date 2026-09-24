@@ -67,6 +67,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
   const [defaultAddressKey, setDefaultAddressKey] = useState<"billing" | "shipping" | "delivery">(
     () => (localStorage.getItem("belims_default_address_key") as "billing" | "shipping" | "delivery") || "billing"
   );
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(() => getWishlist());
+
+  useEffect(() => {
+    const refresh = () => setWishlistItems(getWishlist());
+    window.addEventListener("belims:wishlist-updated", refresh);
+    return () => window.removeEventListener("belims:wishlist-updated", refresh);
+  }, []);
 
   // Form state for account details
   const [formData, setFormData] = useState({
@@ -250,14 +257,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
       </div>
     );
   }
-
-  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(() => getWishlist());
-
-  useEffect(() => {
-    const refresh = () => setWishlistItems(getWishlist());
-    window.addEventListener("belims:wishlist-updated", refresh);
-    return () => window.removeEventListener("belims:wishlist-updated", refresh);
-  }, []);
 
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: <Settings size={20} /> },
