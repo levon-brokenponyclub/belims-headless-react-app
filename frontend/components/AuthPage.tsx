@@ -37,7 +37,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   // Phone OTP state
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
-  const [phoneNumber, setPhoneNumber] = useState("+27");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [dialCode, setDialCode] = useState("+27");
+  const [localPhone, setLocalPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [phoneStep, setPhoneStep] = useState<"number" | "otp">("number");
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -89,12 +91,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
   };
 
+  const buildE164 = (): string => {
+    const digits = localPhone.replace(/\D/g, "");
+    const normalized = digits.startsWith("0") ? digits.slice(1) : digits;
+    return dialCode + normalized;
+  };
+
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setPhoneError(null);
     setPhoneSubmitting(true);
+    const e164 = buildE164();
+    setPhoneNumber(e164);
     try {
-      const result = await sendPhoneOTP(phoneNumber.trim(), recaptchaContainerId);
+      const result = await sendPhoneOTP(e164, recaptchaContainerId);
       setConfirmationResult(result);
       setPhoneStep("otp");
     } catch (err: any) {
@@ -231,16 +241,34 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                       <label className="text-sm font-semibold text-gray-700">
                         Mobile number
                       </label>
-                      <input
-                        type="tel"
-                        required
-                        placeholder="+27 82 123 4567"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
-                      />
+                      <div className="mt-1 flex overflow-hidden rounded border border-gray-200 focus-within:border-belims-blue focus-within:ring-1 focus-within:ring-belims-blue">
+                        <select
+                          value={dialCode}
+                          onChange={(e) => setDialCode(e.target.value)}
+                          className="shrink-0 border-r border-gray-200 bg-gray-50 px-2 py-2 text-sm focus:outline-none"
+                          aria-label="Country code"
+                        >
+                          <option value="+27">🇿🇦 +27</option>
+                          <option value="+263">🇿🇼 +263</option>
+                          <option value="+267">🇧🇼 +267</option>
+                          <option value="+260">🇿🇲 +260</option>
+                          <option value="+254">🇰🇪 +254</option>
+                          <option value="+234">🇳🇬 +234</option>
+                          <option value="+44">🇬🇧 +44</option>
+                          <option value="+1">🇺🇸 +1</option>
+                        </select>
+                        <input
+                          type="tel"
+                          required
+                          placeholder="82 123 4567"
+                          value={localPhone}
+                          onChange={(e) => setLocalPhone(e.target.value.replace(/[^\d\s]/g, ""))}
+                          className="min-w-0 flex-1 px-3 py-2 text-sm focus:outline-none"
+                          inputMode="numeric"
+                        />
+                      </div>
                       <p className="mt-1 text-xs text-gray-400">
-                        Include country code, e.g. +27 for South Africa.
+                        Select your country code, then enter your number without the leading zero.
                       </p>
                     </div>
                     {phoneError && (
