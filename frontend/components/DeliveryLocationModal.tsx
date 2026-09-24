@@ -1368,7 +1368,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           }
         }
 
-        console.error("Geolocation error:", error);
+        console.warn("Geolocation unavailable, trying IP fallback:", error?.message ?? error?.code);
         const ipFallback = async () => {
           try {
             const response = await fetch("https://ipapi.co/json/");
@@ -1414,8 +1414,11 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           setInput(fallbackAddress.label || "");
           setDetectedLocationAddress(fallbackAddress);
           setLoading(false);
+          // IP fallback succeeded — show a soft hint rather than an error
           setErrorMessage(
-            "We could not access a precise location. Please confirm or refine your address above.",
+            fallbackAddress.city && fallbackAddress.province
+              ? null
+              : "Location detected via network. Please confirm your address.",
           );
           return;
         }
