@@ -98,7 +98,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       setConfirmationResult(result);
       setPhoneStep("otp");
     } catch (err: any) {
-      setPhoneError(err?.message || "Failed to send OTP. Check the number and try again.");
+      const code = err?.code ?? "";
+      const msg =
+        code === "auth/billing-not-enabled"
+          ? "Phone sign-in is temporarily unavailable. Please use email login."
+          : code === "auth/invalid-phone-number"
+          ? "Invalid phone number. Use international format e.g. +27821234567."
+          : code === "auth/too-many-requests"
+          ? "Too many attempts. Please wait a few minutes and try again."
+          : err?.message || "Failed to send OTP. Check the number and try again.";
+      setPhoneError(msg);
     } finally {
       setPhoneSubmitting(false);
     }
