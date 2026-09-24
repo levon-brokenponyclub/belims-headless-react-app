@@ -11,7 +11,15 @@ import {
   Clock,
   Truck,
   PlusCircle,
+  Heart,
+  Trash2,
 } from "lucide-react";
+import {
+  getWishlist,
+  removeFromWishlist,
+  WishlistItem,
+} from "../services/wishlistService";
+import { buildProductUrl } from "../utils/product";
 import {
   UserData,
   updateUserProfile,
@@ -31,9 +39,9 @@ interface AccountPageProps {
   onLogout: () => void;
 }
 
-type Tab = "dashboard" | "orders" | "addresses" | "payment" | "details";
+type Tab = "dashboard" | "orders" | "addresses" | "payment" | "details" | "wishlist";
 
-const VALID_TABS: Tab[] = ["dashboard", "orders", "addresses", "payment", "details"];
+const VALID_TABS: Tab[] = ["dashboard", "orders", "addresses", "payment", "details", "wishlist"];
 
 export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
   const navigate = useNavigate();
@@ -240,12 +248,26 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     );
   }
 
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(() => getWishlist());
+
+  useEffect(() => {
+    const refresh = () => setWishlistItems(getWishlist());
+    window.addEventListener("belims:wishlist-updated", refresh);
+    return () => window.removeEventListener("belims:wishlist-updated", refresh);
+  }, []);
+
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: <Settings size={20} /> },
     { id: "orders", label: "Orders", icon: <Package size={20} /> },
     { id: "addresses", label: "Addresses", icon: <MapPin size={20} /> },
     { id: "payment", label: "Payment Methods", icon: <CreditCard size={20} /> },
     { id: "details", label: "Account Details", icon: <User size={20} /> },
+    {
+      id: "wishlist",
+      label: "Wishlist",
+      icon: <Heart size={20} />,
+      badge: wishlistItems.length > 0 ? wishlistItems.length : undefined,
+    },
   ];
 
   const getStatusColor = (status: string) => {
@@ -281,6 +303,83 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
   const activeOrderCount = orders.filter(
     (o) => o.status === "processing" || o.status === "on-hold",
   ).length;
+
+  const renderWishlist = () => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 sm:px-0 px-4">
+        <Heart size={20} className="text-red-500 fill-red-500" />
+        <h3 className="font-semibold text-gray-900 text-lg">My Wishlist</h3>
+        {wishlistItems.length > 0 && (
+          <span className="ml-1 rounded-full bg-belims-blue px-2 py-0.5 text-xs font-bold text-white">
+            {wishlistItems.length}
+          </span>
+        )}
+      </div>
+
+      {wishlistItems.length === 0 ? (
+        <div className="flex flex-col items-center py-16 text-center">
+          <Heart size={48} className="mb-3 text-gray-200" />
+          <p className="font-semibold text-gray-400">Your wishlist is empty</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Tap the ♡ on any product to save it here.
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="mt-5 rounded-full bg-belims-blue px-6 py-2 text-sm font-semibold text-white hover:bg-belims-accent transition-colors"
+          >
+            Browse products
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {wishlistItems.map((item) => {
+            const productUrl = buildProductUrl({ name: item.name, slug: item.slug, id: item.id, category: item.category });
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              >
+                <button
+                  type="button"
+                  onClick={() => navigate(productUrl)}
+                  className="h-16 w-16 shrink-0 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden"
+                >
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="h-full w-full object-contain p-1 mix-blend-multiply" />
+                  ) : (
+                    <Heart size={20} className="text-gray-200" />
+                  )}
+                </button>
+                <div className="min-w-0 flex-1">
+                  {item.brand && (
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{item.brand}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => navigate(productUrl)}
+                    className="text-left text-sm font-semibold text-gray-900 hover:text-belims-blue line-clamp-2"
+                  >
+                    {item.name}
+                  </button>
+                  <p className="mt-0.5 font-bold text-gray-900 text-sm">
+                    {item.price > 0 ? `${CURRENCY_SYMBOL}${Number(item.price).toFixed(2)}` : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { removeFromWishlist(item.id); setWishlistItems(getWishlist()); }}
+                  className="shrink-0 flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                  aria-label="Remove from wishlist"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
   const renderDashboard = () => (
     <div className="space-y-6">
@@ -950,7 +1049,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                           {item.icon}
                         </span>
                         {item.label}
-                        {activeTab === item.id && (
+                        {(item as any).badge !== undefined && (
+                          <span className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === item.id ? "bg-white text-belims-blue" : "bg-belims-blue text-white"}`}>
+                            {(item as any).badge}
+                          </span>
+                        )}
+                        {activeTab === item.id && !(item as any).badge && (
                           <ChevronRight size={16} className="ml-auto" />
                         )}
                       </button>
@@ -994,6 +1098,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             {activeTab === "orders" && renderOrders()}
             {activeTab === "addresses" && renderAddresses()}
             {activeTab === "details" && renderDetails()}
+            {activeTab === "wishlist" && renderWishlist()}
             {activeTab === "payment" && (
               <div className="bg-white p-12 text-center rounded-lg border border-gray-200 shadow-sm border-dashed">
                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">

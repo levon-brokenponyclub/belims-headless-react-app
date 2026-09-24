@@ -1543,7 +1543,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                             id: product.id,
                             name: product.name,
                             sku: product.sku || "",
-                            price: product.sale_price ?? product.price,
+                            price: consumerPrice || product.price || 0,
                             image: product.image || "",
                             slug: product.slug || "",
                             brand: product.brand,
@@ -1551,12 +1551,17 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           });
                           setIsWishlisted(nowIn);
                         }}
-                        className="ml-auto flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-red-50"
+                        className={`ml-auto flex items-center justify-center rounded-full p-2 border transition-colors ${
+                          isWishlisted
+                            ? "border-red-200 bg-red-50 hover:bg-red-100"
+                            : "border-gray-200 bg-white hover:border-red-200 hover:bg-red-50"
+                        }`}
                       >
                         <Heart
-                          size={20}
-                          className={isWishlisted ? "text-red-500" : "text-gray-300"}
+                          size={18}
+                          className={isWishlisted ? "text-red-500" : "text-gray-400"}
                           fill={isWishlisted ? "currentColor" : "none"}
+                          strokeWidth={isWishlisted ? 2 : 1.5}
                         />
                       </button>
                     </div>

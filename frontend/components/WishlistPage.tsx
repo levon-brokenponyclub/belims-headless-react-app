@@ -135,7 +135,10 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({ addToCart }) => {
                     </button>
                     <p className="mt-1 text-xs text-gray-400">SKU: {item.sku}</p>
                     <p className="mt-1 font-bold text-gray-900">
-                      {CURRENCY_SYMBOL}{item.price.toFixed(2)}
+                      {item.price > 0
+                        ? `${CURRENCY_SYMBOL}${Number(item.price).toFixed(2)}`
+                        : <span className="text-gray-400 text-xs font-normal">Price unavailable</span>
+                      }
                     </p>
                   </div>
 

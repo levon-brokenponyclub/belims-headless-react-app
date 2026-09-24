@@ -1274,6 +1274,7 @@ export const Header: React.FC<HeaderProps> = ({
                       { label: "Dashboard", to: "/account/dashboard" },
                       { label: "Orders", to: "/account/orders" },
                       { label: "Addresses", to: "/account/addresses" },
+                      { label: "Wishlist", to: "/account/wishlist" },
                       { label: "Payment Methods", to: "/account/payment" },
                       { label: "Account Details", to: "/account/details" },
                     ].map(({ label, to }) => (
