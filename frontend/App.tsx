@@ -1395,7 +1395,7 @@ function MainApp(props) {
             />
             <Route
               path="/wishlist"
-              element={<WishlistPage addToCart={addToCart} />}
+              element={<WishlistPage addToCart={props.addToCart} />}
             />
             <Route path="/track-order" element={<TrackOrderPage />} />
             <Route path="/order-confirmation" element={<OrderConfirmation />} />
