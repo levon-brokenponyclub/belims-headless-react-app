@@ -35,6 +35,38 @@ type NominatimSuggestion = {
   address: any;
 };
 
+const extractLeadingNumber = (raw: string): string => {
+  const match = raw.trim().match(/^(\d+[A-Za-z]?)\b/);
+  return match ? match[1] : "";
+};
+
+const ADMIN_NOISE = /\b(Ward\s*\d+|Metropolitan Municipality|Local Municipality|District Municipality)\b/i;
+
+const formatSuggestionLabel = (s: NominatimSuggestion, leadingNumber: string): string => {
+  const addr = s.address || {};
+  const street = addr.road || addr.pedestrian || addr.footway || "";
+  const rawSuburb =
+    addr.suburb || addr.neighbourhood || addr.city_district || addr.hamlet || "";
+  const suburb = ADMIN_NOISE.test(rawSuburb) ? "" : rawSuburb;
+  const city = addr.city || addr.town || addr.village || addr.municipality || "";
+  const country = addr.country || "";
+
+  const houseNumber = addr.house_number || leadingNumber || "";
+  const streetLine = street
+    ? [houseNumber, street].filter(Boolean).join(" ").trim()
+    : "";
+  const parts = [streetLine, suburb, city, country].filter(Boolean);
+  if (parts.length === 0) return s.display_name;
+  const seen = new Set<string>();
+  const deduped = parts.filter((p) => {
+    const key = p.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return deduped.join(", ");
+};
+
 type SavedAddress = {
   id: string;
   source: "Billing" | "Shipping";
@@ -242,13 +274,27 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
     setError(null);
   };
 
-  const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
+  const handleSelectSuggestion = (
+    suggestion: NominatimSuggestion,
+    leadingNumber: string,
+  ) => {
     const mapped = mapNominatimAddress(suggestion);
     if (!mapped) {
       setError("Could not read that address. Try another.");
       return;
     }
-    applyAddress(mapped);
+    const houseNumber = suggestion.address?.house_number || leadingNumber || "";
+    const streetWithNumber = houseNumber
+      ? mapped.street.startsWith(houseNumber)
+        ? mapped.street
+        : `${houseNumber} ${mapped.street}`.trim()
+      : mapped.street;
+    const enriched: ShippingAddress = {
+      ...mapped,
+      street: streetWithNumber,
+      label: buildAddressLabel({ ...mapped, street: streetWithNumber }),
+    };
+    applyAddress(enriched);
   };
 
   const handleSelectSaved = (id: string) => {
@@ -437,17 +483,21 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
               </div>
               {showSuggestions && suggestions.length > 0 && !selectedAddress && (
                 <ul className="mt-1 max-h-72 overflow-y-auto rounded-lg border border-border bg-white shadow-sm">
-                  {suggestions.map((s) => (
-                    <li key={s.place_id}>
-                      <button
-                        type="button"
-                        onClick={() => handleSelectSuggestion(s)}
-                        className="w-full text-left px-4 py-3 hover:bg-belims-blue/[0.06] text-sm text-text"
-                      >
-                        {s.display_name}
-                      </button>
-                    </li>
-                  ))}
+                  {suggestions.map((s) => {
+                    const leading = extractLeadingNumber(query);
+                    const label = formatSuggestionLabel(s, leading);
+                    return (
+                      <li key={s.place_id}>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectSuggestion(s, leading)}
+                          className="w-full text-left px-4 py-3 hover:bg-belims-blue/[0.06] text-sm text-text"
+                        >
+                          {label}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
