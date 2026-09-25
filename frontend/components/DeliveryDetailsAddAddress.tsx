@@ -14,6 +14,7 @@ import { ShippingAddress, Store } from "../types";
 import {
   buildAddressLabel,
   mapNominatimAddress,
+  PROVINCES,
   saveStoredAddress,
 } from "../services/shippingAddress";
 import {
@@ -266,6 +267,32 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
     runSearch(value);
   };
 
+  const patchAddress = (patch: Partial<ShippingAddress>) => {
+    setSelectedAddress((prev) => {
+      const base: ShippingAddress =
+        prev ?? {
+          street: "",
+          city: "",
+          province: "",
+          postalCode: "",
+          country: "ZA",
+        };
+      const next: ShippingAddress = { ...base, ...patch, country: "ZA" };
+      next.label = buildAddressLabel(next);
+      return next;
+    });
+    setError(null);
+  };
+
+  const canConfirm = useMemo(() => {
+    if (!selectedAddress) return false;
+    return Boolean(
+      selectedAddress.street.trim() &&
+        selectedAddress.city.trim() &&
+        selectedAddress.province.trim(),
+    );
+  }, [selectedAddress]);
+
   const applyAddress = (address: ShippingAddress) => {
     setSelectedAddress(address);
     setQuery(address.label || buildAddressLabel(address));
@@ -510,42 +537,43 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
 
             {isLoggedIn && savedAddresses.length > 0 && (
               <div className="mt-6">
-                <div className="text-sm font-bold text-text mb-2">
-                  Your saved addresses
+                <div className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-3">
+                  Saved addresses
                 </div>
-                <ul className="space-y-2">
-                  {savedAddresses.map((addr) => (
-                    <li key={addr.id}>
+                <div className="flex flex-wrap gap-2 pb-4 border-b border-border">
+                  {savedAddresses.map((addr) => {
+                    const active = Boolean(
+                      selectedAddress &&
+                        selectedAddress.street.trim().toLowerCase() ===
+                          addr.address.street.trim().toLowerCase() &&
+                        selectedAddress.city.trim().toLowerCase() ===
+                          addr.address.city.trim().toLowerCase(),
+                    );
+                    return (
                       <button
+                        key={addr.id}
                         type="button"
                         onClick={() => handleSelectSaved(addr.id)}
-                        className="w-full text-left rounded-lg border border-border bg-white px-4 py-3 hover:border-text transition-colors"
+                        className={`inline-flex items-center gap-2 rounded-pill border px-4 py-2 text-sm transition-colors ${
+                          active
+                            ? "bg-belims-blue border-belims-blue text-white"
+                            : "bg-white border-border text-text hover:border-text"
+                        }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <MapPin
-                            size={16}
-                            className="mt-0.5 flex-shrink-0 text-primary"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="mb-0.5">
-                              <span className="inline-flex items-center rounded-pill bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
-                                {addr.source}
-                              </span>
-                            </div>
-                            <div className="text-sm font-medium text-text truncate">
-                              {addr.line}
-                            </div>
-                          </div>
-                        </div>
+                        <MapPin size={14} className="flex-shrink-0" />
+                        <span className="font-bold">{addr.source}</span>
+                        <span className={active ? "text-white/70" : "text-text-secondary"}>
+                          · {addr.line}
+                        </span>
                       </button>
-                    </li>
-                  ))}
-                </ul>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
             {!isLoggedIn && (
-              <p className="mt-8 text-center text-sm text-text">
+              <p className="mt-6 text-center text-sm text-text">
                 To see your saved addresses{" "}
                 <Link
                   to="/login"
@@ -556,11 +584,96 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
               </p>
             )}
 
+            {/* Manual edit fields — matches Checkout shipping address inputs */}
+            <div className="mt-6 space-y-4">
+              <div>
+                <label
+                  htmlFor="manual-street"
+                  className="block text-sm font-bold text-text mb-2"
+                >
+                  Street address
+                </label>
+                <div className="relative">
+                  <MapPin
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
+                  />
+                  <input
+                    id="manual-street"
+                    type="text"
+                    value={selectedAddress?.street || ""}
+                    onChange={(e) => patchAddress({ street: e.target.value })}
+                    placeholder="Street address"
+                    autoComplete="address-line1"
+                    className="w-full h-12 pl-10 pr-4 rounded-lg border border-border bg-white text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-text"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label
+                    htmlFor="manual-city"
+                    className="block text-sm font-bold text-text mb-2"
+                  >
+                    City
+                  </label>
+                  <input
+                    id="manual-city"
+                    type="text"
+                    value={selectedAddress?.city || ""}
+                    onChange={(e) => patchAddress({ city: e.target.value })}
+                    placeholder="City"
+                    autoComplete="address-level2"
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-white text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-text"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="manual-province"
+                    className="block text-sm font-bold text-text mb-2"
+                  >
+                    Province
+                  </label>
+                  <select
+                    id="manual-province"
+                    value={selectedAddress?.province || ""}
+                    onChange={(e) => patchAddress({ province: e.target.value })}
+                    className="w-full h-12 px-3 rounded-lg border border-border bg-white text-sm text-text focus:outline-none focus:border-text"
+                  >
+                    <option value="">Select province</option>
+                    {PROVINCES.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="manual-postal"
+                    className="block text-sm font-bold text-text mb-2"
+                  >
+                    Postal code
+                  </label>
+                  <input
+                    id="manual-postal"
+                    type="text"
+                    inputMode="numeric"
+                    value={selectedAddress?.postalCode || ""}
+                    onChange={(e) => patchAddress({ postalCode: e.target.value })}
+                    placeholder="Postal code"
+                    autoComplete="postal-code"
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-white text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-text"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="mt-12 flex justify-end">
               <button
                 type="button"
                 onClick={handleConfirmAddress}
-                disabled={!selectedAddress || isSaving}
+                disabled={!canConfirm || isSaving}
                 className="px-8 h-12 rounded-none bg-text text-white text-sm font-bold uppercase tracking-wide hover:bg-text/90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 {isSaving
