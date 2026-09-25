@@ -974,6 +974,13 @@ export const Checkout: React.FC<CheckoutProps> = ({
           lastName: customer.lastName,
           phone: customer.phone,
           orderId: order.id,
+          shippingAddress: {
+            street: customer.address,
+            city: customer.city,
+            province: customer.province,
+            postalCode: customer.postalCode,
+            country: "ZA" as const,
+          },
         };
         localStorage.setItem(
           "pendingAccountCreation",

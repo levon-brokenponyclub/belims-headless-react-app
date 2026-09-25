@@ -4,7 +4,11 @@ import { AlertCircle, Loader } from "lucide-react";
 import { getApiBaseUrl } from "../services/wooCommerceService";
 import { OrderDetailsView } from "./OrderDetailsView";
 import { formatNumberWithSeparators } from "../utils/price";
-import { registerUser } from "../services/authService";
+import {
+  registerUser,
+  saveBillingAddress,
+  saveShippingAddress,
+} from "../services/authService";
 
 interface OrderDetails {
   id: number;
@@ -179,6 +183,16 @@ export const OrderConfirmation: React.FC = () => {
         });
 
         if (!cancelled && result.success) {
+          if (accountData.shippingAddress?.street) {
+            const address = {
+              ...accountData.shippingAddress,
+              country: "ZA" as const,
+            };
+            await Promise.allSettled([
+              saveBillingAddress(address),
+              saveShippingAddress(address),
+            ]);
+          }
           localStorage.removeItem("pendingAccountCreation");
           setAccountCreationMessage(
             `Account created successfully! You can now log in with ${accountData.email}`,
