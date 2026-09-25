@@ -33,6 +33,9 @@ import { buildProductUrl } from "../utils/product";
 import { initializeCategoryTree } from "../categoryTree";
 import { logoutUser, UserData } from "../services/authService";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
+import { DeliveryDetailsPopover } from "./DeliveryDetailsPopover";
+
+const DELIVERY_POPOVER_DISMISSED_KEY = "belims_delivery_popover_dismissed";
 import { MegaMenu } from "./MegaMenu";
 import { SearchResults } from "./SearchResults";
 import {
@@ -131,6 +134,39 @@ export const Header: React.FC<HeaderProps> = ({
     setDeliveryLocationModalType(type);
     setIsDeliveryLocationModalOpen(true);
   };
+
+  const [isDeliveryPopoverOpen, setIsDeliveryPopoverOpen] = useState(false);
+  const [isDeliverySheetOpen, setIsDeliverySheetOpen] = useState(false);
+
+  const openDeliveryPopover = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setIsDeliverySheetOpen(true);
+    } else {
+      setIsDeliveryPopoverOpen(true);
+    }
+  };
+
+  const closeDeliveryPopover = () => {
+    setIsDeliveryPopoverOpen(false);
+    setIsDeliverySheetOpen(false);
+  };
+
+  const dismissDeliveryPopover = () => {
+    try {
+      localStorage.setItem(DELIVERY_POPOVER_DISMISSED_KEY, "1");
+    } catch {}
+    closeDeliveryPopover();
+  };
+
+  const handleAddDeliveryDetails = () => {
+    closeDeliveryPopover();
+    navigate("/delivery-details/add-address");
+  };
+
+  const handleDeliveryPopoverLogin = () => {
+    closeDeliveryPopover();
+    navigate("/login");
+  };
   const [fulfillmentType, setFulfillmentType] = useState<
     "pickup" | "delivery" | null
   >(null);
@@ -201,6 +237,30 @@ export const Header: React.FC<HeaderProps> = ({
   useEffect(() => {
     syncDeliveryFromStorage();
   }, [syncDeliveryFromStorage]);
+
+  // Auto-open the delivery-details nudge on first load while no address is set
+  // and the user hasn't dismissed it. Runs once per app boot.
+  const hasAutoOpenedPopoverRef = useRef(false);
+  useEffect(() => {
+    if (hasAutoOpenedPopoverRef.current) return;
+    if (typeof window === "undefined") return;
+    const hasAddress = Boolean(deliveryAddress || legacyDeliveryLabel);
+    if (hasAddress) return;
+    let dismissed = false;
+    try {
+      dismissed = localStorage.getItem(DELIVERY_POPOVER_DISMISSED_KEY) === "1";
+    } catch {}
+    if (dismissed) return;
+    hasAutoOpenedPopoverRef.current = true;
+    const timer = window.setTimeout(() => {
+      if (window.innerWidth < 768) {
+        setIsDeliverySheetOpen(true);
+      } else {
+        setIsDeliveryPopoverOpen(true);
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [deliveryAddress, legacyDeliveryLabel]);
 
   const handleAddressSelect = (address: ShippingAddress | null) => {
     setDeliveryAddress(address);
@@ -273,6 +333,11 @@ export const Header: React.FC<HeaderProps> = ({
     };
     const handleDeliveryAddressUpdated = () => {
       syncDeliveryFromStorage();
+      const { address, legacyLabel } = readStoredAddress();
+      if (address || legacyLabel) {
+        setIsDeliveryPopoverOpen(false);
+        setIsDeliverySheetOpen(false);
+      }
     };
 
     window.addEventListener(
@@ -566,7 +631,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
                <button
                  type="button"
-                 onClick={() => openDeliveryLocationPanel("delivery")}
+                 onClick={openDeliveryPopover}
                  className="topbar__delivery-item"
                >
                  <Truck size={15} className="flex-shrink-0" strokeWidth={1.75} />
@@ -600,27 +665,37 @@ export const Header: React.FC<HeaderProps> = ({
             </Link>
 
             {/* Address pill */}
-            <button
-              type="button"
-              onClick={() => openDeliveryLocationPanel("delivery")}
-              className="hidden md:flex items-center gap-3 rounded-xl bg-white/10 hover:bg-white/[0.14] transition-colors px-4 py-2.5 min-w-[220px] max-w-[260px] text-left focus:outline-none focus:ring-2 focus:ring-primary/60"
-            >
-              <MapPin
-                size={18}
-                strokeWidth={1.75}
-                className="flex-shrink-0 text-primary"
+            <div className="relative">
+              <button
+                type="button"
+                onClick={openDeliveryPopover}
+                className="hidden md:flex items-center gap-3 rounded-xl bg-white/10 hover:bg-white/[0.14] transition-colors px-4 py-2.5 min-w-[220px] max-w-[260px] text-left focus:outline-none focus:ring-2 focus:ring-primary/60"
+              >
+                <MapPin
+                  size={18}
+                  strokeWidth={1.75}
+                  className="flex-shrink-0 text-primary"
+                />
+                <span className="flex flex-col leading-tight min-w-0">
+                  <span className="text-[12px] font-bold uppercase tracking-normal text-white/60">
+                    Delivering to
+                  </span>
+                  <span className="text-sm font-bold text-white truncate">
+                    {hasDeliveryAddress
+                      ? deliveryPostalCode || "Enter your address"
+                      : "Enter your address"}
+                  </span>
+                </span>
+              </button>
+              <DeliveryDetailsPopover
+                open={isDeliveryPopoverOpen}
+                variant="popover"
+                onClose={closeDeliveryPopover}
+                onDismiss={dismissDeliveryPopover}
+                onAddDetails={handleAddDeliveryDetails}
+                onLogin={handleDeliveryPopoverLogin}
               />
-              <span className="flex flex-col leading-tight min-w-0">
-                <span className="text-[12px] font-bold uppercase tracking-normal text-white/60">
-                  Delivering to
-                </span>
-                <span className="text-sm font-bold text-white truncate">
-                  {hasDeliveryAddress
-                    ? deliveryPostalCode || "Enter your address"
-                    : "Enter your address"}
-                </span>
-              </span>
-            </button>
+            </div>
 
             {/* Search bar (fills remaining width) */}
             <div className="flex-1 min-w-0 mx-2">
@@ -910,7 +985,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="container mx-auto px-4">
               <button
                 type="button"
-                onClick={() => openDeliveryLocationPanel("delivery")}
+                onClick={openDeliveryPopover}
                 className="flex items-center justify-between w-full py-2.5"
               >
                 <div className="flex items-center gap-3">
@@ -928,6 +1003,14 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
           </div>
+          <DeliveryDetailsPopover
+            open={isDeliverySheetOpen}
+            variant="sheet"
+            onClose={closeDeliveryPopover}
+            onDismiss={dismissDeliveryPopover}
+            onAddDetails={handleAddDeliveryDetails}
+            onLogin={handleDeliveryPopoverLogin}
+          />
 
           {/* ─── Coral alert banner ── conditional: no delivery address set ─── */}
           {!hasDeliveryAddress && (

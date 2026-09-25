@@ -44,6 +44,7 @@ import { TradeDeals } from "./components/TradeDeals";
 import { TrackOrderPage } from "./components/TrackOrderPage";
 import { BrandStrip } from "./components/BrandStrip";
 import { AuthPage } from "./components/AuthPage";
+import { DeliveryDetailsAddAddress } from "./components/DeliveryDetailsAddAddress";
 import { AccountPage } from "./components/AccountPage";
 import { WishlistPage } from "./components/WishlistPage";
 import { Toast } from "./components/Toast";
@@ -1396,6 +1397,10 @@ function MainApp(props) {
             <Route
               path="/wishlist"
               element={<WishlistPage addToCart={props.addToCart} />}
+            />
+            <Route
+              path="/delivery-details/add-address"
+              element={<DeliveryDetailsAddAddress />}
             />
             <Route path="/track-order" element={<TrackOrderPage />} />
             <Route path="/order-confirmation" element={<OrderConfirmation />} />
