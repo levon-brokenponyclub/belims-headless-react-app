@@ -831,7 +831,9 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Account chip */}
             <button
               type="button"
-              onClick={() => setIsAccountPanelOpen(true)}
+              onClick={() =>
+                currentUser ? setIsAccountPanelOpen(true) : navigate("/login")
+              }
               aria-label={
                 currentUser
                   ? `Account: ${currentUser.first_name || currentUser.username}`
