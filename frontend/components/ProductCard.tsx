@@ -1,6 +1,6 @@
 // ProductCard.tsx
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
   CheckCircle,
@@ -133,6 +133,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const isFlat = variant === "flat" || variant === "flat-horizontal";
   const isFlatHorizontal = variant === "flat-horizontal";
+  const navigate = useNavigate();
   const [notifyStatus, setNotifyStatus] = React.useState<
     "idle" | "pending" | "sent" | "error"
   >("idle");
@@ -411,13 +412,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     for (let count = 0; count < quantity; count += 1) {
       addWithPriceMode(isTradeSpecial ? "trade" : "retail");
     }
+    closeQuickView();
   };
 
   const handleQuickViewBuyNow = (quantity: number) => {
     if (!isProductPurchasable(product)) return;
-    handleQuickViewAddToCart(quantity);
-    onBuyNow?.(product);
+    for (let count = 0; count < quantity; count += 1) {
+      addWithPriceMode(isTradeSpecial ? "trade" : "retail");
+    }
     closeQuickView();
+    navigate("/checkout");
   };
 
   React.useEffect(() => {
@@ -643,8 +647,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               }`}
             >
               <button
-                aria-controls={quickViewId}
-                aria-haspopup="dialog"
                 type="button"
                 className={
                   quickViewButtonAction?.className ||
@@ -657,7 +659,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     quickViewButtonAction.onClick(product, actionHelpers);
                     return;
                   }
-                  openQuickView();
+                  addWithPriceMode(isTradeSpecial ? "trade" : "retail");
                 }}
               >
                 <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>

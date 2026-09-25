@@ -1,4 +1,5 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Loader2, Minus, Plus, X } from "lucide-react";
 import { Product } from "../types";
@@ -79,20 +80,28 @@ export const QuickView: React.FC<QuickViewProps> = ({
     }
   };
 
-  const handleAddToCartClick = () => {
+  const handleAddToCartClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
     if (product.stock <= 0 || isAddToCartLoading || isBuyNowLoading) return;
     runActionWithIndicator("add", () => onAddToCart(quickViewQty));
   };
 
-  const handleBuyNowClick = () => {
+  const handleBuyNowClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
     if (product.stock <= 0 || isAddToCartLoading || isBuyNowLoading) return;
     runActionWithIndicator("buy", () => onBuyNow(quickViewQty));
   };
 
   if (!shouldRender) return null;
+  if (typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-[1201] flex items-end md:items-center justify-center p-0 md:p-4">
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 z-[1201] flex items-end md:items-center justify-center p-0 md:p-4"
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Backdrop */}
       <div
         className={`absolute inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
@@ -357,6 +366,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
