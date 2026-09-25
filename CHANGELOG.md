@@ -1,5 +1,86 @@
 # Changelog
 
+## 2026-09-25 — Delivery Details popover + Add Address page
+
+### 1. Delivery Details popover
+- New `frontend/components/DeliveryDetailsPopover.tsx` — nudge popover anchored under the header "Delivering to" pill, with two variants: `popover` (desktop, caret pointing up at the pill) and `sheet` (mobile, fixed bottom, dark backdrop, drag handle, close X).
+- Copy: "To view **product availability** and **local pricing** for your area, please add your delivery details before you start shopping."
+- Buttons: "Do this later" (outline pill) + "Add delivery details" (belims-blue primary pill, underlined).
+- Footer link: "Log in to see your saved addresses" → `/login`.
+- Escape key and click-outside dismissal.
+
+### 2. Header wiring
+- Auto-opens once per session when `!hasDeliveryAddress` and `localStorage.belims_delivery_popover_dismissed !== "1"`, with a 400 ms delay.
+- Variant chosen by viewport width: `< 768px` → sheet; `≥ 768px` → popover.
+- "Do this later" persists the dismissed flag; primary CTA closes the popover and navigates to `/delivery-details/add-address`.
+- Auto-closes when `belims:delivery-address-updated` fires from any surface (checkout, account, single product, add-address page) and a stored address is now present.
+- Three delivery triggers switched from `openDeliveryLocationPanel("delivery")` to `openDeliveryPopover`: topbar "Deliver to:" (line 630), desktop address pill (line 663), mobile delivery bar (line 983). Pickup triggers still open `DeliveryLocationModal`.
+
+### 3. `/delivery-details/add-address` page
+- New `frontend/components/DeliveryDetailsAddAddress.tsx` mirroring pnp.co.za's layout.
+- Two-column grid on `lg+` (form left, OpenStreetMap iframe pinned to selected coords right); stacks on mobile.
+- Guest sees "Sign in to see your saved addresses" link; hidden when `getCurrentUser()` resolves.
+- Street search: Nominatim autocomplete, 300 ms debounce, min 3 chars, ZA country restriction, dropdown with main / secondary text.
+- "Use my current location" — `navigator.geolocation` → Nominatim reverse geocode → `mapNominatimAddress`; falls back to error message on permission denial.
+- Optional Complex/Building and Address name fields. Complex/unit is prepended to the street when saved.
+- Cancel returns via `navigate(-1)`. Save writes to `deliveryAddressV2` via `saveStoredAddress`, sets `fulfillmentType=delivery`, dispatches `belims:delivery-address-updated` + `belims:fulfillment-changed`, marks popover dismissed, navigates to `/`.
+- Route registered in `App.tsx` after `/wishlist`.
+
+## 2026-09-24 — Account, Checkout, Routing, and UX session
+
+### 1. AccountPage typography audit
+- Audited `AccountPage.tsx` against the Nexvo design system (`tailwind.config.js` + `index.css`).
+- Replaced all `font-extrabold` (weight 800, outside design system) with `font-bold` (700).
+- Replaced bare `text-3xl`, `text-xl`, `text-2xl` (Tailwind defaults) with design-system tokens: `text-h4`, `text-h6`, `text-lg`.
+- Fixed h3/h4 stat card labels and address card headings that had no explicit size class, causing them to inherit Nexvo base CSS heading sizes (2.8rem / 2.2rem). Applied `text-sm font-semibold uppercase tracking-wider` to stat labels and `text-base font-bold` to address card headings.
+- Matched section heading weights to `SingleProduct.tsx` reference: `text-lg` sections use `font-semibold` (not bold).
+- Replaced all `text-[10px]` and `text-[11px]` arbitrary values with `text-xs` design-system token.
+
+### 2. Address management — Remove and Name
+- **Remove addresses**: Added inline confirmation flow (no browser `confirm()`) with Edit / Remove buttons on each address card.
+  - Saved Delivery: clears localStorage via `saveStoredAddress(null)`.
+  - Billing / Shipping: new `clearBillingAddress()` and `clearShippingAddress()` functions in `authService.ts` that send empty fields to the WordPress `PUT /users/me` endpoint independently.
+- **Address naming**: Added `pendingAddress` + `pendingAddressName` state to `DeliveryLocationModal.tsx`. Both search suggestion clicks and GPS detection now route through a "Confirm address" name step before final save. The custom name is stored as the address `label` in localStorage.
+- Saved Delivery card title now shows the custom label if one was set.
+
+### 3. Account sidebar routing
+- Replaced query-param tab switching (`?tab=`) with path-based routing.
+- `App.tsx`: added `/account/:tab` route alongside `/account`.
+- `AccountPage.tsx`: swapped `useSearchParams` for `useNavigate` + `useParams`. `activeTab` derived directly from URL (validated against `VALID_TABS`, defaults to `"dashboard"`). Nav buttons now call `navigate("/account/{tab}")`.
+- Supported paths: `/account`, `/account/dashboard`, `/account/orders`, `/account/addresses`, `/account/payment`, `/account/details`.
+
+### 4. Header account side panel overhaul
+- Replaced "Account" + Dashboard and "Extra Links" sections (Track Order, Cards & Accounts, Pay Credit Card Bill, Discount Benefits) with the five account sidebar items: Dashboard, Orders, Addresses, Payment Methods, Account Details — all pointing to `/account/{tab}` paths.
+- Contractor/Trade block condition changed from `!currentUser || !roles.includes("contractor")` to `!currentUser` — block now only shows to guests.
+- Updated copy: "Are you a Contractor?" → "Let's get started"; "Register for Trade Deals" → "Let's get started".
+- Added "Sign in or create a profile now for access to the widest range of products all in one place, saving you time and money." above Sign In / Create Account buttons in the non-authenticated footer.
+
+### 5. Product URL routing — full category path
+- Created `utils/product.ts` with `slugify()`, `buildProductUrl()`, and `extractProductIdFromSlug()`.
+- `buildProductUrl()` generates `/product/[cat1]/[cat2]/[cat3]/[product-slug]-[id]` from breadcrumbs + product slug + ID.
+- Route changed from `/product/:id` to `/product/*` in `App.tsx`; `ProductPage` extracts ID from the last segment suffix, supporting both new and legacy `/product/2446` URLs.
+- Updated all 9 navigation call sites: `App.tsx`, `SingleProduct.tsx`, `ProductCard.tsx`, `NexvoProductCard.tsx`, `QuickView.tsx`, `Header.tsx`, `DealsSection.tsx`, `SearchModal.tsx`, `ShopByCategory.tsx`.
+
+### 6. Buy Now → direct checkout
+- `SingleProduct.tsx`: `handleBuyNowAction` now calls `navigate("/checkout")` instead of `onBuyNow(product)`, eliminating a double-add bug (cart was being populated twice) and skipping the cart drawer entirely.
+- Applies to both the main buy-box button and the sticky bottom CTA bar.
+
+### 7. Checkout — guest login panel
+- Added inline Sign In form to the checkout Personal Details step for unauthenticated users.
+- Hidden by default; shown by clicking "Sign In" button right-aligned on the Delivery/Pickup toggle row.
+- On successful login: auto-fills first name, last name, email, phone, and billing/shipping address; closes the panel.
+- Fixed nested `<form>` DOM error: the login form and the delivery toggle are now siblings rendered before the main checkout form, not inside it.
+- "Create an account for faster checkout next time" checkbox hidden when user is already logged in.
+
+### 8. Checkout — Use current location
+- Added "Use current location" link beside the Street address label on the Shipping Address step, visible only when address fields are empty.
+- Uses `navigator.geolocation` → Nominatim reverse geocode → `mapNominatimAddress` / `normalizeProvince` to fill `address`, `city`, `province`, `postalCode`.
+- Shows inline error on permission denial or geocoding failure.
+
+### 9. Scroll and navigation fixes
+- **Scroll-to-top on route change**: Added `ScrollToTop` component in `App.tsx` using `useLayoutEffect` on `pathname` + `hash`. Fires before paint; hash links scroll to anchor, all other navigations reset to top instantly.
+- **Product page scroll anchor bug**: `FulfillmentTiles.tsx` was calling `deliveryPanelRef.current?.focus()` on mount when `selectedType === "delivery"`, causing the browser to scroll the panel into view. Fixed with `{ preventScroll: true }`.
+
 ## 2026-09-10 — Coming Soon page and environment gating
 
 ### 1. Coming Soon splash page
