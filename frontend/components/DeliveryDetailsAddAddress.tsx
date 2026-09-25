@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ChevronDown,
@@ -16,7 +16,12 @@ import {
   mapNominatimAddress,
   saveStoredAddress,
 } from "../services/shippingAddress";
-import { getCurrentUser, UserData } from "../services/authService";
+import {
+  getCurrentUser,
+  saveBillingAddress,
+  saveShippingAddress,
+  UserData,
+} from "../services/authService";
 import { getApiBaseUrl } from "../services/wooCommerceService";
 
 type Step = "address" | "option";
@@ -76,6 +81,15 @@ const toSavedAddress = (
 
 export const DeliveryDetailsAddAddress: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isAccountContext = searchParams.get("context") === "account";
+  const profileType =
+    searchParams.get("type") === "shipping"
+      ? "shipping"
+      : searchParams.get("type") === "billing"
+        ? "billing"
+        : null;
+  const isEditMode = searchParams.get("mode") === "edit";
 
   const [step, setStep] = useState<Step>("address");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -117,12 +131,23 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
           rows.push(shipping);
         }
         setSavedAddresses(rows);
+
+        if (isEditMode && profileType) {
+          const source =
+            profileType === "billing"
+              ? toSavedAddress("Billing", user.billing)
+              : toSavedAddress("Shipping", user.shipping);
+          if (source) {
+            setSelectedAddress(source.address);
+            setQuery(source.address.label || buildAddressLabel(source.address));
+          }
+        }
       })
       .catch(() => {});
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isEditMode, profileType]);
 
   useEffect(() => {
     let mounted = true;
@@ -238,12 +263,32 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
     setShowSuggestions(false);
   };
 
-  const handleConfirmAddress = () => {
+  const handleConfirmAddress = async () => {
     if (!selectedAddress) {
       setError("Please choose an address first.");
       return;
     }
     setError(null);
+
+    if (isAccountContext && profileType) {
+      setIsSaving(true);
+      try {
+        if (profileType === "billing") {
+          await saveBillingAddress(selectedAddress);
+        } else {
+          await saveShippingAddress(selectedAddress);
+        }
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("user-updated"));
+        }
+        navigate("/account/addresses");
+      } catch (e: any) {
+        setError(e?.message || "Failed to save address.");
+        setIsSaving(false);
+      }
+      return;
+    }
+
     setStep("option");
   };
 
@@ -296,7 +341,13 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
     navigate("/");
   };
 
-  const handleClose = () => navigate(-1);
+  const handleClose = () => {
+    if (isAccountContext) {
+      navigate("/account/addresses");
+    } else {
+      navigate(-1);
+    }
+  };
 
   const streetOnly = selectedAddress?.street || query.split(",")[0];
 
@@ -315,16 +366,18 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
               <ArrowLeft size={22} />
             </button>
           )}
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${step === "address" ? "bg-text" : "bg-gray-300"}`}
-              aria-hidden="true"
-            />
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${step === "option" ? "bg-text" : "bg-gray-300"}`}
-              aria-hidden="true"
-            />
-          </div>
+          {!isAccountContext && (
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${step === "address" ? "bg-text" : "bg-gray-300"}`}
+                aria-hidden="true"
+              />
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${step === "option" ? "bg-text" : "bg-gray-300"}`}
+                aria-hidden="true"
+              />
+            </div>
+          )}
           <button
             type="button"
             onClick={handleClose}
@@ -338,11 +391,16 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
         {step === "address" ? (
           <>
             <h1 className="text-h4 md:text-h3 font-bold text-text text-center">
-              Confirm your address
+              {isAccountContext
+                ? isEditMode
+                  ? `Edit ${profileType === "shipping" ? "shipping" : "billing"} address`
+                  : `Add ${profileType === "shipping" ? "shipping" : "billing"} address`
+                : "Confirm your address"}
             </h1>
             <p className="mt-3 text-center text-base text-text-secondary max-w-lg mx-auto">
-              Enter your address or select one below to customize your shopping
-              experience. This way, you'll only see what's available in your area.
+              {isAccountContext
+                ? "Enter or search for an address to save to your profile."
+                : "Enter your address or select one below to customize your shopping experience. This way, you'll only see what's available in your area."}
             </p>
 
             <div className="mt-8" ref={suggestionsBoxRef}>
@@ -452,10 +510,14 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConfirmAddress}
-                disabled={!selectedAddress}
+                disabled={!selectedAddress || isSaving}
                 className="px-8 h-12 rounded-none bg-text text-white text-sm font-bold uppercase tracking-wide hover:bg-text/90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                Confirm address
+                {isSaving
+                  ? "Saving..."
+                  : isAccountContext
+                    ? "Save address"
+                    : "Confirm address"}
               </button>
             </div>
           </>

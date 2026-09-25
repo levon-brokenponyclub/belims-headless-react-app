@@ -34,7 +34,6 @@ import { ShippingAddress, Order } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { formatNumberWithSeparators } from "../utils/price";
 import { saveStoredAddress } from "../services/shippingAddress";
-import { DeliveryLocationModal } from "./DeliveryLocationModal";
 
 interface AccountPageProps {
   user: UserData | null;
@@ -57,7 +56,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
     type: "success" | "error";
     text: string;
   } | null>(null);
-  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [addressSaveMessage, setAddressSaveMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -65,7 +63,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
   const [confirmRemove, setConfirmRemove] = useState<"billing" | "shipping" | null>(null);
   const [removingAddress, setRemovingAddress] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [editingAddressType, setEditingAddressType] = useState<"billing" | "shipping" | null>(null);
   const [defaultAddressKey, setDefaultAddressKey] = useState<"billing" | "shipping">(() => {
     const stored = localStorage.getItem("belims_default_address_key");
     return stored === "billing" || stored === "shipping" ? stored : "billing";
@@ -188,40 +185,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
     setAddressSaveMessage({ type: "success", text: "Default delivery address updated." });
   };
 
-  const handleAddNewAddress = (type: "billing" | "shipping") => {
-    setEditingAddressType(type);
+  const handleAddNewAddress = (type: "billing" | "shipping", mode: "add" | "edit" = "add") => {
     setAddressSaveMessage(null);
-    setIsDeliveryModalOpen(true);
-  };
-
-  const handleAddressSelect = async (address: ShippingAddress | null) => {
-    if (!address) {
-      setIsDeliveryModalOpen(false);
-      setEditingAddressType(null);
-      return;
-    }
-
-    setAddressSaveMessage(null);
-    try {
-      if (editingAddressType === "billing") {
-        await saveBillingAddress(address);
-      } else {
-        await saveShippingAddress(address);
-      }
-      setAddressSaveMessage({
-        type: "success",
-        text: "Address saved to your profile.",
-      });
-      window.dispatchEvent(new Event("user-updated"));
-    } catch (error: any) {
-      setAddressSaveMessage({
-        type: "error",
-        text: error.message || "Failed to save address.",
-      });
-    } finally {
-      setIsDeliveryModalOpen(false);
-      setEditingAddressType(null);
-    }
+    navigate(
+      `/delivery-details/add-address?context=account&type=${type}&mode=${mode}`,
+    );
   };
 
   const handleRemoveAddress = async (type: "billing" | "shipping") => {
@@ -795,7 +763,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
                 ) : (
                   <div className="flex items-center gap-4">
                     <button
-                      onClick={() => handleAddNewAddress("billing")}
+                      onClick={() => handleAddNewAddress("billing", "edit")}
                       className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
                     >
                       Edit
@@ -867,7 +835,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
                 ) : (
                   <div className="flex items-center gap-4">
                     <button
-                      onClick={() => handleAddNewAddress("shipping")}
+                      onClick={() => handleAddNewAddress("shipping", "edit")}
                       className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
                     >
                       Edit
@@ -1176,34 +1144,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
         </div>
       </div>
 
-      <DeliveryLocationModal
-        isOpen={isDeliveryModalOpen}
-        onClose={() => { setIsDeliveryModalOpen(false); setEditingAddressType(null); }}
-        initialFulfillmentType="delivery"
-        onAddressSelect={handleAddressSelect}
-        persistToDevice={false}
-        currentAddress={
-          editingAddressType === "billing" && user.billing
-            ? {
-                street: user.billing.address_1 || "",
-                city: user.billing.city || "",
-                province: user.billing.state || "",
-                postalCode: user.billing.postcode || "",
-                country: "ZA",
-                label: [user.billing.address_1, user.billing.city, user.billing.state, user.billing.postcode].filter(Boolean).join(", "),
-              }
-            : editingAddressType === "shipping" && user.shipping
-            ? {
-                street: user.shipping.address_1 || "",
-                city: user.shipping.city || "",
-                province: user.shipping.state || "",
-                postalCode: user.shipping.postcode || "",
-                country: "ZA",
-                label: [user.shipping.address_1, user.shipping.city, user.shipping.state, user.shipping.postcode].filter(Boolean).join(", "),
-              }
-            : undefined
-        }
-      />
     </div>
   );
 };
