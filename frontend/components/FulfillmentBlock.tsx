@@ -17,6 +17,7 @@ interface FulfillmentBlockProps {
   fulfillmentType: FulfillmentTab;
   onSelectFulfillment: (value: FulfillmentTab) => void;
   onSetDeliveryLocation: () => void;
+  onAddDeliveryAddress?: () => void;
   hasDeliveryLocation: boolean;
   deliveryAddress: ShippingAddress | null;
   pickupStore?: Store | null;
@@ -39,6 +40,7 @@ export const FulfillmentBlock: React.FC<FulfillmentBlockProps> = ({
   fulfillmentType,
   onSelectFulfillment,
   onSetDeliveryLocation,
+  onAddDeliveryAddress,
   hasDeliveryLocation,
   deliveryAddress,
   pickupStore,
@@ -62,6 +64,7 @@ export const FulfillmentBlock: React.FC<FulfillmentBlockProps> = ({
         onSelect={onSelectFulfillment}
         onSetDeliveryLocation={onSetDeliveryLocation}
         onEditDeliveryLocation={onSetDeliveryLocation}
+        onAddDeliveryAddress={onAddDeliveryAddress}
         pickupStore={pickupStore}
         pickupSchedule={pickupSchedule}
         deliveryLocationSet={hasDeliveryLocation}

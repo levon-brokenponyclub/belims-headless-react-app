@@ -1,9 +1,10 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import { Store } from "../types";
 import { FulfillmentTab } from "./FulfillmentTabs";
 import { Pill } from "./Pill";
 import { formatCurrency } from "../utils/price";
-import { Minus, Plus, Zap } from "lucide-react";
+import { Minus, Plus, Truck, X, Zap } from "lucide-react";
 import {
   formatDeliveryEtaText,
   getDeliveryOptionMarkers,
@@ -48,6 +49,7 @@ interface FulfillmentTilesProps {
   onSelect: (type: FulfillmentTab) => void;
   onSetDeliveryLocation?: () => void;
   onEditDeliveryLocation?: () => void;
+  onAddDeliveryAddress?: () => void;
   onViewPickupDetails?: () => void;
   onSchedulePickup?: () => void;
   deliveryLocationSet?: boolean;
@@ -325,6 +327,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
   onSelect,
   onSetDeliveryLocation,
   onEditDeliveryLocation,
+  onAddDeliveryAddress,
   onViewPickupDetails,
   onSchedulePickup,
   deliveryLocationSet = false,
@@ -352,7 +355,16 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
     ? formatScheduledPickup(pickupSchedule.date, pickupSchedule.time)
     : null;
 
-  const [deliveryExpanded, setDeliveryExpanded] = React.useState(false);
+  const [isRatesDrawerOpen, setIsRatesDrawerOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isRatesDrawerOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsRatesDrawerOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [isRatesDrawerOpen]);
 
   const deliveryOptions = React.useMemo(
     () => deliveryRates.map((rate, index) => ({ id: `rate-${index}`, ...rate })),
@@ -387,6 +399,190 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
       deliveryPanelRef.current?.focus({ preventScroll: true });
     }
   }, [selectedType, focusDeliveryPanelSignal]);
+
+  const ratesDrawer =
+    isRatesDrawerOpen && deliveryLocationSet && typeof document !== "undefined"
+      ? ReactDOM.createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-hidden">
+            <div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+              onClick={() => setIsRatesDrawerOpen(false)}
+              aria-hidden="true"
+            />
+            <aside
+              role="dialog"
+              aria-modal="true"
+              aria-label="Delivery options"
+              className="absolute left-0 right-0 bottom-0 max-h-[85vh] rounded-t-2xl bg-surface flex flex-col md:left-auto md:top-0 md:bottom-0 md:max-h-none md:h-full md:w-full md:max-w-md md:rounded-none"
+            >
+              {/* Header */}
+              <div className="p-4 bg-brand text-white flex justify-between items-center rounded-t-2xl md:rounded-none">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Truck size={20} className="flex-shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-bold font-heading truncate">
+                      Delivery options
+                    </div>
+                    <div className="text-xs text-white/80 truncate">
+                      {getDeliveryAddressText(deliveryAddress)}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsRatesDrawerOpen(false)}
+                  className="text-white hover:text-white/70 flex-shrink-0"
+                  aria-label="Close"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto bg-soft p-5 space-y-3">
+                {loading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={`del-skel-${i}`}
+                        className="h-16 animate-pulse rounded-lg border border-subtle bg-white"
+                      />
+                    ))}
+                  </div>
+                ) : deliveryRatesError ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-red-muted">{deliveryRatesError}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRatesDrawerOpen(false);
+                        (onEditDeliveryLocation ?? onSetDeliveryLocation)?.();
+                      }}
+                      className="text-sm font-semibold text-grey underline"
+                    >
+                      Change address
+                    </button>
+                  </div>
+                ) : deliveryOptions.length === 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-grey-medium">
+                      Delivery isn't available for this address. Try another
+                      address or use Pickup.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRatesDrawerOpen(false);
+                        (onEditDeliveryLocation ?? onSetDeliveryLocation)?.();
+                      }}
+                      className="text-sm font-semibold text-grey underline"
+                    >
+                      Change address
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {deliveryOptions.map((option) => {
+                      const isSelected =
+                        selectedDeliveryOptionId === option.id;
+                      const badgeText =
+                        option.id === fastestOptionId
+                          ? "Fastest"
+                          : option.id === cheapestOptionId
+                            ? "Best value"
+                            : null;
+                      return (
+                        <label
+                          key={option.id}
+                          htmlFor={`drawer-${option.id}`}
+                          className={`block w-full cursor-pointer rounded-lg border px-4 py-4 transition-all ${
+                            isSelected
+                              ? "border-brand bg-brand/10"
+                              : "border-subtle bg-white hover:border-grey hover:bg-soft"
+                          }`}
+                        >
+                          <input
+                            id={`drawer-${option.id}`}
+                            type="radio"
+                            name="drawer-delivery-option"
+                            checked={isSelected}
+                            onChange={() => onSelectDeliveryOption(option.id)}
+                            className="sr-only"
+                          />
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div
+                                className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                                  isSelected
+                                    ? "border-brand bg-brand"
+                                    : "border-subtle bg-white"
+                                }`}
+                              >
+                                {isSelected && (
+                                  <div className="w-2 h-2 rounded-full bg-white" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 text-base font-bold text-grey font-heading">
+                                  <span className="truncate">
+                                    {option.service_name}
+                                  </span>
+                                  {badgeText === "Best value" && (
+                                    <Pill tone="success">Budget</Pill>
+                                  )}
+                                  {badgeText === "Fastest" && (
+                                    <Pill tone="warning" icon={<Zap size={12} />}>
+                                      Faster
+                                    </Pill>
+                                  )}
+                                </div>
+                                <div className="mt-1 text-sm text-grey-medium">
+                                  {formatDeliveryEtaText(
+                                    option.expected_delivery_date,
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <div className="text-lg font-bold text-grey">
+                                {option.total_price === 0
+                                  ? "FREE"
+                                  : formatCurrency(option.total_price)}
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 border-t bg-surface space-y-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRatesDrawerOpen(false);
+                    onEditDeliveryLocation?.();
+                  }}
+                  className="w-full text-sm font-semibold text-grey underline"
+                >
+                  Change address
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRatesDrawerOpen(false)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white font-bold rounded-pill hover:bg-accent/90 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </aside>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="w-full space-y-4">
@@ -513,7 +709,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
           <div
             className="pickup-card"
             style={{ background: "#fff", border: "1px solid #e5e5e5", borderRadius: "6px", padding: "14px 16px", display: "flex", alignItems: "center", gap: "12px" }}
-            onClick={() => onSetDeliveryLocation?.()}
+            onClick={() => (onAddDeliveryAddress ?? onSetDeliveryLocation)?.()}
           >
             {/* Truck icon */}
             <div style={{ flexShrink: 0, color: "#374151" }}>
@@ -541,13 +737,14 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
         ) : (
           /* ── Unified delivery card ── */
           <div style={{ background: "#fff", border: "1px solid #e5e5e5", borderRadius: "6px", overflow: "hidden" }}>
-            {/* Header row — click to toggle */}
+            {/* Header row — click opens rates in a right-slide drawer */}
             <button
               type="button"
               className="pickup-card w-full text-left"
-              aria-expanded={deliveryExpanded}
+              aria-haspopup="dialog"
+              aria-expanded={isRatesDrawerOpen}
               style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: "12px", background: "transparent", border: "none", width: "100%", cursor: "pointer" }}
-              onClick={() => setDeliveryExpanded((prev) => !prev)}
+              onClick={() => setIsRatesDrawerOpen(true)}
             >
               <div style={{ flexShrink: 0, color: "#374151" }}>
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -566,15 +763,13 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                   <p style={{ margin: 0, fontSize: "14px", color: "#6b7280" }}>{earliestDeliverySummary}</p>
                 ) : null}
               </div>
-              {/* Expand/collapse chevron */}
+              {/* Right chevron — indicates drawer opens on click */}
               <span
                 aria-hidden="true"
                 style={{
                   flexShrink: 0, width: "32px", height: "32px", borderRadius: "9999px",
                   border: "1px solid #d1d5db", background: "transparent", color: "#374151",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "transform 0.22s ease, border-color 0.22s ease",
-                  transform: deliveryExpanded ? "rotate(90deg)" : "rotate(0deg)",
                 }}
               >
                 <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
@@ -583,76 +778,10 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
               </span>
             </button>
 
-            {/* Expanded delivery options */}
-            {deliveryExpanded && (
-              <div style={{ borderTop: "1px solid #e5e5e5", padding: "16px" }} className="space-y-3">
-                {loading ? (
-                  <div className="space-y-2">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={`del-skel-${i}`} className="h-16 animate-pulse rounded-lg border border-subtle bg-white" />
-                    ))}
-                  </div>
-                ) : deliveryRatesError ? (
-                  <div className="space-y-2">
-                    <p className="text-sm text-red-muted">{deliveryRatesError}</p>
-                    <button type="button" onClick={() => (onEditDeliveryLocation ?? onSetDeliveryLocation)?.()}
-                      className="text-sm font-semibold text-grey underline">Change address</button>
-                  </div>
-                ) : deliveryOptions.length === 0 ? (
-                  <div className="space-y-2">
-                    <p className="text-sm text-grey-medium">Delivery isn't available for this address. Try another address or use Pickup.</p>
-                    <button type="button" onClick={() => (onEditDeliveryLocation ?? onSetDeliveryLocation)?.()}
-                      className="text-sm font-semibold text-grey underline">Change address</button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {deliveryOptions.map((option) => {
-                      const isSelected = selectedDeliveryOptionId === option.id;
-                      const badgeText = option.id === fastestOptionId ? "Fastest"
-                        : option.id === cheapestOptionId ? "Best value" : null;
-                      return (
-                        <label
-                          key={option.id}
-                          htmlFor={option.id}
-                          className={`block w-full cursor-pointer rounded-lg border px-4 py-4 transition-all ${
-                            isSelected ? "border-brand bg-brand/10" : "border-subtle bg-white hover:border-grey hover:bg-soft"
-                          }`}
-                        >
-                          <input id={option.id} type="radio" name="delivery-option"
-                            checked={isSelected} onChange={() => onSelectDeliveryOption(option.id)}
-                            className="sr-only" />
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${isSelected ? "border-brand bg-brand" : "border-subtle bg-white"}`}>
-                                {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 text-base font-bold text-grey font-heading">
-                                  <span className="truncate">{option.service_name}</span>
-                                  {badgeText === "Best value" && <Pill tone="success">Budget</Pill>}
-                                  {badgeText === "Fastest" && <Pill tone="warning" icon={<Zap size={12} />}>Faster</Pill>}
-                                </div>
-                                <div className="mt-1 text-sm text-grey-medium">{formatDeliveryEtaText(option.expected_delivery_date)}</div>
-                              </div>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <div className="text-lg font-bold text-grey">
-                                {option.total_price === 0 ? "FREE" : formatCurrency(option.total_price)}
-                              </div>
-                            </div>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-                <button type="button" onClick={() => onEditDeliveryLocation?.()}
-                  className="text-sm font-semibold text-grey underline mt-1">Change address</button>
-              </div>
-            )}
           </div>
         )}
       </div>
+      {ratesDrawer}
     </div>
   );
 };

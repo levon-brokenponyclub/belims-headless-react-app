@@ -1847,6 +1847,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   fulfillmentType={fulfillmentType}
                   onSelectFulfillment={handleSelectFulfillment}
                   onSetDeliveryLocation={handleOpenDeliveryLocation}
+                  onAddDeliveryAddress={() => navigate("/delivery-details/add-address")}
                   hasDeliveryLocation={hasDeliveryLocation}
                   deliveryAddress={deliveryAddress}
                   pickupStore={selectedStore}
@@ -1869,8 +1870,114 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   focusDeliveryPanelSignal={focusDeliveryPanelSignal}
                 />
 
-                {/* Perfect Match With - Slider in Right Column */}
+                {/* Perfect Match With — bundle candidates grid */}
+                {product.bundleCandidates && product.bundleCandidates.length > 0 && (
+                  <section className="mt-8">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">
+                      Perfect Match With
+                    </h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      {product.bundleCandidates.slice(0, 3).map((item) => {
+                        const hasSale =
+                          typeof item.regular_price === "number" &&
+                          item.regular_price > item.price;
+                        const inStock =
+                          typeof item.stock !== "number" || item.stock > 0;
+                        return (
+                          <div key={item.id} className="flex flex-col">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(
+                                  buildProductUrl({
+                                    id: item.id,
+                                    name: item.name,
+                                  } as Product),
+                                )
+                              }
+                              className="aspect-square rounded-xl bg-gray-100 overflow-hidden mb-3 flex items-center justify-center hover:opacity-90 transition-opacity"
+                              aria-label={`View ${item.name}`}
+                            >
+                              {item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  loading="lazy"
+                                  className="w-full h-full object-contain mix-blend-multiply p-3"
+                                />
+                              ) : (
+                                <span className="text-xs text-gray-400">
+                                  No image
+                                </span>
+                              )}
+                            </button>
+                            <div className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2 min-h-[2.5rem]">
+                              {item.name}
+                            </div>
+                            <div className="mb-3 flex items-baseline gap-2">
+                              <span
+                                className={`text-sm font-bold ${
+                                  hasSale ? "text-red-600" : "text-gray-900"
+                                }`}
+                              >
+                                {formatCurrency(item.price)}
+                              </span>
+                              {hasSale && (
+                                <span className="text-xs text-gray-400 line-through">
+                                  {formatCurrency(item.regular_price as number)}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!inStock) {
+                                  navigate(
+                                    buildProductUrl({
+                                      id: item.id,
+                                      name: item.name,
+                                    } as Product),
+                                  );
+                                  return;
+                                }
+                                addToCart({
+                                  id: item.id,
+                                  name: item.name,
+                                  price: item.price,
+                                  regular_price: item.regular_price,
+                                  image: item.image,
+                                  category: item.category,
+                                  stock:
+                                    typeof item.stock === "number"
+                                      ? item.stock
+                                      : 99,
+                                  maxStock:
+                                    typeof item.stock === "number"
+                                      ? item.stock
+                                      : 99,
+                                  in_stock: inStock,
+                                  quantity: 1,
+                                } as unknown as Product);
+                              }}
+                              className="mt-auto w-full rounded-full bg-black py-2.5 text-sm font-bold text-white hover:bg-gray-800 transition-colors"
+                            >
+                              {inStock ? "Add" : "View"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+
+                {/* Recommended slider (fallback when no bundle candidates) */}
                 {(() => {
+                  // Hide when the bundle-candidates grid above has already rendered
+                  if (product.bundleCandidates && product.bundleCandidates.length > 0) {
+                    return null;
+                  }
                   const mainCategory =
                     product.breadcrumbs?.find((b) => b.label !== "Shop")
                       ?.label || product.category;
