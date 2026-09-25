@@ -275,6 +275,54 @@ export const mapShippingAddressToWoocommerce = (
 });
 
 /**
+ * Save a billing address to the current user's WordPress profile.
+ * Persists to WordPress user meta billing_* fields.
+ */
+export const saveBillingAddress = async (
+  address: ShippingAddress,
+): Promise<{ success: boolean; message: string }> => {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("No authentication token. Please log in.");
+  }
+
+  const apiBase = getApiBaseUrl();
+
+  const payload = {
+    billing_address_1: address.street || address.label || "",
+    billing_city: address.city || "",
+    billing_state: address.province || "",
+    billing_postcode: address.postalCode || "",
+    billing_country: address.country || "ZA",
+  };
+
+  try {
+    const response = await fetch(`${apiBase}/users/me`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to save billing address");
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      message: data.message || "Billing address saved successfully",
+    };
+  } catch (error) {
+    console.error("Save billing address error:", error);
+    throw error;
+  }
+};
+
+/**
  * Save a shipping address to the current user's WordPress profile.
  * Persists to WordPress user meta shipping_* fields.
  */

@@ -24,6 +24,7 @@ import { buildProductUrl } from "../utils/product";
 import {
   UserData,
   updateUserProfile,
+  saveBillingAddress,
   saveShippingAddress,
   clearBillingAddress,
   clearShippingAddress,
@@ -32,7 +33,7 @@ import { fetchCustomerOrders } from "../services/wooCommerceService";
 import { ShippingAddress, Order } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { formatNumberWithSeparators } from "../utils/price";
-import { readStoredAddress, saveStoredAddress } from "../services/shippingAddress";
+import { saveStoredAddress } from "../services/shippingAddress";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
 
 interface AccountPageProps {
@@ -61,12 +62,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
     type: "success" | "error";
     text: string;
   } | null>(null);
-  const [confirmRemove, setConfirmRemove] = useState<"billing" | "shipping" | "delivery" | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<"billing" | "shipping" | null>(null);
   const [removingAddress, setRemovingAddress] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [defaultAddressKey, setDefaultAddressKey] = useState<"billing" | "shipping" | "delivery">(
-    () => (localStorage.getItem("belims_default_address_key") as "billing" | "shipping" | "delivery") || "billing"
-  );
+  const [editingAddressType, setEditingAddressType] = useState<"billing" | "shipping" | null>(null);
+  const [defaultAddressKey, setDefaultAddressKey] = useState<"billing" | "shipping">(() => {
+    const stored = localStorage.getItem("belims_default_address_key");
+    return stored === "billing" || stored === "shipping" ? stored : "billing";
+  });
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(() => getWishlist());
 
   useEffect(() => {
@@ -148,11 +151,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
     }
   };
 
-  const handleSetDefault = (type: "billing" | "shipping" | "delivery") => {
+  const handleSetDefault = (type: "billing" | "shipping") => {
     if (!user) return;
     const billing = user.billing;
     const shipping = user.shipping;
-    const { address: deliveryAddress } = readStoredAddress();
 
     let address: ShippingAddress | null = null;
     if (type === "billing" && billing) {
@@ -173,8 +175,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
         country: "ZA",
         label: [shipping.address_1, shipping.city, shipping.state, shipping.postcode].filter(Boolean).join(", "),
       };
-    } else if (type === "delivery" && deliveryAddress) {
-      address = deliveryAddress;
     }
 
     if (!address) return;
@@ -188,7 +188,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
     setAddressSaveMessage({ type: "success", text: "Default delivery address updated." });
   };
 
-  const handleAddNewAddress = () => {
+  const handleAddNewAddress = (type: "billing" | "shipping") => {
+    setEditingAddressType(type);
     setAddressSaveMessage(null);
     setIsDeliveryModalOpen(true);
   };
@@ -196,12 +197,17 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
   const handleAddressSelect = async (address: ShippingAddress | null) => {
     if (!address) {
       setIsDeliveryModalOpen(false);
+      setEditingAddressType(null);
       return;
     }
 
     setAddressSaveMessage(null);
     try {
-      await saveShippingAddress(address);
+      if (editingAddressType === "billing") {
+        await saveBillingAddress(address);
+      } else {
+        await saveShippingAddress(address);
+      }
       setAddressSaveMessage({
         type: "success",
         text: "Address saved to your profile.",
@@ -214,23 +220,20 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
       });
     } finally {
       setIsDeliveryModalOpen(false);
+      setEditingAddressType(null);
     }
   };
 
-  const handleRemoveAddress = async (type: "billing" | "shipping" | "delivery") => {
+  const handleRemoveAddress = async (type: "billing" | "shipping") => {
     setRemovingAddress(true);
     setAddressSaveMessage(null);
     try {
-      if (type === "delivery") {
-        saveStoredAddress(null);
-        window.dispatchEvent(new Event("belims:delivery-address-updated"));
-      } else if (type === "billing") {
+      if (type === "billing") {
         await clearBillingAddress();
-        window.dispatchEvent(new Event("user-updated"));
       } else {
         await clearShippingAddress();
-        window.dispatchEvent(new Event("user-updated"));
       }
+      window.dispatchEvent(new Event("user-updated"));
       setAddressSaveMessage({ type: "success", text: "Address removed." });
     } catch (error: any) {
       setAddressSaveMessage({ type: "error", text: error.message || "Failed to remove address." });
@@ -701,29 +704,22 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
   const renderAddresses = () => {
     const billingAddress = user.billing;
     const shippingAddress = user.shipping;
-    const savedDeliveryAddress = readStoredAddress().address;
 
     const hasBilling =
       billingAddress?.address_1 ||
       billingAddress?.city ||
       billingAddress?.postcode;
 
-    // Only show shipping card when it differs from billing (avoids duplicate mirrored cards)
     const hasShipping =
-      (shippingAddress?.address_1 || shippingAddress?.city || shippingAddress?.postcode) &&
-      (shippingAddress?.address_1 !== billingAddress?.address_1 ||
-       shippingAddress?.city !== billingAddress?.city ||
-       shippingAddress?.postcode !== billingAddress?.postcode);
+      shippingAddress?.address_1 ||
+      shippingAddress?.city ||
+      shippingAddress?.postcode;
 
-    const savedAddressLines = savedDeliveryAddress
-      ? [
-          savedDeliveryAddress.street || savedDeliveryAddress.label,
-          savedDeliveryAddress.city,
-          savedDeliveryAddress.province,
-          savedDeliveryAddress.postalCode,
-          savedDeliveryAddress.country,
-        ].filter(Boolean)
-      : [];
+    const addNewType: "billing" | "shipping" | null = !hasBilling
+      ? "billing"
+      : !hasShipping
+      ? "shipping"
+      : null;
 
     return (
       <div className="space-y-6">
@@ -741,12 +737,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
 
         <div className="flex justify-between items-center sm:px-0 px-4">
           <h3 className="font-semibold text-gray-900 text-lg">My Addresses</h3>
-          <button
-            onClick={handleAddNewAddress}
-            className="bg-belims-blue text-white text-sm px-4 py-2 rounded font-bold hover:bg-belims-light transition-all flex items-center gap-2"
-          >
-            <PlusCircle size={18} /> Add New
-          </button>
+          {addNewType && (
+            <button
+              onClick={() => handleAddNewAddress(addNewType)}
+              className="bg-belims-blue text-white text-sm px-4 py-2 rounded font-bold hover:bg-belims-light transition-all flex items-center gap-2"
+            >
+              <PlusCircle size={18} /> Add New
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -797,7 +795,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
                 ) : (
                   <div className="flex items-center gap-4">
                     <button
-                      onClick={handleAddNewAddress}
+                      onClick={() => handleAddNewAddress("billing")}
                       className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
                     >
                       Edit
@@ -869,7 +867,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
                 ) : (
                   <div className="flex items-center gap-4">
                     <button
-                      onClick={handleAddNewAddress}
+                      onClick={() => handleAddNewAddress("shipping")}
                       className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
                     >
                       Edit
@@ -894,75 +892,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
             </div>
           )}
 
-          {savedDeliveryAddress && savedAddressLines.length > 0 && (
-            <div className={`bg-white p-6 rounded-lg shadow-sm relative overflow-hidden transition-colors ${
-              defaultAddressKey === "delivery" ? "border-2 border-belims-blue" : "border border-gray-200 hover:border-gray-300"
-            }`}>
-              {defaultAddressKey === "delivery" && (
-                <span className="bg-belims-blue text-white text-[10px] px-2 py-1 font-bold uppercase tracking-tighter absolute top-0 right-0 rounded-bl-lg">
-                  Default
-                </span>
-              )}
-              <div className="flex items-center gap-2 mb-4">
-                <MapPin size={20} className={defaultAddressKey === "delivery" ? "text-belims-blue" : "text-gray-400"} />
-                <h4 className="text-base font-bold text-gray-900">
-                  {savedDeliveryAddress.label && savedDeliveryAddress.label !== [savedDeliveryAddress.street, savedDeliveryAddress.city, savedDeliveryAddress.province].filter(Boolean).join(", ")
-                    ? savedDeliveryAddress.label
-                    : "Saved Delivery"}
-                </h4>
-              </div>
-              <div className="text-sm text-gray-600 space-y-1 mb-6">
-                {savedAddressLines.map((line, index) => (
-                  <p key={index}>{line}</p>
-                ))}
-              </div>
-              <div className="border-t border-gray-100 pt-4">
-                {confirmRemove === "delivery" ? (
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-600">Remove this address?</span>
-                    <button
-                      onClick={() => handleRemoveAddress("delivery")}
-                      disabled={removingAddress}
-                      className="text-xs font-bold text-red-600 hover:underline disabled:opacity-50"
-                    >
-                      {removingAddress ? "Removing..." : "Yes, remove"}
-                    </button>
-                    <button
-                      onClick={() => setConfirmRemove(null)}
-                      className="text-xs font-bold text-gray-500 hover:underline"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={handleAddNewAddress}
-                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setConfirmRemove("delivery")}
-                      className="text-red-500 text-xs font-bold hover:underline uppercase tracking-wide"
-                    >
-                      Remove
-                    </button>
-                    {defaultAddressKey !== "delivery" && (
-                      <button
-                        onClick={() => handleSetDefault("delivery")}
-                        className="text-gray-500 text-xs font-bold hover:text-belims-blue hover:underline uppercase tracking-wide ml-auto"
-                      >
-                        Set as Default
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {!hasBilling && !hasShipping && savedAddressLines.length === 0 && (
+          {!hasBilling && !hasShipping && (
             <div className="col-span-full py-12 text-center text-gray-500">
               <MapPin size={48} className="text-gray-300 mx-auto mb-4" />
               <p>No addresses saved yet. Click "Add New" to add one.</p>
@@ -1248,9 +1178,31 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
 
       <DeliveryLocationModal
         isOpen={isDeliveryModalOpen}
-        onClose={() => setIsDeliveryModalOpen(false)}
+        onClose={() => { setIsDeliveryModalOpen(false); setEditingAddressType(null); }}
         initialFulfillmentType="delivery"
         onAddressSelect={handleAddressSelect}
+        persistToDevice={false}
+        currentAddress={
+          editingAddressType === "billing" && user.billing
+            ? {
+                street: user.billing.address_1 || "",
+                city: user.billing.city || "",
+                province: user.billing.state || "",
+                postalCode: user.billing.postcode || "",
+                country: "ZA",
+                label: [user.billing.address_1, user.billing.city, user.billing.state, user.billing.postcode].filter(Boolean).join(", "),
+              }
+            : editingAddressType === "shipping" && user.shipping
+            ? {
+                street: user.shipping.address_1 || "",
+                city: user.shipping.city || "",
+                province: user.shipping.state || "",
+                postalCode: user.shipping.postcode || "",
+                country: "ZA",
+                label: [user.shipping.address_1, user.shipping.city, user.shipping.state, user.shipping.postcode].filter(Boolean).join(", "),
+              }
+            : undefined
+        }
       />
     </div>
   );

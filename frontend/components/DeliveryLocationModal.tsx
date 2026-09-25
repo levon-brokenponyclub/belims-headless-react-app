@@ -23,6 +23,7 @@ interface DeliveryLocationModalProps {
   currentStore?: Store | null;
   onStoreSelect?: (store: Store | null) => void;
   currentUser?: UserData;
+  persistToDevice?: boolean;
 }
 
 type StoreHours = {
@@ -376,6 +377,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   currentStore,
   onStoreSelect,
   currentUser,
+  persistToDevice = true,
 }) => {
   const emitDeliveryAddressUpdated = () => {
     if (typeof window === "undefined") return;
@@ -1460,9 +1462,11 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     setDetectedLocationAddress(null);
     setSavedDeliveryAddress(null);
     setIsEditingDeliveryAddress(true);
-    saveStoredAddress(null);
+    if (persistToDevice) {
+      saveStoredAddress(null);
+      emitDeliveryAddressUpdated();
+    }
     onAddressSelect(null);
-    emitDeliveryAddressUpdated();
   };
 
   const openPendingAddress = (address: ShippingAddress) => {
@@ -1479,14 +1483,16 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     console.log("[delivery-location-modal] full address save requested", {
       address,
     });
-    localStorage.setItem("fulfillmentType", "delivery");
-    saveStoredAddress(address);
+    if (persistToDevice) {
+      localStorage.setItem("fulfillmentType", "delivery");
+      saveStoredAddress(address);
+      emitDeliveryAddressUpdated();
+    }
     onAddressSelect(address);
     setSavedDeliveryAddress(address);
     setDetectedLocationAddress(null);
     setInput(address.label || buildAddressLabel(address));
     setIsEditingDeliveryAddress(false);
-    emitDeliveryAddressUpdated();
   };
 
   const handleSaveDetectedAddress = () => {
@@ -1782,7 +1788,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         input,
         reason: "Input is not a valid 4-digit postal code",
       });
-      emitDeliveryAddressUpdated();
+      if (persistToDevice) emitDeliveryAddressUpdated();
       return;
     }
 
@@ -1790,14 +1796,16 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       input,
       postalCodeAddress,
     });
-    localStorage.setItem("fulfillmentType", "delivery");
-    localStorage.setItem("belims_fulfillment_tab", "delivery");
-    saveStoredAddress(postalCodeAddress);
+    if (persistToDevice) {
+      localStorage.setItem("fulfillmentType", "delivery");
+      localStorage.setItem("belims_fulfillment_tab", "delivery");
+      saveStoredAddress(postalCodeAddress);
+      emitDeliveryAddressUpdated();
+    }
     onAddressSelect(postalCodeAddress);
     setSavedDeliveryAddress(postalCodeAddress);
     setLegacyLabel(postalCodeAddress.label || postalCodeAddress.postalCode);
     setIsEditingDeliveryAddress(false);
-    emitDeliveryAddressUpdated();
   };
 
   const handleClose = () => {
