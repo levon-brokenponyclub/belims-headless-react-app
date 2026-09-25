@@ -497,6 +497,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
 
                 <div>
                   <label className="text-sm font-semibold text-gray-700">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">
                     Password
                   </label>
                   <input
@@ -505,18 +517,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">
-                    Phone
-                  </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
                     className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
                   />
                 </div>

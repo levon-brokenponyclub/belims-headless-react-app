@@ -1,13 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, LocateFixed, MapPin, Search } from "lucide-react";
-import { ShippingAddress } from "../types";
+import {
+  ArrowLeft,
+  ChevronDown,
+  Loader2,
+  MapPin,
+  Search,
+  ShoppingBag,
+  Truck,
+  X,
+} from "lucide-react";
+import { ShippingAddress, Store } from "../types";
 import {
   buildAddressLabel,
   mapNominatimAddress,
   saveStoredAddress,
 } from "../services/shippingAddress";
-import { getCurrentUser } from "../services/authService";
+import { getCurrentUser, UserData } from "../services/authService";
+import { getApiBaseUrl } from "../services/wooCommerceService";
+
+type Step = "address" | "option";
+type Option = "delivery" | "collection";
 
 type NominatimSuggestion = {
   place_id: string;
@@ -15,11 +28,14 @@ type NominatimSuggestion = {
   lat: string;
   lon: string;
   address: any;
-  mainText?: string;
-  secondaryText?: string;
 };
 
-const ZA_DEFAULT_CENTER = { lat: -26.2041, lon: 28.0473 };
+type SavedAddress = {
+  id: string;
+  source: "Billing" | "Shipping";
+  address: ShippingAddress;
+  line: string;
+};
 
 const fetchNominatimSuggestions = async (
   query: string,
@@ -32,56 +48,50 @@ const fetchNominatimSuggestions = async (
   );
   if (!response.ok) return [];
   const data = await response.json();
-  if (!Array.isArray(data)) return [];
-  return data.map((item: any) => {
-    const parts = String(item.display_name || "").split(",");
-    return {
-      place_id: String(item.place_id ?? item.osm_id ?? item.display_name),
-      display_name: item.display_name,
-      lat: item.lat,
-      lon: item.lon,
-      address: item.address,
-      mainText: parts[0]?.trim(),
-      secondaryText: parts.slice(1).join(",").trim(),
-    };
-  });
+  return Array.isArray(data) ? (data as NominatimSuggestion[]) : [];
 };
 
-const reverseGeocode = async (lat: number, lon: number): Promise<any | null> => {
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
-    );
-    if (!response.ok) return null;
-    return await response.json();
-  } catch {
-    return null;
-  }
-};
-
-const buildMapEmbedUrl = (lat: number, lon: number): string => {
-  const delta = 0.005;
-  const bbox = `${lon - delta}%2C${lat - delta}%2C${lon + delta}%2C${lat + delta}`;
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lon}`;
+const toSavedAddress = (
+  source: "Billing" | "Shipping",
+  raw: UserData["billing"] | UserData["shipping"] | undefined,
+): SavedAddress | null => {
+  const line1 = raw?.address_1?.trim();
+  if (!line1) return null;
+  const city = raw?.city?.trim() || "";
+  const address: ShippingAddress = {
+    street: line1,
+    city,
+    province: raw?.state || "",
+    postalCode: raw?.postcode || "",
+    country: "ZA",
+    label: city ? `${line1}, ${city}` : line1,
+  };
+  return {
+    id: `${source.toLowerCase()}-${line1}-${city}`.toLowerCase(),
+    source,
+    address,
+    line: city ? `${line1}, ${city}` : line1,
+  };
 };
 
 export const DeliveryDetailsAddAddress: React.FC = () => {
   const navigate = useNavigate();
 
+  const [step, setStep] = useState<Step>("address");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [complexUnit, setComplexUnit] = useState("");
-  const [addressLabel, setAddressLabel] = useState("");
   const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(
     null,
   );
-  const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number }>(
-    ZA_DEFAULT_CENTER,
-  );
-  const [isLocating, setIsLocating] = useState(false);
+
+  const [option, setOption] = useState<Option>("delivery");
+  const [stores, setStores] = useState<Store[]>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>("");
+
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -93,7 +103,60 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
     let mounted = true;
     getCurrentUser()
       .then((user) => {
-        if (mounted) setIsLoggedIn(Boolean(user));
+        if (!mounted) return;
+        if (!user) return;
+        setIsLoggedIn(true);
+        const rows: SavedAddress[] = [];
+        const billing = toSavedAddress("Billing", user.billing);
+        const shipping = toSavedAddress("Shipping", user.shipping);
+        if (billing) rows.push(billing);
+        if (
+          shipping &&
+          (!billing || shipping.line.toLowerCase() !== billing.line.toLowerCase())
+        ) {
+          rows.push(shipping);
+        }
+        setSavedAddresses(rows);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch(`${getApiBaseUrl()}/ecommerce-policies`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!mounted || !data) return;
+        const rawStores = Array.isArray(data?.store_locations)
+          ? data.store_locations
+          : [];
+        const normalized: Store[] = rawStores
+          .map((store: any, index: number) => {
+            const name = String(store?.name || "").trim();
+            const address = String(store?.address || "")
+              .replace(/\s*\n\s*/g, ", ")
+              .trim();
+            if (!name && !address) return null;
+            return {
+              id: String(store?.id || name || index + 1),
+              name: name || `Store ${index + 1}`,
+              address,
+              phone: store?.phone ? String(store.phone) : undefined,
+            } as Store;
+          })
+          .filter(Boolean) as Store[];
+        setStores(normalized);
+        try {
+          const stored = localStorage.getItem("selectedPickupStore");
+          if (stored) {
+            const parsed = JSON.parse(stored) as Store;
+            const match = normalized.find((s) => s.id === parsed.id);
+            if (match) setSelectedStoreId(match.id);
+          }
+        } catch {}
       })
       .catch(() => {});
     return () => {
@@ -140,17 +203,18 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
+    setSelectedAddress(null);
     setShowSuggestions(true);
     setError(null);
     runSearch(value);
   };
 
-  const applyAddress = (address: ShippingAddress, lat: number, lon: number) => {
+  const applyAddress = (address: ShippingAddress) => {
     setSelectedAddress(address);
-    setMapCenter({ lat, lon });
     setQuery(address.label || buildAddressLabel(address));
     setShowSuggestions(false);
     setSuggestions([]);
+    setError(null);
   };
 
   const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
@@ -159,70 +223,72 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
       setError("Could not read that address. Try another.");
       return;
     }
-    applyAddress(mapped, Number(suggestion.lat), Number(suggestion.lon));
+    applyAddress(mapped);
   };
 
-  const handleUseCurrentLocation = async () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setError("Location services are unavailable in this browser.");
-      return;
-    }
-    setIsLocating(true);
-    setError(null);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        const data = await reverseGeocode(latitude, longitude);
-        if (data) {
-          const mapped = mapNominatimAddress(data);
-          if (mapped) {
-            applyAddress(mapped, latitude, longitude);
-            setIsLocating(false);
-            return;
-          }
-        }
-        setError("We couldn't detect an address at your location.");
-        setMapCenter({ lat: latitude, lon: longitude });
-        setIsLocating(false);
-      },
-      (err) => {
-        setError(
-          err.code === err.PERMISSION_DENIED
-            ? "Location permission was denied."
-            : "Could not fetch your location. Try again.",
-        );
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-    );
+  const handleSelectSaved = (id: string) => {
+    const found = savedAddresses.find((a) => a.id === id);
+    if (found) applyAddress(found.address);
   };
 
-  const canSave = useMemo(
-    () => Boolean(selectedAddress?.street && selectedAddress?.city),
-    [selectedAddress],
-  );
+  const handleClearAddress = () => {
+    setSelectedAddress(null);
+    setQuery("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
 
-  const handleSave = () => {
+  const handleConfirmAddress = () => {
     if (!selectedAddress) {
       setError("Please choose an address first.");
       return;
     }
+    setError(null);
+    setStep("option");
+  };
+
+  const handleBackToAddress = () => {
+    setStep("address");
+  };
+
+  const canSaveFinal = useMemo(() => {
+    if (!selectedAddress) return false;
+    if (option === "collection") return Boolean(selectedStoreId);
+    return true;
+  }, [selectedAddress, option, selectedStoreId]);
+
+  const handleFinalConfirm = () => {
+    if (!selectedAddress) return;
     setIsSaving(true);
-    const enriched: ShippingAddress = {
-      ...selectedAddress,
-      street: complexUnit
-        ? `${complexUnit}, ${selectedAddress.street}`
-        : selectedAddress.street,
-      label:
-        addressLabel.trim() ||
-        selectedAddress.label ||
-        buildAddressLabel(selectedAddress),
-    };
-    saveStoredAddress(enriched);
+
+    saveStoredAddress(selectedAddress);
     try {
       localStorage.setItem("belims_delivery_popover_dismissed", "1");
-      localStorage.setItem("fulfillmentType", "delivery");
     } catch {}
+
+    if (option === "collection") {
+      const picked = stores.find((s) => s.id === selectedStoreId);
+      if (!picked) {
+        setError("Please choose a store to collect from.");
+        setIsSaving(false);
+        return;
+      }
+      try {
+        localStorage.setItem("selectedPickupStore", JSON.stringify(picked));
+        localStorage.setItem("pickupStoreSelected", "true");
+        localStorage.setItem("fulfillmentType", "pickup");
+      } catch {}
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("belims:pickup-store-updated", { detail: picked }),
+        );
+      }
+    } else {
+      try {
+        localStorage.setItem("fulfillmentType", "delivery");
+      } catch {}
+    }
+
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("belims:delivery-address-updated"));
       window.dispatchEvent(new Event("belims:fulfillment-changed"));
@@ -230,207 +296,285 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
     navigate("/");
   };
 
-  const handleCancel = () => {
-    navigate(-1);
-  };
+  const handleClose = () => navigate(-1);
+
+  const streetOnly = selectedAddress?.street || query.split(",")[0];
 
   return (
-    <div className="min-h-screen bg-surface">
-      <div className="max-w-[1280px] mx-auto px-4 md:px-8 py-6 md:py-10">
-        <nav className="mb-6 text-sm">
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-3xl px-6 pt-6 pb-24 md:pt-10 md:pb-32">
+        {/* Header: back arrow (step 2), stepper dots, close */}
+        <div className="relative mb-6 flex items-center justify-center">
+          {step === "option" && (
+            <button
+              type="button"
+              onClick={handleBackToAddress}
+              aria-label="Back"
+              className="absolute left-0 text-text hover:opacity-70"
+            >
+              <ArrowLeft size={22} />
+            </button>
+          )}
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${step === "address" ? "bg-text" : "bg-gray-300"}`}
+              aria-hidden="true"
+            />
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${step === "option" ? "bg-text" : "bg-gray-300"}`}
+              aria-hidden="true"
+            />
+          </div>
           <button
             type="button"
-            onClick={handleCancel}
-            className="inline-flex items-center gap-1.5 text-text-secondary hover:text-text transition-colors"
+            onClick={handleClose}
+            aria-label="Close"
+            className="absolute right-0 text-text hover:opacity-70"
           >
-            <ArrowLeft size={16} /> Back
+            <X size={22} />
           </button>
-        </nav>
-
-        <div className="mb-8">
-          <h1 className="text-h3 font-bold text-text">Delivery Details</h1>
-          <p className="mt-1 text-base text-text-secondary">
-            Where do you want your order delivered?
-          </p>
-          {!isLoggedIn && (
-            <p className="mt-3 text-sm text-text-secondary">
-              <Link
-                to="/login"
-                className="font-bold text-primary underline underline-offset-4"
-              >
-                Sign in
-              </Link>{" "}
-              to see your saved addresses
-            </p>
-          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-6 lg:gap-10">
-          {/* Left: form */}
-          <div className="space-y-6">
-            <div>
-              <label
-                htmlFor="street-search"
-                className="block text-sm font-bold text-text mb-2"
-              >
-                Street address
-              </label>
-              <div className="relative" ref={suggestionsBoxRef}>
-                <div className="relative">
+        {step === "address" ? (
+          <>
+            <h1 className="text-h4 md:text-h3 font-bold text-text text-center">
+              Confirm your address
+            </h1>
+            <p className="mt-3 text-center text-base text-text-secondary max-w-lg mx-auto">
+              Enter your address or select one below to customize your shopping
+              experience. This way, you'll only see what's available in your area.
+            </p>
+
+            <div className="mt-8" ref={suggestionsBoxRef}>
+              <div className="relative">
+                <input
+                  id="street-search"
+                  type="text"
+                  value={query}
+                  onChange={handleQueryChange}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder="Enter your street address eg. 12 Main Road, Suburb"
+                  className="w-full h-14 pl-5 pr-14 rounded-lg border border-border bg-white text-base text-text placeholder:text-text-tertiary focus:outline-none focus:border-text"
+                />
+                {selectedAddress ? (
+                  <button
+                    type="button"
+                    onClick={handleClearAddress}
+                    aria-label="Clear address"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full border border-text text-text hover:bg-surface-muted"
+                  >
+                    <X size={14} />
+                  </button>
+                ) : isSearching ? (
+                  <Loader2
+                    size={20}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-text-tertiary"
+                  />
+                ) : (
                   <Search
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary"
+                    size={20}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-text"
                   />
-                  <input
-                    id="street-search"
-                    type="text"
-                    value={query}
-                    onChange={handleQueryChange}
-                    onFocus={() => setShowSuggestions(true)}
-                    placeholder="Search for your address and select from the dropdown"
-                    className="w-full h-12 pl-11 pr-11 rounded-xl border border-border bg-white text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
-                  />
-                  {isSearching && (
-                    <Loader2
-                      size={16}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-text-tertiary"
-                    />
-                  )}
-                </div>
-                {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute z-10 mt-1 w-full max-h-72 overflow-y-auto rounded-xl border border-border bg-white shadow-lg">
-                    {suggestions.map((s) => (
-                      <li key={s.place_id}>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectSuggestion(s)}
-                          className="w-full text-left px-4 py-3 hover:bg-surface-muted flex items-start gap-3"
-                        >
-                          <MapPin
-                            size={16}
-                            className="mt-0.5 flex-shrink-0 text-primary"
-                          />
-                          <span className="flex flex-col leading-tight">
-                            <span className="text-sm text-text font-medium">
-                              {s.mainText || s.display_name}
-                            </span>
-                            {s.secondaryText && (
-                              <span className="text-xs text-text-secondary">
-                                {s.secondaryText}
-                              </span>
-                            )}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
                 )}
               </div>
-
-              <button
-                type="button"
-                onClick={handleUseCurrentLocation}
-                disabled={isLocating}
-                className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary/80 disabled:opacity-60"
-              >
-                {isLocating ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <LocateFixed size={16} />
-                )}
-                {isLocating ? "Locating..." : "Use my current location"}
-              </button>
-
-              <p className="mt-2 text-xs text-text-tertiary">
-                Or drag the map for accurate address delivery
-              </p>
+              {showSuggestions && suggestions.length > 0 && !selectedAddress && (
+                <ul className="mt-1 max-h-72 overflow-y-auto rounded-lg border border-border bg-white shadow-sm">
+                  {suggestions.map((s) => (
+                    <li key={s.place_id}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectSuggestion(s)}
+                        className="w-full text-left px-4 py-3 hover:bg-belims-blue/[0.06] text-sm text-text"
+                      >
+                        {s.display_name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {error && (
-              <div className="rounded-lg bg-danger-50 border border-danger-700/30 px-4 py-3 text-sm text-danger-700">
+              <div className="mt-4 rounded-lg bg-danger-50 border border-danger-700/30 px-4 py-3 text-sm text-danger-700">
                 {error}
               </div>
             )}
 
-            {selectedAddress && (
-              <div className="rounded-xl border border-border bg-white p-4 text-sm">
-                <div className="font-bold text-text mb-1">Selected address</div>
-                <div className="text-text-secondary">
-                  {buildAddressLabel(selectedAddress) || "—"}
-                  {selectedAddress.postalCode && (
-                    <>, {selectedAddress.postalCode}</>
-                  )}
+            {isLoggedIn && savedAddresses.length > 0 && (
+              <div className="mt-6">
+                <div className="text-sm font-bold text-text mb-2">
+                  Your saved addresses
                 </div>
+                <ul className="space-y-2">
+                  {savedAddresses.map((addr) => (
+                    <li key={addr.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectSaved(addr.id)}
+                        className="w-full text-left rounded-lg border border-border bg-white px-4 py-3 hover:border-text transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <MapPin
+                            size={16}
+                            className="mt-0.5 flex-shrink-0 text-primary"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="mb-0.5">
+                              <span className="inline-flex items-center rounded-pill bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                                {addr.source}
+                              </span>
+                            </div>
+                            <div className="text-sm font-medium text-text truncate">
+                              {addr.line}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
-            <div>
-              <label
-                htmlFor="complex-unit"
-                className="block text-sm font-bold text-text mb-2"
-              >
-                Complex/Building
-              </label>
-              <input
-                id="complex-unit"
-                type="text"
-                value={complexUnit}
-                onChange={(e) => setComplexUnit(e.target.value)}
-                placeholder="Complex or Building name, unit number or floor"
-                className="w-full h-12 px-4 rounded-xl border border-border bg-white text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
-              />
-            </div>
+            {!isLoggedIn && (
+              <p className="mt-8 text-center text-sm text-text">
+                To see your saved addresses{" "}
+                <Link
+                  to="/login"
+                  className="font-bold underline underline-offset-4"
+                >
+                  Sign In
+                </Link>
+              </p>
+            )}
 
-            <div>
-              <label
-                htmlFor="address-label"
-                className="block text-sm font-bold text-text mb-2"
-              >
-                Address name{" "}
-                <span className="font-normal text-text-tertiary">
-                  (optional)
-                </span>
-              </label>
-              <input
-                id="address-label"
-                type="text"
-                value={addressLabel}
-                onChange={(e) => setAddressLabel(e.target.value)}
-                placeholder="e.g. Home, Office, Site"
-                className="w-full h-12 px-4 rounded-xl border border-border bg-white text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
-              />
-            </div>
-
-            <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+            <div className="mt-12 flex justify-end">
               <button
                 type="button"
-                onClick={handleCancel}
-                className="flex-1 h-12 rounded-pill border border-border bg-white text-sm font-bold text-text-secondary hover:bg-surface-muted transition-colors"
+                onClick={handleConfirmAddress}
+                disabled={!selectedAddress}
+                className="px-8 h-12 rounded-none bg-text text-white text-sm font-bold uppercase tracking-wide hover:bg-text/90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!canSave || isSaving}
-                className="flex-1 h-12 rounded-pill bg-belims-blue text-sm font-bold text-white hover:bg-belims-blue/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isSaving ? "Saving..." : "Save address"}
+                Confirm address
               </button>
             </div>
-          </div>
+          </>
+        ) : (
+          <>
+            <h1 className="text-h4 md:text-h3 font-bold text-text text-center">
+              Confirm Your Option
+            </h1>
+            <p className="mt-3 text-center text-base">
+              <span className="font-bold text-text">{streetOnly}</span>{" "}
+              <button
+                type="button"
+                onClick={handleBackToAddress}
+                className="ml-2 text-text-secondary underline underline-offset-4 hover:text-text"
+              >
+                Edit
+              </button>
+            </p>
 
-          {/* Right: map */}
-          <div className="relative w-full min-h-[320px] lg:min-h-[520px] rounded-xl overflow-hidden border border-border bg-white">
-            <iframe
-              title="Delivery location map"
-              src={buildMapEmbedUrl(mapCenter.lat, mapCenter.lon)}
-              className="w-full h-full min-h-[320px] lg:min-h-[520px] border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          </div>
-        </div>
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setOption("delivery")}
+                className={`text-left rounded-lg border p-6 min-h-[220px] transition-colors ${
+                  option === "delivery"
+                    ? "border-primary bg-primary/[0.04] ring-1 ring-primary"
+                    : "border-border bg-white hover:border-text"
+                }`}
+                aria-pressed={option === "delivery"}
+              >
+                <div className="flex flex-col items-center text-center h-full">
+                  <Truck size={40} strokeWidth={1.75} className="text-text" />
+                  <div className="mt-4 text-lg font-bold uppercase tracking-wide text-text">
+                    Delivery
+                  </div>
+                  <p className="mt-4 text-sm text-text-secondary">
+                    Delivered to your door
+                  </p>
+                </div>
+              </button>
+
+              <div
+                className={`rounded-lg border overflow-hidden transition-colors ${
+                  option === "collection"
+                    ? "border-primary ring-1 ring-primary"
+                    : "border-border"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setOption("collection")}
+                  aria-pressed={option === "collection"}
+                  className={`w-full text-left p-6 min-h-[220px] ${
+                    option === "collection"
+                      ? "bg-primary/[0.04]"
+                      : "bg-white hover:bg-surface-muted"
+                  }`}
+                >
+                  <div className="flex flex-col items-center text-center h-full">
+                    <ShoppingBag
+                      size={40}
+                      strokeWidth={1.75}
+                      className="text-text"
+                    />
+                    <div className="mt-4 text-lg font-bold uppercase tracking-wide text-text">
+                      Click &amp; Collect
+                    </div>
+                    <p className="mt-4 text-sm text-text-secondary">
+                      Collect from a nearby store
+                    </p>
+                  </div>
+                </button>
+                {option === "collection" && (
+                  <div className="border-t border-border">
+                    <div className="relative">
+                      <select
+                        value={selectedStoreId}
+                        onChange={(e) => setSelectedStoreId(e.target.value)}
+                        className="w-full h-14 pl-5 pr-10 bg-white text-sm text-text appearance-none focus:outline-none"
+                      >
+                        <option value="">Choose a store</option>
+                        {stores.map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        size={18}
+                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {error && (
+              <div className="mt-4 rounded-lg bg-danger-50 border border-danger-700/30 px-4 py-3 text-sm text-danger-700">
+                {error}
+              </div>
+            )}
+
+            <div className="mt-12 flex justify-end">
+              <button
+                type="button"
+                onClick={handleFinalConfirm}
+                disabled={!canSaveFinal || isSaving}
+                className="px-8 h-12 rounded-none bg-text text-white text-sm font-bold uppercase tracking-wide hover:bg-text/90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {isSaving
+                  ? "Saving..."
+                  : option === "collection"
+                    ? "Confirm collection"
+                    : "Confirm delivery"}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
