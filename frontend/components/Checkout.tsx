@@ -13,7 +13,7 @@ import {
   initializePayment,
   verifyPayment,
 } from "../services/paymentService";
-import { registerUser, getCurrentUser, loginUser, UserData } from "../services/authService";
+import { registerUser, getCurrentUser, loginUser, UserData, getAuthToken } from "../services/authService";
 import { getApiBaseUrl, validateCoupon } from "../services/wooCommerceService";
 import {
   ChevronDown,
@@ -337,6 +337,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
   // Checkout login state
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [isInitializingCheckout, setIsInitializingCheckout] = useState(
+    () => (typeof window !== "undefined" ? getAuthToken() !== null : false),
+  );
   const [loginPanelOpen, setLoginPanelOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -537,7 +540,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
       }
     };
 
-    initializeFromSavedLocation();
+    initializeFromSavedLocation().finally(() =>
+      setIsInitializingCheckout(false),
+    );
   }, []);
 
   useEffect(() => {
@@ -1589,6 +1594,30 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       <h2 className="text-xl font-semibold text-neutral-950">
                         Personal Details
                       </h2>
+                      {isInitializingCheckout ? (
+                        <div className="space-y-4" aria-busy="true" aria-live="polite">
+                          <div className="space-y-1.5">
+                            <div className="h-4 w-24 rounded bg-neutral-200 animate-pulse" />
+                            <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                          </div>
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                              <div className="h-4 w-20 rounded bg-neutral-200 animate-pulse" />
+                              <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <div className="h-4 w-20 rounded bg-neutral-200 animate-pulse" />
+                              <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="h-4 w-24 rounded bg-neutral-200 animate-pulse" />
+                            <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                          </div>
+                          <span className="sr-only">Loading your saved details…</span>
+                        </div>
+                      ) : (
+                      <>
                       <div className="space-y-1.5">
                         <label className={labelClass} htmlFor="email">
                           Email address
@@ -1680,8 +1709,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           />
                         </div>
                       </div>
+                      </>
+                      )}
 
-                      {!isUserLoggedIn && (
+                      {!isInitializingCheckout && !isUserLoggedIn && (
                         <div className="flex items-center gap-3">
                           <input
                             id="createAccount"
@@ -1699,7 +1730,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                         </div>
                       )}
 
-                      {!isUserLoggedIn && createAccount ? (
+                      {!isInitializingCheckout && !isUserLoggedIn && createAccount ? (
                         <div className="grid grid-cols-1 gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 sm:grid-cols-2">
                           <div className="space-y-1.5">
                             <label
