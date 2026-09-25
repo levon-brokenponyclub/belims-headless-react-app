@@ -1,25 +1,38 @@
 import React, { useEffect, useRef } from "react";
-import { X } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 
 type Variant = "popover" | "sheet";
+
+export interface SavedAddressOption {
+  id: string;
+  source: "Billing" | "Shipping";
+  line: string;
+}
 
 interface DeliveryDetailsPopoverProps {
   open: boolean;
   variant?: Variant;
+  isLoggedIn?: boolean;
+  savedAddresses?: SavedAddressOption[];
   onClose: () => void;
   onDismiss: () => void;
   onAddDetails: () => void;
   onLogin: () => void;
+  onSelectSavedAddress?: (id: string) => void;
 }
 
 export const DeliveryDetailsPopover: React.FC<DeliveryDetailsPopoverProps> = ({
   open,
   variant = "popover",
+  isLoggedIn = false,
+  savedAddresses = [],
   onClose,
   onDismiss,
   onAddDetails,
   onLogin,
+  onSelectSavedAddress,
 }) => {
+  const hasSavedAddresses = isLoggedIn && savedAddresses.length > 0;
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -42,12 +55,47 @@ export const DeliveryDetailsPopover: React.FC<DeliveryDetailsPopoverProps> = ({
 
   if (!open) return null;
 
-  const bodyCopy = (
+  const bodyCopy = hasSavedAddresses ? (
+    <p className="text-sm leading-relaxed text-text">
+      Choose one of your saved addresses, or add a new delivery address.
+    </p>
+  ) : (
     <p className="text-sm leading-relaxed text-text">
       To view <strong className="font-bold">product availability</strong> and{" "}
       <strong className="font-bold">local pricing</strong> for your area, please
       add your delivery details before you start shopping.
     </p>
+  );
+
+  const savedList = hasSavedAddresses && (
+    <ul className="space-y-2">
+      {savedAddresses.map((addr) => (
+        <li key={addr.id}>
+          <button
+            type="button"
+            onClick={() => onSelectSavedAddress?.(addr.id)}
+            className="w-full text-left rounded-xl border border-border bg-white px-3 py-2.5 hover:border-primary hover:bg-primary/[0.03] transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <div className="flex items-start gap-2.5">
+              <MapPin
+                size={16}
+                className="mt-0.5 flex-shrink-0 text-primary"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="inline-flex items-center rounded-pill bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                    {addr.source}
+                  </span>
+                </div>
+                <div className="text-sm font-medium text-text truncate">
+                  {addr.line}
+                </div>
+              </div>
+            </div>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 
   const actions = (
@@ -65,16 +113,18 @@ export const DeliveryDetailsPopover: React.FC<DeliveryDetailsPopoverProps> = ({
           onClick={onAddDetails}
           className="flex-1 min-w-[180px] rounded-pill bg-belims-blue px-5 py-3 text-sm font-bold text-white underline underline-offset-4 hover:bg-belims-blue/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60"
         >
-          Add delivery details
+          {hasSavedAddresses ? "Add new address" : "Add delivery details"}
         </button>
       </div>
-      <button
-        type="button"
-        onClick={onLogin}
-        className="text-sm font-medium text-primary underline underline-offset-4 hover:text-primary/80 self-start"
-      >
-        Log in to see your saved addresses
-      </button>
+      {!isLoggedIn && (
+        <button
+          type="button"
+          onClick={onLogin}
+          className="text-sm font-medium text-primary underline underline-offset-4 hover:text-primary/80 self-start"
+        >
+          Log in to see your saved addresses
+        </button>
+      )}
     </div>
   );
 
@@ -104,6 +154,7 @@ export const DeliveryDetailsPopover: React.FC<DeliveryDetailsPopoverProps> = ({
           </button>
           <div className="space-y-5">
             {bodyCopy}
+            {savedList}
             {actions}
           </div>
         </div>
@@ -125,6 +176,7 @@ export const DeliveryDetailsPopover: React.FC<DeliveryDetailsPopoverProps> = ({
       />
       <div className="relative space-y-4">
         {bodyCopy}
+        {savedList}
         {actions}
       </div>
     </div>

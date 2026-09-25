@@ -33,7 +33,7 @@ import { buildProductUrl } from "../utils/product";
 import { initializeCategoryTree } from "../categoryTree";
 import { logoutUser, UserData } from "../services/authService";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
-import { DeliveryDetailsPopover } from "./DeliveryDetailsPopover";
+import { DeliveryDetailsPopover, SavedAddressOption } from "./DeliveryDetailsPopover";
 
 const DELIVERY_POPOVER_DISMISSED_KEY = "belims_delivery_popover_dismissed";
 import { MegaMenu } from "./MegaMenu";
@@ -400,6 +400,73 @@ export const Header: React.FC<HeaderProps> = ({
   const hasDeliveryAddress = Boolean(
     deliveryAddress || legacyDeliveryLabel || userProfileLabel,
   );
+
+  const savedAddressOptions = useMemo<SavedAddressOption[]>(() => {
+    if (!currentUser) return [];
+    const rows: Array<{
+      source: "Billing" | "Shipping";
+      raw: {
+        address_1?: string;
+        city?: string;
+        state?: string;
+        postcode?: string;
+        country?: string;
+      } | null | undefined;
+    }> = [
+      { source: "Billing", raw: currentUser.billing },
+      { source: "Shipping", raw: currentUser.shipping },
+    ];
+    const out: SavedAddressOption[] = [];
+    const seen = new Set<string>();
+    for (const { source, raw } of rows) {
+      const line1 = raw?.address_1?.trim() || "";
+      if (!line1) continue;
+      const city = raw?.city?.trim() || "";
+      const dedupeKey = `${line1.toLowerCase()}|${city.toLowerCase()}|${(raw?.postcode || "").trim().toLowerCase()}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      const line = city ? `${line1}, ${city}` : line1;
+      out.push({
+        id: `${source.toLowerCase()}-${dedupeKey}`,
+        source,
+        line,
+      });
+    }
+    return out;
+  }, [currentUser]);
+
+  const handleSelectSavedAddress = (id: string) => {
+    const picked = savedAddressOptions.find((a) => a.id === id);
+    if (!picked) return;
+    const raw =
+      picked.source === "Billing"
+        ? currentUser?.billing
+        : currentUser?.shipping;
+    if (!raw?.address_1) return;
+    const address: ShippingAddress = {
+      street: raw.address_1,
+      city: raw.city || "",
+      province: raw.state || "",
+      postalCode: raw.postcode || "",
+      country: "ZA",
+      label: raw.city ? `${raw.address_1}, ${raw.city}` : raw.address_1,
+    };
+    handleAddressSelect(address);
+    closeDeliveryPopover();
+  };
+
+  const pillAddressLine = useMemo(() => {
+    if (deliveryAddress) {
+      const parts = [deliveryAddress.street, deliveryAddress.city].filter(
+        Boolean,
+      );
+      if (parts.length) return parts.join(", ");
+      return deliveryAddress.label || deliveryAddress.postalCode || "";
+    }
+    if (userProfileLabel) return userProfileLabel;
+    if (legacyDeliveryLabel) return legacyDeliveryLabel;
+    return "";
+  }, [deliveryAddress, userProfileLabel, legacyDeliveryLabel]);
   const cartSubtotal = cartItems.reduce(
     (sum, item) => sum + (Number(item.price) || 0) * item.quantity,
     0,
@@ -638,7 +705,9 @@ export const Header: React.FC<HeaderProps> = ({
                  <span className="topbar__delivery-text">
                    <span>Deliver to:</span>
                    <span className="truncate">
-                     {hasDeliveryAddress ? deliveryPostalCode : "Enter your address"}
+                     {hasDeliveryAddress
+                       ? pillAddressLine || deliveryPostalCode
+                       : "Enter your address"}
                    </span>
                  </span>
                  <ChevronRight size={14} className="flex-shrink-0" />
@@ -682,7 +751,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                   <span className="text-sm font-bold text-white truncate">
                     {hasDeliveryAddress
-                      ? deliveryPostalCode || "Enter your address"
+                      ? pillAddressLine || deliveryPostalCode || "Enter your address"
                       : "Enter your address"}
                   </span>
                 </span>
@@ -690,10 +759,13 @@ export const Header: React.FC<HeaderProps> = ({
               <DeliveryDetailsPopover
                 open={isDeliveryPopoverOpen}
                 variant="popover"
+                isLoggedIn={!!currentUser}
+                savedAddresses={savedAddressOptions}
                 onClose={closeDeliveryPopover}
                 onDismiss={dismissDeliveryPopover}
                 onAddDetails={handleAddDeliveryDetails}
                 onLogin={handleDeliveryPopoverLogin}
+                onSelectSavedAddress={handleSelectSavedAddress}
               />
             </div>
 
@@ -998,7 +1070,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
                 <div className="flex items-center gap-2 text-sm text-white/90">
                   <span className="truncate max-w-[200px] font-medium">
-                    {deliveryPostalCode || deliveryLabelText}
+                    {pillAddressLine || deliveryPostalCode || deliveryLabelText}
                   </span>
                   <ChevronDown size={14} />
                 </div>
@@ -1008,10 +1080,13 @@ export const Header: React.FC<HeaderProps> = ({
           <DeliveryDetailsPopover
             open={isDeliverySheetOpen}
             variant="sheet"
+            isLoggedIn={!!currentUser}
+            savedAddresses={savedAddressOptions}
             onClose={closeDeliveryPopover}
             onDismiss={dismissDeliveryPopover}
             onAddDetails={handleAddDeliveryDetails}
             onLogin={handleDeliveryPopoverLogin}
+            onSelectSavedAddress={handleSelectSavedAddress}
           />
 
           {/* ─── Coral alert banner ── conditional: no delivery address set ─── */}
