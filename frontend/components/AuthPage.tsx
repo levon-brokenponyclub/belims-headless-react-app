@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { ConfirmationResult } from "firebase/auth";
 import { loginUser, registerUser, loginWithFirebasePhone, UserData } from "../services/authService";
 import { sendPhoneOTP, getFirebaseIdToken, clearRecaptcha, isFirebaseConfigured } from "../services/firebaseService";
@@ -10,36 +10,51 @@ interface AuthPageProps {
   showToast: (message: string, type: "success" | "error") => void;
 }
 
-export const AuthPage: React.FC<AuthPageProps> = ({
-  mode,
-  onSuccess,
-  showToast,
-}) => {
+const DIAL_CODES = [
+  { code: "+27", flag: "🇿🇦" },
+  { code: "+263", flag: "🇿🇼" },
+  { code: "+267", flag: "🇧🇼" },
+  { code: "+260", flag: "🇿🇲" },
+  { code: "+254", flag: "🇰🇪" },
+  { code: "+234", flag: "🇳🇬" },
+  { code: "+44", flag: "🇬🇧" },
+  { code: "+1", flag: "🇺🇸" },
+];
+
+function parsePhoneIdentifier(val: string): { dialCode: string; local: string } {
+  const raw = val.trim().replace(/[\s()-]/g, "");
+  for (const { code } of DIAL_CODES) {
+    if (raw.startsWith(code)) {
+      const local = raw.slice(code.length);
+      return { dialCode: code, local: local.startsWith("0") ? local.slice(1) : local };
+    }
+  }
+  const digits = raw.replace(/^\+?/, "");
+  return { dialCode: "+27", local: digits.startsWith("0") ? digits.slice(1) : digits };
+}
+
+export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const isRegisterMode = mode === "register";
 
-  const defaultRole = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    const type = params.get("type");
-    return type === "trade" ? "contractor" : "customer";
-  }, [location.search]);
-
-  const [role, setRole] = useState<"customer" | "contractor">(defaultRole);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  // Shared fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Login: unified identifier step flow
+  const [loginStep, setLoginStep] = useState<"identifier" | "password" | "phone-otp">("identifier");
+  const [loginIdentifier, setLoginIdentifier] = useState("");
+
   // Phone OTP state
-  const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [dialCode, setDialCode] = useState("+27");
   const [localPhone, setLocalPhone] = useState("");
+  const [confirmedPhone, setConfirmedPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [phoneStep, setPhoneStep] = useState<"number" | "otp">("number");
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -48,14 +63,30 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const recaptchaContainerId = "firebase-recaptcha";
 
   useEffect(() => {
-    setRole(defaultRole);
-  }, [defaultRole]);
-
-  // Clean up reCAPTCHA widget when component unmounts or auth method changes.
-  useEffect(() => {
     return () => { clearRecaptcha(recaptchaContainerId); };
   }, []);
 
+  // --- Login: identifier step ---
+  const handleIdentifierContinue = (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = loginIdentifier.trim();
+    if (!val) return;
+
+    if (!val.includes("@") && isFirebaseConfigured()) {
+      // Phone number: parse and go to phone OTP flow
+      const parsed = parsePhoneIdentifier(val);
+      setDialCode(parsed.dialCode);
+      setLocalPhone(parsed.local);
+      setLoginStep("phone-otp");
+      setPhoneStep("number");
+    } else {
+      // Email: set email state and go to password step
+      setEmail(val);
+      setLoginStep("password");
+    }
+  };
+
+  // --- Email/password login submit ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -70,7 +101,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           first_name: firstName || undefined,
           last_name: lastName || undefined,
           phone: phone || undefined,
-          role,
+          role: "customer",
         });
         onSuccess(result.user);
         showToast(result.message || "Account created successfully!", "success");
@@ -82,8 +113,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         setTimeout(() => navigate("/"), 1000);
       }
     } catch (err: any) {
-      const errorMsg =
-        err?.message || "Something went wrong. Please try again.";
+      const errorMsg = err?.message || "Something went wrong. Please try again.";
       setError(errorMsg);
       showToast(errorMsg, "error");
     } finally {
@@ -102,7 +132,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setPhoneError(null);
     setPhoneSubmitting(true);
     const e164 = buildE164();
-    setPhoneNumber(e164);
+    setConfirmedPhone(e164);
     try {
       const result = await sendPhoneOTP(e164, recaptchaContainerId);
       setConfirmationResult(result);
@@ -132,7 +162,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       await confirmationResult.confirm(otp.trim());
       const idToken = await getFirebaseIdToken();
       if (!idToken) throw new Error("Could not retrieve authentication token.");
-      const result = await loginWithFirebasePhone(idToken, phoneNumber.trim());
+      const result = await loginWithFirebasePhone(idToken, confirmedPhone.trim());
       onSuccess(result.user);
       showToast(result.message || "Welcome!", "success");
       setTimeout(() => navigate("/"), 1000);
@@ -156,11 +186,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 Placeholder text for a compelling marketing message.
               </p>
             </div>
-
             <p className="mt-12 text-sm text-gray-300">
               You can also contact us via{" "}
               <a
-                href="mailto:support@tailgrids.com"
+                href="mailto:info@belims.co.za"
                 className="font-semibold text-white underline underline-offset-2"
               >
                 info@belims.co.za
@@ -178,21 +207,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <>
                     Create an account and verify your details to start using.
                     Already have an account?{" "}
-                    <Link
-                      to="/login"
-                      className="font-semibold text-belims-blue"
-                    >
+                    <Link to="/login" className="font-semibold text-belims-blue">
                       Log in here
                     </Link>
                     .
                   </>
                 ) : (
                   <>
-                    Welcome back. Don’t have an account?{" "}
-                    <Link
-                      to="/register"
-                      className="font-semibold text-belims-blue"
-                    >
+                    Welcome back. Don't have an account?{" "}
+                    <Link to="/register" className="font-semibold text-belims-blue">
                       Create one
                     </Link>
                     .
@@ -204,167 +227,192 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             {/* invisible reCAPTCHA container required by Firebase */}
             <div id={recaptchaContainerId} />
 
-            {/* Email / Phone toggle */}
-            {isFirebaseConfigured() && (
-              <div className="mb-5 flex rounded-lg border border-gray-200 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => { setAuthMethod("email"); setPhoneError(null); clearRecaptcha(recaptchaContainerId); }}
-                  className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-                    authMethod === "email"
-                      ? "bg-belims-blue text-white"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  Email
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setAuthMethod("phone"); setError(null); setPhoneStep("number"); }}
-                  className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-                    authMethod === "phone"
-                      ? "bg-belims-blue text-white"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  Phone
-                </button>
-              </div>
-            )}
-
-            {/* Phone OTP flow */}
-            {authMethod === "phone" && (
+            {/* ── LOGIN FLOW ── */}
+            {!isRegisterMode && (
               <div className="space-y-4">
-                {phoneStep === "number" ? (
-                  <form onSubmit={handleSendOTP} className="space-y-4">
+                {/* Step 1: identifier */}
+                {loginStep === "identifier" && (
+                  <form onSubmit={handleIdentifierContinue} className="space-y-4">
                     <div>
                       <label className="text-sm font-semibold text-gray-700">
-                        Mobile number
-                      </label>
-                      <div className="mt-1 flex overflow-hidden rounded border border-gray-200 focus-within:border-belims-blue focus-within:ring-1 focus-within:ring-belims-blue">
-                        <select
-                          value={dialCode}
-                          onChange={(e) => setDialCode(e.target.value)}
-                          className="shrink-0 border-r border-gray-200 bg-gray-50 px-2 py-2 text-sm focus:outline-none"
-                          aria-label="Country code"
-                        >
-                          <option value="+27">🇿🇦 +27</option>
-                          <option value="+263">🇿🇼 +263</option>
-                          <option value="+267">🇧🇼 +267</option>
-                          <option value="+260">🇿🇲 +260</option>
-                          <option value="+254">🇰🇪 +254</option>
-                          <option value="+234">🇳🇬 +234</option>
-                          <option value="+44">🇬🇧 +44</option>
-                          <option value="+1">🇺🇸 +1</option>
-                        </select>
-                        <input
-                          type="tel"
-                          required
-                          placeholder="82 123 4567"
-                          value={localPhone}
-                          onChange={(e) => setLocalPhone(e.target.value.replace(/[^\d\s]/g, ""))}
-                          className="min-w-0 flex-1 px-3 py-2 text-sm focus:outline-none"
-                          inputMode="numeric"
-                        />
-                      </div>
-                      <p className="mt-1 text-xs text-gray-400">
-                        Select your country code, then enter your number without the leading zero.
-                      </p>
-                    </div>
-                    {phoneError && (
-                      <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-                        {phoneError}
-                      </div>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={phoneSubmitting}
-                      className="w-full rounded bg-belims-blue px-4 py-2 text-sm font-semibold text-white hover:bg-belims-accent disabled:opacity-60"
-                    >
-                      {phoneSubmitting ? "Sending..." : "Send verification code"}
-                    </button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleVerifyOTP} className="space-y-4">
-                    <p className="text-sm text-gray-600">
-                      Enter the 6-digit code sent to{" "}
-                      <span className="font-semibold">{phoneNumber}</span>.
-                    </p>
-                    <div>
-                      <label className="text-sm font-semibold text-gray-700">
-                        Verification code
+                        Email or Mobile Number
                       </label>
                       <input
                         type="text"
                         required
-                        inputMode="numeric"
-                        maxLength={6}
-                        placeholder="000000"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                        className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-center text-lg font-bold tracking-widest focus:border-belims-blue focus:outline-none"
+                        autoFocus
+                        placeholder="Enter your email or mobile number"
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
+                        className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
                       />
                     </div>
-                    {phoneError && (
+                    <button
+                      type="submit"
+                      className="w-full rounded bg-belims-blue px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-belims-accent"
+                    >
+                      Continue
+                    </button>
+                  </form>
+                )}
+
+                {/* Step 2a: email + password */}
+                {loginStep === "password" && (
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700">
+                        Email address
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700">
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        autoFocus
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
+                      />
+                    </div>
+                    {error && (
                       <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-                        {phoneError}
+                        {error}
                       </div>
                     )}
                     <button
                       type="submit"
-                      disabled={phoneSubmitting || otp.length < 6}
-                      className="w-full rounded bg-belims-blue px-4 py-2 text-sm font-semibold text-white hover:bg-belims-accent disabled:opacity-60"
+                      disabled={isSubmitting}
+                      className="w-full rounded bg-belims-blue px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-belims-accent disabled:opacity-60"
                     >
-                      {phoneSubmitting ? "Verifying..." : "Verify & Sign In"}
+                      {isSubmitting ? "Please wait..." : "Sign In"}
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setPhoneStep("number"); setOtp(""); setPhoneError(null); }}
+                      onClick={() => { setLoginStep("identifier"); setError(null); }}
                       className="w-full text-sm text-gray-500 hover:underline"
                     >
-                      ← Use a different number
+                      ← Use a different email or number
                     </button>
                   </form>
+                )}
+
+                {/* Step 2b: phone OTP */}
+                {loginStep === "phone-otp" && (
+                  <div className="space-y-4">
+                    {phoneStep === "number" ? (
+                      <form onSubmit={handleSendOTP} className="space-y-4">
+                        <div>
+                          <label className="text-sm font-semibold text-gray-700">
+                            Mobile number
+                          </label>
+                          <div className="mt-1 flex overflow-hidden rounded border border-gray-200 focus-within:border-belims-blue focus-within:ring-1 focus-within:ring-belims-blue">
+                            <select
+                              value={dialCode}
+                              onChange={(e) => setDialCode(e.target.value)}
+                              className="shrink-0 border-r border-gray-200 bg-gray-50 px-2 py-2 text-sm focus:outline-none"
+                              aria-label="Country code"
+                            >
+                              {DIAL_CODES.map(({ code, flag }) => (
+                                <option key={code} value={code}>{flag} {code}</option>
+                              ))}
+                            </select>
+                            <input
+                              type="tel"
+                              required
+                              autoFocus
+                              placeholder="82 123 4567"
+                              value={localPhone}
+                              onChange={(e) => setLocalPhone(e.target.value.replace(/[^\d\s]/g, ""))}
+                              className="min-w-0 flex-1 px-3 py-2 text-sm focus:outline-none"
+                              inputMode="numeric"
+                            />
+                          </div>
+                          <p className="mt-1 text-xs text-gray-400">
+                            Select your country code, then enter your number without the leading zero.
+                          </p>
+                        </div>
+                        {phoneError && (
+                          <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+                            {phoneError}
+                          </div>
+                        )}
+                        <button
+                          type="submit"
+                          disabled={phoneSubmitting}
+                          className="w-full rounded bg-belims-blue px-4 py-2 text-sm font-semibold text-white hover:bg-belims-accent disabled:opacity-60"
+                        >
+                          {phoneSubmitting ? "Sending..." : "Send verification code"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setLoginStep("identifier"); setPhoneError(null); clearRecaptcha(recaptchaContainerId); }}
+                          className="w-full text-sm text-gray-500 hover:underline"
+                        >
+                          ← Use a different email or number
+                        </button>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleVerifyOTP} className="space-y-4">
+                        <p className="text-sm text-gray-600">
+                          Enter the 6-digit code sent to{" "}
+                          <span className="font-semibold">{confirmedPhone}</span>.
+                        </p>
+                        <div>
+                          <label className="text-sm font-semibold text-gray-700">
+                            Verification code
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            autoFocus
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                            className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-center text-lg font-bold tracking-widest focus:border-belims-blue focus:outline-none"
+                          />
+                        </div>
+                        {phoneError && (
+                          <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+                            {phoneError}
+                          </div>
+                        )}
+                        <button
+                          type="submit"
+                          disabled={phoneSubmitting || otp.length < 6}
+                          className="w-full rounded bg-belims-blue px-4 py-2 text-sm font-semibold text-white hover:bg-belims-accent disabled:opacity-60"
+                        >
+                          {phoneSubmitting ? "Verifying..." : "Verify & Sign In"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPhoneStep("number"); setOtp(""); setPhoneError(null); }}
+                          className="w-full text-sm text-gray-500 hover:underline"
+                        >
+                          ← Use a different number
+                        </button>
+                      </form>
+                    )}
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Email/password form */}
-            {authMethod === "email" && (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {isRegisterMode && (
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Account type
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setRole("customer")}
-                      className={`px-4 py-2 rounded border text-sm font-semibold transition-colors ${
-                        role === "customer"
-                          ? "border-belims-blue bg-belims-blue/10 text-belims-blue"
-                          : "border-gray-200 text-gray-600 hover:border-belims-blue"
-                      }`}
-                    >
-                      Customer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRole("contractor")}
-                      className={`px-4 py-2 rounded border text-sm font-semibold transition-colors ${
-                        role === "contractor"
-                          ? "border-belims-accent bg-belims-accent/10 text-belims-accent"
-                          : "border-gray-200 text-gray-600 hover:border-belims-accent"
-                      }`}
-                    >
-                      Contractor
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {isRegisterMode && (
+            {/* ── REGISTER FLOW ── */}
+            {isRegisterMode && (
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-semibold text-gray-700">
@@ -389,37 +437,35 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     />
                   </div>
                 </div>
-              )}
 
-              <div>
-                <label className="text-sm font-semibold text-gray-700">
-                  Email address
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">
+                    Email address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="Enter your email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
+                  />
+                </div>
 
-              <div>
-                <label className="text-sm font-semibold text-gray-700">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
+                  />
+                </div>
 
-              {isRegisterMode && (
                 <div>
                   <label className="text-sm font-semibold text-gray-700">
                     Phone
@@ -431,38 +477,31 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     className="mt-1 w-full rounded border border-gray-200 px-3 py-2 text-sm focus:border-belims-blue focus:outline-none"
                   />
                 </div>
-              )}
 
-              {error && (
-                <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="rounded border border-green-100 bg-green-50 px-3 py-2 text-sm text-green-700">
-                  {success}
-                </div>
-              )}
+                {error && (
+                  <div className="rounded border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+                    {error}
+                  </div>
+                )}
+                {success && (
+                  <div className="rounded border border-green-100 bg-green-50 px-3 py-2 text-sm text-green-700">
+                    {success}
+                  </div>
+                )}
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full rounded bg-belims-blue px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-belims-accent disabled:opacity-60"
-              >
-                {isSubmitting
-                  ? "Please wait..."
-                  : isRegisterMode
-                    ? "Create account"
-                    : "Sign In"}
-              </button>
-            </form>
-            )} {/* end authMethod === "email" */}
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full rounded bg-belims-blue px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-belims-accent disabled:opacity-60"
+                >
+                  {isSubmitting ? "Please wait..." : "Create account"}
+                </button>
+              </form>
+            )}
 
             <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-gray-200" />
-              <p className="text-xs font-medium text-gray-500">
-                Or continue with
-              </p>
+              <p className="text-xs font-medium text-gray-500">Or continue with</p>
               <div className="h-px flex-1 bg-gray-200" />
             </div>
 
@@ -471,28 +510,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 type="button"
                 className="flex w-full items-center justify-center gap-2 rounded border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                >
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  ></path>
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  ></path>
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  ></path>
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  ></path>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                 </svg>
                 <span>Continue with Google</span>
               </button>
@@ -501,14 +523,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 type="button"
                 className="flex w-full items-center justify-center gap-2 rounded border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path d="M14.94 5.19A4.38 4.38 0 0 0 16 2a4.44 4.44 0 0 0-3 1.52 4.17 4.17 0 0 0-1 3.09 3.69 3.69 0 0 0 2.94-1.42zm2.52 7.44A4.51 4.51 0 0 1 19 16.5a10.88 10.88 0 0 1-1.36 2.74c-.8 1.15-1.64 2.31-3 2.33s-1.65-.77-3.09-.77-1.87.74-3.05.79-2.19-1.16-3-2.33a11.38 11.38 0 0 1-2.12-5.87c0-3.45 2.24-5.27 4.44-5.27 1.17 0 2.14.77 2.86.77s1.8-.85 3.17-.85a4.28 4.28 0 0 1 3.61 1.84 4.19 4.19 0 0 0-2 3.52z"></path>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M14.94 5.19A4.38 4.38 0 0 0 16 2a4.44 4.44 0 0 0-3 1.52 4.17 4.17 0 0 0-1 3.09 3.69 3.69 0 0 0 2.94-1.42zm2.52 7.44A4.51 4.51 0 0 1 19 16.5a10.88 10.88 0 0 1-1.36 2.74c-.8 1.15-1.64 2.31-3 2.33s-1.65-.77-3.09-.77-1.87.74-3.05.79-2.19-1.16-3-2.33a11.38 11.38 0 0 1-2.12-5.87c0-3.45 2.24-5.27 4.44-5.27 1.17 0 2.14.77 2.86.77s1.8-.85 3.17-.85a4.28 4.28 0 0 1 3.61 1.84 4.19 4.19 0 0 0-2 3.52z" />
                 </svg>
                 <span>Continue with Apple</span>
               </button>
