@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ConfirmationResult } from "firebase/auth";
 import { loginUser, registerUser, loginWithFirebasePhone, UserData } from "../services/authService";
-import { sendPhoneOTP, getFirebaseIdToken, clearRecaptcha, isFirebaseConfigured, signInWithGoogle } from "../services/firebaseService";
+import { sendPhoneOTP, getFirebaseIdToken, clearRecaptcha, isFirebaseConfigured, signInWithGoogle, signInWithFacebook } from "../services/firebaseService";
 import { loginWithFirebaseGoogle } from "../services/authService";
 
 interface AuthPageProps {
@@ -52,8 +52,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
   const [loginStep, setLoginStep] = useState<"identifier" | "password" | "phone-otp">("identifier");
   const [loginIdentifier, setLoginIdentifier] = useState("");
 
-  // Google sign-in state
+  // Social sign-in state
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [facebookLoading, setFacebookLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
 
   // Phone OTP state
@@ -71,7 +72,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
     return () => { clearRecaptcha(recaptchaContainerId); };
   }, []);
 
-  // --- Google sign-in ---
+  // --- Social sign-in ---
   const handleGoogleSignIn = async () => {
     setGoogleError(null);
     setGoogleLoading(true);
@@ -87,6 +88,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
       showToast(msg, "error");
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  const handleFacebookSignIn = async () => {
+    setGoogleError(null);
+    setFacebookLoading(true);
+    try {
+      const { idToken, email, displayName } = await signInWithFacebook();
+      const result = await loginWithFirebaseGoogle(idToken, email, displayName);
+      onSuccess(result.user);
+      showToast(result.message || "Signed in with Facebook!", "success");
+      setTimeout(() => navigate("/"), 1000);
+    } catch (err: any) {
+      const msg = err?.message || "Facebook sign-in failed. Please try again.";
+      setGoogleError(msg);
+      showToast(msg, "error");
+    } finally {
+      setFacebookLoading(false);
     }
   };
 
@@ -555,12 +574,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
 
                     <button
                       type="button"
-                      className="flex w-full items-center justify-center gap-2 rounded border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50"
+                      disabled={facebookLoading}
+                      onClick={handleFacebookSignIn}
+                      className="flex w-full items-center justify-center gap-2 rounded border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50 disabled:opacity-60"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M14.94 5.19A4.38 4.38 0 0 0 16 2a4.44 4.44 0 0 0-3 1.52 4.17 4.17 0 0 0-1 3.09 3.69 3.69 0 0 0 2.94-1.42zm2.52 7.44A4.51 4.51 0 0 1 19 16.5a10.88 10.88 0 0 1-1.36 2.74c-.8 1.15-1.64 2.31-3 2.33s-1.65-.77-3.09-.77-1.87.74-3.05.79-2.19-1.16-3-2.33a11.38 11.38 0 0 1-2.12-5.87c0-3.45 2.24-5.27 4.44-5.27 1.17 0 2.14.77 2.86.77s1.8-.85 3.17-.85a4.28 4.28 0 0 1 3.61 1.84 4.19 4.19 0 0 0-2 3.52z" />
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
+                        <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
                       </svg>
-                      <span>Continue with Apple</span>
+                      <span>{facebookLoading ? "Signing in..." : "Continue with Facebook"}</span>
                     </button>
                   </div>
                 </>

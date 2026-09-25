@@ -5,6 +5,7 @@ import {
   signInWithPhoneNumber,
   signInWithPopup,
   GoogleAuthProvider,
+  FacebookAuthProvider,
   ConfirmationResult,
 } from "firebase/auth";
 
@@ -80,6 +81,24 @@ export const signInWithGoogle = async (): Promise<{
   const provider = new GoogleAuthProvider();
   provider.addScope("email");
   provider.addScope("profile");
+  const result = await signInWithPopup(firebaseAuth, provider);
+  const idToken = await result.user.getIdToken();
+  return {
+    idToken,
+    email: result.user.email || "",
+    displayName: result.user.displayName || "",
+  };
+};
+
+export const signInWithFacebook = async (): Promise<{
+  idToken: string;
+  email: string;
+  displayName: string;
+}> => {
+  if (!firebaseAuth) throw new Error("Firebase is not configured.");
+  const provider = new FacebookAuthProvider();
+  provider.addScope("email");
+  provider.addScope("public_profile");
   const result = await signInWithPopup(firebaseAuth, provider);
   const idToken = await result.user.getIdToken();
   return {
