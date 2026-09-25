@@ -26,6 +26,64 @@
 - Cancel returns via `navigate(-1)`. Save writes to `deliveryAddressV2` via `saveStoredAddress`, sets `fulfillmentType=delivery`, dispatches `belims:delivery-address-updated` + `belims:fulfillment-changed`, marks popover dismissed, navigates to `/`.
 - Route registered in `App.tsx` after `/wishlist`.
 
+### 4. Header account chip — guest routes to `/login`
+- Desktop "Sign In · Sign Up" chip in `Header.tsx:832–853` now branches on `currentUser`: guests navigate to `/login`, logged-in users open the account side panel as before.
+- No new imports; reuses the existing `useNavigate` hook.
+
+### 5. Checkout — save shipping address on guest account creation
+- `Checkout.tsx:978–992` — the `pendingAccountCreation` blob written when a guest ticks "Create an account for faster checkout next time" now includes the customer's `street / city / province / postalCode` under `shippingAddress`.
+- `OrderConfirmation.tsx:7,181–194` — after `registerUser()` succeeds and the JWT is set, `saveBillingAddress(address)` and `saveShippingAddress(address)` run via `Promise.allSettled` so an address save failure never blocks the "Account created" success message. Same address written to both billing and shipping meta.
+
+### 6. Delivery popover — saved-address picker + full-address pill
+- `DeliveryDetailsPopover.tsx` accepts optional `isLoggedIn`, `savedAddresses`, `onSelectSavedAddress`. When the logged-in user has saved profile addresses the popover renders a list of cards (source chip + street) above the primary CTA; the CTA relabels to "Add new address" and the "Log in…" link is hidden.
+- `Header.tsx` derives `savedAddressOptions` from `currentUser.billing` + `currentUser.shipping` (deduped by `line1|city|postcode`), passes it to both popover mounts, and exposes `handleSelectSavedAddress` which converts the WC record into a `ShippingAddress` and runs it through the existing `handleAddressSelect` flow.
+- Pill display (`Header.tsx:679`, `753`, `1073`) swapped from postal-code only to `pillAddressLine` — a memoised `"street, city"` string with truncation, falling back to postal code / label.
+
+### 7. Checkout — Personal Details skeleton loader
+- `Checkout.tsx` — imports `getAuthToken`; `isInitializingCheckout` is seeded synchronously from `getAuthToken() !== null` so guests never see the skeleton.
+- Personal Details field grid (email, first/last name, phone) is replaced with animated grey skeleton bars while `initializeFromSavedLocation()` is in flight; flag flips false in `.finally()`.
+- "Create an account for faster checkout next time" checkbox and its expanded fields are also gated on `!isInitializingCheckout` so they don't flash briefly for logged-in users before the auth check resolves.
+
+### 8. Register form field order
+- `AuthPage.tsx:498–522` — swapped Password and Phone. Register form now reads: First name → Last name → Email → Phone → Password.
+
+### 9. `/delivery-details/add-address` — rewrite to Woolworths two-step flow
+- Full rewrite of `DeliveryDetailsAddAddress.tsx`. Dropped the two-column form + OSM iframe + Complex/Building + Address-name fields.
+- New two-step layout with pagination dots and close ×:
+  - **Step 1 — Confirm your address:** centered heading + copy, single search input with magnifier icon (swaps to a circular clear × once an address is selected), Nominatim autocomplete dropdown, saved-address cards for logged-in users (source chip + street) or "To see your saved addresses **Sign In**" hint for guests, `CONFIRM ADDRESS` button bottom-right (disabled until an address is picked).
+  - **Step 2 — Confirm Your Option:** back ← arrow, selected street with an **Edit** link, two large tiles — **Delivery** (default, `Truck` icon, "Delivered to your door") and **Click & Collect** (`ShoppingBag` icon, "Collect from a nearby store"). C&C reveals a store dropdown fed by the existing `/ecommerce-policies` `store_locations` endpoint. `CONFIRM DELIVERY` / `CONFIRM COLLECTION` bottom-right.
+- Delivery save: `saveStoredAddress`, `fulfillmentType=delivery`, dispatches `belims:delivery-address-updated` + `belims:fulfillment-changed`, marks popover dismissed, navigates to `/`.
+- Collection save: same address save + writes `selectedPickupStore`, `pickupStoreSelected=true`, `fulfillmentType=pickup`, dispatches `belims:pickup-store-updated`.
+
+### 10. Account → add/edit address routes through `/delivery-details/add-address`
+- `AccountPage.tsx` — removed the `DeliveryLocationModal` mount and the `isDeliveryModalOpen` / `editingAddressType` / `handleAddressSelect` scaffolding that only served the address side panel.
+- `handleAddNewAddress(type, mode="add")` now navigates to `/delivery-details/add-address?context=account&type={billing|shipping}&mode={add|edit}`. The two Edit call sites pass `"edit"`.
+- `DeliveryDetailsAddAddress.tsx` reads `context`, `type`, `mode` from `useSearchParams`. In `context=account` mode the page shows a single-step layout (no stepper dots, no back arrow, no Delivery/Click&Collect tiles), the heading and subtitle reflect add vs edit, and the primary CTA becomes **Save address**. In edit mode the selected address is prefilled from the requested billing or shipping profile on mount.
+- Save calls `saveBillingAddress` or `saveShippingAddress`, dispatches `user-updated`, and returns to `/account/addresses`. Close × also returns to `/account/addresses`. The default two-step flow (no `context` param) is unchanged.
+
+### 11. Nominatim autocomplete — street numbers + admin cruft stripped
+- `DeliveryDetailsAddAddress.tsx` — new `extractLeadingNumber()` pulls the leading digits (+ optional letter) from the user's query; new `formatSuggestionLabel()` builds `{house_number || leading} {road}, {suburb}, {city}, {country}` from Nominatim's structured `address` fields instead of the raw `display_name`.
+- Ward / Metropolitan / Local / District Municipality tokens are stripped from the suburb slot; the leading number is only prepended when a `road` field exists (fixes orphan "5, uMhlathuze Local Municipality" results).
+- `handleSelectSuggestion` also prepends the number to the mapped `street` and rebuilds `label`, so the persisted address carries the house number, not just the display label.
+- Result: `"5 durnford"` returns readable `"5 Durnford Road, Durban, South Africa"` instead of the previous `"Durnford Road, eThekwini Ward 28, Durban, eThekwini Metropolitan Municipality, KwaZulu-Natal, 4023, South Africa"`.
+
+### 12. Add-address flow — manual fields + chip-row saved addresses
+- `DeliveryDetailsAddAddress.tsx` — added Checkout-style manual editing on the add-address page: Street address (with `MapPin` icon), City, Province `<select>` populated from the `PROVINCES` constant, Postal code (`inputMode="numeric"`).
+- New `patchAddress(patch)` helper merges partial field updates into `selectedAddress` (initialising defaults when null) and rebuilds `label`. Suggestion picks, chip picks, and manual typing all funnel through the same state, so the persisted address matches what the user sees.
+- `canConfirm` memo requires street + city + province before enabling Confirm/Save — prevents half-filled saves.
+- Saved-addresses list replaced with a horizontal chip row (`Billing · Hillcrest`, `Shipping · Durban North`, …). Active chip fills belims-blue, others outline. Wraps on narrow screens with a separator line below.
+- Applies to both the default two-step flow and the `?context=account` single-step flow.
+
+### 13. ProductCard hover + QuickView — Add-to-cart adds silently, Buy Now → /checkout
+- `ProductCard.tsx` — the hover "Add to cart" button no longer defaults to opening QuickView. Default `onClick` now calls `addWithPriceMode(isTradeSpecial ? "trade" : "retail")` directly; the `quickViewButtonAction?.onClick` escape hatch is preserved for consumers that need a custom action. Dropped `aria-controls`/`aria-haspopup="dialog"` since the button no longer opens a dialog.
+- `handleQuickViewAddToCart` now closes QuickView after adding so the user isn't stranded in the modal. `handleQuickViewBuyNow` no longer double-adds (removed the extra `onBuyNow?.(product)` call that was firing on top of the qty loop) — adds the requested quantity, closes QuickView, then navigates to `/checkout`, mirroring the SingleProduct Buy Now behaviour.
+- `QuickView.tsx` — modal now portalled to `document.body` via `ReactDOM.createPortal`. Fix root: QuickView was rendered as a sibling of ProductCard's outer div, so clicks inside it bubbled up through ancestor `<Link>` wrappers that some parent grids apply, routing Add-to-cart and Buy-Now to the single product URL. Belt-and-braces: added `stopPropagation` on the outer wrapper and on both action click handlers.
+
+### 14. SingleProduct — Perfect Match With bundle grid + delivery tile routing + rates sidepanel
+- `SingleProduct.tsx` — inserted a new section after `FulfillmentBlock` titled **Perfect Match With**. Only renders when `product.bundleCandidates.length > 0`. 3-column grid of the first three items: rounded gray image tile (click routes to product page), product name (2-line clamp), price (sale in red + strikethrough `regular_price` when discounted), full-width black pill button (**Add** silently for in-stock, **View** navigates to product page for out-of-stock). The existing cross-sell "Perfect Match With" slider now returns null when bundle candidates exist so only one section with that heading renders; it remains as fallback when there are no candidates.
+- `FulfillmentTiles.tsx` + `FulfillmentBlock.tsx` — new optional `onAddDeliveryAddress` prop threaded from `SingleProduct.tsx` as `navigate("/delivery-details/add-address")`. The no-address delivery tile now navigates there directly instead of opening `DeliveryLocationModal`.
+- Delivery-set delivery tile no longer expands rates inline (`deliveryExpanded` state removed). Clicking the tile opens a portalled sidepanel: **right-slide drawer on desktop (md+), bottom sheet on mobile** — same responsive pattern as `DeliveryDetailsPopover`. `ReactDOM.createPortal` to `document.body` at `z-[9999]` puts it above the sticky Header (`z-[1200]`) and immune to transformed ancestors. Styling matches the account side panel: red brand header (Truck icon + "Delivery options" + address subtitle + close ×), soft body with the existing radio-select rate list, white footer with a Change-address underline link and a full-width red accent "Done" pill. Header rounds top corners on mobile only. Escape / backdrop / Done all dismiss.
+
 ## 2026-09-24 — Account, Checkout, Routing, and UX session
 
 ### 1. AccountPage typography audit
