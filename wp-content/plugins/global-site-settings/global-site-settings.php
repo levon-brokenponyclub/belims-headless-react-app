@@ -92,7 +92,8 @@ function global_site_settings_init() {
         'includes/class-orders-endpoint.php',
         'includes/class-user-endpoint.php', // User registration & management
         'includes/class-coupon-endpoint.php', // Coupon validation
-        'includes/class-firebase-phone-auth.php', // Firebase Phone Authentication
+        'includes/class-firebase-phone-auth.php',  // Firebase Phone Authentication
+        'includes/class-firebase-google-auth.php', // Firebase Google Authentication
         'includes/class-user-admin-page.php', // User management admin UI
         'includes/class-ecommerce-settings.php', // Ecommerce policies (Returns, Warranty, Shipping)
         'includes/class-bundled-products.php', // Bundled Products for WooCommerce
@@ -550,7 +551,8 @@ function global_site_settings_register_endpoints() {
         'Belims_Orders_Endpoint',
         'User_Endpoint', // User registration & management
         'Belims_Coupon_Endpoint', // Coupon validation
-        'Belims_Firebase_Phone_Auth', // Firebase Phone Authentication
+        'Belims_Firebase_Phone_Auth',  // Firebase Phone Authentication
+        'Belims_Firebase_Google_Auth', // Firebase Google Authentication
         'Belims_FTG_Sync_Endpoint',
         'BobGo_Shipping_Proxy_Endpoint',
     ];
@@ -1175,7 +1177,8 @@ function global_site_settings_main_page() {
                                 <?php
                                 $endpoints = [
                                     // Auth
-                                    ['POST', '/auth/firebase-phone', 'Exchange Firebase Phone ID token for WP JWT', 'Public'],
+                                    ['POST', '/auth/firebase-phone',  'Exchange Firebase Phone ID token for WP JWT',  'Public'],
+                                    ['POST', '/auth/firebase-google', 'Exchange Firebase Google ID token for WP JWT', 'Public'],
                                     // Users
                                     ['POST', '/users/register',      'Register a new customer or contractor account', 'Public'],
                                     ['POST', '/users/login',         'Email + password login — returns JWT', 'Public'],

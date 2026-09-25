@@ -415,6 +415,31 @@ export const clearShippingAddress = async (): Promise<{ success: boolean; messag
 };
 
 /**
+ * Exchange a Firebase Google Sign-In ID token for a WordPress JWT.
+ */
+export const loginWithFirebaseGoogle = async (
+  firebaseIdToken: string,
+  email: string,
+  name: string,
+): Promise<{ success: boolean; user: UserData; message: string }> => {
+  const apiBase = getApiBaseUrl();
+  const response = await fetch(`${apiBase}/auth/firebase-google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ firebase_token: firebaseIdToken, email, name }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Google authentication failed");
+  }
+  const data = await response.json();
+  if (data.token) setAuthToken(data.token);
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Failed to fetch user data after Google sign-in");
+  return { success: true, user, message: data.message || "Welcome!" };
+};
+
+/**
  * Exchange a Firebase Phone Auth ID token for a WordPress JWT.
  *
  * Requires a custom WP REST endpoint:

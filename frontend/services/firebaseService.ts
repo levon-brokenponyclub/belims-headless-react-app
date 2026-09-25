@@ -3,6 +3,8 @@ import {
   getAuth,
   RecaptchaVerifier,
   signInWithPhoneNumber,
+  signInWithPopup,
+  GoogleAuthProvider,
   ConfirmationResult,
 } from "firebase/auth";
 
@@ -68,3 +70,21 @@ export const getFirebaseIdToken = async (): Promise<string | null> => {
 
 export const isFirebaseConfigured = (): boolean =>
   Boolean(import.meta.env.VITE_FIREBASE_API_KEY);
+
+export const signInWithGoogle = async (): Promise<{
+  idToken: string;
+  email: string;
+  displayName: string;
+}> => {
+  if (!firebaseAuth) throw new Error("Firebase is not configured.");
+  const provider = new GoogleAuthProvider();
+  provider.addScope("email");
+  provider.addScope("profile");
+  const result = await signInWithPopup(firebaseAuth, provider);
+  const idToken = await result.user.getIdToken();
+  return {
+    idToken,
+    email: result.user.email || "",
+    displayName: result.user.displayName || "",
+  };
+};
