@@ -128,11 +128,7 @@ export async function productSearchApi(params: {
           "stock",
           "stock_status",
           "maxStock",
-          "in_stock",
-          "rating",
-          "reviews",
-          "sku",
-          "category",
+          
         ],
         perPage: 12,
       },
@@ -147,13 +143,7 @@ export async function productSearchApi(params: {
       rating:
         typeof item.rating === "number"
           ? item.rating
-          : Number(item.rating ?? 0) || undefined,
-      reviewCount:
-        typeof item.reviews === "number"
-          ? item.reviews
-          : Number(item.reviews ?? 0) || undefined,
-      inStock: Boolean(item.in_stock ?? item.stock_status !== "outofstock"),
-      stockQty:
+          
         typeof item.stock === "number"
           ? item.stock
           : Number(item.maxStock ?? 0) || undefined,

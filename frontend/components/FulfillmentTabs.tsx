@@ -54,11 +54,11 @@ export const FulfillmentTabs: React.FC<FulfillmentTabsProps> = ({
   };
 
   const baseClass =
-    "pb-2 text-[15px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-grey";
+    "pb-2 text-[15px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-border-strong";
 
   return (
     <div
-      className="border-b border-subtle"
+      className="border-b border-border"
       role="tablist"
       aria-label="Fulfillment options"
     >
@@ -73,8 +73,8 @@ export const FulfillmentTabs: React.FC<FulfillmentTabsProps> = ({
           onKeyDown={(event) => handleTabKeyDown(event, "pickup")}
           className={`${baseClass} ${
             value === "pickup"
-              ? "font-semibold text-grey border-b-2 border-grey"
-              : "font-medium text-grey-medium hover:text-grey"
+              ? "font-semibold text-text border-b-2 border-border-strong"
+              : "font-medium text-text-tertiary hover:text-text"
           }`}
         >
           Pickup
@@ -89,8 +89,8 @@ export const FulfillmentTabs: React.FC<FulfillmentTabsProps> = ({
           onKeyDown={(event) => handleTabKeyDown(event, "delivery")}
           className={`${baseClass} ${
             value === "delivery"
-              ? "font-semibold text-grey border-b-2 border-grey"
-              : "font-medium text-grey-medium hover:text-grey"
+              ? "font-semibold text-text border-b-2 border-border-strong"
+              : "font-medium text-text-tertiary hover:text-text"
           }`}
         >
           Delivery

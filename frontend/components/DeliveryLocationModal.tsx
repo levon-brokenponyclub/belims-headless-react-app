@@ -114,19 +114,19 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
     <button
       type="button"
       onClick={onDetectLocation}
-      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 py-3 text-base font-semibold text-ink hover:bg-soft transition-colors"
+      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 py-3 text-base font-semibold text-text hover:bg-surface-muted transition-colors"
     >
       <MapPin size={16} /> Use your location.
     </button>
 
-    <hr className="border-subtle" />
+    <hr className="border-border" />
 
     {isEditingDeliveryAddress ? (
       <div className="space-y-4">
         <div className="relative">
           <Search
             size={16}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary"
           />
           <input
             ref={inputRef}
@@ -134,13 +134,13 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
             placeholder="Enter Postal Code"
             value={input}
             onChange={onInputChange}
-            className="w-full border border-subtle py-3 pl-10 pr-10 text-base text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+            className="w-full border border-border py-3 pl-10 pr-10 text-base text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
           />
           {input && (
             <button
               type="button"
               onClick={onClearLocation}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text"
             >
               <X size={14} />
             </button>
@@ -148,26 +148,26 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
         </div>
 
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-muted">
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
             <Loader size={14} className="animate-spin" />
             Finding address suggestions...
           </div>
         )}
 
         {suggestions.length > 0 && (
-          <div className="divide-y border border-subtle overflow-hidden">
+          <div className="divide-y border border-border overflow-hidden">
             {suggestions.map((suggestion, index) => (
               <button
                 key={`${suggestion.source || "google"}-${suggestion.place_id || index}`}
                 type="button"
                 onClick={() => onSuggestionClick(suggestion)}
-                className="w-full px-4 py-3 text-left text-sm hover:bg-soft transition-colors"
+                className="w-full px-4 py-3 text-left text-sm hover:bg-surface-muted transition-colors"
               >
                 {suggestion.mainText ? (
                   <div className="flex flex-col">
-                    <span className="text-sm text-ink">{suggestion.mainText}</span>
+                    <span className="text-sm text-text">{suggestion.mainText}</span>
                     {suggestion.secondaryText && (
-                      <span className="text-xs text-muted">{suggestion.secondaryText}</span>
+                      <span className="text-xs text-text-secondary">{suggestion.secondaryText}</span>
                     )}
                   </div>
                 ) : (
@@ -179,8 +179,8 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
         )}
 
         {detectedLocationAddress && (
-          <div className="space-y-3 border border-subtle px-4 py-4">
-            <p className="text-sm font-semibold text-ink">
+          <div className="space-y-3 border border-border px-4 py-4">
+            <p className="text-sm font-semibold text-text">
               {detectedLocationAddress.label ||
                 [detectedLocationAddress.street, detectedLocationAddress.city, detectedLocationAddress.province]
                   .filter(Boolean)
@@ -208,8 +208,8 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
         )}
 
         {savedDeliveryAddress && !detectedLocationAddress && (
-          <div className="flex items-center justify-between gap-3 border border-subtle px-4 py-4">
-            <p className="text-sm text-ink">
+          <div className="flex items-center justify-between gap-3 border border-border px-4 py-4">
+            <p className="text-sm text-text">
               {savedDeliveryAddress.label ||
                 [savedDeliveryAddress.street, savedDeliveryAddress.city, savedDeliveryAddress.province]
                   .filter(Boolean)
@@ -233,8 +233,8 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
         )}
       </div>
     ) : (
-      <div className="flex items-center justify-between gap-3 border border-subtle px-4 py-4">
-        <p className="text-sm text-ink">
+      <div className="flex items-center justify-between gap-3 border border-border px-4 py-4">
+        <p className="text-sm text-text">
           {savedDeliveryAddress?.label ||
             [savedDeliveryAddress?.street, savedDeliveryAddress?.city, savedDeliveryAddress?.province]
               .filter(Boolean)
@@ -244,7 +244,7 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
         <button
           type="button"
           onClick={onEditAddress}
-          className="text-sm font-semibold text-grey underline"
+          className="text-sm font-semibold text-text underline"
         >
           Edit
         </button>
@@ -273,12 +273,12 @@ const PickupPanel: React.FC<PickupPanelProps> = ({
     <button
       type="button"
       onClick={onEnableDefaultStore}
-      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 py-3 text-base font-semibold text-ink hover:bg-soft transition-colors"
+      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 py-3 text-base font-semibold text-text hover:bg-surface-muted transition-colors"
     >
       <MapPin size={16} /> Use your location.
     </button>
 
-    <hr className="border-subtle" />
+    <hr className="border-border" />
 
     <div className="space-y-3">
       {stores.map((store) => {
@@ -288,7 +288,7 @@ const PickupPanel: React.FC<PickupPanelProps> = ({
           ? "text-green-600"
           : status.isOpen === false
             ? "text-red-600"
-            : "text-muted";
+            : "text-text-secondary";
         const isExpanded = expandedStoreId === store.id;
 
         return (
@@ -1752,18 +1752,18 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   }, [userLocation]);
 
   const primaryButtonClass =
-    "group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full border border-grey bg-grey px-4 py-2 transition-colors hover:border-belims-blue";
+    "group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full border border-border-strong bg-surface-dark px-4 py-2 transition-colors hover:border-belims-blue";
   const primaryButtonLabelClass =
     "relative z-10 font-heading font-bold text-white transition-colors group-hover:text-white";
   const primaryButtonOverlayClass =
     "absolute inset-0 origin-left scale-x-0 bg-belims-blue transition-transform duration-300 ease-out group-hover:scale-x-100";
 
   const secondaryButtonClass =
-    "group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full border border-red bg-grey-light px-4 py-2 transition-colors hover:border-red-muted";
+    "group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full border border-red bg-surface-muted px-4 py-2 transition-colors hover:border-deal-sale";
   const secondaryButtonLabelClass =
-    "relative z-10 font-heading font-bold text-grey transition-colors group-hover:text-white";
+    "relative z-10 font-heading font-bold text-text transition-colors group-hover:text-white";
   const secondaryButtonOverlayClass =
-    "absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100";
+    "absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100";
 
   const buildPostalCodeOnlyAddress = (): ShippingAddress | null => {
     const postalCode = input.trim();
@@ -1851,7 +1851,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     >
       <div className="h-full bg-surface flex flex-col">
         {/* Header */}
-        <div className="p-4 bg-brand text-white flex justify-between items-center flex-shrink-0">
+        <div className="p-4 bg-primary text-white flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-2">
             <MapPin size={20} aria-hidden="true" />
             <span className="font-bold font-heading">
@@ -1869,7 +1869,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto bg-soft">
+        <div className="flex-1 overflow-y-auto bg-surface-muted">
           <div className="px-5 py-5">
             {fulfillmentType === "delivery" && pendingAddress ? (
               <section className="space-y-5">
@@ -1888,7 +1888,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                     value={houseNumber}
                     onChange={(e) => setHouseNumber(e.target.value)}
                     placeholder="e.g. 12, Unit 4B, Flat 2"
-                    className="w-full border border-subtle py-2.5 px-3 text-sm text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                    className="w-full border border-border py-2.5 px-3 text-sm text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
                     autoFocus
                   />
                 </div>
@@ -1902,7 +1902,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                       value={pendingStreet}
                       onChange={(e) => setPendingStreet(e.target.value)}
                       placeholder="Street address"
-                      className="w-full border border-subtle py-2.5 px-3 text-sm text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                      className="w-full border border-border py-2.5 px-3 text-sm text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -1913,7 +1913,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                         value={pendingCity}
                         onChange={(e) => setPendingCity(e.target.value)}
                         placeholder="City"
-                        className="w-full border border-subtle py-2.5 px-3 text-sm text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                        className="w-full border border-border py-2.5 px-3 text-sm text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
                       />
                     </div>
                     <div>
@@ -1923,7 +1923,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                         value={pendingPostalCode}
                         onChange={(e) => setPendingPostalCode(e.target.value)}
                         placeholder="0000"
-                        className="w-full border border-subtle py-2.5 px-3 text-sm text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                        className="w-full border border-border py-2.5 px-3 text-sm text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
                       />
                     </div>
                   </div>
@@ -1932,7 +1932,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                     <select
                       value={pendingProvince}
                       onChange={(e) => setPendingProvince(e.target.value)}
-                      className="w-full border border-subtle py-2.5 px-3 text-sm text-ink focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue bg-white"
+                      className="w-full border border-border py-2.5 px-3 text-sm text-text focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue bg-white"
                     >
                       <option value="">Select province</option>
                       {PROVINCES.map((p) => (
@@ -1952,7 +1952,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
                     value={pendingAddressName}
                     onChange={(e) => setPendingAddressName(e.target.value)}
                     placeholder="e.g. Home, Office, Warehouse"
-                    className="w-full border border-subtle py-2.5 px-3 text-sm text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                    className="w-full border border-border py-2.5 px-3 text-sm text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
                   />
                 </div>
                 <div className="flex gap-3">

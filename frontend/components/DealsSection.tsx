@@ -213,7 +213,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
     <section className="w-full py-10">
       <div className="container mx-auto px-4">
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
-          <h2 className="text-2xl font-bold tracking-tight text-grey md:text-[28px]">
+          <h2 className="text-h5 font-bold tracking-tight text-text md:text-h4">
             Shop Deals
           </h2>
           <div
@@ -231,8 +231,8 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
                 }}
                 className={`text-lg font-semibold transition-colors ${
                   activeTab === tab.key
-                    ? "text-grey"
-                    : "text-grey-medium hover:text-grey"
+                    ? "text-text"
+                    : "text-text-tertiary hover:text-text"
                 }`}
               >
                 {tab.label}
@@ -289,7 +289,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-4">
-          <div className="h-0.5 w-full rounded-full bg-gray-200 overflow-hidden">
+          <div className="h-0.5 w-full rounded-full bg-surface-soft overflow-hidden">
             <div
               className="h-full rounded-full bg-belims-blue transition-all duration-300"
               style={{ width: `${indicatorPct}%` }}
@@ -300,10 +300,10 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
             <button
               type="button"
               onClick={prev}
-              className="group relative h-12 w-12 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white"
+              className="group relative h-12 w-12 overflow-hidden rounded-full border border-border bg-white text-text transition-colors duration-300 ease-out hover:border-border-strong hover:bg-surface-dark hover:text-white"
               aria-label="Previous products"
             >
-              <span className="absolute inset-0 origin-right scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="absolute inset-0 origin-right scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <span className="relative z-10 flex items-center justify-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -325,10 +325,10 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
             <button
               type="button"
               onClick={next}
-              className="group relative h-12 w-12 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white"
+              className="group relative h-12 w-12 overflow-hidden rounded-full border border-border bg-white text-text transition-colors duration-300 ease-out hover:border-border-strong hover:bg-surface-dark hover:text-white"
               aria-label="Next products"
             >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+              <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
               <span className="relative z-10 flex items-center justify-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

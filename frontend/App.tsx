@@ -1290,6 +1290,7 @@ function MainApp(props) {
           products={props.products}
           currentUser={props.currentUser}
           setCurrentUser={props.setCurrentUser}
+          showToast={props.showToast}
           cartCoupon={props.cartCoupon}
         />
       )}

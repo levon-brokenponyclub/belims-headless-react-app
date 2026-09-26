@@ -107,8 +107,8 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
 
   const headlineClass = useMemo(() => {
     if (dualMode || isTradeToggleActive) return "text-belims-accent";
-    if (deal && deal.price && deal.compareAtPrice) return "text-red-muted";
-    return "text-grey";
+    if (deal && deal.price && deal.compareAtPrice) return "text-deal-sale";
+    return "text-text";
   }, [dualMode, isTradeToggleActive, deal]);
 
   return (
@@ -164,7 +164,7 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
           ) : (
             <>
               {compareForNonTrade && (
-                <div className="flex flex-wrap items-center gap-2 font-body text-[18px] text-grey-medium">
+                <div className="flex flex-wrap items-center gap-2 font-body text-[18px] text-text-tertiary">
                   <span className="line-through">
                     {formatMoney(compareForNonTrade)}
                   </span>

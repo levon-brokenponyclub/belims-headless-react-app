@@ -52,15 +52,15 @@ export const FeaturedGrid: React.FC = () => {
               className="w-[240px] shrink-0 snap-start md:w-1/5 md:shrink"
             >
               <Link
-                className="group relative flex h-full w-full items-center overflow-hidden rounded-full border border-white bg-white px-3 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
+                className="group relative flex h-full w-full items-center overflow-hidden rounded-full border border-white bg-white px-3 py-2 text-base font-bold text-text transition-colors hover:border-border-strong hover:text-white"
                 to={category.href}
               >
-                <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
                 <span className="relative z-10 flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-grey-light transition-colors group-hover:bg-white">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-muted transition-colors group-hover:bg-white">
                     <category.icon
                       size={24}
-                      className="text-grey transition-colors group-hover:text-grey"
+                      className="text-text transition-colors group-hover:text-text"
                       aria-hidden="true"
                     />
                   </span>

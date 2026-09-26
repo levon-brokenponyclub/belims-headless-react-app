@@ -113,11 +113,11 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
                   key={item.id}
                   className={`relative flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-lg border bg-white transition-shadow ${
                     isSelected
-                      ? "border-grey shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
-                      : "border-grey-light shadow-[0_1px_2px_rgba(16,24,40,0.06)] hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
+                      ? "border-border-strong shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
+                      : "border-surface-muted shadow-[0_1px_2px_rgba(16,24,40,0.06)] hover:shadow-[0_6px_18px_rgba(16,24,40,0.08)]"
                   }`}
                 >
-                  <div className="relative flex h-52 min-h-[260px] items-center justify-center rounded-lg bg-grey-light p-5">
+                  <div className="relative flex h-52 min-h-[260px] items-center justify-center rounded-lg bg-surface-muted p-5">
                     {item.image ? (
                       <img
                         src={item.image}
@@ -134,15 +134,15 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
                   </div>
 
                   <div className="flex flex-1 flex-col py-5 pb-0 px-1">
-                    <div className="mb-2 text-[11px] font-semibold uppercase text-grey-medium">
+                    <div className="mb-2 text-[11px] font-semibold uppercase text-text-tertiary">
                       {item.category || "Product"}
                     </div>
-                    <div className="mb-2 min-h-[35px] line-clamp-2 font-heading text-base font-semibold leading-[1.35] text-grey">
+                    <div className="mb-2 min-h-[35px] line-clamp-2 font-heading text-base font-semibold leading-[1.35] text-text">
                       {item.name}
                     </div>
 
                     <div className="mt-auto pb-4">
-                      <span className="font-heading text-base font-bold text-red-muted">
+                      <span className="font-heading text-base font-bold text-deal-sale">
                         {formatMoney(item.price || 0)}
                       </span>
                     </div>
@@ -152,8 +152,8 @@ export const BundledProducts: React.FC<BundledProductsProps> = ({
                       onClick={() => toggleBundleItem(item.id)}
                       className={`h-11 w-full rounded-full border text-sm font-semibold transition-colors ${
                         isSelected
-                          ? "border-grey bg-grey text-white"
-                          : "border-grey bg-white text-grey hover:bg-grey hover:text-white"
+                          ? "border-border-strong bg-surface-dark text-white"
+                          : "border-border-strong bg-white text-text hover:bg-surface-dark hover:text-white"
                       }`}
                     >
                       {isSelected ? "Added to Bundle" : "Add to Bundle"}

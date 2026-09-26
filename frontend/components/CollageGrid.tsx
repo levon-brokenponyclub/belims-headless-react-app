@@ -186,7 +186,7 @@ export const CollageGrid: React.FC = () => {
                 }}
               >
                 <span className="absolute inset-0 origin-left scale-x-0 bg-white transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                <span className="relative z-10 px-3 text-[14px] font-semibold font-heading transition-colors group-hover:text-grey">
+                <span className="relative z-10 px-3 text-[14px] font-semibold font-heading transition-colors group-hover:text-text">
                   {banner.cta}
                 </span>
               </button>

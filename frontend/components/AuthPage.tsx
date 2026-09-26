@@ -11,6 +11,9 @@ interface AuthPageProps {
   mode: "login" | "register";
   onSuccess: (user: UserData) => void;
   showToast: (message: string, type: "success" | "error") => void;
+  layout?: "page" | "modal";
+  onSwitchMode?: () => void;
+  onClose?: () => void;
 }
 
 const DIAL_CODES = [
@@ -55,9 +58,14 @@ const orDivider = (
   </div>
 );
 
-export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }) => {
+export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, layout = "page", onSwitchMode, onClose }) => {
   const navigate = useNavigate();
   const isRegisterMode = mode === "register";
+  const isModal = layout === "modal";
+
+  const postSuccess = () => {
+    if (isModal) { onClose?.(); } else { setTimeout(() => navigate("/"), 1000); }
+  };
 
   // Shared fields
   const [email, setEmail] = useState("");
@@ -124,7 +132,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
       const result = await loginWithFirebaseGoogle(idToken, email, displayName);
       onSuccess(result.user);
       showToast(result.message || "Signed in with Google!", "success");
-      setTimeout(() => navigate("/"), 1000);
+      postSuccess();
     } catch (err: any) {
       const msg = err?.message || "Google sign-in failed. Please try again.";
       setGoogleError(msg);
@@ -142,7 +150,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
       const result = await loginWithFirebaseGoogle(idToken, email, displayName);
       onSuccess(result.user);
       showToast(result.message || "Signed in with Facebook!", "success");
-      setTimeout(() => navigate("/"), 1000);
+      postSuccess();
     } catch (err: any) {
       const msg = err?.message || "Facebook sign-in failed. Please try again.";
       setGoogleError(msg);
@@ -218,7 +226,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
       }
       onSuccess(result.user);
       showToast(result.message || "Account created successfully!", "success");
-      setTimeout(() => navigate("/"), 1000);
+      postSuccess();
     } catch (err: any) {
       const msg = err?.message || "Something went wrong. Please try again.";
       setError(msg);
@@ -239,7 +247,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
       const result = await loginUser({ email, password });
       onSuccess(result.user);
       showToast(result.message || "Welcome back!", "success");
-      setTimeout(() => navigate("/"), 1000);
+      postSuccess();
     } catch (err: any) {
       const errorMsg = err?.message || "Something went wrong. Please try again.";
       setError(errorMsg);
@@ -293,7 +301,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
       const result = await loginWithFirebasePhone(idToken, confirmedPhone.trim());
       onSuccess(result.user);
       showToast(result.message || "Welcome!", "success");
-      setTimeout(() => navigate("/"), 1000);
+      postSuccess();
     } catch (err: any) {
       setPhoneError(err?.message || "Invalid code. Please try again.");
     } finally {
@@ -301,31 +309,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
     }
   };
 
-  return (
-    <div className="flex min-h-screen flex-col bg-neutral-50">
-      <header className="bg-white border-b border-neutral-200">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <Link to="/" aria-label="Return to store">
-              <img
-                alt="Belims"
-                src="/images/belims-logo-dark.png"
-                className="h-8 w-auto"
-              />
-            </Link>
-            <div className="flex items-center gap-1.5 text-neutral-500">
-              <Lock className="h-3.5 w-3.5" />
-              <span className="text-xs">Secure checkout</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 w-full mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-md">
-          <div className="rounded-lg border border-neutral-200 bg-white p-6 md:p-8 space-y-6">
-
-          <div id={recaptchaContainerId} />
+  const formContent = (
+    <div className="space-y-6">
+      <div id={recaptchaContainerId} />
 
           {/* Heading */}
           <div>
@@ -455,9 +441,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
                   </button>
                   <p className="text-center text-sm text-neutral-500">
                     Don't have an account?{" "}
-                    <Link to="/register" className="font-medium text-neutral-950 hover:underline">
-                      Create one
-                    </Link>
+                    {isModal ? (
+                      <button type="button" onClick={onSwitchMode} className="font-medium text-neutral-950 hover:underline">Create one</button>
+                    ) : (
+                      <Link to="/register" className="font-medium text-neutral-950 hover:underline">Create one</Link>
+                    )}
                     .
                   </p>
                 </form>
@@ -630,9 +618,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
                   </button>
                   <p className="text-center text-sm text-neutral-500">
                     Already have an account?{" "}
-                    <Link to="/login" className="font-medium text-neutral-950 hover:underline">
-                      Log in here
-                    </Link>
+                    {isModal ? (
+                      <button type="button" onClick={onSwitchMode} className="font-medium text-neutral-950 hover:underline">Log in here</button>
+                    ) : (
+                      <Link to="/login" className="font-medium text-neutral-950 hover:underline">Log in here</Link>
+                    )}
                     .
                   </p>
                 </form>
@@ -709,7 +699,31 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast }
             </div>
           )}
 
+    </div>
+  );
+
+  if (isModal) return formContent;
+
+  return (
+    <div className="flex min-h-screen flex-col bg-neutral-50">
+      <header className="bg-white border-b border-neutral-200">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            <Link to="/" aria-label="Return to store">
+              <img alt="Belims" src="/images/belims-logo-dark.png" className="h-8 w-auto" />
+            </Link>
+            <div className="flex items-center gap-1.5 text-neutral-500">
+              <Lock className="h-3.5 w-3.5" />
+              <span className="text-xs">Secure checkout</span>
+            </div>
+          </div>
         </div>
+      </header>
+      <main className="flex-1 w-full mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-md">
+          <div className="rounded-lg border border-neutral-200 bg-white p-6 md:p-8">
+            {formContent}
+          </div>
         </div>
       </main>
     </div>

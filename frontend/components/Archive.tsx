@@ -1236,9 +1236,9 @@ export const Archive: React.FC<ArchiveProps> = ({
   return (
     <div className="shopify-section section-collection-template bg-white">
       {/* Breadcrumb Section */}
-      <nav className="bg-white border-b border-gray-100" aria-label="Breadcrumb">
+      <nav className="bg-white border-b border-border" aria-label="Breadcrumb">
         <div className="container mx-auto px-4 py-3">
-          <ol className="flex items-center space-x-2 text-base text-grey">
+          <ol className="flex items-center space-x-2 text-base text-text">
             <li>
               <Link
                 to="/"
@@ -1253,7 +1253,7 @@ export const Archive: React.FC<ArchiveProps> = ({
             {brand && (
               <>
                 <li>
-                  <span className="font-base text-grey">{brand}</span>
+                  <span className="font-base text-text">{brand}</span>
                 </li>
               </>
             )}
@@ -1272,7 +1272,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                     breadcrumbPath.map((catName, idx) => (
                       <React.Fragment key={idx}>
                         <li>
-                          <span className="font-base text-grey">{catName}</span>
+                          <span className="font-base text-text">{catName}</span>
                         </li>
                         {idx < breadcrumbPath.length - 1 && (
                           <li>
@@ -1283,7 +1283,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                     ))
                   ) : (
                     <li>
-                      <span className="font-base text-grey">{category}</span>
+                      <span className="font-base text-text">{category}</span>
                     </li>
                   );
                 })()}
@@ -1291,7 +1291,7 @@ export const Archive: React.FC<ArchiveProps> = ({
             )}
             {!category && !brand && (
               <li>
-                <span className="font-base text-grey">Shop</span>
+                <span className="font-base text-text">Shop</span>
               </li>
             )}
           </ol>
@@ -1299,25 +1299,25 @@ export const Archive: React.FC<ArchiveProps> = ({
       </nav>
 
       {/* Sort/filter toolbar */}
-      <div className="border-b border-gray-200 bg-white">
+      <div className="border-b border-border bg-white">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-gray-500">
+            <div className="flex items-center gap-3 text-text-tertiary">
               <span className="text-sm">
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-text">
                   {filteredProducts.length}
                 </span>{" "}
                 products
               </span>
-              <div className="flex items-center gap-1 rounded-md border border-gray-200 p-1">
+              <div className="flex items-center gap-1 rounded-md border border-border p-1">
                 <button
                   type="button"
                   onClick={() => setViewMode("grid")}
                   aria-pressed={viewMode === "grid"}
                   className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
                     viewMode === "grid"
-                      ? "bg-gray-900 text-white"
-                      : "text-gray-500 hover:text-gray-900"
+                      ? "bg-secondary text-white"
+                      : "text-text-tertiary hover:text-text"
                   }`}
                   title="Grid view"
                 >
@@ -1329,8 +1329,8 @@ export const Archive: React.FC<ArchiveProps> = ({
                   aria-pressed={viewMode === "list"}
                   className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
                     viewMode === "list"
-                      ? "bg-gray-900 text-white"
-                      : "text-gray-500 hover:text-gray-900"
+                      ? "bg-secondary text-white"
+                      : "text-text-tertiary hover:text-text"
                   }`}
                   title="List view"
                 >
@@ -1341,21 +1341,21 @@ export const Archive: React.FC<ArchiveProps> = ({
 
             <div className="flex items-center gap-4">
               <button
-                className="lg:hidden flex items-center gap-2 font-bold text-gray-700 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-50"
+                className="lg:hidden flex items-center gap-2 font-bold text-text-secondary border border-border px-4 py-2 rounded-md hover:bg-surface-muted"
                 onClick={() => setMobileFiltersOpen(true)}
               >
                 <Filter size={18} /> Filters
               </button>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500 hidden sm:inline">
+                <span className="text-sm text-text-tertiary hidden sm:inline">
                   Sort by:
                 </span>
                 <div className="relative">
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className="appearance-none bg-transparent border-none py-2 pl-2 pr-8 text-gray-900 font-medium focus:ring-0 cursor-pointer text-sm"
+                    className="appearance-none bg-transparent border-none py-2 pl-2 pr-8 text-text font-medium focus:ring-0 cursor-pointer text-sm"
                   >
                     <option value="featured">Featured</option>
                     <option value="price-asc">Price: Low to High</option>
@@ -1364,7 +1364,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                   </select>
                   <ChevronDown
                     size={14}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-text-tertiary"
                   />
                 </div>
               </div>
@@ -1378,9 +1378,9 @@ export const Archive: React.FC<ArchiveProps> = ({
           {/* Facet Filters Sidebar */}
           <aside className="hidden lg:block w-60 flex-shrink-0">
             <div className="bg-white px-0">
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-border">
                 <div className="py-7 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-text">
                     Filter
                   </h2>
                   <div className="flex items-center gap-3">
@@ -1401,14 +1401,14 @@ export const Archive: React.FC<ArchiveProps> = ({
                     <span className="sr-only">Search filters</span>
                     <Search
                       size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
                     />
                     <input
                       type="search"
                       value={sidebarSearch}
                       onChange={(e) => setSidebarSearch(e.target.value)}
                       placeholder="Search categories"
-                      className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                      className="w-full rounded-md border border-border bg-surface-muted py-2 pl-9 pr-3 text-sm text-text-secondary placeholder:text-text-tertiary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
                     />
                   </label>
                 </div>
@@ -1474,9 +1474,9 @@ export const Archive: React.FC<ArchiveProps> = ({
                   {filteredCategoryList.length > 0 && (
                     <div className="py-4">
                       <details className="group" open>
-                        <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-gray-900 font-heading text-base  group-hover:text-belims-blue transition-colors">
+                        <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
                           Product Category
-                          <ChevronDown size={20} className="text-gray-700" />
+                          <ChevronDown size={20} className="text-text-secondary" />
                         </summary>
                         <div className="mt-5">
                           <ul className="space-y-3">
@@ -1487,7 +1487,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                               >
                                 <label
                                   htmlFor={`category-${sub.id}`}
-                                  className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer hover:text-belims-blue"
+                                  className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer hover:text-belims-blue"
                                 >
                                   <span className="plp-radio plp-radio--subtle">
                                     <input
@@ -1505,7 +1505,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                                   </span>
                                   <span>{sub.label}</span>
                                 </label>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-text-tertiary">
                                   {categoryCounts[sub.label.toLowerCase()] || 0}
                                 </span>
                               </li>
@@ -1517,24 +1517,24 @@ export const Archive: React.FC<ArchiveProps> = ({
                   )}
                   {filteredCategoryList.length === 0 &&
                     categoryList.length > 0 && (
-                      <div className="py-4 text-sm text-gray-500">
+                      <div className="py-4 text-sm text-text-tertiary">
                         No matching categories.
                       </div>
                     )}
 
                   {/* Availability Filter */}
-                  <div className="py-4 border-t border-gray-100">
+                  <div className="py-4 border-t border-border">
                     <details className="group">
-                      <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-gray-900 font-heading text-base  group-hover:text-belims-blue transition-colors">
+                      <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
                         Availability
-                        <ChevronDown size={20} className="text-gray-700" />
+                        <ChevronDown size={20} className="text-text-secondary" />
                       </summary>
                       <div className="mt-5">
                         <ul className="space-y-3">
                           <li className="flex items-center justify-between gap-3">
                             <label
                               htmlFor="availability-in-stock"
-                              className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer"
+                              className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
                             >
                               <span className="plp-radio plp-radio--subtle">
                                 <input
@@ -1550,7 +1550,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                               </span>
                               <span>In Stock</span>
                             </label>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-text-tertiary">
                               {availabilityCounts.inStock}
                             </span>
                           </li>
@@ -1560,11 +1560,11 @@ export const Archive: React.FC<ArchiveProps> = ({
                   </div>
 
                   {/* Current Offers */}
-                  <div className="py-4 border-t border-gray-100">
+                  <div className="py-4 border-t border-border">
                     <details className="group">
-                      <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-gray-900 font-heading text-base  group-hover:text-belims-blue transition-colors">
+                      <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
                         Current Offers
-                        <ChevronDown size={20} className="text-gray-700" />
+                        <ChevronDown size={20} className="text-text-secondary" />
                       </summary>
                       <div className="mt-5">
                         <ul className="space-y-3">
@@ -1575,7 +1575,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                             >
                               <label
                                 htmlFor={`deal-${deal.id}`}
-                                className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer"
+                                className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
                               >
                                 <span className="plp-radio plp-radio--subtle">
                                   <input
@@ -1591,7 +1591,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                                 </span>
                                 <span>{deal.label}</span>
                               </label>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-text-tertiary">
                                 {dealTypeCounts[deal.id] || 0}
                               </span>
                             </li>
@@ -1602,19 +1602,19 @@ export const Archive: React.FC<ArchiveProps> = ({
                   </div>
 
                   {/* Price Filter */}
-                  <div className="py-4 border-t border-gray-100">
+                  <div className="py-4 border-t border-border">
                     <details className="group">
-                      <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-gray-900 font-heading text-base  group-hover:text-belims-blue transition-colors">
+                      <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
                         Price
-                        <ChevronDown size={20} className="text-gray-700" />
+                        <ChevronDown size={20} className="text-text-secondary" />
                       </summary>
                       <div className="mt-5">
                         <div className="flex items-center gap-3 my-6">
                           <div className="flex-1">
-                            <div className="flex items-center rounded-lg border border-gray-200 bg-white px-3">
-                              <span className="text-gray-500 pr-2">R</span>
+                            <div className="flex items-center rounded-lg border border-border bg-white px-3">
+                              <span className="text-text-tertiary pr-2">R</span>
                               <input
-                                className="w-full bg-transparent border-l border-l-gray-200 border-0 focus:ring-0 px-2 py-2.5 text-sm font-medium text-gray-900 focus:outline-none"
+                                className="w-full bg-transparent border-l border-l-gray-200 border-0 focus:ring-0 px-2 py-2.5 text-sm font-medium text-text focus:outline-none"
                                 type="text"
                                 inputMode="numeric"
                                 value={priceInput[0]}
@@ -1631,12 +1631,12 @@ export const Archive: React.FC<ArchiveProps> = ({
                               />
                             </div>
                           </div>
-                          <span className="text-gray-500">to</span>
+                          <span className="text-text-tertiary">to</span>
                           <div className="flex-1">
-                            <div className="flex items-center rounded-lg border border-gray-300 bg-white px-3">
-                              <span className="text-gray-500 pr-2">R</span>
+                            <div className="flex items-center rounded-lg border border-border bg-white px-3">
+                              <span className="text-text-tertiary pr-2">R</span>
                               <input
-                                className="w-full bg-transparent border-l border-l-gray-200 border-0 focus:ring-0 px-2 py-2.5 text-sm font-medium text-gray-900 focus:outline-none"
+                                className="w-full bg-transparent border-l border-l-gray-200 border-0 focus:ring-0 px-2 py-2.5 text-sm font-medium text-text focus:outline-none"
                                 type="text"
                                 inputMode="numeric"
                                 value={priceInput[1]}
@@ -1655,7 +1655,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                           </div>
                         </div>
                         <div className="relative w-full h-8 flex items-center">
-                          <div className="absolute w-full h-2 rounded-full bg-gray-200"></div>
+                          <div className="absolute w-full h-2 rounded-full bg-surface-soft"></div>
                           <div
                             className="absolute h-2 rounded-full bg-belims-blue"
                             style={{
@@ -1741,11 +1741,11 @@ export const Archive: React.FC<ArchiveProps> = ({
 
                   {/* Brand Filter (Dynamic) */}
                   {uniqueBrands.length > 0 && !brand && (
-                    <div className="py-4 border-t border-gray-100">
+                    <div className="py-4 border-t border-border">
                       <details className="group">
-                        <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-gray-900 font-heading text-base  group-hover:text-belims-blue transition-colors">
+                        <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
                           Brand
-                          <ChevronDown size={20} className="text-gray-700" />
+                          <ChevronDown size={20} className="text-text-secondary" />
                         </summary>
                         <div className="mt-5">
                           <ul className="space-y-3">
@@ -1756,7 +1756,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                               >
                                 <label
                                   htmlFor={`brand-${b}`}
-                                  className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer"
+                                  className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
                                 >
                                   <span className="plp-radio plp-radio--subtle">
                                     <input
@@ -1770,7 +1770,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                                   </span>
                                   <span>{b}</span>
                                 </label>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-text-tertiary">
                                   {brandCounts[b.toLowerCase()] || 0}
                                 </span>
                               </li>
@@ -1783,11 +1783,11 @@ export const Archive: React.FC<ArchiveProps> = ({
 
                   {/* Range Filter */}
                   {rangeFilters.length > 0 && (
-                    <div className="py-4 border-t border-gray-100">
+                    <div className="py-4 border-t border-border">
                       <details className="group">
-                        <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-gray-900 font-heading text-base  group-hover:text-belims-blue transition-colors">
+                        <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
                           Range
-                          <ChevronDown size={20} className="text-gray-700" />
+                          <ChevronDown size={20} className="text-text-secondary" />
                         </summary>
                         <div className="mt-5">
                           <ul className="space-y-3">
@@ -1798,7 +1798,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                               >
                                 <label
                                   htmlFor={`range-${r.slug}`}
-                                  className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer"
+                                  className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
                                 >
                                   <span className="plp-radio plp-radio--subtle">
                                     <input
@@ -1812,7 +1812,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                                   </span>
                                   <span>{r.name}</span>
                                 </label>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-text-tertiary">
                                   {r.count}
                                 </span>
                               </li>
@@ -1825,11 +1825,11 @@ export const Archive: React.FC<ArchiveProps> = ({
 
                   {/* Color Filter */}
                   {colorFilters.length > 0 && (
-                    <div className="py-4 border-t border-gray-100">
+                    <div className="py-4 border-t border-border">
                       <details className="group">
-                        <summary className="w-full flex items-center justify-between cursor-pointer text-base font-medium text-left text-gray-900">
+                        <summary className="w-full flex items-center justify-between cursor-pointer text-base font-medium text-left text-text">
                           Color
-                          <ChevronDown size={20} className="text-gray-700" />
+                          <ChevronDown size={20} className="text-text-secondary" />
                         </summary>
                         <div className="mt-5">
                           <ul className="space-y-3">
@@ -1840,7 +1840,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                               >
                                 <label
                                   htmlFor={`color-${c.slug}`}
-                                  className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer"
+                                  className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
                                 >
                                   <span className="plp-radio plp-radio--subtle">
                                     <input
@@ -1853,11 +1853,11 @@ export const Archive: React.FC<ArchiveProps> = ({
                                     <span className="plp-radio__symbol"></span>
                                   </span>
                                   <span className="flex items-center">
-                                    <span className="bg-gray-300 ring-1 ring-gray-200 rounded-full w-3.5 h-3.5 inline-block mr-2"></span>
+                                    <span className="bg-border ring-1 ring-border rounded-full w-3.5 h-3.5 inline-block mr-2"></span>
                                     {c.name}
                                   </span>
                                 </label>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-text-tertiary">
                                   {c.count}
                                 </span>
                               </li>
@@ -1877,7 +1877,7 @@ export const Archive: React.FC<ArchiveProps> = ({
             {/* Active Filter Chips */}
             {selectedFilterChips.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 mb-6">
-                <span className="text-sm font-medium text-gray-500">
+                <span className="text-sm font-medium text-text-tertiary">
                   Active filters:
                 </span>
                 {selectedFilterChips.map((chip) => (
@@ -1885,10 +1885,10 @@ export const Archive: React.FC<ArchiveProps> = ({
                     key={chip.key}
                     type="button"
                     onClick={chip.onRemove}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:border-belims-blue hover:text-belims-blue transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-text-secondary hover:border-belims-blue hover:text-belims-blue transition-colors"
                   >
                     {chip.label}
-                    <X size={12} className="text-gray-400" />
+                    <X size={12} className="text-text-tertiary" />
                   </button>
                 ))}
                 <button
@@ -1936,7 +1936,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                     />
                     <div className="absolute inset-0 bg-black/30" />
                     <div className="relative z-[1] flex h-full flex-col items-center text-center px-6 pt-8 pb-6">
-                      <h3 className="text-white text-3xl font-bold font-heading">
+                      <h3 className="text-white text-h5 font-bold font-heading">
                         Expert Help & Advice
                       </h3>
                       <p className="mt-3 text-lg font-semibold text-white/90 max-w-[260px]">
@@ -1945,9 +1945,9 @@ export const Archive: React.FC<ArchiveProps> = ({
                       <button
                         type="button"
                         onClick={openChatBot}
-                        className="group relative mt-auto h-12 w-full overflow-hidden rounded-pill bg-white text-gray-900 transition-colors"
+                        className="group relative mt-auto h-12 w-full overflow-hidden rounded-md bg-white text-text transition-colors"
                       >
-                        <span className="absolute inset-0 origin-left scale-x-0 bg-gray-900 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                        <span className="absolute inset-0 origin-left scale-x-0 bg-secondary transition-transform duration-300 ease-out group-hover:scale-x-100" />
                         <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
                           Get Started
                         </span>
@@ -1974,12 +1974,12 @@ export const Archive: React.FC<ArchiveProps> = ({
                 ))}
               </ul>
             ) : (
-              <div className="text-center py-24 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                <Search size={48} className="mx-auto text-gray-300 mb-4" />
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
+              <div className="text-center py-24 bg-surface-muted rounded-xl border-2 border-dashed border-border">
+                <Search size={48} className="mx-auto text-text-disabled mb-4" />
+                <h3 className="text-h6 font-bold text-text mb-2">
                   No products found
                 </h3>
-                <p className="text-gray-500 mb-6">
+                <p className="text-text-tertiary mb-6">
                   Try adjusting your filters or search query.
                 </p>
                 <button
@@ -1989,7 +1989,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                     setFilterInStock(false);
                     setSelectedFacetBrands([]);
                   }}
-                  className="px-6 py-2 bg-black text-white rounded-md font-medium hover:bg-gray-900 transition-colors"
+                  className="px-6 py-2 bg-black text-white rounded-md font-medium hover:bg-secondary transition-colors"
                 >
                   Clear all filters
                 </button>
@@ -2010,10 +2010,10 @@ export const Archive: React.FC<ArchiveProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6 pt-2">
-              <h3 className="font-bold text-xl font-heading">Filters</h3>
+              <h3 className="font-bold text-h6 font-heading">Filters</h3>
               <button
                 onClick={() => setMobileFiltersOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full"
+                className="p-2 hover:bg-surface-muted rounded-full"
               >
                 <X size={24} />
               </button>
@@ -2022,32 +2022,32 @@ export const Archive: React.FC<ArchiveProps> = ({
             <div className="space-y-8">
               {/* Mobile Category Search */}
               <div>
-                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
                   Category
                 </h4>
                 <label className="relative block mb-3">
                   <span className="sr-only">Search categories</span>
                   <Search
                     size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
                   />
                   <input
                     type="search"
                     value={sidebarSearch}
                     onChange={(e) => setSidebarSearch(e.target.value)}
                     placeholder="Search categories"
-                    className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                    className="w-full rounded-md border border-border bg-surface-muted py-2 pl-9 pr-3 text-sm text-text-secondary placeholder:text-text-tertiary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
                   />
                 </label>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {filteredCategoryList.map((sub) => (
                     <label
                       key={sub.id}
-                      className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer"
+                      className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
                     >
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                        className="h-4 w-4 rounded border-border text-belims-accent focus:ring-belims-accent"
                         checked={selectedCategories.some(
                           (selected) =>
                             selected.toLowerCase() === sub.label.toLowerCase(),
@@ -2055,7 +2055,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                         onChange={() => toggleCategory(sub.label)}
                       />
                       <span>{sub.label}</span>
-                      <span className="text-xs text-gray-500 ml-auto">
+                      <span className="text-xs text-text-tertiary ml-auto">
                         {categoryCounts[sub.label.toLowerCase()] || 0}
                       </span>
                     </label>
@@ -2065,13 +2065,13 @@ export const Archive: React.FC<ArchiveProps> = ({
 
               {/* Mobile Price */}
               <div>
-                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
                   Price
                 </h4>
                 <div className="flex gap-4 mb-4">
                   <input
                     type="number"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm"
                     placeholder="Min"
                     value={priceInput[0]}
                     onChange={(e) => {
@@ -2087,7 +2087,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                   />
                   <input
                     type="number"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm"
                     placeholder="Max"
                     value={priceInput[1]}
                     onChange={(e) => {
@@ -2106,13 +2106,13 @@ export const Archive: React.FC<ArchiveProps> = ({
 
               {/* Mobile Availability */}
               <div>
-                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
                   Availability
                 </h4>
                 <label className="flex items-center space-x-3">
                   <input
                     type="checkbox"
-                    className="h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                    className="h-5 w-5 rounded border-border text-belims-accent focus:ring-belims-accent"
                     checked={filterInStock}
                     onChange={(e) => setFilterInStock(e.target.checked)}
                   />
@@ -2122,7 +2122,7 @@ export const Archive: React.FC<ArchiveProps> = ({
 
               {/* Mobile Current Offers */}
               <div>
-                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
                   Current Offers
                 </h4>
                 <div className="space-y-3">
@@ -2133,7 +2133,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                     >
                       <input
                         type="checkbox"
-                        className="h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                        className="h-5 w-5 rounded border-border text-belims-accent focus:ring-belims-accent"
                         checked={selectedDealTypes.includes(deal.id)}
                         onChange={() => toggleDealType(deal.id)}
                       />
@@ -2146,7 +2146,7 @@ export const Archive: React.FC<ArchiveProps> = ({
               {/* Mobile Brand Filter */}
               {uniqueBrands.length > 0 && !brand && (
                 <div>
-                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
                     Brand
                   </h4>
                   <div className="space-y-3 max-h-48 overflow-y-auto">
@@ -2157,12 +2157,12 @@ export const Archive: React.FC<ArchiveProps> = ({
                       >
                         <input
                           type="checkbox"
-                          className="h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                          className="h-5 w-5 rounded border-border text-belims-accent focus:ring-belims-accent"
                           checked={selectedFacetBrands.includes(b)}
                           onChange={() => toggleBrand(b)}
                         />
                         <span>{b}</span>
-                        <span className="text-xs text-gray-500 ml-auto">
+                        <span className="text-xs text-text-tertiary ml-auto">
                           {brandCounts[b.toLowerCase()] || 0}
                         </span>
                       </label>
@@ -2174,7 +2174,7 @@ export const Archive: React.FC<ArchiveProps> = ({
               {/* Mobile Range Filter */}
               {rangeFilters.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
                     Range
                   </h4>
                   <div className="space-y-3">
@@ -2185,12 +2185,12 @@ export const Archive: React.FC<ArchiveProps> = ({
                       >
                         <input
                           type="checkbox"
-                          className="h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                          className="h-5 w-5 rounded border-border text-belims-accent focus:ring-belims-accent"
                           checked={selectedRanges.includes(r.slug)}
                           onChange={() => toggleRange(r.slug)}
                         />
                         <span>{r.name}</span>
-                        <span className="text-xs text-gray-500 ml-auto">
+                        <span className="text-xs text-text-tertiary ml-auto">
                           {r.count}
                         </span>
                       </label>
@@ -2202,7 +2202,7 @@ export const Archive: React.FC<ArchiveProps> = ({
               {/* Mobile Color Filter */}
               {colorFilters.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-500">
+                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
                     Color
                   </h4>
                   <div className="space-y-3">
@@ -2213,15 +2213,15 @@ export const Archive: React.FC<ArchiveProps> = ({
                       >
                         <input
                           type="checkbox"
-                          className="h-5 w-5 rounded border-gray-300 text-belims-accent focus:ring-belims-accent"
+                          className="h-5 w-5 rounded border-border text-belims-accent focus:ring-belims-accent"
                           checked={selectedColors.includes(c.slug)}
                           onChange={() => toggleColor(c.slug)}
                         />
                         <span className="flex items-center">
-                          <span className="bg-gray-300 ring-1 ring-gray-200 rounded-full w-3.5 h-3.5 inline-block mr-2"></span>
+                          <span className="bg-border ring-1 ring-border rounded-full w-3.5 h-3.5 inline-block mr-2"></span>
                           {c.name}
                         </span>
-                        <span className="text-xs text-gray-500 ml-auto">
+                        <span className="text-xs text-text-tertiary ml-auto">
                           {c.count}
                         </span>
                       </label>
@@ -2231,10 +2231,10 @@ export const Archive: React.FC<ArchiveProps> = ({
               )}
             </div>
 
-            <div className="mt-8 pt-6 border-t border-gray-100">
+            <div className="mt-8 pt-6 border-t border-border">
               <button
                 onClick={() => setMobileFiltersOpen(false)}
-                className="w-full bg-belims-accent text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition-colors"
+                className="w-full bg-belims-accent text-white py-3 rounded-md font-bold hover:bg-orange-600 transition-colors"
               >
                 Show Results
               </button>

@@ -7,7 +7,7 @@ const TONE_CLASSES: Record<PillTone, string> = {
   warning: "bg-orange-100 text-orange-700",
   info: "bg-blue-100 text-blue-700",
   danger: "bg-red-100 text-red-700",
-  neutral: "bg-grey-light text-grey-medium",
+  neutral: "bg-surface-muted text-text-tertiary",
 };
 
 interface PillProps {

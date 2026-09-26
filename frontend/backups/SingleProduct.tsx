@@ -55,11 +55,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 }) => {
   const navigate = useNavigate();
   const [mainImage, setMainImage] = useState(product.image);
-  const [qty, setQty] = useState(1);
-  const [selectedTab, setSelectedTab] = useState<"desc" | "specs">("desc");
-  const [productTab, setProductTab] = useState<"description" | "reviews">(
-    "description",
-  );
+  
   const [aiDescription, setAiDescription] = useState<string | null>(null);
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
@@ -532,11 +528,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
           {/* RIGHT COLUMN: Content (Scrollable) */}
           <div className="lg:col-span-5 flex flex-col gap-8 pt-0">
-            {/* Header Info */}
-            <div>
-              {/* First Row: Stars/Reviews with SKU below, Wishlist/Compare on right */}
-              <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-                <div className="flex flex-col gap-1">
+            
                   <div className="flex items-center gap-3">
                     <div className="flex text-yellow-400">
                       {[...Array(5)].map((_, i) => (
@@ -550,11 +542,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           }
                         />
                       ))}
-                    </div>
-                    <span className="text-sm font-medium text-gray-500 hover:text-belims-blue cursor-pointer underline decoration-dotted">
-                      {product.reviews} Reviews
-                    </span>
-                  </div>
+                      
                   <div className="text-xs text-gray-400 font-mono">
                     SKU: {product.sku || "N/A"}
                   </div>
@@ -1012,11 +1000,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                     <div className="text-center py-6 bg-white/50 rounded border border-purple-100 border-dashed">
                       <p className="text-purple-800 font-medium mb-2">
                         Want a quick expert summary?
-                      </p>
-                      <p className="text-sm text-purple-600 mb-4">
-                        Let our AI analyze the specs and reviews for you.
-                      </p>
-                      <button
+                        
                         onClick={handleGenerateDescription}
                         className="bg-purple-600 text-white font-bold py-2 px-6 rounded shadow hover:bg-purple-700 transition-colors"
                       >

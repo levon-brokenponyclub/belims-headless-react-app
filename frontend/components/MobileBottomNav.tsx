@@ -38,7 +38,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const isShopActive = location.pathname.startsWith("/shop");
   const itemClass = (isActive: boolean) =>
     `flex flex-col items-center justify-center gap-1 py-1 transition-colors ${
-      isActive ? "text-brand" : "text-grey"
+      isActive ? "text-primary" : "text-text"
     }`;
 
   return (
@@ -47,7 +47,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         isVisible ? "translate-y-0" : "translate-y-full"
       } bottom-0`}
     >
-      <div className="border-t border-subtle bg-white/95 backdrop-blur-sm shadow-[0_-4px_18px_rgb(0_0_0_/_0.08)]">
+      <div className="border-t border-border bg-white/95 backdrop-blur-sm shadow-[0_-4px_18px_rgb(0_0_0_/_0.08)]">
         <nav
           className="grid grid-cols-5 items-center px-2 py-2"
           aria-label="Mobile navigation"

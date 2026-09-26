@@ -66,11 +66,7 @@ export const BundlePanel: React.FC<BundlePanelProps> = ({
         price: candidate.price,
         regular_price: candidate.regular_price,
         image: candidate.image,
-        category: candidate.category ?? "",
-        rating: candidate.rating ?? 0,
-        reviews: candidate.reviews ?? 0,
-        stock: candidate.stock ?? 1,
-        maxStock: candidate.stock ?? 1,
+        
       } as Product);
     }
 

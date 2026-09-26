@@ -69,7 +69,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
 
   return (
     <div
-      className="absolute left-0 right-0 top-full w-full bg-surface border-b border-subtle z-[1200] animate-fadeIn shadow-pop"
+      className="absolute left-0 right-0 top-full w-full bg-surface border-b border-border z-[1200] animate-fadeIn shadow-pop"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -78,9 +78,9 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
         style={{ gridTemplateColumns: "20% 20% 20% 40%" }}
       >
         {/* Left Column: Parent Categories */}
-        <div className="bg-white border-r border-subtle flex flex-col max-h-[600px]">
-          {/* <div className="px-5 py-4 border-b border-subtle">
-            <span className="text-[11px] font-black uppercase tracking-widest text-muted">
+        <div className="bg-white border-r border-border flex flex-col max-h-[600px]">
+          {/* <div className="px-5 py-4 border-b border-border">
+            <span className="text-[11px] font-black uppercase tracking-widest text-text-secondary">
               Shop by Category
             </span>
           </div> */}
@@ -88,7 +88,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
           <div className="flex-1 overflow-y-auto py-3 px-3">
             <button
               type="button"
-              className="w-full mb-3 px-4 py-2.5 rounded-pill text-left text-[15px] font-semibold font-heading bg-brand text-white hover:bg-brand/90 transition-colors"
+              className="w-full mb-3 px-4 py-2.5 rounded-pill text-left text-[15px] font-semibold font-heading bg-primary text-white hover:bg-primary/90 transition-colors"
               onClick={handleShopAll}
             >
               Shop All
@@ -102,8 +102,8 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
                   key={cat.id}
                   className={`w-full px-4 py-2.5 rounded-md text-left text-[15px] font-semibold font-heading flex justify-between items-center transition-colors ${
                     isActive
-                      ? "bg-grey-light text-grey"
-                      : "hover:bg-soft text-ink"
+                      ? "bg-surface-muted text-text"
+                      : "hover:bg-surface-muted text-text"
                   }`}
                   onMouseEnter={() => setActiveMegaCategory(cat)}
                   onClick={() => handleCategorySelect(cat.label)}
@@ -116,14 +116,14 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
         </div>
 
         {/* Column 2: Child Categories of hovered parent */}
-        <div className="p-6 bg-surface border-r border-subtle overflow-y-auto max-h-[600px]">
+        <div className="p-6 bg-surface border-r border-border overflow-y-auto max-h-[600px]">
           {activeMegaCategory ? (
             <div className="animate-fadeIn">
               {activeMegaCategory.children &&
               activeMegaCategory.children.length > 0 ? (
                 <div className="flex flex-col gap-1">
-                  <div className="px-2 pb-3 mb-3 border-b border-subtle">
-                    <span className="font-heading text-[11px] font-bold uppercase tracking-widest text-grey-medium">
+                  <div className="px-2 pb-3 mb-3 border-b border-border">
+                    <span className="font-heading text-[11px] font-bold uppercase tracking-widest text-text-tertiary">
                       {activeMegaCategory.label}
                     </span>
                   </div>
@@ -144,19 +144,19 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
                         }
                         className={`w-full px-4 py-2.5 rounded-md text-left text-[14px] font-semibold font-heading flex items-center justify-between transition-colors ${
                           isChildActive
-                            ? "bg-grey-light text-grey"
-                            : "text-ink hover:bg-soft"
+                            ? "bg-surface-muted text-text"
+                            : "text-text hover:bg-surface-muted"
                         }`}
                       >
                         <span className="truncate">{childCategory.label}</span>
-                        <span className="text-xs font-bold text-muted">→</span>
+                        <span className="text-xs font-bold text-text-secondary">→</span>
                       </button>
                     );
                   })}
                 </div>
               ) : (
-                <div className="flex flex-col items-start justify-center h-64 text-muted">
-                  <p className="text-lg font-bold text-ink">
+                <div className="flex flex-col items-start justify-center h-64 text-text-secondary">
+                  <p className="text-lg font-bold text-text">
                     {activeMegaCategory.label}
                   </p>
                   <button
@@ -172,17 +172,17 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted"></p>
+            <p className="text-sm text-text-secondary"></p>
           )}
         </div>
 
         {/* Column 3: Flyout sibling + subcategory context */}
-        <div className="p-6 bg-surface border-r border-subtle overflow-y-auto max-h-[600px]">
+        <div className="p-6 bg-surface border-r border-border overflow-y-auto max-h-[600px]">
           {activeMegaCategory?.children &&
           activeMegaCategory.children.length > 0 ? (
             <div className="h-full animate-fadeIn">
-              <div className="px-2 pb-3 mb-3 border-b border-subtle">
-                <h4 className="font-heading text-[11px] font-bold uppercase tracking-widest text-grey-medium">
+              <div className="px-2 pb-3 mb-3 border-b border-border">
+                <h4 className="font-heading text-[11px] font-bold uppercase tracking-widest text-text-tertiary">
                   {activeChildCategory?.label || "Subcategories"}
                 </h4>
               </div>
@@ -199,19 +199,19 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
                       onClick={() => handleCategorySelect(sibling.label)}
                       className={`w-full px-4 py-3 rounded-md text-left font-bold text-sm font-heading flex items-center justify-between transition-colors ${
                         isSiblingActive
-                          ? "bg-grey-light text-grey"
-                          : "text-ink hover:bg-soft"
+                          ? "bg-surface-muted text-text"
+                          : "text-text hover:bg-surface-muted"
                       }`}
                     >
                       <span className="truncate">{sibling.label}</span>
-                      <span className="text-xs font-bold text-muted">→</span>
+                      <span className="text-xs font-bold text-text-secondary">→</span>
                     </button>
                   );
                 })} */}
               </div>
 
               <div className="px-2">
-                {/* <div className="text-[11px] font-black uppercase tracking-widest text-muted mb-3">
+                {/* <div className="text-[11px] font-black uppercase tracking-widest text-text-secondary mb-3">
                   {activeChildCategory?.label || "Subcategories"}
                 </div> */}
 
@@ -223,7 +223,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
                         key={subCategory.id}
                         type="button"
                         onClick={() => handleCategorySelect(subCategory.label)}
-                        className="text-[14px] text-muted hover:text-brand text-left transition-colors w-full"
+                        className="text-[14px] text-text-secondary hover:text-primary text-left transition-colors w-full"
                       >
                         {subCategory.label}
                       </button>
@@ -236,7 +236,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
                       activeChildCategory &&
                       handleCategorySelect(activeChildCategory.label)
                     }
-                    className="text-[14px] font-semibold text-brand hover:underline"
+                    className="text-[14px] font-semibold text-primary hover:underline"
                   >
                     Shop{" "}
                     {activeChildCategory?.label || activeMegaCategory.label}
@@ -245,14 +245,14 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
               </div>
             </div>
           ) : (
-            <div className="h-full p-6 flex items-center justify-center text-muted"></div>
+            <div className="h-full p-6 flex items-center justify-center text-text-secondary"></div>
           )}
         </div>
 
         {/* Right Column: On Sale products */}
         <div className="p-6 bg-white overflow-y-auto max-h-[600px]">
-          <div className="px-2 pb-3 mb-3 border-b border-subtle">
-            <h4 className="font-heading text-[11px] font-bold uppercase tracking-widest text-grey-medium">
+          <div className="px-2 pb-3 mb-3 border-b border-border">
+            <h4 className="font-heading text-[11px] font-bold uppercase tracking-widest text-text-tertiary">
               On Sale
             </h4>
           </div>
@@ -269,7 +269,7 @@ export const MegaMenu: React.FC<MegaMenuProps> = ({
                 />
               ))
             ) : (
-              <div className="rounded-md border border-subtle bg-white p-4 text-sm text-muted">
+              <div className="rounded-md border border-border bg-white p-4 text-sm text-text-secondary">
                 No sale products currently.
               </div>
             )}

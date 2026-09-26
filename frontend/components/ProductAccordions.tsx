@@ -15,25 +15,25 @@ export const ProductAccordions: React.FC<ProductAccordionsProps> = ({
   return (
     <div className="space-y-0">
       {/* 15-Days Return Policy */}
-      <div className="border-b border-subtle rounded overflow-hidden">
+      <div className="border-b border-border rounded overflow-hidden">
         <button
           onClick={() =>
             setExpandedPolicy(expandedPolicy === "return" ? null : "return")
           }
           className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
         >
-          <span className="text-base font-bold text-grey font-heading transition-colors">
+          <span className="text-base font-bold text-text font-heading transition-colors">
             15-Days Return Policy
           </span>
           <ChevronRight
             size={20}
-            className={`text-grey transition-transform ${expandedPolicy === "return" ? "rotate-90" : ""}`}
+            className={`text-text transition-transform ${expandedPolicy === "return" ? "rotate-90" : ""}`}
           />
         </button>
         {expandedPolicy === "return" && (
           <div className="pb-6 px-0 bg-white animate-fadeIn">
             <div
-              className="text-base text-grey-medium prose prose-sm max-w-none"
+              className="text-base text-text-tertiary prose prose-sm max-w-none"
               dangerouslySetInnerHTML={{
                 __html: ecommercePolicies?.return_policy || "Loading...",
               }}
@@ -43,7 +43,7 @@ export const ProductAccordions: React.FC<ProductAccordionsProps> = ({
       </div>
 
       {/* Change of Mind Return */}
-      <div className="border-b border-subtle rounded overflow-hidden">
+      <div className="border-b border-border rounded overflow-hidden">
         <button
           onClick={() =>
             setExpandedPolicy(
@@ -52,18 +52,18 @@ export const ProductAccordions: React.FC<ProductAccordionsProps> = ({
           }
           className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
         >
-          <span className="text-base font-bold text-grey font-heading transition-colors">
+          <span className="text-base font-bold text-text font-heading transition-colors">
             Change of Mind Return
           </span>
           <ChevronRight
             size={20}
-            className={`text-grey transition-transform ${expandedPolicy === "change_mind" ? "rotate-90" : ""}`}
+            className={`text-text transition-transform ${expandedPolicy === "change_mind" ? "rotate-90" : ""}`}
           />
         </button>
         {expandedPolicy === "change_mind" && (
           <div className="pb-6 px-0 bg-white animate-fadeIn">
             <div
-              className="text-base text-grey-medium prose prose-sm max-w-none"
+              className="text-base text-text-tertiary prose prose-sm max-w-none"
               dangerouslySetInnerHTML={{
                 __html: ecommercePolicies?.change_of_mind || "Loading...",
               }}
@@ -73,25 +73,25 @@ export const ProductAccordions: React.FC<ProductAccordionsProps> = ({
       </div>
 
       {/* Warranty */}
-      <div className="border-b border-subtle rounded overflow-hidden">
+      <div className="border-b border-border rounded overflow-hidden">
         <button
           onClick={() =>
             setExpandedPolicy(expandedPolicy === "warranty" ? null : "warranty")
           }
           className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
         >
-          <span className="text-base font-bold text-grey font-heading transition-colors">
+          <span className="text-base font-bold text-text font-heading transition-colors">
             Warranty
           </span>
           <ChevronRight
             size={20}
-            className={`text-grey transition-transform ${expandedPolicy === "warranty" ? "rotate-90" : ""}`}
+            className={`text-text transition-transform ${expandedPolicy === "warranty" ? "rotate-90" : ""}`}
           />
         </button>
         {expandedPolicy === "warranty" && (
           <div className="pb-6 px-0 bg-white animate-fadeIn">
             <div
-              className="text-base text-grey-medium prose prose-sm max-w-none"
+              className="text-base text-text-tertiary prose prose-sm max-w-none"
               dangerouslySetInnerHTML={{
                 __html: ecommercePolicies?.warranty || "Loading...",
               }}
@@ -101,25 +101,25 @@ export const ProductAccordions: React.FC<ProductAccordionsProps> = ({
       </div>
 
       {/* Delivery and Shipping */}
-      <div className="border-b border-subtle rounded overflow-hidden">
+      <div className="border-b border-border rounded overflow-hidden">
         <button
           onClick={() =>
             setExpandedPolicy(expandedPolicy === "shipping" ? null : "shipping")
           }
           className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
         >
-          <span className="text-base font-bold text-grey font-heading transition-colors">
+          <span className="text-base font-bold text-text font-heading transition-colors">
             Delivery and Shipping
           </span>
           <ChevronRight
             size={20}
-            className={`text-grey transition-transform ${expandedPolicy === "shipping" ? "rotate-90" : ""}`}
+            className={`text-text transition-transform ${expandedPolicy === "shipping" ? "rotate-90" : ""}`}
           />
         </button>
         {expandedPolicy === "shipping" && (
           <div className="pb-6 px-0 bg-white animate-fadeIn">
             <div
-              className="text-base text-grey-medium prose prose-sm max-w-none"
+              className="text-base text-text-tertiary prose prose-sm max-w-none"
               dangerouslySetInnerHTML={{
                 __html: ecommercePolicies?.shipping || "Loading...",
               }}

@@ -165,7 +165,7 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
   });
 
   return (
-    <div className="rounded-lg bg-grey-light px-4 py-4">
+    <div className="rounded-lg bg-surface-muted px-4 py-4">
       <button
         type="button"
         onClick={() => setIsExpanded((prev) => !prev)}
@@ -174,27 +174,27 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
         aria-controls="delivery-options-accordion"
       >
         <div className="flex items-center justify-between gap-3">
-          <p className="text-base font-bold text-grey font-heading">
+          <p className="text-base font-bold text-text font-heading">
             Delivery options
           </p>
-          <span className="leading-none text-grey-medium">
+          <span className="leading-none text-text-tertiary">
             {isExpanded ? <Minus size={18} /> : <Plus size={18} />}
           </span>
         </div>
-        <p className="mt-1 text-sm text-grey-medium">{microSummary}</p>
+        <p className="mt-1 text-sm text-text-tertiary">{microSummary}</p>
       </button>
 
       {isExpanded && (
         <div id="delivery-options-accordion" className="mt-3 space-y-3">
           {!hasAddress ? (
             <div className="space-y-3">
-              <p className="text-sm text-grey-medium">
+              <p className="text-sm text-text-tertiary">
                 Add your address to see delivery rates and arrival dates.
               </p>
               <button
                 type="button"
                 onClick={() => onAddAddress?.()}
-                className="text-sm font-semibold text-grey underline"
+                className="text-sm font-semibold text-text underline"
               >
                 Add address
               </button>
@@ -204,31 +204,31 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
               {Array.from({ length: 3 }).map((_, index) => (
                 <div
                   key={`delivery-option-skeleton-${index}`}
-                  className="h-16 animate-pulse rounded-lg border border-subtle bg-white"
+                  className="h-16 animate-pulse rounded-lg border border-border bg-white"
                 />
               ))}
             </div>
           ) : errorMessage ? (
             <div className="space-y-2">
-              <p className="text-sm text-red-muted">{errorMessage}</p>
+              <p className="text-sm text-deal-sale">{errorMessage}</p>
               <button
                 type="button"
                 onClick={() => onChangeAddress?.()}
-                className="text-sm font-semibold text-grey underline"
+                className="text-sm font-semibold text-text underline"
               >
                 Change address
               </button>
             </div>
           ) : options.length === 0 ? (
             <div className="space-y-2">
-              <p className="text-sm text-grey-medium">
+              <p className="text-sm text-text-tertiary">
                 Delivery isn’t available for this address. Try another address
                 or use Pickup.
               </p>
               <button
                 type="button"
                 onClick={() => onChangeAddress?.()}
-                className="text-sm font-semibold text-grey underline"
+                className="text-sm font-semibold text-text underline"
               >
                 Change address
               </button>
@@ -250,8 +250,8 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
                     htmlFor={option.id}
                     className={`block w-full cursor-pointer rounded-lg border px-4 py-4 transition-all ${
                       isSelected
-                        ? "border-brand bg-brand/10"
-                        : "border-subtle bg-white hover:border-grey hover:bg-soft"
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-white hover:border-border-strong hover:bg-surface-muted"
                     }`}
                   >
                     <input
@@ -269,8 +269,8 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
                           <div
                             className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                               isSelected
-                                ? "border-brand bg-brand"
-                                : "border-subtle bg-white"
+                                ? "border-primary bg-primary"
+                                : "border-border bg-white"
                             }`}
                           >
                             {isSelected ? (
@@ -280,7 +280,7 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 text-base font-bold text-grey font-heading">
+                          <div className="flex items-center gap-2 text-base font-bold text-text font-heading">
                             <span className="truncate">{option.service_name}</span>
                             {badgeText === "Best value" ? (
                               <Pill tone="success">Budget</Pill>
@@ -292,7 +292,7 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
                             ) : null}
                           </div>
 
-                          <div className="mt-1 text-sm text-grey-medium">
+                          <div className="mt-1 text-sm text-text-tertiary">
                             {formatDeliveryEtaText(
                               option.expected_delivery_date,
                             )}
@@ -301,7 +301,7 @@ const DeliveryOptionsAccordion: React.FC<DeliveryOptionsAccordionProps> = ({
                       </div>
 
                       <div className="text-right flex-shrink-0">
-                        <div className="text-lg font-bold text-grey">
+                        <div className="text-lg font-bold text-text">
                           {option.total_price === 0
                             ? "FREE"
                             : formatCurrency(option.total_price)}
@@ -416,7 +416,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
               className="absolute left-0 right-0 bottom-0 max-h-[85vh] rounded-t-2xl bg-surface flex flex-col md:left-auto md:top-0 md:bottom-0 md:max-h-none md:h-full md:w-full md:max-w-md md:rounded-none"
             >
               {/* Header */}
-              <div className="p-4 bg-brand text-white flex justify-between items-center rounded-t-2xl md:rounded-none">
+              <div className="p-4 bg-primary text-white flex justify-between items-center rounded-t-2xl md:rounded-none">
                 <div className="flex items-center gap-2 min-w-0">
                   <Truck size={20} className="flex-shrink-0" />
                   <div className="min-w-0">
@@ -439,33 +439,33 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
               </div>
 
               {/* Body */}
-              <div className="flex-1 overflow-y-auto bg-soft p-5 space-y-3">
+              <div className="flex-1 overflow-y-auto bg-surface-muted p-5 space-y-3">
                 {loading ? (
                   <div className="space-y-2">
                     {Array.from({ length: 3 }).map((_, i) => (
                       <div
                         key={`del-skel-${i}`}
-                        className="h-16 animate-pulse rounded-lg border border-subtle bg-white"
+                        className="h-16 animate-pulse rounded-lg border border-border bg-white"
                       />
                     ))}
                   </div>
                 ) : deliveryRatesError ? (
                   <div className="space-y-2">
-                    <p className="text-sm text-red-muted">{deliveryRatesError}</p>
+                    <p className="text-sm text-deal-sale">{deliveryRatesError}</p>
                     <button
                       type="button"
                       onClick={() => {
                         setIsRatesDrawerOpen(false);
                         (onEditDeliveryLocation ?? onSetDeliveryLocation)?.();
                       }}
-                      className="text-sm font-semibold text-grey underline"
+                      className="text-sm font-semibold text-text underline"
                     >
                       Change address
                     </button>
                   </div>
                 ) : deliveryOptions.length === 0 ? (
                   <div className="space-y-2">
-                    <p className="text-sm text-grey-medium">
+                    <p className="text-sm text-text-tertiary">
                       Delivery isn't available for this address. Try another
                       address or use Pickup.
                     </p>
@@ -475,7 +475,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                         setIsRatesDrawerOpen(false);
                         (onEditDeliveryLocation ?? onSetDeliveryLocation)?.();
                       }}
-                      className="text-sm font-semibold text-grey underline"
+                      className="text-sm font-semibold text-text underline"
                     >
                       Change address
                     </button>
@@ -497,8 +497,8 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                           htmlFor={`drawer-${option.id}`}
                           className={`block w-full cursor-pointer rounded-lg border px-4 py-4 transition-all ${
                             isSelected
-                              ? "border-brand bg-brand/10"
-                              : "border-subtle bg-white hover:border-grey hover:bg-soft"
+                              ? "border-primary bg-primary/10"
+                              : "border-border bg-white hover:border-border-strong hover:bg-surface-muted"
                           }`}
                         >
                           <input
@@ -514,8 +514,8 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                               <div
                                 className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
                                   isSelected
-                                    ? "border-brand bg-brand"
-                                    : "border-subtle bg-white"
+                                    ? "border-primary bg-primary"
+                                    : "border-border bg-white"
                                 }`}
                               >
                                 {isSelected && (
@@ -523,7 +523,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <div className="flex items-center gap-2 text-base font-bold text-grey font-heading">
+                                <div className="flex items-center gap-2 text-base font-bold text-text font-heading">
                                   <span className="truncate">
                                     {option.service_name}
                                   </span>
@@ -536,7 +536,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                                     </Pill>
                                   )}
                                 </div>
-                                <div className="mt-1 text-sm text-grey-medium">
+                                <div className="mt-1 text-sm text-text-tertiary">
                                   {formatDeliveryEtaText(
                                     option.expected_delivery_date,
                                   )}
@@ -544,7 +544,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0">
-                              <div className="text-lg font-bold text-grey">
+                              <div className="text-lg font-bold text-text">
                                 {option.total_price === 0
                                   ? "FREE"
                                   : formatCurrency(option.total_price)}
@@ -566,14 +566,14 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
                     setIsRatesDrawerOpen(false);
                     onEditDeliveryLocation?.();
                   }}
-                  className="w-full text-sm font-semibold text-grey underline"
+                  className="w-full text-sm font-semibold text-text underline"
                 >
                   Change address
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsRatesDrawerOpen(false)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white font-bold rounded-pill hover:bg-accent/90 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-soft text-white font-bold rounded-pill hover:bg-primary-soft/90 transition-colors"
                 >
                   Done
                 </button>
@@ -628,7 +628,7 @@ export const FulfillmentTiles: React.FC<FulfillmentTilesProps> = ({
         }
       `}</style>
 
-      <p className="text-base font-bold text-grey font-heading">Fulfillment</p>
+      <p className="text-base font-bold text-text font-heading">Fulfillment</p>
 
       {/* ── Pickup card ── */}
       <div

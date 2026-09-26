@@ -149,11 +149,7 @@ const DEFAULT_LISTING_FIELDS = [
   "stock",
   "stock_status",
   "maxStock",
-  "in_stock",
-  "rating",
-  "reviews",
-  "sku",
-  "brand",
+  
   "isFeatured",
   "deals",
   "best_deal_consumer",

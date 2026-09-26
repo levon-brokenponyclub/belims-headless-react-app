@@ -10,11 +10,7 @@ export interface Product {
   image: string;
   featured_image?: string;
   images?: string[]; // For gallery
-  video_url?: string; // Video URL for product gallery (local or external)
-  rating: number;
-  reviews: number;
-  stock: number; // Current stock
-  stock_status?: "instock" | "outofstock" | "onbackorder" | string;
+  
   maxStock: number; // For the stock bar visual
   weight?: number; // Weight in kg for shipping calculation
   isBundle?: boolean;
@@ -130,11 +126,7 @@ export interface BundleCandidate {
   price: number;
   regular_price?: number;
   image: string;
-  category?: string;
-  rating?: number;
-  reviews?: number;
-  stock?: number;
-}
+  
 
 export interface Store {
   id: string;

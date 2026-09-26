@@ -208,10 +208,6 @@ Backend proxies:
 
 7. V1 Status
 
-V1 Complete
-• Reviews fully removed
-• Loyalty fully removed
-• Trade Accounts Programme integrated
 • Decision Mode loop + contamination issues resolved
 • Payment flow aligned to real sandbox journey
 • Live product search enforced
