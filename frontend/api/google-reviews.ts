@@ -1,21 +1,24 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 // ---------------------------------------------------------------------------
-// Config — baked in so the Place ID never needs to go in env vars
+// Config
 // ---------------------------------------------------------------------------
 const PLACE_ID = "ChIJE4HCbjw39h4Rfq_ZYEWcvKM"; // Belims Hardware
 
 // ---------------------------------------------------------------------------
-// Types
+// Types — Places API (New) response shape
 // ---------------------------------------------------------------------------
-interface GoogleReviewRaw {
-  author_name: string;
+interface NewApiReview {
+  name: string; // "places/{placeId}/reviews/{reviewId}"
   rating: number;
-  text: string;
-  time: number; // Unix timestamp (seconds)
-  profile_photo_url?: string;
-  relative_time_description: string;
-  author_url?: string;
+  relativePublishTimeDescription: string;
+  publishTime: string; // ISO-8601
+  text?: { text: string; languageCode: string };
+  authorAttribution: {
+    displayName: string;
+    uri?: string;
+    photoUri?: string;
+  };
 }
 
 interface NormalizedReview {
@@ -23,8 +26,8 @@ interface NormalizedReview {
   reviewer: string;
   rating: number;
   review: string;
-  date: string; // ISO-8601
-  relativeTime: string; // "2 months ago"
+  date: string;
+  relativeTime: string;
   photoUrl: string | null;
   source: "google";
 }
@@ -55,54 +58,56 @@ export default async function handler(
     return;
   }
 
-  // Cache 1 hour on Vercel CDN; serve stale for up to 24 h while revalidating
+  // Cache 1 hour on Vercel CDN, serve stale for up to 24 h while revalidating
   res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
 
   try {
-    const url = new URL(
-      "https://maps.googleapis.com/maps/api/place/details/json",
-    );
-    url.searchParams.set("place_id", PLACE_ID);
-    url.searchParams.set("fields", "rating,user_ratings_total,reviews");
-    url.searchParams.set("reviews_sort", "newest");
-    url.searchParams.set("key", apiKey);
+    // Places API (New) — replaces legacy maps.googleapis.com/maps/api/place/
+    const url = `https://places.googleapis.com/v1/places/${PLACE_ID}`;
 
-    const raw = await fetch(url.toString());
+    const raw = await fetch(url, {
+      method: "GET",
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        // Request only the fields we need — minimises billing cost
+        "X-Goog-FieldMask":
+          "rating,userRatingCount,reviews.rating,reviews.relativePublishTimeDescription,reviews.publishTime,reviews.text,reviews.authorAttribution,reviews.name",
+      },
+    });
 
     if (!raw.ok) {
-      throw new Error(`Google HTTP ${raw.status}`);
+      const body = await raw.json().catch(() => ({}));
+      throw new Error(
+        `Places API (New) ${raw.status}: ${JSON.stringify(body?.error ?? body)}`,
+      );
     }
 
     const data = await raw.json();
 
-    if (data.status !== "OK") {
-      throw new Error(
-        `Places API: ${data.status}${data.error_message ? ` — ${data.error_message}` : ""}`,
-      );
-    }
-
     const {
       rating = 0,
-      user_ratings_total = 0,
+      userRatingCount = 0,
       reviews = [],
-    } = data.result ?? {};
+    } = data as {
+      rating?: number;
+      userRatingCount?: number;
+      reviews?: NewApiReview[];
+    };
 
-    const normalized: NormalizedReview[] = (reviews as GoogleReviewRaw[]).map(
-      (r) => ({
-        id: `${r.author_name}-${r.time}`,
-        reviewer: r.author_name,
-        rating: r.rating,
-        review: r.text?.trim() ?? "",
-        date: new Date(r.time * 1000).toISOString(),
-        relativeTime: r.relative_time_description,
-        photoUrl: r.profile_photo_url ?? null,
-        source: "google",
-      }),
-    );
+    const normalized: NormalizedReview[] = reviews.map((r) => ({
+      id: r.name ?? `${r.authorAttribution?.displayName}-${r.publishTime}`,
+      reviewer: r.authorAttribution?.displayName?.trim() || "Anonymous",
+      rating: r.rating,
+      review: r.text?.text?.trim() ?? "",
+      date: r.publishTime,
+      relativeTime: r.relativePublishTimeDescription,
+      photoUrl: r.authorAttribution?.photoUri ?? null,
+      source: "google",
+    }));
 
     const payload: ReviewsPayload = {
       placeRating: rating,
-      totalRatings: user_ratings_total,
+      totalRatings: userRatingCount,
       reviews: normalized,
     };
 
