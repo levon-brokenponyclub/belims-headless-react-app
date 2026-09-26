@@ -318,35 +318,35 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     if (stockLevel <= 0) {
       return {
         text: "Out of stock",
-        tone: "text-[#922c2c]",
-        dot: "bg-[#922c2c]",
-        light: "bg-[#f7e5e5]",
+        tone: "text-stock-out",
+        dot: "bg-stock-out",
+        light: "bg-stock-out-bg",
       };
     }
 
     if (stockLevel <= 3) {
       return {
         text: `Only ${stockLevel} left`,
-        tone: "text-[#bd6b1b]",
-        dot: "bg-[#bd6b1b]",
-        light: "bg-[#f8e1cb]",
+        tone: "text-stock-low",
+        dot: "bg-stock-low",
+        light: "bg-stock-low-bg",
       };
     }
 
     if (stockLevel <= 10) {
       return {
         text: "Low stock",
-        tone: "text-[#bd6b1b]",
-        dot: "bg-[#bd6b1b]",
-        light: "bg-[#f8e1cb]",
+        tone: "text-stock-low",
+        dot: "bg-stock-low",
+        light: "bg-stock-low-bg",
       };
     }
 
     return {
       text: "In stock",
-      tone: "text-[#337239]",
-      dot: "bg-[#337239]",
-      light: "bg-[#ddf0df]",
+      tone: "text-stock-ok",
+      dot: "bg-stock-ok",
+      light: "bg-stock-ok-bg",
     };
   })();
 
@@ -469,7 +469,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Image */}
         <Link
           to={buildProductUrl(product)}
-          className={`relative flex items-center justify-center rounded-lg bg-grey-light overflow-hidden ${
+          className={`relative flex items-center justify-center rounded-lg bg-surface-muted overflow-hidden ${
             imageBlockClassName
           } ${isFlat && !isFlatHorizontal ? "" : !isFlatHorizontal ? "p-5" : ""}`}
         >
@@ -487,7 +487,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 openQuickView();
               }}
               className={[
-                "group absolute right-2 top-4 z-20 h-10 w-10 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-all duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white",
+                "group absolute right-2 top-4 z-20 h-10 w-10 overflow-hidden rounded-full border border-border bg-white text-text transition-all duration-300 ease-out hover:border-border-strong hover:bg-surface-dark hover:text-white",
                 isImageHovering
                   ? "translate-x-0 opacity-100"
                   : "translate-x-4 opacity-0",
@@ -495,7 +495,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               ].join(" ")}
               aria-label={quickViewIconAction?.ariaLabel || "Quick view"}
             >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <span className="relative z-10 flex items-center justify-center">
                 {quickViewIconAction?.icon || <Eye size={18} strokeWidth={2} />}
               </span>
@@ -518,14 +518,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               />
             </>
           ) : (
-            <div className="flex h-full w-full items-center justify-center rounded bg-[#F2F2F2] text-sm text-[#565969]">
+            <div className="flex h-full w-full items-center justify-center rounded bg-[#F2F2F2] text-sm text-text-secondary">
               No image
             </div>
           )}
 
           {isDailyDeal && !isFlatHorizontal && !isHidden("dailyMarquee") && (
             <div
-              className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-grey-light transition-opacity duration-200 ease-out ${
+              className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-surface-muted transition-opacity duration-200 ease-out ${
                 isImageHovering ? "opacity-0" : "opacity-100"
               }`}
             >
@@ -533,7 +533,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 {/*  <span className="text-grey-900 font-semibold text-[13px]">
                   Deal ends:
                 </span> */}
-                <span className="text-red-muted font-semibold text-[13px] text-center">
+                <span className="text-deal-sale font-semibold text-[13px] text-center">
                   {formatTwo(dailyTimeLeft.hours)}H{" "}
                   {formatTwo(dailyTimeLeft.minutes)}M{" "}
                   {formatTwo(dailyTimeLeft.seconds)}S
@@ -544,7 +544,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {isWeeklyDeal && !isFlatHorizontal && !isHidden("weeklyMarquee") && (
             <div
-              className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-grey-light transition-opacity duration-200 ease-out ${
+              className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-surface-muted transition-opacity duration-200 ease-out ${
                 isImageHovering ? "opacity-0" : "opacity-100"
               }`}
             >
@@ -558,18 +558,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div
                     key={`weekly-deal-${index}`}
-                    className="flex items-center gap-2 text-grey font-semibold text-[13px]"
+                    className="flex items-center gap-2 text-text font-semibold text-[13px]"
                   >
-                    <Zap className="h-4 w-4 text-accent" />
+                    <Zap className="h-4 w-4 text-primary-soft" />
                     <span>Weekly Deal</span>
                   </div>
                 ))}
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div
                     key={`weekly-deal-dup-${index}`}
-                    className="flex items-center gap-2 text-grey font-semibold text-[13px]"
+                    className="flex items-center gap-2 text-text font-semibold text-[13px]"
                   >
-                    <Zap className="h-4 w-4 text-accent" />
+                    <Zap className="h-4 w-4 text-primary-soft" />
                     <span>Weekly Deal</span>
                   </div>
                 ))}
@@ -582,7 +582,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             !isFlatHorizontal &&
             !isHidden("tradeMarquee") && (
               <div
-                className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded-md bg-white border border-grey-light transition-opacity duration-200 ease-out ${
+                className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded-md bg-white border border-surface-muted transition-opacity duration-200 ease-out ${
                   isImageHovering ? "opacity-0" : "opacity-100"
                 }`}
               >
@@ -604,7 +604,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             !(isTradeSpecial && tradePrice > 0) &&
             !isHidden("lowStockMarquee") && (
               <div
-                className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-grey-light transition-opacity duration-200 ease-out ${
+                className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-surface-muted transition-opacity duration-200 ease-out ${
                   isImageHovering ? "opacity-0" : "opacity-100"
                 }`}
               >
@@ -618,18 +618,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   {Array.from({ length: 5 }).map((_, index) => (
                     <div
                       key={`low-stock-${index}`}
-                      className="flex items-center gap-2 text-grey font-semibold text-[13px]"
+                      className="flex items-center gap-2 text-text font-semibold text-[13px]"
                     >
-                      <Zap className="h-4 w-4 text-accent" />
+                      <Zap className="h-4 w-4 text-primary-soft" />
                       <span>Low stock. Order soon</span>
                     </div>
                   ))}
                   {Array.from({ length: 5 }).map((_, index) => (
                     <div
                       key={`low-stock-dup-${index}`}
-                      className="flex items-center gap-2 text-grey font-semibold text-[13px]"
+                      className="flex items-center gap-2 text-text font-semibold text-[13px]"
                     >
-                      <Zap className="h-4 w-4 text-accent" />
+                      <Zap className="h-4 w-4 text-primary-soft" />
                       <span>Low stock. Order soon</span>
                     </div>
                   ))}
@@ -650,7 +650,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 type="button"
                 className={
                   quickViewButtonAction?.className ||
-                  "group absolute left-4 right-4 bottom-0 flex h-11 items-center justify-center overflow-hidden rounded-full border border-grey-light bg-white px-1 py-2 text-base font-bold text-grey transition-colors hover:border-grey hover:text-white"
+                  "group absolute left-4 right-4 bottom-0 flex h-11 items-center justify-center overflow-hidden rounded-md border border-surface-muted bg-white px-1 py-2 text-base font-bold text-text transition-colors hover:border-border-strong hover:text-white"
                 }
                 onClick={(event) => {
                   event.preventDefault();
@@ -662,7 +662,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   addWithPriceMode(isTradeSpecial ? "trade" : "retail");
                 }}
               >
-                <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+                <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
 
                 <span className="relative z-10 flex items-center gap-3">
                   {quickViewButtonAction?.icon && (
@@ -688,21 +688,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             isFlat ? "" : "py-5 pb-0 px-1"
           } ${isFlatHorizontal ? "px-4 pr-0" : ""}`}
         >
-          {/* Category / Deal Name */}
-          {!isFlat && !isHidden("category") && (
-            <div className="mb-2 text-[11px] uppercase text-grey-medium font-semibold">
-              {resolvedCategoryText ||
-                (showDealName && consumerBest?.deal_name
-                  ? consumerBest.deal_name
-                  : product.category)}
-            </div>
-          )}
 
           {product.brand && !isHidden("brand") && (
             <Link
               to={`/shop?brand=${encodeURIComponent(product.brand)}`}
               onClick={(e) => e.stopPropagation()}
-              className="mb-1 inline-block text-[11px] font-semibold uppercase tracking-wide text-grey-medium hover:text-brand transition-colors"
+              className="mb-1 inline-block text-[11px] font-semibold uppercase tracking-wide text-text-tertiary hover:text-primary transition-colors"
             >
               {product.brand}
             </Link>
@@ -711,14 +702,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Title - Fixed height for 2 lines */}
           <Link
             to={buildProductUrl(product)}
-            className={`mb-0 mt-0 line-clamp-2 font-heading font-semibold leading-[1.35] text-grey min-h-[35px] ${
+            className={`mb-0 mt-0 line-clamp-2 font-heading font-semibold leading-[1.35] text-text min-h-[35px] ${
               isFlat ? "text-[15px] min-h-[10px] mt-1" : "text-base"
             }`}
           >
             {product.name}
           </Link>
 
-          {/* <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase text-[#565969]">
+          {/* <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase text-text-secondary">
             <span
               className={`flex h-4 w-4 items-center justify-center rounded-full ${stockIndicator.light}`}
             >
@@ -730,7 +721,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div> */}
 
           {/* SKU */}
-          {/* <div className="mb-4 text-[11px] font-semibold uppercase text-[#565969]">
+          {/* <div className="mb-4 text-[11px] font-semibold uppercase text-text-secondary">
             {product.sku || product.id}
           </div> */}
 
@@ -746,14 +737,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                       </span>
                     </div>
                     <div className="text-right flex flex-col justify-between">
-                      <span className="font-heading text-[13] font-semibold text-[#9b9b9b] line-through">
+                      <span className="font-heading text-[13] font-semibold text-deal-strike line-through">
                         {formatMoney(retailPrice)}
                       </span>
                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    <span className="text-[12px] font-semibold text-[#9b9b9b] line-through">
+                    <span className="text-[12px] font-semibold text-deal-strike line-through">
                       {formatMoney(retailPrice)}
                     </span>
                     <span className="font-heading text-[16px] font-bold text-belims-accent bg-belims-accent/10 inline-block rounded px-2 py-1">
@@ -762,7 +753,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   </div>
                 )
               ) : (
-                <span className="font-heading text-base font-bold text-grey">
+                <span className="font-heading text-base font-bold text-text">
                   {formatMoney(displayPrice)}
                 </span>
               )}
@@ -771,13 +762,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <div className="mt-auto py-1 pb-3">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
                 {/* Dominant price */}
-                <span className="font-heading text-base font-bold text-red-muted">
+                <span className="font-heading text-base font-bold text-deal-sale">
                   {formatMoney(displayPrice)}
                 </span>
 
                 {/* Non-trade deals: compare → sale */}
                 {hasConsumerStrike && (
-                  <span className="text-[14px] font-light text-grey-medium line-through">
+                  <span className="text-[14px] font-light text-text-tertiary line-through">
                     {formatMoney(consumerCompareAt as number)}
                   </span>
                 )}
@@ -792,7 +783,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 e.stopPropagation();
                 addWithPriceMode(isTradeSpecial ? "trade" : "retail");
               }}
-              className={`mt-0 w-full rounded bg-[#04223E] font-heading text-sm font-semibold text-white transition-colors ${
+              className={`mt-0 w-full rounded-md bg-[#04223E] font-heading text-sm font-semibold text-white transition-colors ${
                 isTradeSpecial
                   ? "hover:bg-belims-accent"
                   : "hover:bg-[rgb(50_39_131_/_var(--tw-bg-opacity,1))]"
@@ -805,7 +796,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               onClick={handleNotify}
               disabled={notifyStatus === "pending" || notifyStatus === "sent"}
               className={[
-                `mt-0 ${isFlat ? "h-9" : "h-11"} w-full rounded font-heading text-sm font-semibold`,
+                `mt-0 ${isFlat ? "h-9" : "h-11"} w-full rounded-md font-heading text-sm font-semibold`,
                 "flex items-center justify-center gap-2 transition-colors",
                 notifyStatus === "sent"
                   ? "bg-green-50 text-green-800 border border-green-200"

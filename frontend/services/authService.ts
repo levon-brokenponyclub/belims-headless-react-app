@@ -440,6 +440,30 @@ export const loginWithFirebaseGoogle = async (
 };
 
 /**
+ * Send a password reset email via WordPress.
+ * Requires a custom WP REST endpoint:
+ *   POST /wp-json/belims/v1/users/forgot-password
+ *   Body: { email: string }
+ *   Response: { success: boolean, message: string }
+ */
+export const requestPasswordReset = async (
+  email: string,
+): Promise<{ success: boolean; message: string }> => {
+  const apiBase = getApiBaseUrl();
+  const response = await fetch(`${apiBase}/users/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to send reset email. Please try again.");
+  }
+  const data = await response.json();
+  return { success: true, message: data.message || "Password reset email sent." };
+};
+
+/**
  * Exchange a Firebase Phone Auth ID token for a WordPress JWT.
  *
  * Requires a custom WP REST endpoint:

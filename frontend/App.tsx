@@ -1204,7 +1204,7 @@ function MainApp(props) {
   const [displayLocation, setDisplayLocation] = useState(location);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [isCookieConsentOpen, setIsCookieConsentOpen] = useState(false);
-  const isCheckoutRoute = displayLocation.pathname === "/checkout";
+  const isCheckoutRoute = ["/checkout", "/login", "/register"].includes(displayLocation.pathname);
 
   useEffect(() => {
     const isSameLocation =

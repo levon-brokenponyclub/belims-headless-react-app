@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-09-26 — Auth page redesign + ProductCard category hidden
+
+### 1. Auth page — social buttons repositioned
+- Google and Facebook buttons moved above form fields for both sign-in and registration.
+- Layout changed to 2-column inline grid on `sm+` breakpoint (`grid-cols-2`), stacks on mobile.
+- "Or continue with" divider repositioned below the buttons.
+
+### 2. Auth page — Login flow restructured
+- Sign-in page now loads directly on email + password (removed the single identifier step).
+- "Log In with a One-Time Code" button added above the Sign In button (only rendered when Firebase is configured), separated by an `or` divider. Clicking it switches to the phone OTP flow.
+- "Don't have an account? Create one." moved from the header subtitle to below the Sign In button.
+- "Forgot your password?" link added inline with the Password label (right-aligned), matching checkout form pattern.
+- Back links in the OTP flow now return to the password step (not the legacy identifier step).
+
+### 3. Auth page — Forgot password
+- `authService.ts`: added `requestPasswordReset(email)` calling `POST /belims/v1/users/forgot-password`.
+- New `forgot-password` login step: email input → "Send reset link" → success message replaces button → "← Back to sign in".
+- Email pre-filled from whatever was typed in the password step before clicking the forgot link.
+
+### 4. Auth page — Registration 2-step flow
+- Registration refactored from a single form to a 2-step flow with a progress bar.
+- **Step 1**: Email + Password → "Create Account" button → "Already have an account? Log in here." below.
+- **Step 2 (Personal Details)**: First Name (required), Last Name (required), Mobile Number (required) with international dial-code selector (flag + country code `<select>` + numeric input, reusing `DIAL_CODES`). Back button returns to Step 1; "Register" submits.
+- Phone stored in E.164 format (`buildRegPhone()` strips leading zero and prepends dial code).
+- "Already have an account?" removed from header subtitle; lives below the Step 1 button only.
+- Registration API call (`registerUser`) happens on Step 2 submission; errors reset to Step 1.
+
+### 5. Auth page — Checkout-style layout
+- Dark left sidebar removed entirely.
+- Page wrapper: `min-h-screen flex flex-col bg-neutral-50`.
+- Checkout-style `<header>`: Belims logo (linked to `/`) on the left, `<Lock />` + "Secure checkout" on the right — exact markup from `Checkout.tsx`.
+- Form card: `rounded-lg border border-neutral-200 bg-white p-6 md:p-8` — matches checkout card.
+- All inputs: `h-12 rounded-md border-neutral-200 focus:border-neutral-950 focus:ring-2 focus:ring-neutral-950/10` — checkout `inputClass`.
+- All labels: `text-[14px] font-medium text-neutral-950` — checkout `labelClass`.
+- Primary buttons: `h-12 rounded-md bg-belims-blue hover:bg-neutral-800` with full focus ring — checkout `primaryButtonClass`.
+- Outlined buttons (Back, OTC): `h-12 rounded-md border-neutral-200 bg-white hover:bg-neutral-50`.
+- Error/success messages: `rounded-md border-red-200 bg-red-50` / `border-green-200 bg-green-50`.
+- Field spacing: `space-y-1.5` per field, `space-y-5` between fields.
+- Class constants (`inputClass`, `labelClass`, `primaryButtonClass`, `outlineButtonClass`, `errorClass`, `successClass`, `orDivider`) declared at module level.
+
+### 6. App.tsx — header/footer hidden on auth routes
+- `isCheckoutRoute` extended to `["/checkout", "/login", "/register"].includes(pathname)`.
+- Suppresses the main `<Header>`, `<Footer>`, `<CartDrawer>`, `<SearchModal>`, `<CompareModal>`, and all other overlays on login and register pages — same behaviour as the checkout page.
+
+### 7. ProductCard — category label hidden
+- Removed the `{/* Category / Deal Name */}` block from `ProductCard.tsx`.
+- Category, deal name, and custom `categoryText` no longer render on any card variant.
+
+---
+
 ## 2026-09-25 — Delivery Details popover + Add Address page
 
 ### 1. Delivery Details popover
