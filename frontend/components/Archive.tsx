@@ -12,8 +12,11 @@ import {
   List,
 } from "lucide-react";
 import { CATEGORY_TREE, initializeCategoryTree } from "../categoryTree";
-import { fetchProducts, getApiBaseUrl } from "../services/wooCommerceService";
-import { isProductPurchasable } from "../utils/price";
+import {
+  fetchProducts,
+  fetchProductFilters,
+} from "../services/wooCommerceService";
+import { isProductPurchasable, formatCurrency } from "../utils/price";
 import { SkeletonProductCard } from "./Skeleton";
 
 interface FilterOption {
@@ -26,9 +29,9 @@ interface FilterOption {
 interface ArchiveProps {
   products: Product[];
   isLoadingProducts?: boolean;
-  category?: string; // The selected category slug or name
-  brand?: string; // The selected brand
-  range?: string; // The selected range
+  category?: string;
+  brand?: string;
+  range?: string;
   searchQuery?: string;
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
@@ -52,17 +55,28 @@ export const Archive: React.FC<ArchiveProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [sortBy, setSortBy] = useState<
-    "featured" | "price-asc" | "price-desc" | "name"
-  >("featured");
+    "recommended" | "featured" | "price-asc" | "price-desc" | "name-asc" | "name-desc"
+  >("recommended");
 
-  const initialMin = Math.max(0, parseInt(searchParams.get("price_min") || "0", 10) || 0);
-  const initialMax = Math.max(initialMin, parseInt(searchParams.get("price_max") || "10000", 10) || 10000);
-  const [priceRange, setPriceRange] = useState<[number, number]>([initialMin, initialMax]);
-  const [priceInput, setPriceInput] = useState<[string, string]>([String(initialMin), String(initialMax)]);
+  const initialMin = Math.max(
+    0,
+    parseInt(searchParams.get("price_min") || "0", 10) || 0,
+  );
+  const initialMax = Math.max(
+    initialMin,
+    parseInt(searchParams.get("price_max") || "10000", 10) || 10000,
+  );
+  const [priceRange, setPriceRange] = useState<[number, number]>([
+    initialMin,
+    initialMax,
+  ]);
+  const [priceInput, setPriceInput] = useState<[string, string]>([
+    String(initialMin),
+    String(initialMax),
+  ]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const categorySliderWidth = useWindowWidth();
-  const [categorySliderIndex, setCategorySliderIndex] = useState(0);
+
   const [categoryScopedProducts, setCategoryScopedProducts] = useState<
     Product[] | null
   >(null);
@@ -75,19 +89,25 @@ export const Archive: React.FC<ArchiveProps> = ({
     isLoadingProducts || isCategoryScopedLoading || isSearchScopedLoading;
   const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
 
-  // DEBUG: Log props on mount and when they change
-  useEffect(() => {
-    if (category) {
-      console.log(`[Archive Debug] Component loaded with props:`, {
-        category,
-        products: products.length,
-        brand,
-        searchQuery,
-      });
-    }
-  }, []);
+  // Accordion open/close states
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    category: true,
+    price: true,
+    availability: true,
+    offers: true,
+    brand: true,
+    range: true,
+    color: true,
+  });
 
-  // Additional local filters
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Category View More / Less state
+  const [showAllCategories, setShowAllCategories] = useState(false);
+
+  // Filters state
   const [filterInStock, setFilterInStock] = useState(false);
   const [selectedDealTypes, setSelectedDealTypes] = useState<string[]>([]);
   const [selectedRanges, setSelectedRanges] = useState<string[]>([]);
@@ -96,31 +116,30 @@ export const Archive: React.FC<ArchiveProps> = ({
     category ? [category] : [],
   );
   const [sidebarSearch, setSidebarSearch] = useState("");
+  const [selectedFacetBrands, setSelectedFacetBrands] = useState<string[]>([]);
 
-  // Filter data from API
   const [rangeFilters, setRangeFilters] = useState<FilterOption[]>([]);
   const [colorFilters, setColorFilters] = useState<FilterOption[]>([]);
 
-  // Fetch filters from API
   useEffect(() => {
-    const fetchFilters = async () => {
-      const apiBase = getApiBaseUrl();
+    let isMounted = true;
+    const loadFilters = async () => {
       try {
-        const response = await fetch(`${apiBase}/products/filters`);
-        if (!response.ok) {
-          const body = await response.text();
-          throw new Error(
-            `HTTP ${response.status} ${response.statusText}: ${body.slice(0, 200)}`,
-          );
+        const data = await fetchProductFilters();
+        if (isMounted && data) {
+          if (Array.isArray(data.range) && data.range.length > 0)
+            setRangeFilters(data.range);
+          if (Array.isArray(data.color) && data.color.length > 0)
+            setColorFilters(data.color);
         }
-        const data = await response.json();
-        setRangeFilters(data.range || []);
-        setColorFilters(data.color || []);
-      } catch (error) {
-        console.error("Failed to fetch product filters:", error);
+      } catch {
+        // Silently fall back to locally computed filters from products catalog
       }
     };
-    fetchFilters();
+    loadFilters();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -137,7 +156,6 @@ export const Archive: React.FC<ArchiveProps> = ({
     };
   }, []);
 
-  // Dynamic Facet Data
   const uniqueBrands = useMemo(() => {
     const brands = new Set<string>();
     products.forEach((p) => {
@@ -145,8 +163,6 @@ export const Archive: React.FC<ArchiveProps> = ({
     });
     return Array.from(brands).sort();
   }, [products]);
-
-  const [selectedFacetBrands, setSelectedFacetBrands] = useState<string[]>([]);
 
   useEffect(() => {
     setSelectedCategories(category ? [category] : []);
@@ -170,9 +186,6 @@ export const Archive: React.FC<ArchiveProps> = ({
         if (!isMounted) return;
         const validItems = items.filter(isProductPurchasable);
         setCategoryScopedProducts(validItems);
-        console.log(
-          `[Archive Debug] API fetchProducts("${category}") returned ${items.length} items, ${validItems.length} valid`,
-        );
       })
       .catch(() => {
         if (!isMounted) return;
@@ -237,16 +250,13 @@ export const Archive: React.FC<ArchiveProps> = ({
     { id: "promo", label: "Promo" },
   ];
 
-  // Helper to get all subcategories recursively
   const getCategoryMatches = (
     rootLabel: string,
     nodes: CategoryNode[],
   ): string[] => {
     let matches: string[] = [];
-
     for (const node of nodes) {
       if (node.label.toLowerCase() === rootLabel.toLowerCase()) {
-        // Found the root, collect all its children recursively
         matches.push(node.label);
         const collectChildren = (n: CategoryNode) => {
           if (n.children) {
@@ -259,13 +269,9 @@ export const Archive: React.FC<ArchiveProps> = ({
         collectChildren(node);
         return matches;
       }
-
-      // If not found at this level, check children
       if (node.children) {
         const childMatches = getCategoryMatches(rootLabel, node.children);
-        if (childMatches.length > 0) {
-          return childMatches;
-        }
+        if (childMatches.length > 0) return childMatches;
       }
     }
     return matches;
@@ -276,9 +282,7 @@ export const Archive: React.FC<ArchiveProps> = ({
     nodes: CategoryNode[],
   ): CategoryNode | null => {
     for (const node of nodes) {
-      if (node.label.toLowerCase() === rootLabel.toLowerCase()) {
-        return node;
-      }
+      if (node.label.toLowerCase() === rootLabel.toLowerCase()) return node;
       if (node.children) {
         const match = findCategoryNode(rootLabel, node.children);
         if (match) return match;
@@ -287,30 +291,11 @@ export const Archive: React.FC<ArchiveProps> = ({
     return null;
   };
 
-  const findParentCategoryNode = (
-    targetLabel: string,
-    nodes: CategoryNode[],
-    parent: CategoryNode | null = null,
-  ): CategoryNode | null => {
-    for (const node of nodes) {
-      if (node.label.toLowerCase() === targetLabel.toLowerCase()) {
-        return parent;
-      }
-      if (node.children) {
-        const match = findParentCategoryNode(targetLabel, node.children, node);
-        if (match) return match;
-      }
-    }
-    return null;
-  };
-
-  // Helper to get full breadcrumb path for a category
   const getCategoryBreadcrumbPath = (
     targetLabel: string,
     nodes: CategoryNode[],
   ): string[] => {
     const path: string[] = [];
-
     const findPath = (label: string, nodeList: CategoryNode[]): boolean => {
       for (const node of nodeList) {
         if (node.label.toLowerCase() === label.toLowerCase()) {
@@ -326,39 +311,17 @@ export const Archive: React.FC<ArchiveProps> = ({
       }
       return false;
     };
-
     findPath(targetLabel, nodes);
     return path;
   };
 
   // Filter Logic
   const filteredProducts = useMemo(() => {
-    // Determine source products: search-scoped > category-scoped > general list
     let sourceProducts = products;
-    let sourceType = "general";
     if (searchScopedProducts) {
       sourceProducts = searchScopedProducts;
-      sourceType = "search-scoped";
     } else if (categoryScopedProducts) {
       sourceProducts = categoryScopedProducts;
-      sourceType = "category-scoped";
-    }
-
-    console.log(
-      `[Archive] Starting filter with ${sourceType} source: ${sourceProducts.length} products`,
-    );
-    if (selectedCategories.length > 0) {
-      console.log(
-        `[Archive] Selected categories for filtering:`,
-        selectedCategories,
-      );
-      console.log(`[Archive Debug] Source products breakdown:`, {
-        products: products.length,
-        categoryScopedProducts: categoryScopedProducts?.length,
-        searchScopedProducts: searchScopedProducts?.length,
-        sourceType,
-        sourceProducts: sourceProducts.length,
-      });
     }
 
     let filtered = [...sourceProducts];
@@ -366,108 +329,40 @@ export const Archive: React.FC<ArchiveProps> = ({
       ? categoryTree
       : CATEGORY_TREE;
 
-    // 1. Filter by Category (Multi-select, Recursive)
+    // 1. Filter by Category
     if (selectedCategories.length > 0) {
       const selectedLabels = selectedCategories.map((label) =>
         label.toLowerCase(),
       );
       const validCategories = new Set<string>();
 
-      console.log(
-        `[Archive Filter] Starting category filter with ${selectedCategories.length} selected categories`,
-      );
-      console.log(`[Archive Filter] Selected categories:`, selectedCategories);
-      console.log(
-        `[Archive Filter] Source products before filter:`,
-        filtered.length,
-      );
-
       selectedCategories.forEach((selected) => {
-        // Try to find in tree first
         const matches = getCategoryMatches(selected, activeCategoryTree);
         if (matches.length > 0) {
-          console.log(
-            `[Archive Filter] Found ${matches.length} matches for "${selected}":`,
-            matches,
-          );
           matches.forEach((match) => validCategories.add(match.toLowerCase()));
         } else {
-          // If not found in tree, add directly (handles categories not in static tree)
-          console.log(
-            `[Archive Filter] "${selected}" not found in tree, adding directly`,
-          );
           validCategories.add(selected.toLowerCase());
         }
         validCategories.add(selected.toLowerCase());
       });
 
-      console.log(
-        `[Archive Filter] Valid categories to match:`,
-        Array.from(validCategories),
-      );
-
-      const beforeCount = filtered.length;
       filtered = filtered.filter((p) => {
         const productCategory = (p.category || "").toLowerCase();
         const breadcrumbLabels = (p.breadcrumbs || [])
           .map((crumb) => (crumb.label || "").toLowerCase())
           .filter(Boolean);
 
-        // Log first few products for debugging
-        if (filtered.indexOf(p) < 3) {
-          console.log(
-            `[Archive Filter] Product: "${p.name}", category: "${productCategory}", breadcrumbs:`,
-            breadcrumbLabels,
-          );
-        }
-
-        // Check if product matches any selected category
-        // 1. Direct category match
-        if (validCategories.has(productCategory)) {
-          if (filtered.indexOf(p) < 3)
-            console.log(`  → Matched by direct category`);
+        if (validCategories.has(productCategory)) return true;
+        if (breadcrumbLabels.some((label) => validCategories.has(label)))
           return true;
-        }
-
-        // 2. Breadcrumb match (most reliable)
-        if (breadcrumbLabels.some((label) => validCategories.has(label))) {
-          if (filtered.indexOf(p) < 3) console.log(`  → Matched by breadcrumb`);
+        if (selectedLabels.some((label) => productCategory.includes(label)))
           return true;
-        }
-
-        // 3. Partial matching (in case of slight naming differences)
-        if (selectedLabels.some((label) => productCategory.includes(label))) {
-          if (filtered.indexOf(p) < 3)
-            console.log(`  → Matched by partial category`);
-          return true;
-        }
-
-        // 4. Breadcrumb partial match
-        const partialBreadcrumbMatch = breadcrumbLabels.some((crumbLabel) =>
+        return breadcrumbLabels.some((crumbLabel) =>
           selectedLabels.some((selectedLabel) =>
             crumbLabel.includes(selectedLabel),
           ),
         );
-        if (partialBreadcrumbMatch && filtered.indexOf(p) < 3) {
-          console.log(`  → Matched by partial breadcrumb`);
-        }
-        return partialBreadcrumbMatch;
       });
-
-      console.log(
-        `[Archive Filter] Category filter result: ${beforeCount} → ${filtered.length} products`,
-      );
-
-      // Add debug logging for final filtered products
-      console.log(
-        `[Archive Debug] Final filtered products for category "${category}":`,
-        {
-          total: filtered.length,
-          beforeCategoryFilter: beforeCount,
-          productsFiltered: beforeCount - filtered.length,
-          category: category,
-        },
-      );
     }
 
     // 2. Filter by Brand (Prop)
@@ -490,8 +385,8 @@ export const Archive: React.FC<ArchiveProps> = ({
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
-          p.description.toLowerCase().includes(query) ||
-          p.sku.toLowerCase().includes(query),
+          p.description?.toLowerCase().includes(query) ||
+          p.sku?.toLowerCase().includes(query),
       );
     }
 
@@ -520,7 +415,7 @@ export const Archive: React.FC<ArchiveProps> = ({
       (p) => p.price >= priceRange[0] && p.price <= priceRange[1],
     );
 
-    // 5.5 Additional Facets
+    // 5.5 Availability & Deals
     if (filterInStock) {
       filtered = filtered.filter((p) => p.stock > 0);
     }
@@ -542,17 +437,18 @@ export const Archive: React.FC<ArchiveProps> = ({
       case "price-desc":
         filtered.sort((a, b) => b.price - a.price);
         break;
-      case "name":
+      case "name-asc":
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         break;
+      case "name-desc":
+        filtered.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case "featured":
+        filtered.sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0));
+        break;
+      case "recommended":
       default:
         break;
-    }
-
-    if (category) {
-      console.log(
-        `[Archive Debug] Final filteredProducts count for category "${category}": ${filtered.length}`,
-      );
     }
 
     return filtered;
@@ -569,44 +465,36 @@ export const Archive: React.FC<ArchiveProps> = ({
     selectedFacetBrands,
     selectedCategories,
     categoryTree,
+    selectedRanges,
   ]);
 
-  // Calculate products filtered by all criteria EXCEPT category selection
-  // This is used for category counts so they show available categories regardless of current selection
   const categoryCountsSourceProducts = useMemo(() => {
     const sourceProducts =
       searchScopedProducts || categoryScopedProducts || products;
     let filtered = [...sourceProducts];
-    const activeCategoryTree = categoryTree.length
-      ? categoryTree
-      : CATEGORY_TREE;
 
-    // 2. Filter by Brand (Prop)
     if (brand) {
       filtered = filtered.filter(
         (p) => p.brand && p.brand.toLowerCase() === brand.toLowerCase(),
       );
     }
 
-    // 2.5. Filter by Facet Brands (Local)
     if (selectedFacetBrands.length > 0) {
       filtered = filtered.filter(
         (p) => p.brand && selectedFacetBrands.includes(p.brand),
       );
     }
 
-    // 3. Filter by Search Query (if not already in searchScopedProducts)
     if (searchQuery && !searchScopedProducts) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
-          p.description.toLowerCase().includes(query) ||
-          p.sku.toLowerCase().includes(query),
+          p.description?.toLowerCase().includes(query) ||
+          p.sku?.toLowerCase().includes(query),
       );
     }
 
-    // 4. Filter by Range
     if (selectedRanges.length > 0) {
       const normalizedRanges = selectedRanges.map((r) => r.toLowerCase());
       filtered = filtered.filter((p) => {
@@ -626,12 +514,10 @@ export const Archive: React.FC<ArchiveProps> = ({
       });
     }
 
-    // 5. Filter by Price
     filtered = filtered.filter(
       (p) => p.price >= priceRange[0] && p.price <= priceRange[1],
     );
 
-    // 5.5 Additional Facets (Availability, Deal Types)
     if (filterInStock) {
       filtered = filtered.filter((p) => p.stock > 0);
     }
@@ -657,19 +543,12 @@ export const Archive: React.FC<ArchiveProps> = ({
     selectedDealTypes,
     selectedFacetBrands,
     selectedRanges,
-    categoryTree,
   ]);
 
   const productCategoryCounts = useMemo(() => {
-    // Count products by their deepest/leaf category for accuracy
-    // Prefer breadcrumb[-1] over direct category since backend sets breadcrumbs to the full path
     const counts: Record<string, number> = {};
-    const unCategorized: Product[] = [];
-
     categoryCountsSourceProducts.forEach((product) => {
       let leafCategory: string | undefined;
-
-      // Prefer last breadcrumb (deepest/leaf category)
       if (product.breadcrumbs && product.breadcrumbs.length > 0) {
         const lastBreadcrumb =
           product.breadcrumbs[product.breadcrumbs.length - 1];
@@ -680,42 +559,13 @@ export const Archive: React.FC<ArchiveProps> = ({
           leafCategory = lastBreadcrumb.label.toLowerCase();
         }
       }
-
-      // Fall back to direct category if no breadcrumbs
       if (!leafCategory && product.category) {
         leafCategory = product.category.toLowerCase();
       }
-
-      // Track products with no category
-      if (!leafCategory) {
-        unCategorized.push(product);
-      }
-
-      // Count in leaf category only (prevents double-counting in tree traversal)
       if (leafCategory) {
         counts[leafCategory] = (counts[leafCategory] || 0) + 1;
       }
     });
-
-    // Debug: Log uncategorized products
-    if (unCategorized.length > 0) {
-      console.log(
-        `[Archive Debug] Found ${unCategorized.length} uncategorized products:`,
-        unCategorized.map((p) => ({
-          id: p.id,
-          name: p.name,
-          category: p.category,
-          breadcrumbs: p.breadcrumbs?.map((b) => b.label),
-        })),
-      );
-    }
-
-    // Debug: Log total count
-    const totalCounted = Object.values(counts).reduce((a, b) => a + b, 0);
-    console.log(
-      `[Archive Debug] totalCounted=${totalCounted}, uncategorized=${unCategorized.length}, sourceProducts=${categoryCountsSourceProducts.length}`,
-    );
-
     return counts;
   }, [categoryCountsSourceProducts]);
 
@@ -725,27 +575,20 @@ export const Archive: React.FC<ArchiveProps> = ({
       ? categoryTree
       : CATEGORY_TREE;
 
-    // Tree traversal: sum children totals (each product already counted in its leaf category)
     const tallyNode = (node: CategoryNode): number => {
       const key = node.label.toLowerCase();
-
-      // Start with direct count from this category
       let total = productCategoryCounts[key] || 0;
-
-      // Add children totals
       if (node.children && node.children.length > 0) {
         total += node.children.reduce(
           (sum, child) => sum + tallyNode(child),
           0,
         );
       }
-
       counts[key] = total;
       return total;
     };
 
     activeCategoryTree.forEach((node) => tallyNode(node));
-
     return counts;
   }, [productCategoryCounts, categoryTree]);
 
@@ -762,9 +605,7 @@ export const Archive: React.FC<ArchiveProps> = ({
   const availabilityCounts = useMemo(() => {
     let inStock = 0;
     filteredProducts.forEach((product) => {
-      if (product.stock > 0) {
-        inStock += 1;
-      }
+      if (product.stock > 0) inStock += 1;
     });
     return { inStock };
   }, [filteredProducts]);
@@ -781,14 +622,13 @@ export const Archive: React.FC<ArchiveProps> = ({
     return counts;
   }, [filteredProducts]);
 
-  useEffect(() => {
-    setPriceInput([String(priceRange[0]), String(priceRange[1])]);
-  }, [priceRange]);
-
-  // Get min/max price for slider
   const maxPrice = useMemo(() => {
     return Math.max(...products.map((p) => p.price), 1000);
   }, [products]);
+
+  useEffect(() => {
+    setPriceInput([String(priceRange[0]), String(priceRange[1])]);
+  }, [priceRange]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -813,238 +653,12 @@ export const Archive: React.FC<ArchiveProps> = ({
         ? `Search: "${searchQuery}"`
         : "All Products";
 
-  const activeCategoryTree = categoryTree.length ? categoryTree : CATEGORY_TREE;
-
-  const categoryContextNode = useMemo(() => {
-    if (!category) return null;
-    const matched = findCategoryNode(category, activeCategoryTree);
-    if (matched?.children && matched.children.length > 0) {
-      return matched;
-    }
-    return findParentCategoryNode(category, activeCategoryTree);
-  }, [category, activeCategoryTree]);
-
-  const categorySliderItems = useMemo(() => {
-    const baseNodes = categoryContextNode?.children?.length
-      ? categoryContextNode.children
-      : category
-        ? []
-        : activeCategoryTree;
-    const labels = baseNodes.map((node) => node.label);
-    const unique = Array.from(new Set(labels));
-    return [
-      "Sale",
-      ...unique.filter((label) => label.toLowerCase() !== "sale"),
-    ];
-  }, [categoryContextNode, category, activeCategoryTree]);
-
-  const categoryMedia: Record<
-    string,
-    { icon: string; lifestyle: string; slider: string }
-  > = {
-    "Fasteners and Adhesives": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/nut.svg",
-      lifestyle: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8",
-      slider: "https://pngimg.com/uploads/screw/screw_PNG40.png",
-    },
-    Adhesives: {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/droplet.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581092918484-8313f08e01c7",
-      slider: "https://pngimg.com/uploads/glue/glue_PNG23.png",
-    },
-    "General Purpose Adhesive": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/paint-bucket.svg",
-      lifestyle: "https://images.unsplash.com/photo-1607400201515-c2c41cbe4c3b",
-      slider: "https://pngimg.com/uploads/glue/glue_PNG34.png",
-    },
-    Nails: {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/hammer.svg",
-      lifestyle: "https://images.unsplash.com/photo-1567789884554-0b844b597180",
-      slider: "https://pngimg.com/uploads/nail/nail_PNG40.png",
-    },
-    "Nail-in Anchors": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/anchor.svg",
-      lifestyle: "https://images.unsplash.com/photo-1603791440384-56cd371ee9a7",
-      slider: "https://pngimg.com/uploads/screw/screw_PNG30.png",
-    },
-    "Tape and Seal Strips": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/scissors.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc",
-      slider: "https://pngimg.com/uploads/tape/tape_PNG27.png",
-    },
-    "General Purpose Tapes": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/scissors.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc",
-      slider: "https://pngimg.com/uploads/tape/tape_PNG20.png",
-    },
-    "Outdoor Garden and Patio": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/leaf.svg",
-      lifestyle: "https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e",
-      slider: "https://pngimg.com/uploads/chainsaw/chainsaw_PNG14.png",
-    },
-    "Gardening Tools": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/shovel.svg",
-      lifestyle: "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2",
-      slider: "https://pngimg.com/uploads/shovel/shovel_PNG29.png",
-    },
-    Chainsaws: {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/zap.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581578731548-c64695cc6952",
-      slider: "https://pngimg.com/uploads/chainsaw/chainsaw_PNG9.png",
-    },
-    "Garden Cordless Power Tools": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/battery.svg",
-      lifestyle: "https://images.unsplash.com/photo-1621600411688-4be93c5f5b21",
-      slider: "https://pngimg.com/uploads/drill/drill_PNG143.png",
-    },
-    "Garden Spray Bottles": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/spray-can.svg",
-      lifestyle: "https://images.unsplash.com/photo-1589927986089-35812388d1f4",
-      slider: "https://pngimg.com/uploads/spray/spray_PNG10.png",
-    },
-    "Safety and Protective Wear": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/hard-hat.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581092160607-ee22621dd758",
-      slider: "https://pngimg.com/uploads/gloves/gloves_PNG8024.png",
-    },
-    "Safety Equipment": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/shield.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581092335397-9583eb92d232",
-      slider: "https://pngimg.com/uploads/helmet/helmet_PNG37.png",
-    },
-    Gloves: {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/hand.svg",
-      lifestyle: "https://images.unsplash.com/photo-1607013407627-6ee814329547",
-      slider: "https://pngimg.com/uploads/gloves/gloves_PNG8030.png",
-    },
-    "Tools and Machinery": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/drill.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
-      slider: "https://pngimg.com/uploads/drill/drill_PNG143.png",
-    },
-    "Drill Accessories": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/settings.svg",
-      lifestyle: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8",
-      slider: "https://pngimg.com/uploads/drill/drill_PNG132.png",
-    },
-    "Chucks and Keys": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/settings-2.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
-      slider: "https://pngimg.com/uploads/drill/drill_PNG109.png",
-    },
-    "Electrical Hand Tools": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/plug.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
-      slider: "https://pngimg.com/uploads/tools/tools_PNG62.png",
-    },
-    "Staple Guns and Staples": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/paperclip.svg",
-      lifestyle: "https://images.unsplash.com/photo-1590080875852-ba44f83ff2c1",
-      slider: "https://pngimg.com/uploads/tools/tools_PNG73.png",
-    },
-    "Grinding Accessories": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/disc.svg",
-      lifestyle: "https://images.unsplash.com/photo-1604147706283-8d7b3dfd3c4e",
-      slider: "https://pngimg.com/uploads/grinder/grinder_PNG21.png",
-    },
-    "Abrasive Grinding Disc": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/disc.svg",
-      lifestyle: "https://images.unsplash.com/photo-1604147706283-8d7b3dfd3c4e",
-      slider: "https://pngimg.com/uploads/disc/disc_PNG5.png",
-    },
-    "Hand Tools": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/hammer.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
-      slider: "https://pngimg.com/uploads/tools/tools_PNG21.png",
-    },
-    Pliers: {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/scissors.svg",
-      lifestyle: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8",
-      slider: "https://pngimg.com/uploads/pliers/pliers_PNG32.png",
-    },
-    "Screwdrivers and Allen Keys": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/tool.svg",
-      lifestyle: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8",
-      slider: "https://pngimg.com/uploads/screwdriver/screwdriver_PNG46.png",
-    },
-    Wrenches: {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/wrench.svg",
-      lifestyle: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8",
-      slider: "https://pngimg.com/uploads/wrench/wrench_PNG33.png",
-    },
-    Machinery: {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/factory.svg",
-      lifestyle: "https://images.unsplash.com/photo-1513828583688-c52646db42da",
-      slider:
-        "https://pngimg.com/uploads/pressure_washer/pressure_washer_PNG9.png",
-    },
-    "Pressure Washer": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/droplet.svg",
-      lifestyle: "https://images.unsplash.com/photo-1513828583688-c52646db42da",
-      slider:
-        "https://pngimg.com/uploads/pressure_washer/pressure_washer_PNG11.png",
-    },
-    "Power Tools": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/zap.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
-      slider: "https://pngimg.com/uploads/drill/drill_PNG143.png",
-    },
-    Drills: {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/drill.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581147036324-c1c7b6d6c7c8",
-      slider: "https://pngimg.com/uploads/drill/drill_PNG135.png",
-    },
-    Grinders: {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/disc.svg",
-      lifestyle: "https://images.unsplash.com/photo-1604147706283-8d7b3dfd3c4e",
-      slider: "https://pngimg.com/uploads/grinder/grinder_PNG16.png",
-    },
-    Saws: {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/activity.svg",
-      lifestyle: "https://images.unsplash.com/photo-1603791440384-56cd371ee9a7",
-      slider: "https://pngimg.com/uploads/saw/saw_PNG24.png",
-    },
-    "Water Tanks and Filtration": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/droplet.svg",
-      lifestyle: "https://images.unsplash.com/photo-1564419320408-38e24e0383ef",
-      slider: "https://pngimg.com/uploads/water_tank/water_tank_PNG15.png",
-    },
-    "Water Storage": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/database.svg",
-      lifestyle: "https://images.unsplash.com/photo-1564419320408-38e24e0383ef",
-      slider: "https://pngimg.com/uploads/water_tank/water_tank_PNG18.png",
-    },
-    "Water Tank Pumps": {
-      icon: "https://cdn.jsdelivr.net/npm/lucide-static@0.436.0/icons/droplet.svg",
-      lifestyle: "https://images.unsplash.com/photo-1581093458791-9d42f6c90c77",
-      slider: "https://pngimg.com/uploads/pump/pump_PNG40.png",
-    },
-  };
-
-  const categorySlidesPerView = useMemo(() => {
-    if (categorySliderWidth >= 1280) return 6;
-    if (categorySliderWidth >= 1024) return 5;
-    if (categorySliderWidth >= 768) return 4;
-    return 3;
-  }, [categorySliderWidth]);
-
-  const categorySliderMaxIndex = Math.max(
-    0,
-    categorySliderItems.length - categorySlidesPerView,
-  );
-
-  useEffect(() => {
-    setCategorySliderIndex((prev) => Math.min(prev, categorySliderMaxIndex));
-  }, [categorySliderMaxIndex]);
-
-  const categorySliderPrev = () =>
-    setCategorySliderIndex((i) => (i <= 0 ? categorySliderMaxIndex : i - 1));
-  const categorySliderNext = () =>
-    setCategorySliderIndex((i) => (i >= categorySliderMaxIndex ? 0 : i + 1));
-  const categoryTranslatePct =
-    (categorySliderIndex * 100) / categorySlidesPerView;
-
-  const parsePrice = (raw: string, fallback: number, min = 0, max = maxPrice) => {
+  const parsePrice = (
+    raw: string,
+    fallback: number,
+    min = 0,
+    max = maxPrice,
+  ) => {
     const cleaned = raw.replace(/[^0-9]/g, "");
     const num = parseInt(cleaned, 10);
     if (!Number.isFinite(num) || cleaned === "") return fallback;
@@ -1052,43 +666,29 @@ export const Archive: React.FC<ArchiveProps> = ({
   };
 
   const toggleBrand = (b: string) => {
-    if (selectedFacetBrands.includes(b)) {
-      setSelectedFacetBrands((prev) => prev.filter((x) => x !== b));
-    } else {
-      setSelectedFacetBrands((prev) => [...prev, b]);
-    }
+    setSelectedFacetBrands((prev) =>
+      prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b],
+    );
   };
 
   const toggleRange = (r: string) => {
-    if (selectedRanges.includes(r)) {
-      setSelectedRanges((prev) => prev.filter((x) => x !== r));
-    } else {
-      setSelectedRanges((prev) => [...prev, r]);
-    }
+    setSelectedRanges((prev) =>
+      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r],
+    );
   };
 
   const toggleColor = (c: string) => {
-    if (selectedColors.includes(c)) {
-      setSelectedColors((prev) => prev.filter((x) => x !== c));
-    } else {
-      setSelectedColors((prev) => [...prev, c]);
-    }
+    setSelectedColors((prev) =>
+      prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c],
+    );
   };
 
   const toggleDealType = (type: string) => {
-    if (selectedDealTypes.includes(type)) {
-      setSelectedDealTypes((prev) => prev.filter((x) => x !== type));
-    } else {
-      setSelectedDealTypes((prev) => [...prev, type]);
-    }
+    setSelectedDealTypes((prev) =>
+      prev.includes(type) ? prev.filter((x) => x !== type) : [...prev, type],
+    );
   };
 
-  const openChatBot = () => {
-    if (typeof window === "undefined") return;
-    window.dispatchEvent(new Event("belims:open-chat"));
-  };
-
-  // Pre-calculate subcategories for use in toggleCategory
   const activeCategoryNode = category
     ? findCategoryNode(
         category,
@@ -1099,36 +699,21 @@ export const Archive: React.FC<ArchiveProps> = ({
 
   const toggleCategory = (categoryLabel: string) => {
     setSelectedCategories((prev) => {
-      let newCategories;
-
       if (prev.includes(categoryLabel)) {
-        // If already selected, deselect it
-        newCategories = prev.filter((item) => item !== categoryLabel);
-      } else {
-        // When selecting a category, check if it's a child of the current parent category
-        // If so, replace the parent with the child
-        const isChildOfCurrentCategory = subcategories.some(
-          (sub) => sub.label.toLowerCase() === categoryLabel.toLowerCase(),
-        );
-
-        if (isChildOfCurrentCategory && category && prev.includes(category)) {
-          console.log(
-            `[Archive] "${categoryLabel}" is a child of "${category}", replacing parent with child`,
-          );
-          // Replace parent category with child category
-          newCategories = prev.filter(
-            (item) => item.toLowerCase() !== category.toLowerCase(),
-          );
-          newCategories.push(categoryLabel);
-        } else {
-          // Otherwise, add to selection
-          newCategories = [...prev, categoryLabel];
-        }
+        return prev.filter((item) => item !== categoryLabel);
       }
-
-      console.log(`[Archive] Category toggled: "${categoryLabel}"`);
-      console.log(`[Archive] Selected categories now:`, newCategories);
-      return newCategories;
+      const isChildOfCurrent = subcategories.some(
+        (sub) => sub.label.toLowerCase() === categoryLabel.toLowerCase(),
+      );
+      if (isChildOfCurrent && category && prev.includes(category)) {
+        return [
+          ...prev.filter(
+            (item) => item.toLowerCase() !== category.toLowerCase(),
+          ),
+          categoryLabel,
+        ];
+      }
+      return [...prev, categoryLabel];
     });
   };
 
@@ -1155,7 +740,7 @@ export const Archive: React.FC<ArchiveProps> = ({
     });
 
     selectedRanges.forEach((slug) => {
-      const match = rangeFilters.find((range) => range.slug === slug);
+      const match = rangeFilters.find((r) => r.slug === slug);
       if (!match) return;
       chips.push({
         key: `range-${slug}`,
@@ -1166,7 +751,7 @@ export const Archive: React.FC<ArchiveProps> = ({
     });
 
     selectedColors.forEach((slug) => {
-      const match = colorFilters.find((color) => color.slug === slug);
+      const match = colorFilters.find((c) => c.slug === slug);
       if (!match) return;
       chips.push({
         key: `color-${slug}`,
@@ -1187,6 +772,19 @@ export const Archive: React.FC<ArchiveProps> = ({
       });
     });
 
+    selectedCategories.forEach((catName) => {
+      if (catName !== category) {
+        chips.push({
+          key: `cat-${catName}`,
+          label: catName,
+          onRemove: () =>
+            setSelectedCategories((prev) =>
+              prev.filter((item) => item !== catName),
+            ),
+        });
+      }
+    });
+
     if (priceRange[0] > 0 || priceRange[1] < maxPrice) {
       chips.push({
         key: "price-range",
@@ -1202,6 +800,8 @@ export const Archive: React.FC<ArchiveProps> = ({
     selectedRanges,
     selectedColors,
     selectedFacetBrands,
+    selectedCategories,
+    category,
     priceRange,
     maxPrice,
     dealTypeOptions,
@@ -1215,9 +815,9 @@ export const Archive: React.FC<ArchiveProps> = ({
     setSelectedRanges([]);
     setSelectedColors([]);
     setSelectedFacetBrands([]);
-    setSelectedCategories([]);
+    setSelectedCategories(category ? [category] : []);
     setPriceRange([0, maxPrice]);
-    setSortBy("featured");
+    setSortBy("recommended");
   };
 
   const categoryList = category
@@ -1225,6 +825,7 @@ export const Archive: React.FC<ArchiveProps> = ({
     : categoryTree.length
       ? categoryTree
       : CATEGORY_TREE;
+
   const filteredCategoryList = useMemo(() => {
     const query = sidebarSearch.trim().toLowerCase();
     if (!query) return categoryList;
@@ -1233,33 +834,561 @@ export const Archive: React.FC<ArchiveProps> = ({
     );
   }, [categoryList, sidebarSearch]);
 
+  const visibleCategoryList = showAllCategories
+    ? filteredCategoryList
+    : filteredCategoryList.slice(0, 6);
+
+  // Sidebar Filter Component Content (TailGrids Collapsible Cards)
+  const renderFilterContent = () => (
+    <div className="space-y-4">
+      {/* Filter By Header Card */}
+      <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs flex items-center justify-between">
+        <h4 className="text-base font-semibold text-[#111928]">Filter By</h4>
+        <button
+          type="button"
+          onClick={clearAllFilters}
+          className="text-sm font-medium text-[#3758F9] hover:underline cursor-pointer"
+        >
+          Clear All
+        </button>
+      </div>
+
+      {/* 1. Product Category Collapsible Card */}
+      {categoryList.length > 0 && (
+        <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+          <button
+            type="button"
+            onClick={() => toggleSection("category")}
+            className="flex w-full items-center justify-between text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-semibold text-[#111928]">
+                Product Category
+              </h3>
+              {selectedCategories.length > 0 && (
+                <span className="inline-flex min-w-[20px] h-5 items-center justify-center rounded-full bg-[#3758F9]/10 px-1.5 text-xs font-semibold text-[#3758F9]">
+                  {selectedCategories.length}
+                </span>
+              )}
+            </div>
+            <ChevronDown
+              className={`w-5 h-5 text-[#637381] transition-transform duration-200 ${
+                openSections.category ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {openSections.category && (
+            <div className="mt-4 space-y-3">
+              {/* Category Search Input */}
+              <div className="relative">
+                <label htmlFor="category-search" className="sr-only">
+                  Search Category
+                </label>
+                <input
+                  id="category-search"
+                  type="text"
+                  value={sidebarSearch}
+                  onChange={(e) => setSidebarSearch(e.target.value)}
+                  placeholder="Search Category"
+                  className="w-full rounded-md border border-[#E5E7EB] bg-white py-2 pl-9 pr-3 text-sm text-[#111928] placeholder-[#9CA3AF] focus:border-[#3758F9] focus:outline-none transition-colors"
+                />
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF] pointer-events-none"
+                />
+              </div>
+
+              {/* Category Checkboxes */}
+              <ul className="space-y-2.5 max-h-60 overflow-y-auto no-scrollbar pt-1">
+                {visibleCategoryList.map((sub) => {
+                  const isChecked = selectedCategories.some(
+                    (selected) =>
+                      selected.toLowerCase() === sub.label.toLowerCase(),
+                  );
+                  return (
+                    <li
+                      key={sub.id}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <label
+                        htmlFor={`category-${sub.id}`}
+                        className="flex items-center gap-2.5 text-sm text-[#637381] cursor-pointer hover:text-[#111928] transition-colors select-none"
+                      >
+                        <input
+                          id={`category-${sub.id}`}
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleCategory(sub.label)}
+                          className="w-4 h-4 rounded border-[#D1D5DB] text-[#3758F9] focus:ring-[#3758F9] cursor-pointer"
+                        />
+                        <span className={isChecked ? "font-semibold text-[#111928]" : ""}>
+                          {sub.label}
+                        </span>
+                      </label>
+                      <span className="rounded-full bg-[#F4F7FF] px-2.5 py-0.5 text-xs font-medium text-[#637381]">
+                        {categoryCounts[sub.label.toLowerCase()] || 0}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {filteredCategoryList.length === 0 && (
+                <p className="text-xs text-[#8899A8] pt-1">
+                  No matching categories.
+                </p>
+              )}
+
+              {filteredCategoryList.length > 5 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCategories((v) => !v)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#111928] hover:text-[#3758F9] transition-colors pt-1 cursor-pointer"
+                >
+                  {showAllCategories ? "View less" : "View more"}
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      showAllCategories ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 2. Price Range Collapsible Card */}
+      <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <button
+          type="button"
+          onClick={() => toggleSection("price")}
+          className="flex w-full items-center justify-between text-left cursor-pointer"
+        >
+          <h3 className="text-base font-semibold text-[#111928]">Price Range</h3>
+          <ChevronDown
+            className={`w-5 h-5 text-[#637381] transition-transform duration-200 ${
+              openSections.price ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {openSections.price && (
+          <div className="mt-4 space-y-4">
+            <p className="text-sm text-[#637381]">
+              The highest price is {formatCurrency(maxPrice)}
+            </p>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 relative">
+                <label className="sr-only" htmlFor="min-price">
+                  Min Price
+                </label>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#637381]">
+                  R
+                </span>
+                <input
+                  id="min-price"
+                  type="text"
+                  inputMode="numeric"
+                  value={priceInput[0]}
+                  onChange={(e) => {
+                    const next = parsePrice(
+                      e.target.value,
+                      priceRange[0],
+                      0,
+                      priceRange[1],
+                    );
+                    setPriceInput([String(next), priceInput[1]]);
+                    setPriceRange([next, priceRange[1]]);
+                  }}
+                  className="w-full rounded-md border border-[#E5E7EB] bg-white pl-7 pr-2 py-2 text-sm font-medium text-[#111928] focus:border-[#3758F9] focus:outline-none transition-colors"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <span className="text-sm text-[#637381]">to</span>
+
+              <div className="flex-1 relative">
+                <label className="sr-only" htmlFor="max-price">
+                  Max Price
+                </label>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#637381]">
+                  R
+                </span>
+                <input
+                  id="max-price"
+                  type="text"
+                  inputMode="numeric"
+                  value={priceInput[1]}
+                  onChange={(e) => {
+                    const next = parsePrice(
+                      e.target.value,
+                      priceRange[1],
+                      priceRange[0],
+                      maxPrice,
+                    );
+                    setPriceInput([priceInput[0], String(next)]);
+                    setPriceRange([priceRange[0], next]);
+                  }}
+                  className="w-full rounded-md border border-[#E5E7EB] bg-white pl-7 pr-2 py-2 text-sm font-medium text-[#111928] focus:border-[#3758F9] focus:outline-none transition-colors"
+                  placeholder={String(maxPrice)}
+                />
+              </div>
+            </div>
+
+            {/* Slider track */}
+            <div className="relative w-full h-6 flex items-center pt-2">
+              <div className="absolute w-full h-1.5 rounded-full bg-[#E5E7EB]" />
+              <div
+                className="absolute h-1.5 rounded-full bg-[#3758F9]"
+                style={{
+                  left: `${(priceRange[0] / maxPrice) * 100}%`,
+                  width: `${Math.max(
+                    0,
+                    ((priceRange[1] - priceRange[0]) / maxPrice) * 100,
+                  )}%`,
+                }}
+              />
+              <input
+                min="0"
+                max={maxPrice}
+                className="range-thumb absolute w-full pointer-events-none appearance-none bg-transparent"
+                type="range"
+                value={priceRange[0]}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  setPriceRange([
+                    Math.min(val, priceRange[1]),
+                    Math.max(priceRange[1], val),
+                  ]);
+                }}
+              />
+              <input
+                min="0"
+                max={maxPrice}
+                className="range-thumb absolute w-full pointer-events-none appearance-none bg-transparent"
+                type="range"
+                value={priceRange[1]}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  setPriceRange([
+                    Math.min(priceRange[0], val),
+                    Math.max(val, priceRange[0]),
+                  ]);
+                }}
+              />
+            </div>
+            <style>
+              {`
+                .range-thumb::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  pointer-events: auto;
+                  width: 18px;
+                  height: 18px;
+                  border-radius: 50%;
+                  border: 2px solid #3758F9;
+                  background-color: #ffffff;
+                  cursor: pointer;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+                }
+                .range-thumb::-moz-range-thumb {
+                  pointer-events: auto;
+                  width: 18px;
+                  height: 18px;
+                  border-radius: 50%;
+                  border: 2px solid #3758F9;
+                  background-color: #ffffff;
+                  cursor: pointer;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+                }
+              `}
+            </style>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Availability Collapsible Card */}
+      <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <button
+          type="button"
+          onClick={() => toggleSection("availability")}
+          className="flex w-full items-center justify-between text-left cursor-pointer"
+        >
+          <h3 className="text-base font-semibold text-[#111928]">Availability</h3>
+          <ChevronDown
+            className={`w-5 h-5 text-[#637381] transition-transform duration-200 ${
+              openSections.availability ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {openSections.availability && (
+          <div className="mt-4">
+            <label className="flex items-center justify-between gap-2 text-sm text-[#637381] cursor-pointer hover:text-[#111928] select-none">
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={filterInStock}
+                  onChange={(e) => setFilterInStock(e.target.checked)}
+                  className="w-4 h-4 rounded border-[#D1D5DB] text-[#3758F9] focus:ring-[#3758F9] cursor-pointer"
+                />
+                <span className={filterInStock ? "font-semibold text-[#111928]" : ""}>
+                  In Stock Only
+                </span>
+              </div>
+              <span className="rounded-full bg-[#F4F7FF] px-2.5 py-0.5 text-xs font-medium text-[#637381]">
+                {availabilityCounts.inStock}
+              </span>
+            </label>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Current Offers Collapsible Card */}
+      <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <button
+          type="button"
+          onClick={() => toggleSection("offers")}
+          className="flex w-full items-center justify-between text-left cursor-pointer"
+        >
+          <h3 className="text-base font-semibold text-[#111928]">Current Offers</h3>
+          <ChevronDown
+            className={`w-5 h-5 text-[#637381] transition-transform duration-200 ${
+              openSections.offers ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {openSections.offers && (
+          <div className="mt-4">
+            <ul className="space-y-2.5">
+              {dealTypeOptions.map((deal) => {
+                const isChecked = selectedDealTypes.includes(deal.id);
+                return (
+                  <li
+                    key={deal.id}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <label
+                      htmlFor={`deal-${deal.id}`}
+                      className="flex items-center gap-2.5 text-sm text-[#637381] cursor-pointer hover:text-[#111928] select-none"
+                    >
+                      <input
+                        id={`deal-${deal.id}`}
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleDealType(deal.id)}
+                        className="w-4 h-4 rounded border-[#D1D5DB] text-[#3758F9] focus:ring-[#3758F9] cursor-pointer"
+                      />
+                      <span className={isChecked ? "font-semibold text-[#111928]" : ""}>
+                        {deal.label}
+                      </span>
+                    </label>
+                    <span className="rounded-full bg-[#F4F7FF] px-2.5 py-0.5 text-xs font-medium text-[#637381]">
+                      {dealTypeCounts[deal.id] || 0}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* 5. Brand Collapsible Card */}
+      {uniqueBrands.length > 0 && !brand && (
+        <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+          <button
+            type="button"
+            onClick={() => toggleSection("brand")}
+            className="flex w-full items-center justify-between text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-semibold text-[#111928]">Brand</h3>
+              {selectedFacetBrands.length > 0 && (
+                <span className="inline-flex min-w-[20px] h-5 items-center justify-center rounded-full bg-[#3758F9]/10 px-1.5 text-xs font-semibold text-[#3758F9]">
+                  {selectedFacetBrands.length}
+                </span>
+              )}
+            </div>
+            <ChevronDown
+              className={`w-5 h-5 text-[#637381] transition-transform duration-200 ${
+                openSections.brand ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {openSections.brand && (
+            <div className="mt-4">
+              <ul className="space-y-2.5 max-h-52 overflow-y-auto no-scrollbar">
+                {uniqueBrands.map((b) => {
+                  const isChecked = selectedFacetBrands.includes(b);
+                  return (
+                    <li
+                      key={b}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <label
+                        htmlFor={`brand-${b}`}
+                        className="flex items-center gap-2.5 text-sm text-[#637381] cursor-pointer hover:text-[#111928] select-none"
+                      >
+                        <input
+                          id={`brand-${b}`}
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleBrand(b)}
+                          className="w-4 h-4 rounded border-[#D1D5DB] text-[#3758F9] focus:ring-[#3758F9] cursor-pointer"
+                        />
+                        <span className={isChecked ? "font-semibold text-[#111928]" : ""}>
+                          {b}
+                        </span>
+                      </label>
+                      <span className="rounded-full bg-[#F4F7FF] px-2.5 py-0.5 text-xs font-medium text-[#637381]">
+                        {brandCounts[b.toLowerCase()] || 0}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 6. Range Collapsible Card */}
+      {rangeFilters.length > 0 && (
+        <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+          <button
+            type="button"
+            onClick={() => toggleSection("range")}
+            className="flex w-full items-center justify-between text-left cursor-pointer"
+          >
+            <h3 className="text-base font-semibold text-[#111928]">Range</h3>
+            <ChevronDown
+              className={`w-5 h-5 text-[#637381] transition-transform duration-200 ${
+                openSections.range ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {openSections.range && (
+            <div className="mt-4">
+              <ul className="space-y-2.5 max-h-48 overflow-y-auto no-scrollbar">
+                {rangeFilters.map((r) => {
+                  const isChecked = selectedRanges.includes(r.slug);
+                  return (
+                    <li
+                      key={r.slug}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <label
+                        htmlFor={`range-${r.slug}`}
+                        className="flex items-center gap-2.5 text-sm text-[#637381] cursor-pointer hover:text-[#111928] select-none"
+                      >
+                        <input
+                          id={`range-${r.slug}`}
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleRange(r.slug)}
+                          className="w-4 h-4 rounded border-[#D1D5DB] text-[#3758F9] focus:ring-[#3758F9] cursor-pointer"
+                        />
+                        <span className={isChecked ? "font-semibold text-[#111928]" : ""}>
+                          {r.name}
+                        </span>
+                      </label>
+                      <span className="rounded-full bg-[#F4F7FF] px-2.5 py-0.5 text-xs font-medium text-[#637381]">
+                        {r.count}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 7. Color Collapsible Card */}
+      {colorFilters.length > 0 && (
+        <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+          <button
+            type="button"
+            onClick={() => toggleSection("color")}
+            className="flex w-full items-center justify-between text-left cursor-pointer"
+          >
+            <h3 className="text-base font-semibold text-[#111928]">Color</h3>
+            <ChevronDown
+              className={`w-5 h-5 text-[#637381] transition-transform duration-200 ${
+                openSections.color ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {openSections.color && (
+            <div className="mt-4">
+              <ul className="space-y-2.5 max-h-48 overflow-y-auto no-scrollbar">
+                {colorFilters.map((c) => {
+                  const isChecked = selectedColors.includes(c.slug);
+                  return (
+                    <li
+                      key={c.slug}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <label
+                        htmlFor={`color-${c.slug}`}
+                        className="flex items-center gap-2.5 text-sm text-[#637381] cursor-pointer hover:text-[#111928] select-none"
+                      >
+                        <input
+                          id={`color-${c.slug}`}
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleColor(c.slug)}
+                          className="w-4 h-4 rounded border-[#D1D5DB] text-[#3758F9] focus:ring-[#3758F9] cursor-pointer"
+                        />
+                        <span className={isChecked ? "font-semibold text-[#111928]" : ""}>
+                          {c.name}
+                        </span>
+                      </label>
+                      <span className="rounded-full bg-[#F4F7FF] px-2.5 py-0.5 text-xs font-medium text-[#637381]">
+                        {c.count}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="shopify-section section-collection-template bg-white">
-      {/* Breadcrumb Section */}
-      <nav className="bg-white border-b border-border" aria-label="Breadcrumb">
-        <div className="container mx-auto px-4 py-3">
-          <ol className="flex items-center space-x-2 text-base text-text">
+    <section className="bg-[#F4F7FF] py-6 sm:py-8 min-h-screen">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Breadcrumb Bar */}
+        <nav className="mb-4" aria-label="Breadcrumb">
+          <ol className="flex items-center space-x-2 text-xs sm:text-sm text-[#637381]">
             <li>
               <Link
                 to="/"
-                className="hover:text-belims-accent transition-colors"
+                className="hover:text-[#3758F9] transition-colors font-medium"
               >
                 Home
               </Link>
             </li>
             <li>
-              <ChevronRight size={14} />
+              <ChevronRight size={14} className="text-[#9CA3AF]" />
             </li>
             {brand && (
-              <>
-                <li>
-                  <span className="font-base text-text">{brand}</span>
-                </li>
-              </>
+              <li>
+                <span className="font-semibold text-[#111928]">{brand}</span>
+              </li>
             )}
             {category && (
               <>
-                {/* Show full category hierarchy in breadcrumb */}
                 {(() => {
                   const activeCatTree = categoryTree.length
                     ? categoryTree
@@ -1272,18 +1401,25 @@ export const Archive: React.FC<ArchiveProps> = ({
                     breadcrumbPath.map((catName, idx) => (
                       <React.Fragment key={idx}>
                         <li>
-                          <span className="font-base text-text">{catName}</span>
+                          <span className="font-semibold text-[#111928]">
+                            {catName}
+                          </span>
                         </li>
                         {idx < breadcrumbPath.length - 1 && (
                           <li>
-                            <ChevronRight size={14} />
+                            <ChevronRight
+                              size={14}
+                              className="text-[#9CA3AF]"
+                            />
                           </li>
                         )}
                       </React.Fragment>
                     ))
                   ) : (
                     <li>
-                      <span className="font-base text-text">{category}</span>
+                      <span className="font-semibold text-[#111928]">
+                        {category}
+                      </span>
                     </li>
                   );
                 })()}
@@ -1291,678 +1427,160 @@ export const Archive: React.FC<ArchiveProps> = ({
             )}
             {!category && !brand && (
               <li>
-                <span className="font-base text-text">Shop</span>
+                <span className="font-semibold text-[#111928]">Shop</span>
               </li>
             )}
           </ol>
-        </div>
-      </nav>
+        </nav>
 
-      {/* Sort/filter toolbar */}
-      <div className="border-b border-border bg-white">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-text-tertiary">
-              <span className="text-sm">
-                <span className="font-medium text-text">
-                  {filteredProducts.length}
-                </span>{" "}
-                products
-              </span>
-              <div className="flex items-center gap-1 rounded-md border border-border p-1">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("grid")}
-                  aria-pressed={viewMode === "grid"}
-                  className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
-                    viewMode === "grid"
-                      ? "bg-secondary text-white"
-                      : "text-text-tertiary hover:text-text"
-                  }`}
-                  title="Grid view"
-                >
-                  <LayoutGrid size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("list")}
-                  aria-pressed={viewMode === "list"}
-                  className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
-                    viewMode === "list"
-                      ? "bg-secondary text-white"
-                      : "text-text-tertiary hover:text-text"
-                  }`}
-                  title="List view"
-                >
-                  <List size={14} />
-                </button>
-              </div>
-            </div>
+        {/* Top Header Card (Matching TailGrids Reference and Screenshot) */}
+        <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 sm:p-6 mb-6 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          {/* Left: Mobile Filter Button + Title & Results */}
+          <div className="flex items-center justify-between sm:justify-start gap-4">
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen(true)}
+              className="lg:hidden inline-flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3.5 py-2 text-xs sm:text-sm font-semibold text-[#111928] shadow-xs hover:bg-[#F4F7FF] transition-colors"
+            >
+              <Filter size={16} />
+              <span>Filter</span>
+            </button>
 
-            <div className="flex items-center gap-4">
-              <button
-                className="lg:hidden flex items-center gap-2 font-bold text-text-secondary border border-border px-4 py-2 rounded-md hover:bg-surface-muted"
-                onClick={() => setMobileFiltersOpen(true)}
-              >
-                <Filter size={18} /> Filters
-              </button>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-text-tertiary hidden sm:inline">
-                  Sort by:
-                </span>
-                <div className="relative">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="appearance-none bg-transparent border-none py-2 pl-2 pr-8 text-text font-medium focus:ring-0 cursor-pointer text-sm"
-                  >
-                    <option value="featured">Featured</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                    <option value="name">Name: A-Z</option>
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-text-tertiary"
-                  />
-                </div>
-              </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-[#111928]">
+                {title}
+              </h1>
+              <p className="text-xs sm:text-sm text-[#637381] mt-0.5">
+                Showing 1-{filteredProducts.length} of {products.length} Results
+              </p>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="container mx-auto px-4 pb-12">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Facet Filters Sidebar */}
-          <aside className="hidden lg:block w-60 flex-shrink-0">
-            <div className="bg-white px-0">
-              <div className="divide-y divide-border">
-                <div className="py-7 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-text">
-                    Filter
-                  </h2>
-                  <div className="flex items-center gap-3">
-                    {selectedFilterChips.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={clearAllFilters}
-                        className="text-sm font-medium text-belims-blue hover:text-belims-accent"
-                      >
-                        Reset All
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pb-5">
-                  <label className="relative block">
-                    <span className="sr-only">Search filters</span>
-                    <Search
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
-                    />
-                    <input
-                      type="search"
-                      value={sidebarSearch}
-                      onChange={(e) => setSidebarSearch(e.target.value)}
-                      placeholder="Search categories"
-                      className="w-full rounded-md border border-border bg-surface-muted py-2 pl-9 pr-3 text-sm text-text-secondary placeholder:text-text-tertiary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
-                    />
-                  </label>
-                </div>
-
-                <style>
-                  {`
-                  .plp-radio {
-                    position: relative;
-                    display: inline-flex;
-                    width: 18px;
-                    height: 18px;
-                    flex-shrink: 0;
-                  }
-
-                  .plp-radio__input {
-                    position: absolute;
-                    inset: 0;
-                    opacity: 0;
-                    margin: 0;
-                    cursor: pointer;
-                  }
-
-                  .plp-radio__symbol {
-                    width: 18px;
-                    height: 18px;
-                    border-radius: 4px;
-                    border: 2px solid #d1d5db;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: #ffffff;
-                    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-                  }
-
-                  .plp-radio__symbol::after {
-                    content: "";
-                    width: 8px;
-                    height: 8px;
-                    border-radius: 2px;
-                    background: #322783;
-                    opacity: 0;
-                    transform: scale(0.6);
-                    transition: opacity 0.15s ease, transform 0.15s ease;
-                  }
-
-                  .plp-radio__input:checked + .plp-radio__symbol {
-                    border-color: #322783;
-                  }
-
-                  .plp-radio__input:checked + .plp-radio__symbol::after {
-                    opacity: 1;
-                    transform: scale(1);
-                  }
-
-                  .plp-radio__input:focus-visible + .plp-radio__symbol {
-                    box-shadow: 0 0 0 3px rgba(50, 39, 131, 0.2);
-                  }
-                  `}
-                </style>
-
-                <form className="facet-filters-form">
-                  {/* Category List */}
-                  {filteredCategoryList.length > 0 && (
-                    <div className="py-4">
-                      <details className="group" open>
-                        <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
-                          Product Category
-                          <ChevronDown size={20} className="text-text-secondary" />
-                        </summary>
-                        <div className="mt-5">
-                          <ul className="space-y-3">
-                            {filteredCategoryList.map((sub) => (
-                              <li
-                                key={sub.id}
-                                className="flex items-center justify-between gap-3"
-                              >
-                                <label
-                                  htmlFor={`category-${sub.id}`}
-                                  className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer hover:text-belims-blue"
-                                >
-                                  <span className="plp-radio plp-radio--subtle">
-                                    <input
-                                      id={`category-${sub.id}`}
-                                      type="checkbox"
-                                      className="plp-radio__input"
-                                      checked={selectedCategories.some(
-                                        (selected) =>
-                                          selected.toLowerCase() ===
-                                          sub.label.toLowerCase(),
-                                      )}
-                                      onChange={() => toggleCategory(sub.label)}
-                                    />
-                                    <span className="plp-radio__symbol"></span>
-                                  </span>
-                                  <span>{sub.label}</span>
-                                </label>
-                                <span className="text-xs text-text-tertiary">
-                                  {categoryCounts[sub.label.toLowerCase()] || 0}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </details>
-                    </div>
-                  )}
-                  {filteredCategoryList.length === 0 &&
-                    categoryList.length > 0 && (
-                      <div className="py-4 text-sm text-text-tertiary">
-                        No matching categories.
-                      </div>
-                    )}
-
-                  {/* Availability Filter */}
-                  <div className="py-4 border-t border-border">
-                    <details className="group">
-                      <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
-                        Availability
-                        <ChevronDown size={20} className="text-text-secondary" />
-                      </summary>
-                      <div className="mt-5">
-                        <ul className="space-y-3">
-                          <li className="flex items-center justify-between gap-3">
-                            <label
-                              htmlFor="availability-in-stock"
-                              className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
-                            >
-                              <span className="plp-radio plp-radio--subtle">
-                                <input
-                                  id="availability-in-stock"
-                                  type="checkbox"
-                                  className="plp-radio__input"
-                                  checked={filterInStock}
-                                  onChange={(e) =>
-                                    setFilterInStock(e.target.checked)
-                                  }
-                                />
-                                <span className="plp-radio__symbol"></span>
-                              </span>
-                              <span>In Stock</span>
-                            </label>
-                            <span className="text-xs text-text-tertiary">
-                              {availabilityCounts.inStock}
-                            </span>
-                          </li>
-                        </ul>
-                      </div>
-                    </details>
-                  </div>
-
-                  {/* Current Offers */}
-                  <div className="py-4 border-t border-border">
-                    <details className="group">
-                      <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
-                        Current Offers
-                        <ChevronDown size={20} className="text-text-secondary" />
-                      </summary>
-                      <div className="mt-5">
-                        <ul className="space-y-3">
-                          {dealTypeOptions.map((deal) => (
-                            <li
-                              key={deal.id}
-                              className="flex items-center justify-between gap-3"
-                            >
-                              <label
-                                htmlFor={`deal-${deal.id}`}
-                                className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
-                              >
-                                <span className="plp-radio plp-radio--subtle">
-                                  <input
-                                    id={`deal-${deal.id}`}
-                                    type="checkbox"
-                                    className="plp-radio__input"
-                                    checked={selectedDealTypes.includes(
-                                      deal.id,
-                                    )}
-                                    onChange={() => toggleDealType(deal.id)}
-                                  />
-                                  <span className="plp-radio__symbol"></span>
-                                </span>
-                                <span>{deal.label}</span>
-                              </label>
-                              <span className="text-xs text-text-tertiary">
-                                {dealTypeCounts[deal.id] || 0}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </details>
-                  </div>
-
-                  {/* Price Filter */}
-                  <div className="py-4 border-t border-border">
-                    <details className="group">
-                      <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
-                        Price
-                        <ChevronDown size={20} className="text-text-secondary" />
-                      </summary>
-                      <div className="mt-5">
-                        <div className="flex items-center gap-3 my-6">
-                          <div className="flex-1">
-                            <div className="flex items-center rounded-lg border border-border bg-white px-3">
-                              <span className="text-text-tertiary pr-2">R</span>
-                              <input
-                                className="w-full bg-transparent border-l border-l-gray-200 border-0 focus:ring-0 px-2 py-2.5 text-sm font-medium text-text focus:outline-none"
-                                type="text"
-                                inputMode="numeric"
-                                value={priceInput[0]}
-                                onChange={(e) => {
-                                  const next = parsePrice(e.target.value, priceRange[0], 0, priceRange[1]);
-                                  setPriceInput([String(next), priceInput[1]]);
-                                  setPriceRange([next, priceRange[1]]);
-                                }}
-                                onBlur={() => {
-                                  const clamped = Math.min(Number(priceInput[0]), priceRange[1]);
-                                  setPriceInput([String(clamped), priceInput[1]]);
-                                  setPriceRange([clamped, priceRange[1]]);
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <span className="text-text-tertiary">to</span>
-                          <div className="flex-1">
-                            <div className="flex items-center rounded-lg border border-border bg-white px-3">
-                              <span className="text-text-tertiary pr-2">R</span>
-                              <input
-                                className="w-full bg-transparent border-l border-l-gray-200 border-0 focus:ring-0 px-2 py-2.5 text-sm font-medium text-text focus:outline-none"
-                                type="text"
-                                inputMode="numeric"
-                                value={priceInput[1]}
-                                onChange={(e) => {
-                                  const next = parsePrice(e.target.value, priceRange[1], priceRange[0], maxPrice);
-                                  setPriceInput([priceInput[0], String(next)]);
-                                  setPriceRange([priceRange[0], next]);
-                                }}
-                                onBlur={() => {
-                                  const clamped = Math.max(Number(priceInput[1]), priceRange[0]);
-                                  setPriceInput([priceInput[0], String(clamped)]);
-                                  setPriceRange([priceRange[0], clamped]);
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="relative w-full h-8 flex items-center">
-                          <div className="absolute w-full h-2 rounded-full bg-surface-soft"></div>
-                          <div
-                            className="absolute h-2 rounded-full bg-belims-blue"
-                            style={{
-                              left: "0%",
-                              width: `${Math.min(
-                                100,
-                                (priceRange[1] / maxPrice) * 100,
-                              )}%`,
-                            }}
-                          ></div>
-                          <input
-                            min="0"
-                            max={maxPrice}
-                            className="range-thumb"
-                            type="range"
-                            value={priceRange[0]}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value, 10);
-                              setPriceRange([
-                                Math.min(val, priceRange[1]),
-                                Math.max(priceRange[1], val),
-                              ]);
-                            }}
-                            style={{ zIndex: 3 }}
-                          />
-                          <input
-                            min="0"
-                            max={maxPrice}
-                            className="range-thumb"
-                            type="range"
-                            value={priceRange[1]}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value, 10);
-                              setPriceRange([
-                                Math.min(priceRange[0], val),
-                                Math.max(val, priceRange[0]),
-                              ]);
-                            }}
-                            style={{ zIndex: 4 }}
-                          />
-                        </div>
-                        <style>
-                          {`
-                        .range-thumb {
-                          -webkit-appearance: none;
-                          appearance: none;
-                          pointer-events: none;
-                          position: absolute;
-                          height: 0;
-                          width: 100%;
-                          outline: none;
-                          background: transparent;
-                        }
-
-                        .range-thumb::-webkit-slider-thumb {
-                          -webkit-appearance: none;
-                          appearance: none;
-                          pointer-events: auto;
-                          width: 22px;
-                          height: 22px;
-                          border-radius: 50%;
-                          border: 3px solid #322783;
-                          background-color: #ffffff;
-                          cursor: pointer;
-                          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-                        }
-
-                        .range-thumb::-moz-range-thumb {
-                          pointer-events: auto;
-                          width: 22px;
-                          height: 22px;
-                          border-radius: 50%;
-                          border: 3px solid #322783;
-                          background-color: #ffffff;
-                          cursor: pointer;
-                          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-                        }
-                        `}
-                        </style>
-                      </div>
-                    </details>
-                  </div>
-
-                  {/* Brand Filter (Dynamic) */}
-                  {uniqueBrands.length > 0 && !brand && (
-                    <div className="py-4 border-t border-border">
-                      <details className="group">
-                        <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
-                          Brand
-                          <ChevronDown size={20} className="text-text-secondary" />
-                        </summary>
-                        <div className="mt-5">
-                          <ul className="space-y-3">
-                            {uniqueBrands.map((b) => (
-                              <li
-                                key={b}
-                                className="flex items-center justify-between gap-3"
-                              >
-                                <label
-                                  htmlFor={`brand-${b}`}
-                                  className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
-                                >
-                                  <span className="plp-radio plp-radio--subtle">
-                                    <input
-                                      id={`brand-${b}`}
-                                      type="checkbox"
-                                      className="plp-radio__input"
-                                      checked={selectedFacetBrands.includes(b)}
-                                      onChange={() => toggleBrand(b)}
-                                    />
-                                    <span className="plp-radio__symbol"></span>
-                                  </span>
-                                  <span>{b}</span>
-                                </label>
-                                <span className="text-xs text-text-tertiary">
-                                  {brandCounts[b.toLowerCase()] || 0}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </details>
-                    </div>
-                  )}
-
-                  {/* Range Filter */}
-                  {rangeFilters.length > 0 && (
-                    <div className="py-4 border-t border-border">
-                      <details className="group">
-                        <summary className="w-full flex items-center justify-between cursor-pointer font-semibold text-text font-heading text-base  group-hover:text-belims-blue transition-colors">
-                          Range
-                          <ChevronDown size={20} className="text-text-secondary" />
-                        </summary>
-                        <div className="mt-5">
-                          <ul className="space-y-3">
-                            {rangeFilters.map((r) => (
-                              <li
-                                key={r.slug}
-                                className="flex items-center justify-between gap-3"
-                              >
-                                <label
-                                  htmlFor={`range-${r.slug}`}
-                                  className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
-                                >
-                                  <span className="plp-radio plp-radio--subtle">
-                                    <input
-                                      id={`range-${r.slug}`}
-                                      type="checkbox"
-                                      className="plp-radio__input"
-                                      checked={selectedRanges.includes(r.slug)}
-                                      onChange={() => toggleRange(r.slug)}
-                                    />
-                                    <span className="plp-radio__symbol"></span>
-                                  </span>
-                                  <span>{r.name}</span>
-                                </label>
-                                <span className="text-xs text-text-tertiary">
-                                  {r.count}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </details>
-                    </div>
-                  )}
-
-                  {/* Color Filter */}
-                  {colorFilters.length > 0 && (
-                    <div className="py-4 border-t border-border">
-                      <details className="group">
-                        <summary className="w-full flex items-center justify-between cursor-pointer text-base font-medium text-left text-text">
-                          Color
-                          <ChevronDown size={20} className="text-text-secondary" />
-                        </summary>
-                        <div className="mt-5">
-                          <ul className="space-y-3">
-                            {colorFilters.map((c) => (
-                              <li
-                                key={c.slug}
-                                className="flex items-center justify-between gap-3"
-                              >
-                                <label
-                                  htmlFor={`color-${c.slug}`}
-                                  className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
-                                >
-                                  <span className="plp-radio plp-radio--subtle">
-                                    <input
-                                      id={`color-${c.slug}`}
-                                      type="checkbox"
-                                      className="plp-radio__input"
-                                      checked={selectedColors.includes(c.slug)}
-                                      onChange={() => toggleColor(c.slug)}
-                                    />
-                                    <span className="plp-radio__symbol"></span>
-                                  </span>
-                                  <span className="flex items-center">
-                                    <span className="bg-border ring-1 ring-border rounded-full w-3.5 h-3.5 inline-block mr-2"></span>
-                                    {c.name}
-                                  </span>
-                                </label>
-                                <span className="text-xs text-text-tertiary">
-                                  {c.count}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </details>
-                    </div>
-                  )}
-                </form>
+          {/* Right Controls: Sort By + Grid/List View Switch */}
+          <div className="flex items-center justify-between sm:justify-end gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-[#637381] whitespace-nowrap">
+                Sort by
+              </span>
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="rounded-lg border border-[#E5E7EB] bg-white py-2 pl-3.5 pr-8 text-sm font-medium text-[#111928] shadow-xs focus:border-[#3758F9] focus:outline-none cursor-pointer appearance-none"
+                >
+                  <option value="recommended">Recommended</option>
+                  <option value="featured">Featured</option>
+                  <option value="price-asc">Price, Low to high</option>
+                  <option value="price-desc">Price, high to low</option>
+                  <option value="name-asc">Alphabetically, A-Z</option>
+                  <option value="name-desc">Alphabetically, Z-A</option>
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#637381]"
+                />
               </div>
             </div>
+
+            {/* View Mode Nav Toggle (Side-by-side grouped buttons) */}
+            <nav className="flex items-center border border-[#E5E7EB] rounded-lg overflow-hidden bg-white shadow-xs">
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={`p-2 transition-colors ${
+                  viewMode === "grid"
+                    ? "bg-[#3758F9]/10 text-[#3758F9]"
+                    : "text-[#637381] hover:bg-gray-50"
+                }`}
+                title="Grid View"
+                aria-label="Grid View"
+              >
+                <LayoutGrid size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={`p-2 transition-colors border-l border-[#E5E7EB] ${
+                  viewMode === "list"
+                    ? "bg-[#3758F9]/10 text-[#3758F9]"
+                    : "text-[#637381] hover:bg-gray-50"
+                }`}
+                title="List View"
+                aria-label="List View"
+              >
+                <List size={18} />
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Main Content Layout */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* Collapsible Sidebar Filters (Desktop) */}
+          <aside className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-24">
+            {renderFilterContent()}
           </aside>
 
-          {/* Main Product Grid */}
-          <div className="flex-1">
+          {/* Product Grid / List Area */}
+          <main className="flex-1 min-w-0 w-full">
             {/* Active Filter Chips */}
             {selectedFilterChips.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 mb-6">
-                <span className="text-sm font-medium text-text-tertiary">
-                  Active filters:
+              <div className="flex flex-wrap items-center gap-2 mb-5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[#637381] mr-1">
+                  Active:
                 </span>
                 {selectedFilterChips.map((chip) => (
                   <button
                     key={chip.key}
                     type="button"
                     onClick={chip.onRemove}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-text-secondary hover:border-belims-blue hover:text-belims-blue transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 py-1 text-xs font-medium text-[#111928] shadow-xs hover:border-[#3758F9] hover:text-[#3758F9] transition-colors"
                   >
-                    {chip.label}
-                    <X size={12} className="text-text-tertiary" />
+                    <span>{chip.label}</span>
+                    <X size={13} className="text-[#9CA3AF]" />
                   </button>
                 ))}
                 <button
                   type="button"
                   onClick={clearAllFilters}
-                  className="text-xs font-medium text-belims-blue hover:text-belims-accent ml-2"
+                  className="text-xs font-semibold text-[#3758F9] hover:underline ml-2 transition-colors"
                 >
                   Clear all
                 </button>
               </div>
             )}
 
-            {/* Grid */}
+            {/* Product Cards Container (Responsive 4/3/2, No Expert Help Block) */}
             {showSkeletons ? (
-              <ul
+              <div
                 className={`grid ${
                   viewMode === "list"
-                    ? "grid-cols-2 gap-6"
-                    : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6"
+                    ? "grid-cols-1 gap-4"
+                    : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5"
                 }`}
               >
                 {Array.from({ length: 8 }).map((_, index) => (
-                  <li key={`archive-skel-${index}`} className="grid__item">
-                    <SkeletonProductCard className="rounded border border-[#E0E0E0] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.06)]" />
-                  </li>
+                  <div key={`archive-skel-${index}`}>
+                    <SkeletonProductCard className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-xs" />
+                  </div>
                 ))}
-              </ul>
+              </div>
             ) : filteredProducts.length > 0 ? (
-              <ul
+              <div
                 className={`grid ${
                   viewMode === "list"
-                    ? "grid-cols-2 sm-grid-cols-1 gap-4"
-                    : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-5"
+                    ? "grid-cols-1 gap-4"
+                    : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5"
                 }`}
               >
-                <li className="grid__item">
-                  <div className="relative h-full min-h-[320px] rounded border border-[#E0E0E0] overflow-hidden bg-[#0c1b2a]">
-                    <div
-                      className="absolute inset-0 bg-cover bg-no-repeat"
-                      style={{
-                        backgroundImage:
-                          "url(/images/development/18920_d0e420f0-fd13-40c8-b17d-c5423b3805ac.webp)",
-                        backgroundPosition: "center top",
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-black/30" />
-                    <div className="relative z-[1] flex h-full flex-col items-center text-center px-6 pt-8 pb-6">
-                      <h3 className="text-white text-h5 font-bold font-heading">
-                        Expert Help & Advice
-                      </h3>
-                      <p className="mt-3 text-lg font-semibold text-white/90 max-w-[260px]">
-                        Find the right tools, best prices, and fastest delivery.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={openChatBot}
-                        className="group relative mt-auto h-12 w-full overflow-hidden rounded-md bg-white text-text transition-colors"
-                      >
-                        <span className="absolute inset-0 origin-left scale-x-0 bg-secondary transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                        <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
-                          Get Started
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                </li>
                 {filteredProducts.map((product) => (
-                  <li key={product.id} className="grid__item">
+                  <div key={product.id}>
                     <ProductCard
                       product={product}
                       addToCart={addToCart}
                       onBuyNow={onBuyNow}
                       onCompare={onCompare}
-                      className="product-card h-full w-full max-w-full lg:!w-full lg:!min-w-0 lg:!max-w-full"
+                      className="h-full w-full"
                       variant={
                         viewMode === "list" ? "flat-horizontal" : "default"
                       }
@@ -1970,292 +1588,91 @@ export const Archive: React.FC<ArchiveProps> = ({
                       isTradeApproved={isTradeApproved}
                       customizations={PRODUCT_CARD_PRESETS.compactCard}
                     />
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             ) : (
-              <div className="text-center py-24 bg-surface-muted rounded-xl border-2 border-dashed border-border">
-                <Search size={48} className="mx-auto text-text-disabled mb-4" />
-                <h3 className="text-h6 font-bold text-text mb-2">
+              <div className="text-center py-20 bg-white rounded-xl border border-[#E5E7EB] p-8 shadow-xs">
+                <Search
+                  size={44}
+                  className="mx-auto text-[#9CA3AF] mb-3"
+                />
+                <h3 className="text-lg font-bold text-[#111928] mb-1 font-heading">
                   No products found
                 </h3>
-                <p className="text-text-tertiary mb-6">
-                  Try adjusting your filters or search query.
+                <p className="text-sm text-[#637381] mb-5 max-w-sm mx-auto">
+                  Try adjusting or clearing your filters to discover matching
+                  products.
                 </p>
                 <button
-                  onClick={() => {
-                    setPriceRange([0, maxPrice]);
-                    setSortBy("featured");
-                    setFilterInStock(false);
-                    setSelectedFacetBrands([]);
-                  }}
-                  className="px-6 py-2 bg-black text-white rounded-md font-medium hover:bg-secondary transition-colors"
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="px-5 py-2.5 bg-[#111928] text-white text-xs sm:text-sm font-semibold rounded-lg hover:bg-[#3758F9] transition-colors shadow-xs"
                 >
                   Clear all filters
                 </button>
               </div>
             )}
-          </div>
+          </main>
         </div>
       </div>
 
-      {/* Mobile Filters Modal */}
+      {/* Mobile Filters Slide-Over Drawer */}
       {mobileFiltersOpen && (
         <div
-          className="fixed inset-0 z-[1300] bg-black/50 backdrop-blur-sm flex justify-end"
+          className="fixed inset-0 z-[1300] bg-black/50 backdrop-blur-xs flex justify-end transition-opacity"
           onClick={() => setMobileFiltersOpen(false)}
         >
           <div
-            className="w-full max-w-xs bg-white h-full shadow-2xl p-6 overflow-y-auto"
+            className="w-full max-w-sm bg-[#F4F7FF] h-full shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-6 pt-2">
-              <h3 className="font-bold text-h6 font-heading">Filters</h3>
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-5 border-b border-[#E5E7EB] bg-white">
+              <div className="flex items-center gap-3">
+                <h3 className="font-bold text-lg text-[#111928]">
+                  Filters
+                </h3>
+                {selectedFilterChips.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="text-xs font-semibold text-[#3758F9]"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
               <button
+                type="button"
                 onClick={() => setMobileFiltersOpen(false)}
-                className="p-2 hover:bg-surface-muted rounded-full"
+                className="p-1.5 hover:bg-gray-100 rounded-full text-[#637381]"
+                aria-label="Close filters"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
-            <div className="space-y-8">
-              {/* Mobile Category Search */}
-              <div>
-                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
-                  Category
-                </h4>
-                <label className="relative block mb-3">
-                  <span className="sr-only">Search categories</span>
-                  <Search
-                    size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
-                  />
-                  <input
-                    type="search"
-                    value={sidebarSearch}
-                    onChange={(e) => setSidebarSearch(e.target.value)}
-                    placeholder="Search categories"
-                    className="w-full rounded-md border border-border bg-surface-muted py-2 pl-9 pr-3 text-sm text-text-secondary placeholder:text-text-tertiary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
-                  />
-                </label>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {filteredCategoryList.map((sub) => (
-                    <label
-                      key={sub.id}
-                      className="flex items-center gap-3 text-sm text-text-secondary cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-border text-belims-accent focus:ring-belims-accent"
-                        checked={selectedCategories.some(
-                          (selected) =>
-                            selected.toLowerCase() === sub.label.toLowerCase(),
-                        )}
-                        onChange={() => toggleCategory(sub.label)}
-                      />
-                      <span>{sub.label}</span>
-                      <span className="text-xs text-text-tertiary ml-auto">
-                        {categoryCounts[sub.label.toLowerCase()] || 0}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Mobile Price */}
-              <div>
-                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
-                  Price
-                </h4>
-                <div className="flex gap-4 mb-4">
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm"
-                    placeholder="Min"
-                    value={priceInput[0]}
-                    onChange={(e) => {
-                      const next = parsePrice(e.target.value, priceRange[0], 0, priceRange[1]);
-                      setPriceInput([String(next), priceInput[1]]);
-                      setPriceRange([next, priceRange[1]]);
-                    }}
-                    onBlur={() => {
-                      const clamped = Math.min(Number(priceInput[0]), priceRange[1]);
-                      setPriceInput([String(clamped), priceInput[1]]);
-                      setPriceRange([clamped, priceRange[1]]);
-                    }}
-                  />
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm"
-                    placeholder="Max"
-                    value={priceInput[1]}
-                    onChange={(e) => {
-                      const next = parsePrice(e.target.value, priceRange[1], priceRange[0], maxPrice);
-                      setPriceInput([priceInput[0], String(next)]);
-                      setPriceRange([priceRange[0], next]);
-                    }}
-                    onBlur={() => {
-                      const clamped = Math.max(Number(priceInput[1]), priceRange[0]);
-                      setPriceInput([priceInput[0], String(clamped)]);
-                      setPriceRange([priceRange[0], clamped]);
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Mobile Availability */}
-              <div>
-                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
-                  Availability
-                </h4>
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 rounded border-border text-belims-accent focus:ring-belims-accent"
-                    checked={filterInStock}
-                    onChange={(e) => setFilterInStock(e.target.checked)}
-                  />
-                  <span>In Stock Only</span>
-                </label>
-              </div>
-
-              {/* Mobile Current Offers */}
-              <div>
-                <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
-                  Current Offers
-                </h4>
-                <div className="space-y-3">
-                  {dealTypeOptions.map((deal) => (
-                    <label
-                      key={deal.id}
-                      className="flex items-center space-x-3"
-                    >
-                      <input
-                        type="checkbox"
-                        className="h-5 w-5 rounded border-border text-belims-accent focus:ring-belims-accent"
-                        checked={selectedDealTypes.includes(deal.id)}
-                        onChange={() => toggleDealType(deal.id)}
-                      />
-                      <span>{deal.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Mobile Brand Filter */}
-              {uniqueBrands.length > 0 && !brand && (
-                <div>
-                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
-                    Brand
-                  </h4>
-                  <div className="space-y-3 max-h-48 overflow-y-auto">
-                    {uniqueBrands.map((b) => (
-                      <label
-                        key={b}
-                        className="flex items-center space-x-3"
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-5 w-5 rounded border-border text-belims-accent focus:ring-belims-accent"
-                          checked={selectedFacetBrands.includes(b)}
-                          onChange={() => toggleBrand(b)}
-                        />
-                        <span>{b}</span>
-                        <span className="text-xs text-text-tertiary ml-auto">
-                          {brandCounts[b.toLowerCase()] || 0}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Mobile Range Filter */}
-              {rangeFilters.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
-                    Range
-                  </h4>
-                  <div className="space-y-3">
-                    {rangeFilters.map((r) => (
-                      <label
-                        key={r.slug}
-                        className="flex items-center space-x-3"
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-5 w-5 rounded border-border text-belims-accent focus:ring-belims-accent"
-                          checked={selectedRanges.includes(r.slug)}
-                          onChange={() => toggleRange(r.slug)}
-                        />
-                        <span>{r.name}</span>
-                        <span className="text-xs text-text-tertiary ml-auto">
-                          {r.count}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Mobile Color Filter */}
-              {colorFilters.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-tertiary">
-                    Color
-                  </h4>
-                  <div className="space-y-3">
-                    {colorFilters.map((c) => (
-                      <label
-                        key={c.slug}
-                        className="flex items-center space-x-3"
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-5 w-5 rounded border-border text-belims-accent focus:ring-belims-accent"
-                          checked={selectedColors.includes(c.slug)}
-                          onChange={() => toggleColor(c.slug)}
-                        />
-                        <span className="flex items-center">
-                          <span className="bg-border ring-1 ring-border rounded-full w-3.5 h-3.5 inline-block mr-2"></span>
-                          {c.name}
-                        </span>
-                        <span className="text-xs text-text-tertiary ml-auto">
-                          {c.count}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
+            {/* Drawer Content */}
+            <div className="flex-1 overflow-y-auto p-5 no-scrollbar">
+              {renderFilterContent()}
             </div>
 
-            <div className="mt-8 pt-6 border-t border-border">
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-[#E5E7EB] bg-white">
               <button
+                type="button"
                 onClick={() => setMobileFiltersOpen(false)}
-                className="w-full bg-belims-accent text-white py-3 rounded-md font-bold hover:bg-orange-600 transition-colors"
+                className="w-full bg-[#3758F9] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[#2e4bd6] transition-colors shadow-xs"
               >
-                Show Results
+                Show Results ({filteredProducts.length})
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 
-function useWindowWidth() {
-  const [width, setWidth] = useState<number>(() =>
-    typeof window === "undefined" ? 1024 : window.innerWidth,
-  );
-
-  useEffect(() => {
-    const handleResize = () => setWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  return width;
-}
+export default Archive;

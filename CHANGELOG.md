@@ -1,5 +1,79 @@
 # Changelog
 
+## 2026-09-26 — TailGrids card standard + Archive + slider unification
+
+### 1. ProductCard.tsx — TailGrids refactor
+- Replaced flexible-height image block with `aspect-square` contained canvas (`bg-[#F8F9FA]`, `group-hover:scale-105`).
+- Wishlist button: floating top-right on image, `opacity-0 group-hover:opacity-100`; persists `opacity-100 text-red-500` when active. Wired to `isInWishlist` / `toggleWishlist` from `wishlistService`.
+- Badge moved inside image container (top-left); `badgeClass` now uses `bg-deal-sale` token. `getBadgeLabel` gains fallback: shows "SALE" when `sale_price < regular_price` with no active deal.
+- Weekly/trade/low-stock marquees removed; daily deal timer kept as compact bottom badge.
+- Action row: "Add to Cart" (`ShoppingCart`) + square "Quick View" (`Eye`) button. Out-of-stock shows "Notify me" with status states.
+- Category label rendered uppercase above title via `displayCategory`.
+- `PRODUCT_CARD_PRESETS` updated: all presets use `imageBlockClassName: "aspect-square w-full"`.
+- `flat-horizontal` variant adapts via `sm:flex-row sm:gap-4` on `<article>`; image constrains to `sm:w-48`.
+
+### 2. Archive.tsx — collapsible sidebar + filter service
+- Full TailGrids collapsible sidebar: Filter By header card, Product Category (search + view more/less), Price Range (dual-thumb slider + inputs), Availability, Current Offers, Brand, Range, Color — all as rounded-xl cards with `#3758F9` accent and `#F4F7FF` pill badge counts.
+- Filter fetch migrated from inline `fetch()` to `fetchProductFilters()` service call with `isMounted` guard.
+- `sortBy` expanded: added `"recommended"`, `"name-asc"`, `"name-desc"` options.
+- Debug `console.log` and `useWindowWidth` / `categorySliderWidth` removed.
+- Product grid: `grid-cols-2 sm:grid-cols-3 xl:grid-cols-4` with list/grid toggle; mobile filter slide-over drawer retained.
+
+### 3. ShopByCategory.tsx — standardised to ProductCard
+- Reverted custom inline card to `<ProductCard />` + `<SkeletonProductCard />`.
+- Header: title left, tabs centred, nav arrows right.
+- Carousel responsive: 2 (mobile) / 3 (tablet) / 5 (desktop) cards via `basis-[calc]`.
+- Best-sellers sort uses `maxStock`; product count capped at 16.
+
+### 4. wooCommerceService.ts — filter endpoint
+- Added `ProductFiltersData` interface (range, color, brand arrays).
+- Added `fetchProductFilters()`: calls `${BASE_URL}/products/filters` via `cachedGetJson`; returns `{ range: [], color: [], brand: [] }` on failure.
+
+### 5. vite.config.ts — consolidated dev mock stubs
+- Merged `dev-google-reviews-stub` into single `dev-api-mock-stub` plugin.
+- Added mock routes: `/api/belims/v1/products/filters`, `/api/ecommerce-policies`, `/api/wp/v2/product_brand`, `/api/jwt-auth/v1/token`.
+
+### 6. SingleProduct.tsx — Frequently Bought With slider
+- Updated from fixed `basis-[calc((100%-1.5rem)/3)]` (3 columns, no breakpoints) to responsive `basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-4rem)/5)]` — 2 / 3 / 5 cards across mobile / tablet / desktop.
+
+---
+
+## 2026-09-26 — Component standardisation + Auth modal
+
+### 1. Drawer component system
+- Created `Drawer.tsx` — canonical reusable right-side drawer primitive. Wraps `BottomDrawer` with a standardised header (title + X close), scrollable body, and optional footer prop. Source of truth for all future right-panel UIs.
+- Created `WelcomeDrawer.tsx` — guest-user drawer triggered by the "Sign In · Sign Up" chip in the header. Contains 5 nav links (only Sign In/Sign Up wired), and a placeholder Contact Support section (Live Chat + Email cards).
+- `Header.tsx`: unauthenticated account chip now opens `WelcomeDrawer` instead of routing to `/login`. Authenticated flow unchanged.
+
+### 2. AuthModal — inline sign-in/register
+- Created `AuthModal.tsx` — centred modal (z-2000, above drawer layer) with Sign In / Create Account tab switcher. Renders `AuthPage` in `layout="modal"` mode.
+- `AuthPage.tsx`: added `layout`, `onSwitchMode`, and `onClose` optional props. Modal layout skips full-page chrome; `onSwitchMode` swaps login ↔ register inline; post-success calls `onClose` instead of `navigate("/")`. Page layout unchanged.
+- `WelcomeDrawer`: clicking Sign In/Sign Up closes the drawer and opens `AuthModal`. On success, `setCurrentUser` is called and the modal closes.
+- `Header.tsx`: added `showToast` prop and threads it to `WelcomeDrawer` → `AuthModal` → `AuthPage`.
+
+### 3. BelimsReviews — moved to Footer
+- Removed `<BelimsReviews>` from `SingleProduct.tsx` (was rendering on every product page).
+- Added as first section in `Footer.tsx` so reviews appear site-wide, once per page.
+
+### 4. Vite dev mock stub for Google Reviews
+- `vite.config.ts`: added `dev-google-reviews-stub` inline Vite plugin. Intercepts `/api/google-reviews` in dev before the proxy, returns 6 mock reviews (`placeRating: 4.8`, `totalRatings: 247`). Component renders in dev without Vercel functions running.
+
+### 5. File corruption recovery (session 2)
+- `ShopByCategory.tsx` — `return list.sort()` block inside `best-sellers` useMemo branch was truncated; 6 lines restored from HEAD. Text tokens also updated (`text-grey` → `text-text`, `text-grey-medium` → `text-text-tertiary`).
+- `ComparisonModal.tsx` — rating `</span>`, reviews count `<span>`, and `</div>` were deleted; restored from HEAD.
+- `SingleProduct.tsx` — 3 imports (`ProductAccordions`, `TradePricingAvailable`, `BelimsReviews`) + `interface SingleProductProps {` opener lost; BelimsReviews JSX block also lost. Both hunks restored from HEAD.
+- `api/google-reviews.ts` — `NewApiReview` + `ReviewsPayload` interfaces, `apiKey` guard, `X-Goog-FieldMask` header, full `normalized` map, `payload` construction, and `catch` block were all truncated. Restored via `git checkout HEAD`.
+
+### 6. CookieConsent simplified
+- Replaced full bottom-drawer with overlay with a simple fixed bottom banner (max-w-3xl, centred). Single "Okay" CTA + "×" dismiss. No animation state machine. Props interface unchanged.
+
+---
+
+### Next task
+Refactor the Account Drawer (authenticated user panel) in `Header.tsx` (lines 1402–1519) to use the new `Drawer` component instead of the ad-hoc `fixed inset-0 z-[9999]` implementation. The panel has a header, scrollable body with nav links / trade block, and a sticky footer with Sign In / Log Out buttons — maps cleanly to `Drawer`'s `title`, `children`, and `footer` props.
+
+---
+
 ## 2026-09-26 — Google reviews bugfixes + file corruption recovery
 
 ### 1. Google Places API — legacy → Places API (New)
