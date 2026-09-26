@@ -52,8 +52,6 @@ import { FulfillmentBlock } from "./FulfillmentBlock";
 import { FulfillmentTab } from "./FulfillmentTabs";
 import { ProductAccordions } from "./ProductAccordions";
 import { TradePricingAvailable } from "./TradePricingAvailable";
-import { BelimsReviews } from "./BelimsReviews";
-
 interface SingleProductProps {
   product: Product;
   allProducts?: Product[];
@@ -2274,9 +2272,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
           </div>
         </section>
       )}
-
-      {/* Google Reviews */}
-      <BelimsReviews title="What Our Customers Say" />
 
       {/* Recently Viewed Section */}
       <RecentlyViewed
