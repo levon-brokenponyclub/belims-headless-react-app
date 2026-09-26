@@ -139,7 +139,7 @@
   --radius-badge:  40px;
   --radius-pill:   100px;  /* Nexvo button pill — actual value, not 9999px */
   --radius-circle: 50%;
-  --radius-button: var(--radius-pill);
+  --radius-button: var(--radius-md);
   --radius-card:   var(--radius-md);
 
   /* ── Elevation (from live Nexvo) ── */
@@ -179,19 +179,6 @@
 
   /* ── Belims brand extra: purple-blue used by header + topbar ── */
   --color-belims-blue:  rgb(50, 39, 131);
-
-  /* ── Legacy aliases (repointed to Nexvo; remove next release) ── */
-  --color-canvas:       var(--color-surface-raised);
-  --color-ink:          var(--color-text);
-  --color-muted:        var(--color-text-secondary);
-  --color-soft:         var(--color-surface-muted);
-  --color-subtle:       var(--color-border);
-  --color-brand:        var(--color-primary);
-  --color-accent:       var(--color-primary-soft);
-  --color-grey:         var(--color-text);
-  --color-grey-light:   var(--color-surface-muted);
-  --color-grey-medium:  var(--color-text-tertiary);
-  --color-red-muted:    var(--color-deal-sale);
 }
 
 /*

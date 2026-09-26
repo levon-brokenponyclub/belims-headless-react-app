@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { CategoryNode, Product } from "../types";
 import { formatCurrency } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
 import { initializeCategoryTree } from "../categoryTree";
 
 interface SearchCategoryResult {
@@ -138,7 +139,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   }, [isOpen, shouldRender]);
 
   const handleProductSelect = (product: Product) => {
-    navigate(`/product/${product.id}`);
+    navigate(buildProductUrl(product));
     onClose();
   };
 

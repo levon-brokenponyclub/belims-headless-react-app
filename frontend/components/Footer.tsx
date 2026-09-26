@@ -15,10 +15,13 @@ import visaIcon from "@aaronfagan/ccicons/logo/visa.svg";
 import mastercardIcon from "@aaronfagan/ccicons/logo/mastercard.svg";
 import paypalIcon from "@aaronfagan/ccicons/logo/paypal.svg";
 import amexIcon from "@aaronfagan/ccicons/logo/amex.svg";
+import { BelimsReviews } from "./BelimsReviews";
 
 export const Footer = () => {
   return (
     <footer className="border-t border-gray-200 bg-white text-sm text-gray-600 pb-14 lg:pb-0">
+      <BelimsReviews title="What Our Customers Say" />
+
       <section className="mx-auto w-full container py-10">
         <div className="grid gap-8 md:grid-cols-3">
           <div className="flex flex-col items-center text-center gap-3">

@@ -27,49 +27,49 @@
   /* Page & Body Reset */
   body {
     @apply font-sans text-base;
-    background-color: var(--color-canvas);
-    color: var(--color-ink);
+    background-color: var(--color-surface);
+    color: var(--color-text);
   }
 
   /* Headings - Consistent Type Hierarchy */
   h1 {
     @apply text-h1 font-heading font-bold leading-tight;
-    color: var(--color-ink);
+    color: var(--color-text);
   }
 
   h2 {
     @apply text-h2 font-heading font-bold leading-tight;
-    color: var(--color-ink);
+    color: var(--color-text);
   }
 
   h3 {
     @apply text-h3 font-heading font-semibold leading-tight;
-    color: var(--color-ink);
+    color: var(--color-text);
   }
 
   h4 {
     @apply text-h4 font-heading font-semibold leading-tight;
-    color: var(--color-ink);
+    color: var(--color-text);
   }
 
   h5 {
     @apply text-h5 font-heading font-semibold;
-    color: var(--color-ink);
+    color: var(--color-text);
   }
 
   h6 {
     @apply text-h6 font-heading font-semibold;
-    color: var(--color-ink);
+    color: var(--color-text);
   }
 
   /* Link defaults */
   a {
-    color: var(--color-ink);
+    color: var(--color-text);
     @apply transition-colors duration-200;
   }
 
   a:hover {
-    color: var(--color-brand);
+    color: var(--color-primary);
   }
 
   /* Form inputs reset */
@@ -87,53 +87,53 @@
   /* ---- BUTTONS ---- */
   .btn {
     @apply inline-flex items-center justify-center gap-2 font-bold min-h-12 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed capitalize;
-    border-radius: 10rem;
-    color: var(--color-ink);
+    border-radius: var(--radius-button);
+    color: var(--color-text);
     font-size: 15px;
   }
 
   .btn-primary {
     @apply btn border-0 text-white;
-    background-color: var(--color-brand);
+    background-color: var(--color-primary);
   }
 
   .btn-primary:hover {
-    background-color: var(--color-ink);
+    background-color: var(--color-text);
   }
 
   .btn-primary:focus {
-    outline-color: var(--color-brand);
+    outline-color: var(--color-primary);
   }
 
   .btn-outline {
     @apply btn;
     background-color: white;
     border: 1px solid var(--color-surface);
-    color: var(--color-grey);
+    color: var(--color-text);
     padding: 0rem 1rem;
   }
 
   .btn-outline:hover {
     background-color: var(--color-surface);
-    border-color: var(--color-grey-light);
-    color: var(--color-grey);
+    border-color: var(--color-surface-muted);
+    color: var(--color-text);
   }
 
   .btn-outline:focus {
-    outline-color: var(--color-brand);
+    outline-color: var(--color-primary);
   }
 
   .btn-ghost {
     @apply btn bg-transparent;
-    color: var(--color-ink);
+    color: var(--color-text);
   }
 
   .btn-ghost:hover {
-    background-color: var(--color-soft);
+    background-color: var(--color-surface-muted);
   }
 
   .btn-ghost:focus {
-    outline-color: var(--color-brand);
+    outline-color: var(--color-primary);
   }
 
   /* ---- FORM INPUTS ---- */
@@ -141,17 +141,17 @@
     @apply h-12 w-full font-sans text-base px-4 border transition-all duration-200 focus:outline-none focus:ring-2 focus:border-transparent;
     border-radius: 10rem;
     background-color: white;
-    border-color: var(--color-subtle);
-    color: var(--color-ink);
+    border-color: var(--color-border);
+    color: var(--color-text);
   }
 
   .input::placeholder {
-    color: var(--color-muted);
+    color: var(--color-text-secondary);
   }
 
   .input:focus {
     border-color: transparent;
-    outline-color: var(--color-brand);
+    outline-color: var(--color-primary);
   }
 
   /* ---- ICON BUTTONS ---- */
@@ -159,17 +159,17 @@
     @apply inline-flex items-center justify-center h-10 w-10 border transition-all duration-200 focus:outline-none focus:ring-2;
     border-radius: 10rem;
     background-color: white;
-    border-color: var(--color-subtle);
-    color: var(--color-ink);
+    border-color: var(--color-border);
+    color: var(--color-text);
   }
 
   .icon-btn:hover {
-    background-color: var(--color-soft);
-    color: var(--color-brand);
+    background-color: var(--color-surface-muted);
+    color: var(--color-primary);
   }
 
   .icon-btn:focus {
-    outline-color: var(--color-brand);
+    outline-color: var(--color-primary);
   }
 
   /* ---- LEGACY CLASSES (backwards compatibility) ---- */

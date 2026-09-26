@@ -25,7 +25,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
   children,
   footer,
   widthClassName = "w-full max-w-md",
-  bodyClassName = "bg-soft",
+  bodyClassName = "bg-surface-muted",
 }) => (
   <BottomDrawer
     isOpen={isOpen}
@@ -37,7 +37,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
     showHandle={false}
   >
     <div className="absolute right-0 top-0 bottom-0 flex h-full w-full flex-col bg-surface">
-      <div className="p-4 bg-brand text-white flex justify-between items-center">
+      <div className="p-4 bg-primary text-white flex justify-between items-center">
         <div className="flex items-center gap-2">
           {icon}
           <div className="flex flex-col">

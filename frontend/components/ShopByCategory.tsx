@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product } from "../types";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
+import { buildProductUrl } from "../utils/product";
 import { SkeletonProductCard } from "./Skeleton";
 
 interface ShopByCategoryProps {
@@ -156,7 +157,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
     <section className="w-full py-10">
       <div className="container mx-auto px-4">
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-7">
-          <h2 className="text-2xl font-bold tracking-tight text-grey md:text-[28px]">
+          <h2 className="text-h5 font-bold tracking-tight text-text md:text-h4">
             {sectionTitle}
           </h2>
           <div
@@ -172,8 +173,8 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
               }}
               className={`text-lg font-semibold transition-colors ${
                 activeCollection === "new-arrivals"
-                  ? "text-grey"
-                  : "text-grey-medium hover:text-grey"
+                  ? "text-text"
+                  : "text-text-tertiary hover:text-text"
               }`}
             >
               New Arrivals
@@ -187,8 +188,8 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
               }}
               className={`text-lg font-semibold transition-colors ${
                 activeCollection === "best-sellers"
-                  ? "text-grey"
-                  : "text-grey-medium hover:text-grey"
+                  ? "text-text"
+                  : "text-text-tertiary hover:text-text"
               }`}
             >
               Best Sellers
@@ -207,7 +208,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
             />
 
             <div className="absolute inset-0 p-6 flex flex-col justify-end items-start text-left">
-              <h3 className="text-white text-3xl font-bold font-heading">
+              <h3 className="text-white text-h5 font-bold font-heading">
                 {sectionTitle}
               </h3>
               <p className="mt-3 mb-6 text-lg font-semibold text-white/90 max-w-[260px]">
@@ -216,9 +217,9 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
               <button
                 type="button"
                 onClick={openChatBot}
-                className="group relative h-12 px-6 overflow-hidden rounded-pill bg-white text-gray-900 transition-colors"
+                className="group relative h-12 px-6 overflow-hidden rounded-md bg-white text-text transition-colors"
               >
-                <span className="absolute inset-0 origin-left scale-x-0 bg-gray-900 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                <span className="absolute inset-0 origin-left scale-x-0 bg-secondary transition-transform duration-300 ease-out group-hover:scale-x-100" />
                 <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">
                   Get Started
                 </span>
@@ -255,7 +256,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
                       key={product.id}
                       className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2.15)] sm:basis-[48%] lg:basis-[calc((100%-3.75rem)/4)] min-w-0"
                       data-slider-item
-                      onClick={() => navigate(`/product/${product.id}`)}
+                      onClick={() => navigate(buildProductUrl(product))}
                     >
                       <ProductCard
                         product={product}
@@ -273,13 +274,13 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
           </div>
 
           {/* {categoryProducts.length === 0 && (
-              <p className="text-gray-500">No products found in this category.</p>
+              <p className="text-text-tertiary">No products found in this category.</p>
             )}
           </div> */}
         </div>
         {/* Controls + progress (non-card UI only) */}
         <div className="mt-4 flex items-center justify-between gap-4">
-          <div className="h-0.5 w-full rounded-full bg-gray-200 overflow-hidden">
+          <div className="h-0.5 w-full rounded-full bg-surface-soft overflow-hidden">
             <div
               className="h-full rounded-full bg-belims-blue transition-all duration-300"
               style={{ width: `${indicatorPct}%` }}
@@ -290,10 +291,10 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
             <button
               type="button"
               onClick={prev}
-              className="group relative h-12 w-12 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white"
+              className="group relative h-12 w-12 overflow-hidden rounded-full border border-border bg-white text-text transition-colors duration-300 ease-out hover:border-border-strong hover:bg-surface-dark hover:text-white"
               aria-label="Previous products"
             >
-              <span className="absolute inset-0 origin-right scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="absolute inset-0 origin-right scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <span className="relative z-10 flex items-center justify-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -315,10 +316,10 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
             <button
               type="button"
               onClick={next}
-              className="group relative h-12 w-12 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white"
+              className="group relative h-12 w-12 overflow-hidden rounded-full border border-border bg-white text-text transition-colors duration-300 ease-out hover:border-border-strong hover:bg-surface-dark hover:text-white"
               aria-label="Next products"
             >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+              <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
               <span className="relative z-10 flex items-center justify-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

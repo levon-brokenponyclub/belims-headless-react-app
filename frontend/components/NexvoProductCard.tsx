@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Bell, CheckCircle, Eye, Zap, ShoppingBag } from "lucide-react";
 import { Product } from "../types";
 import { formatCurrency } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
 import { QuickView } from "./QuickView";
 
 interface NexvoProductCardProps {
@@ -242,7 +243,7 @@ export const NexvoProductCard: React.FC<NexvoProductCardProps> = ({
           {/* ── Image wrapper ── */}
           <div className="product-card__image-wrapper">
             <Link
-              to={`/product/${product.id}`}
+              to={buildProductUrl(product)}
               aria-label={product.name}
               tabIndex={-1}
             >
@@ -480,7 +481,7 @@ export const NexvoProductCard: React.FC<NexvoProductCardProps> = ({
           {/* ── Info ── */}
           <div className="product-card__info text-left">
             <h3 className="product-card__title text-pcard-title">
-              <Link to={`/product/${product.id}`} className="reversed-link">
+              <Link to={buildProductUrl(product)} className="reversed-link">
                 <span className="reversed-link__text">{product.name}</span>
               </Link>
             </h3>

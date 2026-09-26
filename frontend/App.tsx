@@ -1,6 +1,7 @@
 import React, {
   useState,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useCallback,
   useRef,
@@ -43,7 +44,9 @@ import { TradeDeals } from "./components/TradeDeals";
 import { TrackOrderPage } from "./components/TrackOrderPage";
 import { BrandStrip } from "./components/BrandStrip";
 import { AuthPage } from "./components/AuthPage";
+import { DeliveryDetailsAddAddress } from "./components/DeliveryDetailsAddAddress";
 import { AccountPage } from "./components/AccountPage";
+import { WishlistPage } from "./components/WishlistPage";
 import { Toast } from "./components/Toast";
 import { CookieConsent } from "./components/CookieConsent";
 import { Skeleton, SkeletonLine, SkeletonImage } from "./components/Skeleton";
@@ -68,6 +71,7 @@ import {
   getApiBaseUrl,
 } from "./services/wooCommerceService";
 import { isProductPurchasable } from "./utils/price";
+import { buildProductUrl, extractProductIdFromSlug } from "./utils/product";
 
 import {
   STORES,
@@ -99,8 +103,9 @@ const ProductPage = ({
   isTradeApproved,
   currentUser,
 }) => {
-  const { id } = useParams();
+  const { "*": splat } = useParams();
   const navigate = useNavigate();
+  const id = extractProductIdFromSlug(splat || "");
   const product = products.find((p) => String(p.id) === id);
   const [hydratedProduct, setHydratedProduct] = useState<Product | null>(null);
   const [isHydratingProduct, setIsHydratingProduct] = useState(false);
@@ -1173,6 +1178,21 @@ export default function App() {
   );
 }
 
+function ScrollToTop() {
+  const { pathname, hash } = useLocation();
+  useLayoutEffect(() => {
+    if (hash) {
+      const el = document.getElementById(hash.slice(1));
+      if (el) {
+        el.scrollIntoView({ behavior: "instant" as ScrollBehavior });
+        return;
+      }
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+  }, [pathname, hash]);
+  return null;
+}
+
 function MainApp(props) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1184,7 +1204,7 @@ function MainApp(props) {
   const [displayLocation, setDisplayLocation] = useState(location);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [isCookieConsentOpen, setIsCookieConsentOpen] = useState(false);
-  const isCheckoutRoute = displayLocation.pathname === "/checkout";
+  const isCheckoutRoute = ["/checkout", "/login", "/register"].includes(displayLocation.pathname);
 
   useEffect(() => {
     const isSameLocation =
@@ -1250,11 +1270,12 @@ function MainApp(props) {
   };
 
   const handleProductClick = (product: Product) => {
-    navigate(`/product/${product.id}`);
+    navigate(buildProductUrl(product));
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans">
+      <ScrollToTop />
       {!isCheckoutRoute && !SHOW_COMING_SOON && (
         <Header
           selectedStore={props.selectedStore}
@@ -1269,6 +1290,7 @@ function MainApp(props) {
           products={props.products}
           currentUser={props.currentUser}
           setCurrentUser={props.setCurrentUser}
+          showToast={props.showToast}
           cartCoupon={props.cartCoupon}
         />
       )}
@@ -1297,7 +1319,7 @@ function MainApp(props) {
               }
             />
             <Route
-              path="/product/:id"
+              path="/product/*"
               element={
                 <ProductPage
                   products={props.products}
@@ -1373,6 +1395,14 @@ function MainApp(props) {
                 />
               }
             />
+            <Route
+              path="/wishlist"
+              element={<WishlistPage addToCart={props.addToCart} />}
+            />
+            <Route
+              path="/delivery-details/add-address"
+              element={<DeliveryDetailsAddAddress />}
+            />
             <Route path="/track-order" element={<TrackOrderPage />} />
             <Route path="/order-confirmation" element={<OrderConfirmation />} />
             <Route
@@ -1389,6 +1419,17 @@ function MainApp(props) {
                 <AccountPage
                   user={props.currentUser}
                   onLogout={props.handleLogout}
+                  addToCart={props.addToCart}
+                />
+              }
+            />
+            <Route
+              path="/account/:tab"
+              element={
+                <AccountPage
+                  user={props.currentUser}
+                  onLogout={props.handleLogout}
+                  addToCart={props.addToCart}
                 />
               }
             />

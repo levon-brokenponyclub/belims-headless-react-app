@@ -11,7 +11,9 @@
   "dependencies": {
     "@aaronfagan/ccicons": "github:aaronfagan/svg-credit-card-payment-icons",
     "@google/genai": "^1.30.0",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "firebase": "^12.19.0",
     "lucide-react": "^0.554.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -20,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "@vercel/node": "^16.0.1",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.22",
     "postcss": "^8.5.6",

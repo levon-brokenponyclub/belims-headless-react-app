@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   User,
   Package,
@@ -9,33 +9,46 @@ import {
   Settings,
   ChevronRight,
   Clock,
-  CheckCircle,
   Truck,
   PlusCircle,
+  Heart,
+  Trash2,
+  ShoppingCart,
 } from "lucide-react";
+import {
+  getWishlist,
+  removeFromWishlist,
+  WishlistItem,
+} from "../services/wishlistService";
+import { buildProductUrl } from "../utils/product";
 import {
   UserData,
   updateUserProfile,
+  saveBillingAddress,
   saveShippingAddress,
+  clearBillingAddress,
+  clearShippingAddress,
 } from "../services/authService";
 import { fetchCustomerOrders } from "../services/wooCommerceService";
 import { ShippingAddress, Order } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { formatNumberWithSeparators } from "../utils/price";
-import { readStoredAddress } from "../services/shippingAddress";
-import { DeliveryLocationModal } from "./DeliveryLocationModal";
+import { saveStoredAddress } from "../services/shippingAddress";
 
 interface AccountPageProps {
   user: UserData | null;
   onLogout: () => void;
+  addToCart?: (product: any) => void;
 }
 
-type Tab = "dashboard" | "orders" | "addresses" | "payment" | "details";
+type Tab = "dashboard" | "orders" | "addresses" | "payment" | "details" | "wishlist";
 
-export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
-  const [searchParams] = useSearchParams();
-  const tabParam = searchParams.get("tab") as Tab | null;
-  const [activeTab, setActiveTab] = useState<Tab>(tabParam || "dashboard");
+const VALID_TABS: Tab[] = ["dashboard", "orders", "addresses", "payment", "details", "wishlist"];
+
+export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToCart }) => {
+  const navigate = useNavigate();
+  const { tab: tabParam } = useParams<{ tab?: string }>();
+  const activeTab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "dashboard";
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [savingDetails, setSavingDetails] = useState(false);
@@ -43,11 +56,24 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     type: "success" | "error";
     text: string;
   } | null>(null);
-  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [addressSaveMessage, setAddressSaveMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<"billing" | "shipping" | null>(null);
+  const [removingAddress, setRemovingAddress] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [defaultAddressKey, setDefaultAddressKey] = useState<"billing" | "shipping">(() => {
+    const stored = localStorage.getItem("belims_default_address_key");
+    return stored === "billing" || stored === "shipping" ? stored : "billing";
+  });
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(() => getWishlist());
+
+  useEffect(() => {
+    const refresh = () => setWishlistItems(getWishlist());
+    window.addEventListener("belims:wishlist-updated", refresh);
+    return () => window.removeEventListener("belims:wishlist-updated", refresh);
+  }, []);
 
   // Form state for account details
   const [formData, setFormData] = useState({
@@ -56,12 +82,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     display_name: user?.display_name || "",
     phone: user?.phone || "",
   });
-
-  useEffect(() => {
-    if (tabParam) {
-      setActiveTab(tabParam);
-    }
-  }, [tabParam]);
 
   // Fetch orders on component mount
   useEffect(() => {
@@ -128,32 +148,66 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     }
   };
 
-  const handleAddNewAddress = () => {
-    setAddressSaveMessage(null);
-    setIsDeliveryModalOpen(true);
-  };
+  const handleSetDefault = (type: "billing" | "shipping") => {
+    if (!user) return;
+    const billing = user.billing;
+    const shipping = user.shipping;
 
-  const handleAddressSelect = async (address: ShippingAddress | null) => {
-    if (!address) {
-      setIsDeliveryModalOpen(false);
-      return;
+    let address: ShippingAddress | null = null;
+    if (type === "billing" && billing) {
+      address = {
+        street: billing.address_1 || "",
+        city: billing.city || "",
+        province: billing.state || "",
+        postalCode: billing.postcode || "",
+        country: "ZA",
+        label: [billing.address_1, billing.city, billing.state, billing.postcode].filter(Boolean).join(", "),
+      };
+    } else if (type === "shipping" && shipping) {
+      address = {
+        street: shipping.address_1 || "",
+        city: shipping.city || "",
+        province: shipping.state || "",
+        postalCode: shipping.postcode || "",
+        country: "ZA",
+        label: [shipping.address_1, shipping.city, shipping.state, shipping.postcode].filter(Boolean).join(", "),
+      };
     }
 
+    if (!address) return;
+
+    saveStoredAddress(address);
+    localStorage.setItem("belims_default_address_key", type);
+    localStorage.setItem("fulfillmentType", "delivery");
+    setDefaultAddressKey(type);
+    window.dispatchEvent(new Event("belims:delivery-address-updated"));
+    window.dispatchEvent(new Event("belims:fulfillment-changed"));
+    setAddressSaveMessage({ type: "success", text: "Default delivery address updated." });
+  };
+
+  const handleAddNewAddress = (type: "billing" | "shipping", mode: "add" | "edit" = "add") => {
+    setAddressSaveMessage(null);
+    navigate(
+      `/delivery-details/add-address?context=account&type=${type}&mode=${mode}`,
+    );
+  };
+
+  const handleRemoveAddress = async (type: "billing" | "shipping") => {
+    setRemovingAddress(true);
     setAddressSaveMessage(null);
     try {
-      await saveShippingAddress(address);
-      setAddressSaveMessage({
-        type: "success",
-        text: "Address saved to your profile.",
-      });
+      if (type === "billing") {
+        await clearBillingAddress();
+      } else {
+        await clearShippingAddress();
+      }
       window.dispatchEvent(new Event("user-updated"));
+      setAddressSaveMessage({ type: "success", text: "Address removed." });
     } catch (error: any) {
-      setAddressSaveMessage({
-        type: "error",
-        text: error.message || "Failed to save address.",
-      });
+      setAddressSaveMessage({ type: "error", text: error.message || "Failed to remove address." });
     } finally {
-      setIsDeliveryModalOpen(false);
+      setRemovingAddress(false);
+      setConfirmRemove(null);
     }
   };
 
@@ -181,6 +235,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     { id: "addresses", label: "Addresses", icon: <MapPin size={20} /> },
     { id: "payment", label: "Payment Methods", icon: <CreditCard size={20} /> },
     { id: "details", label: "Account Details", icon: <User size={20} /> },
+    {
+      id: "wishlist",
+      label: "Wishlist",
+      icon: <Heart size={20} />,
+      badge: wishlistItems.length > 0 ? wishlistItems.length : undefined,
+    },
   ];
 
   const getStatusColor = (status: string) => {
@@ -217,6 +277,113 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     (o) => o.status === "processing" || o.status === "on-hold",
   ).length;
 
+  const renderWishlist = () => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 sm:px-0 px-4">
+        <Heart size={20} className="text-red-500 fill-red-500" />
+        <h3 className="font-semibold text-gray-900 text-lg">My Wishlist</h3>
+        {wishlistItems.length > 0 && (
+          <span className="ml-1 rounded-full bg-belims-blue px-2 py-0.5 text-xs font-bold text-white">
+            {wishlistItems.length}
+          </span>
+        )}
+      </div>
+
+      {wishlistItems.length === 0 ? (
+        <div className="flex flex-col items-center py-16 text-center">
+          <Heart size={48} className="mb-3 text-gray-200" />
+          <p className="font-semibold text-gray-400">Your wishlist is empty</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Tap the ♡ on any product to save it here.
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="mt-5 rounded-full bg-belims-blue px-6 py-2 text-sm font-semibold text-white hover:bg-belims-accent transition-colors"
+          >
+            Browse products
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {wishlistItems.map((item) => {
+            const productUrl = buildProductUrl({ name: item.name, slug: item.slug, id: item.id, category: item.category });
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              >
+                <button
+                  type="button"
+                  onClick={() => navigate(productUrl)}
+                  className="h-16 w-16 shrink-0 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden"
+                >
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="h-full w-full object-contain p-1 mix-blend-multiply" />
+                  ) : (
+                    <Heart size={20} className="text-gray-200" />
+                  )}
+                </button>
+                <div className="min-w-0 flex-1">
+                  {item.brand && (
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">{item.brand}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => navigate(productUrl)}
+                    className="text-left text-sm font-semibold text-gray-900 hover:text-belims-blue line-clamp-2"
+                  >
+                    {item.name}
+                  </button>
+                  <p className="mt-0.5 font-bold text-gray-900 text-sm">
+                    {item.price > 0 ? `${CURRENCY_SYMBOL}${Number(item.price).toFixed(2)}` : ""}
+                  </p>
+                </div>
+                <div className="shrink-0 flex flex-col items-end gap-2">
+                  {addToCart && (
+                    <button
+                      type="button"
+                      onClick={() => addToCart({
+                        id: item.id,
+                        name: item.name,
+                        sku: item.sku,
+                        price: item.price,
+                        regular_price: item.price,
+                        sale_price: null,
+                        image: item.image || "",
+                        slug: item.slug,
+                        category: item.category || "",
+                        brand: item.brand,
+                        stock_status: "instock",
+                        stock_quantity: null,
+                        short_description: "",
+                        description: "",
+                        features: [],
+                        breadcrumbs: [],
+                      })}
+                      className="flex items-center gap-1.5 rounded-full bg-belims-blue px-3 py-1.5 text-xs font-semibold text-white hover:bg-belims-accent transition-colors"
+                    >
+                      <ShoppingCart size={12} />
+                      Add to cart
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { removeFromWishlist(item.id); setWishlistItems(getWishlist()); }}
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                    aria-label="Remove from wishlist"
+                  >
+                    <Trash2 size={13} />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   const renderDashboard = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -225,9 +392,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <div className="p-2 bg-blue-50 text-belims-blue rounded-lg">
               <Package size={24} />
             </div>
-            <h3 className="font-bold text-gray-900">Total Orders</h3>
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Total Orders</h3>
           </div>
-          <p className="text-3xl font-extrabold text-belims-blue">
+          <p className="text-3xl font-bold text-belims-blue">
             {loadingOrders ? "-" : orders.length}
           </p>
         </div>
@@ -236,9 +403,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <div className="p-2 bg-green-50 text-green-600 rounded-lg">
               <Clock size={24} />
             </div>
-            <h3 className="font-bold text-gray-900">Active Orders</h3>
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Active Orders</h3>
           </div>
-          <p className="text-3xl font-extrabold text-green-600">
+          <p className="text-3xl font-bold text-green-600">
             {loadingOrders ? "-" : activeOrderCount}
           </p>
         </div>
@@ -247,9 +414,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             <div className="p-2 bg-orange-50 text-belims-accent rounded-lg">
               <CreditCard size={24} />
             </div>
-            <h3 className="font-bold text-gray-900">Account Balance</h3>
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Account Balance</h3>
           </div>
-          <p className="text-3xl font-extrabold text-belims-accent">
+          <p className="text-3xl font-bold text-belims-accent">
             {CURRENCY_SYMBOL}
             {formatNumberWithSeparators(0)}
           </p>
@@ -258,9 +425,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <h3 className="font-bold text-gray-900">Recent Orders</h3>
+          <h3 className="text-base font-semibold text-gray-900">Recent Orders</h3>
           <button
-            onClick={() => setActiveTab("orders")}
+            onClick={() => navigate("/account/orders")}
             className="text-belims-blue text-sm font-semibold hover:underline flex items-center gap-1"
           >
             View All <ChevronRight size={16} />
@@ -331,10 +498,116 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
     </div>
   );
 
-  const renderOrders = () => (
+  const renderOrderDetail = (order: Order) => {
+    const shippingCost = parseFloat(order.shipping_lines?.[0]?.total || "0");
+    const subtotal = order.line_items.reduce((acc, item) => acc + parseFloat(item.total), 0);
+    const addr = order.shipping_address;
+    const addrLine = [addr?.street, addr?.city, addr?.province, addr?.postalCode].filter(Boolean).join(", ");
+    return (
+      <div className="space-y-5">
+        {/* Back + header */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSelectedOrder(null)}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <ChevronRight size={16} className="rotate-180" /> Orders
+          </button>
+          <span className="text-gray-300">/</span>
+          <span className="text-sm font-semibold text-gray-700">#{order.order_number}</span>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          {/* Order header */}
+          <div className="p-5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-bold text-gray-900 text-lg">Order #{order.order_number}</p>
+              <p className="text-sm text-gray-500 mt-0.5">Placed on {formatDate(order.date_created)}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
+                {getStatusLabel(order.status)}
+              </span>
+              <Link
+                to={`/track-order?order-number=${order.order_number}`}
+                className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+              >
+                Track
+              </Link>
+            </div>
+          </div>
+
+          {/* Line items */}
+          <div className="divide-y divide-gray-100">
+            {order.line_items.map((item) => (
+              <div key={item.id} className="flex items-center gap-4 p-4">
+                <div className="h-14 w-14 shrink-0 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden">
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="h-full w-full object-contain p-1 mix-blend-multiply" />
+                  ) : (
+                    <Package size={20} className="text-gray-300" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-gray-900 line-clamp-2">{item.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Qty: {item.quantity}</p>
+                </div>
+                <p className="font-bold text-sm text-gray-900 shrink-0">
+                  {order.currency || "ZAR"} {formatNumberWithSeparators(parseFloat(item.total))}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div className="border-t border-gray-100 p-5 space-y-2">
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Subtotal</span>
+              <span>{order.currency || "ZAR"} {formatNumberWithSeparators(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Shipping</span>
+              <span>{shippingCost === 0 ? "Free" : `${order.currency || "ZAR"} ${formatNumberWithSeparators(shippingCost)}`}</span>
+            </div>
+            <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-100">
+              <span>Total</span>
+              <span>{order.currency || "ZAR"} {formatNumberWithSeparators(parseFloat(order.total))}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Delivery + Payment */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Delivery address</p>
+            {addrLine ? (
+              <p className="text-sm text-gray-700 leading-relaxed">{addrLine}</p>
+            ) : (
+              <p className="text-sm text-gray-400">Not available</p>
+            )}
+            {order.shipping_lines?.length > 0 && (
+              <p className="text-xs text-gray-500 mt-2 font-medium">
+                via {order.shipping_lines[0].method_title}
+              </p>
+            )}
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Payment</p>
+            <p className="text-sm text-gray-700 capitalize">
+              {order.payment_method?.replace(/_/g, " ") || "Not specified"}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderOrders = () => {
+    if (selectedOrder) return renderOrderDetail(selectedOrder);
+    return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-gray-100">
-        <h3 className="font-bold text-gray-900 text-lg">Order History</h3>
+        <h3 className="font-semibold text-gray-900 text-lg">Order History</h3>
       </div>
       <div className="divide-y divide-gray-100">
         {loadingOrders ? (
@@ -345,26 +618,25 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           </div>
         ) : (
           orders.map((order) => (
-            <div
+            <button
               key={order.id}
-              className="p-6 hover:bg-gray-50 transition-colors cursor-pointer group"
+              type="button"
+              onClick={() => setSelectedOrder(order)}
+              className="w-full p-6 hover:bg-gray-50 transition-colors cursor-pointer group text-left"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                  <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 group-hover:bg-white group-hover:shadow-sm transition-all">
                     <Package size={28} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-gray-900">
-                        #{order.order_number}
-                      </p>
-                      {order.shipping_lines &&
-                        order.shipping_lines.length > 0 && (
-                          <span className="text-[10px] bg-blue-50 text-belims-blue px-2 py-0.5 rounded font-bold uppercase border border-blue-100">
-                            {order.shipping_lines[0].method_title || "Standard"}
-                          </span>
-                        )}
+                      <p className="font-bold text-gray-900">#{order.order_number}</p>
+                      {order.shipping_lines?.length > 0 && (
+                        <span className="text-[10px] bg-blue-50 text-belims-blue px-2 py-0.5 rounded font-bold uppercase border border-blue-100">
+                          {order.shipping_lines[0].method_title || "Standard"}
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-gray-600 mt-0.5">
                       Placed on {formatDate(order.date_created)}
@@ -375,45 +647,31 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                 <div className="flex items-center justify-between sm:justify-end gap-8 pt-4 sm:pt-0 border-t sm:border-0 border-gray-100">
                   <div className="text-left sm:text-right">
                     <p className="text-sm font-bold text-gray-900">
-                      {order.currency || "ZAR"}{" "}
-                      {formatNumberWithSeparators(parseFloat(order.total))}
+                      {order.currency || "ZAR"} {formatNumberWithSeparators(parseFloat(order.total))}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {order.line_items.length} item
-                      {order.line_items.length !== 1 ? "s" : ""}
+                      {order.line_items.length} item{order.line_items.length !== 1 ? "s" : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div
-                      className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(
-                        order.status,
-                      )}`}
-                    >
+                    <div className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
                     </div>
-                    <Link
-                      to={`/track-order?order-number=${order.order_number}`}
-                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
-                    >
-                      Track
-                    </Link>
-                    <button className="p-2 hover:bg-white hover:shadow-sm rounded-lg border border-transparent hover:border-gray-200 text-gray-400 hover:text-belims-blue transition-all">
-                      <ChevronRight size={20} />
-                    </button>
+                    <ChevronRight size={20} className="text-gray-300 group-hover:text-belims-blue transition-colors" />
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
           ))
         )}
       </div>
     </div>
-  );
+    );
+  };
 
   const renderAddresses = () => {
     const billingAddress = user.billing;
     const shippingAddress = user.shipping;
-    const savedDeliveryAddress = readStoredAddress().address;
 
     const hasBilling =
       billingAddress?.address_1 ||
@@ -425,15 +683,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
       shippingAddress?.city ||
       shippingAddress?.postcode;
 
-    const savedAddressLines = savedDeliveryAddress
-      ? [
-          savedDeliveryAddress.street || savedDeliveryAddress.label,
-          savedDeliveryAddress.city,
-          savedDeliveryAddress.province,
-          savedDeliveryAddress.postalCode,
-          savedDeliveryAddress.country,
-        ].filter(Boolean)
-      : [];
+    const addNewType: "billing" | "shipping" | null = !hasBilling
+      ? "billing"
+      : !hasShipping
+      ? "shipping"
+      : null;
 
     return (
       <div className="space-y-6">
@@ -450,26 +704,30 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
         )}
 
         <div className="flex justify-between items-center sm:px-0 px-4">
-          <h3 className="font-bold text-gray-900 text-lg">My Addresses</h3>
-          <button
-            onClick={handleAddNewAddress}
-            className="bg-belims-blue text-white text-sm px-4 py-2 rounded font-bold hover:bg-belims-light transition-all flex items-center gap-2"
-          >
-            <PlusCircle size={18} /> Add New
-          </button>
+          <h3 className="font-semibold text-gray-900 text-lg">My Addresses</h3>
+          {addNewType && (
+            <button
+              onClick={() => handleAddNewAddress(addNewType)}
+              className="bg-belims-blue text-white text-sm px-4 py-2 rounded font-bold hover:bg-belims-light transition-all flex items-center gap-2"
+            >
+              <PlusCircle size={18} /> Add New
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {hasBilling && billingAddress && (
-            <div className="bg-white p-6 rounded-lg border-2 border-belims-blue shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-3">
-                <span className="bg-belims-blue text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold uppercase tracking-tighter absolute top-0 right-0">
+            <div className={`bg-white p-6 rounded-lg shadow-sm relative overflow-hidden transition-colors ${
+              defaultAddressKey === "billing" ? "border-2 border-belims-blue" : "border border-gray-200 hover:border-gray-300"
+            }`}>
+              {defaultAddressKey === "billing" && (
+                <span className="bg-belims-blue text-white text-[10px] px-2 py-1 font-bold uppercase tracking-tighter absolute top-0 right-0 rounded-bl-lg">
                   Default
                 </span>
-              </div>
+              )}
               <div className="flex items-center gap-2 mb-4">
                 <MapPin size={20} className="text-belims-blue" />
-                <h4 className="font-bold text-gray-900">Billing Address</h4>
+                <h4 className="text-base font-bold text-gray-900">Billing Address</h4>
               </div>
               <div className="text-sm text-gray-600 space-y-1 mb-6">
                 <p className="font-bold text-gray-800">
@@ -485,21 +743,63 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                 <p>{billingAddress.country || ""}</p>
               </div>
               <div className="border-t border-gray-100 pt-4">
-                <button
-                  onClick={handleAddNewAddress}
-                  className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
-                >
-                  Edit Address
-                </button>
+                {confirmRemove === "billing" ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-600">Remove this address?</span>
+                    <button
+                      onClick={() => handleRemoveAddress("billing")}
+                      disabled={removingAddress}
+                      className="text-xs font-bold text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      {removingAddress ? "Removing..." : "Yes, remove"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove(null)}
+                      className="text-xs font-bold text-gray-500 hover:underline"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => handleAddNewAddress("billing", "edit")}
+                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove("billing")}
+                      className="text-red-500 text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Remove
+                    </button>
+                    {defaultAddressKey !== "billing" && (
+                      <button
+                        onClick={() => handleSetDefault("billing")}
+                        className="text-gray-500 text-xs font-bold hover:text-belims-blue hover:underline uppercase tracking-wide ml-auto"
+                      >
+                        Set as Default
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {hasShipping && shippingAddress && (
-            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors">
+            <div className={`bg-white p-6 rounded-lg shadow-sm relative overflow-hidden transition-colors ${
+              defaultAddressKey === "shipping" ? "border-2 border-belims-blue" : "border border-gray-200 hover:border-gray-300"
+            }`}>
+              {defaultAddressKey === "shipping" && (
+                <span className="bg-belims-blue text-white text-[10px] px-2 py-1 font-bold uppercase tracking-tighter absolute top-0 right-0 rounded-bl-lg">
+                  Default
+                </span>
+              )}
               <div className="flex items-center gap-2 mb-4">
                 <Truck size={20} className="text-belims-blue" />
-                <h4 className="font-bold text-gray-900">Shipping Address</h4>
+                <h4 className="text-base font-bold text-gray-900">Shipping Address</h4>
               </div>
               <div className="text-sm text-gray-600 space-y-1 mb-6">
                 <p className="font-bold text-gray-800">
@@ -515,39 +815,52 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                 <p>{shippingAddress.country || ""}</p>
               </div>
               <div className="border-t border-gray-100 pt-4">
-                <button
-                  onClick={handleAddNewAddress}
-                  className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
-                >
-                  Edit Address
-                </button>
+                {confirmRemove === "shipping" ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-600">Remove this address?</span>
+                    <button
+                      onClick={() => handleRemoveAddress("shipping")}
+                      disabled={removingAddress}
+                      className="text-xs font-bold text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      {removingAddress ? "Removing..." : "Yes, remove"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove(null)}
+                      className="text-xs font-bold text-gray-500 hover:underline"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => handleAddNewAddress("shipping", "edit")}
+                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove("shipping")}
+                      className="text-red-500 text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Remove
+                    </button>
+                    {defaultAddressKey !== "shipping" && (
+                      <button
+                        onClick={() => handleSetDefault("shipping")}
+                        className="text-gray-500 text-xs font-bold hover:text-belims-blue hover:underline uppercase tracking-wide ml-auto"
+                      >
+                        Set as Default
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {savedDeliveryAddress && savedAddressLines.length > 0 && (
-            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:border-gray-300 transition-colors">
-              <div className="flex items-center gap-2 mb-4">
-                <MapPin size={20} className="text-gray-400" />
-                <h4 className="font-bold text-gray-900">Saved Delivery</h4>
-              </div>
-              <div className="text-sm text-gray-600 space-y-1 mb-6">
-                {savedAddressLines.map((line, index) => (
-                  <p key={index}>{line}</p>
-                ))}
-              </div>
-              <div className="border-t border-gray-100 pt-4">
-                <button
-                  onClick={handleAddNewAddress}
-                  className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
-                >
-                  Edit Address
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!hasBilling && !hasShipping && savedAddressLines.length === 0 && (
+          {!hasBilling && !hasShipping && (
             <div className="col-span-full py-12 text-center text-gray-500">
               <MapPin size={48} className="text-gray-300 mx-auto mb-4" />
               <p>No addresses saved yet. Click "Add New" to add one.</p>
@@ -561,7 +874,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
   const renderDetails = () => (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-gray-100">
-        <h3 className="font-bold text-gray-900 text-lg">Account Details</h3>
+        <h3 className="font-semibold text-gray-900 text-lg">Account Details</h3>
       </div>
       <div className="p-8">
         {detailsMessage && (
@@ -620,9 +933,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
               }
               className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
             />
-            <p className="text-[10px] text-gray-400 mt-1.5 italic">
-              This is how your name will appear in reviews and account sections.
-            </p>
           </div>
 
           <div>
@@ -652,7 +962,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           </div>
 
           <div className="pt-6 border-t border-gray-100">
-            <h4 className="font-bold text-gray-900 mb-2">Password Change</h4>
+            <h4 className="font-semibold text-gray-900 mb-2">Password Change</h4>
             <p className="text-sm text-gray-500 mb-6">
               Leave these fields blank if you don't want to change your
               password.
@@ -721,11 +1031,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           <aside className="lg:w-1/4">
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden sticky top-32">
               <div className="p-8 border-b border-gray-100 text-center lg:text-left">
-                <div className="w-20 h-20 bg-belims-blue text-white rounded-full flex items-center justify-center mx-auto lg:mx-0 text-2xl font-bold mb-4 shadow-inner">
+                <div className="w-20 h-20 bg-belims-blue text-white rounded-full flex items-center justify-center mx-auto lg:mx-0 text-xl font-bold mb-4 shadow-inner">
                   {user.first_name?.[0] || user.username[0].toUpperCase()}
                   {user.last_name?.[0]}
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-lg font-bold text-gray-900">
                   {user.first_name} {user.last_name}
                 </h2>
                 <p className="text-sm text-gray-500 font-medium">
@@ -743,7 +1053,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                   {menuItems.map((item) => (
                     <li key={item.id}>
                       <button
-                        onClick={() => setActiveTab(item.id as Tab)}
+                        onClick={() => { if (item.id !== "orders") setSelectedOrder(null); navigate(`/account/${item.id}`); }}
                         className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-lg font-bold text-sm transition-all ${
                           activeTab === item.id
                             ? "bg-belims-blue text-white shadow-md active:scale-95"
@@ -760,7 +1070,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
                           {item.icon}
                         </span>
                         {item.label}
-                        {activeTab === item.id && (
+                        {(item as any).badge !== undefined && (
+                          <span className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === item.id ? "bg-white text-belims-blue" : "bg-belims-blue text-white"}`}>
+                            {(item as any).badge}
+                          </span>
+                        )}
+                        {activeTab === item.id && !(item as any).badge && (
                           <ChevronRight size={16} className="ml-auto" />
                         )}
                       </button>
@@ -783,7 +1098,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
           {/* Main Content */}
           <div className="lg:w-3/4">
             <div className="mb-8">
-              <h1 className="text-3xl font-extrabold text-gray-900 font-heading">
+              <h1 className="text-3xl font-bold text-gray-900 font-heading">
                 {menuItems.find((i) => i.id === activeTab)?.label}
               </h1>
               <p className="text-gray-500 mt-1">
@@ -804,12 +1119,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
             {activeTab === "orders" && renderOrders()}
             {activeTab === "addresses" && renderAddresses()}
             {activeTab === "details" && renderDetails()}
+            {activeTab === "wishlist" && renderWishlist()}
             {activeTab === "payment" && (
               <div className="bg-white p-12 text-center rounded-lg border border-gray-200 shadow-sm border-dashed">
                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
                   <CreditCard size={32} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   No Saved Cards
                 </h3>
                 <p className="text-gray-500 mb-6 max-w-sm mx-auto">
@@ -825,12 +1141,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout }) => {
         </div>
       </div>
 
-      <DeliveryLocationModal
-        isOpen={isDeliveryModalOpen}
-        onClose={() => setIsDeliveryModalOpen(false)}
-        initialFulfillmentType="delivery"
-        onAddressSelect={handleAddressSelect}
-      />
     </div>
   );
 };

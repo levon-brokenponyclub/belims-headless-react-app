@@ -53,7 +53,7 @@ const HeroBanner: React.FC = () => {
           className="
             group/card relative block w-full
             h-[240px] sm:h-[280px] md:h-[320px] lg:h-[360px]
-            overflow-hidden rounded-2xl bg-gray-900 shadow-sm
+            overflow-hidden rounded-2xl bg-secondary shadow-sm
             focus:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue
           "
         >
@@ -86,7 +86,7 @@ const HeroBanner: React.FC = () => {
           </div>
 
           <div className="relative z-10 flex h-full flex-col justify-end p-5 sm:p-6 md:p-7 lg:p-10">
-            <h3 className="max-w-[640px] text-2xl font-semibold tracking-tight text-white md:text-[32px] lg:text-[40px] lg:leading-[1.15]">
+            <h3 className="max-w-[640px] text-h4 font-bold tracking-tight text-white md:text-h3">
               {HERO.title}
             </h3>
 
@@ -98,7 +98,7 @@ const HeroBanner: React.FC = () => {
               <span
                 className="
                   group relative inline-flex h-12 items-center justify-center
-                  overflow-hidden rounded-pill bg-belims-blue px-12
+                  overflow-hidden rounded-md bg-belims-blue px-12
                   text-white transition-colors
                 "
               >
@@ -120,7 +120,7 @@ const HeroBanner: React.FC = () => {
               }}
               className="
                 absolute bottom-5 right-5 z-20
-                rounded-full bg-black/45 px-4 py-2
+                rounded-md bg-black/45 px-4 py-2
                 text-base font-bold text-white
                 backdrop-blur-sm transition
                 hover:bg-black/60

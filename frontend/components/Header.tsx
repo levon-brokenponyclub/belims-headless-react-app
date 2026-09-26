@@ -19,6 +19,7 @@ import {
   Grid3x3,
   AlertCircle,
   Clock,
+  CreditCard,
 } from "lucide-react";
 import {
   Store,
@@ -29,9 +30,15 @@ import {
 } from "../types";
 import { CURRENCY_SYMBOL } from "../constants";
 import { formatCurrency } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
 import { initializeCategoryTree } from "../categoryTree";
 import { logoutUser, UserData } from "../services/authService";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
+import { Drawer } from "./Drawer";
+import { WelcomeDrawer } from "./WelcomeDrawer";
+import { DeliveryDetailsPopover, SavedAddressOption } from "./DeliveryDetailsPopover";
+
+const DELIVERY_POPOVER_DISMISSED_KEY = "belims_delivery_popover_dismissed";
 import { MegaMenu } from "./MegaMenu";
 import { SearchResults } from "./SearchResults";
 import {
@@ -80,6 +87,7 @@ interface HeaderProps {
   products?: Product[];
   currentUser: UserData | null;
   setCurrentUser: (user: UserData | null) => void;
+  showToast?: (message: string, type: "success" | "error") => void;
   cartCoupon?: { code: string; discount_type: string; amount: string } | null;
   /** Optional live delivery-promise data driving the secondary-nav ETA pills. */
   deliveryPromise?: {
@@ -108,6 +116,7 @@ export const Header: React.FC<HeaderProps> = ({
   products = [],
   currentUser,
   setCurrentUser,
+  showToast,
   cartCoupon,
   deliveryPromise,
 }) => {
@@ -120,6 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
     useState(false);
   const [searchCategory, setSearchCategory] = useState("All Departments");
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
+  const [isWelcomeDrawerOpen, setIsWelcomeDrawerOpen] = useState(false);
   const [isDeliveryLocationModalOpen, setIsDeliveryLocationModalOpen] =
     useState(false);
   const [deliveryLocationModalType, setDeliveryLocationModalType] = useState<
@@ -129,6 +139,39 @@ export const Header: React.FC<HeaderProps> = ({
   const openDeliveryLocationPanel = (type: "pickup" | "delivery") => {
     setDeliveryLocationModalType(type);
     setIsDeliveryLocationModalOpen(true);
+  };
+
+  const [isDeliveryPopoverOpen, setIsDeliveryPopoverOpen] = useState(false);
+  const [isDeliverySheetOpen, setIsDeliverySheetOpen] = useState(false);
+
+  const openDeliveryPopover = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setIsDeliverySheetOpen(true);
+    } else {
+      setIsDeliveryPopoverOpen(true);
+    }
+  };
+
+  const closeDeliveryPopover = () => {
+    setIsDeliveryPopoverOpen(false);
+    setIsDeliverySheetOpen(false);
+  };
+
+  const dismissDeliveryPopover = () => {
+    try {
+      localStorage.setItem(DELIVERY_POPOVER_DISMISSED_KEY, "1");
+    } catch {}
+    closeDeliveryPopover();
+  };
+
+  const handleAddDeliveryDetails = () => {
+    closeDeliveryPopover();
+    navigate("/delivery-details/add-address");
+  };
+
+  const handleDeliveryPopoverLogin = () => {
+    closeDeliveryPopover();
+    navigate("/login");
   };
   const [fulfillmentType, setFulfillmentType] = useState<
     "pickup" | "delivery" | null
@@ -201,6 +244,30 @@ export const Header: React.FC<HeaderProps> = ({
     syncDeliveryFromStorage();
   }, [syncDeliveryFromStorage]);
 
+  // Auto-open the delivery-details nudge on first load while no address is set
+  // and the user hasn't dismissed it. Runs once per app boot.
+  const hasAutoOpenedPopoverRef = useRef(false);
+  useEffect(() => {
+    if (hasAutoOpenedPopoverRef.current) return;
+    if (typeof window === "undefined") return;
+    const hasAddress = Boolean(deliveryAddress || legacyDeliveryLabel);
+    if (hasAddress) return;
+    let dismissed = false;
+    try {
+      dismissed = localStorage.getItem(DELIVERY_POPOVER_DISMISSED_KEY) === "1";
+    } catch {}
+    if (dismissed) return;
+    hasAutoOpenedPopoverRef.current = true;
+    const timer = window.setTimeout(() => {
+      if (window.innerWidth < 768) {
+        setIsDeliverySheetOpen(true);
+      } else {
+        setIsDeliveryPopoverOpen(true);
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [deliveryAddress, legacyDeliveryLabel]);
+
   const handleAddressSelect = (address: ShippingAddress | null) => {
     setDeliveryAddress(address);
     setLegacyDeliveryLabel(
@@ -272,6 +339,11 @@ export const Header: React.FC<HeaderProps> = ({
     };
     const handleDeliveryAddressUpdated = () => {
       syncDeliveryFromStorage();
+      const { address, legacyLabel } = readStoredAddress();
+      if (address || legacyLabel) {
+        setIsDeliveryPopoverOpen(false);
+        setIsDeliverySheetOpen(false);
+      }
     };
 
     window.addEventListener(
@@ -334,6 +406,73 @@ export const Header: React.FC<HeaderProps> = ({
   const hasDeliveryAddress = Boolean(
     deliveryAddress || legacyDeliveryLabel || userProfileLabel,
   );
+
+  const savedAddressOptions = useMemo<SavedAddressOption[]>(() => {
+    if (!currentUser) return [];
+    const rows: Array<{
+      source: "Billing" | "Shipping";
+      raw: {
+        address_1?: string;
+        city?: string;
+        state?: string;
+        postcode?: string;
+        country?: string;
+      } | null | undefined;
+    }> = [
+      { source: "Billing", raw: currentUser.billing },
+      { source: "Shipping", raw: currentUser.shipping },
+    ];
+    const out: SavedAddressOption[] = [];
+    const seen = new Set<string>();
+    for (const { source, raw } of rows) {
+      const line1 = raw?.address_1?.trim() || "";
+      if (!line1) continue;
+      const city = raw?.city?.trim() || "";
+      const dedupeKey = `${line1.toLowerCase()}|${city.toLowerCase()}|${(raw?.postcode || "").trim().toLowerCase()}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      const line = city ? `${line1}, ${city}` : line1;
+      out.push({
+        id: `${source.toLowerCase()}-${dedupeKey}`,
+        source,
+        line,
+      });
+    }
+    return out;
+  }, [currentUser]);
+
+  const handleSelectSavedAddress = (id: string) => {
+    const picked = savedAddressOptions.find((a) => a.id === id);
+    if (!picked) return;
+    const raw =
+      picked.source === "Billing"
+        ? currentUser?.billing
+        : currentUser?.shipping;
+    if (!raw?.address_1) return;
+    const address: ShippingAddress = {
+      street: raw.address_1,
+      city: raw.city || "",
+      province: raw.state || "",
+      postalCode: raw.postcode || "",
+      country: "ZA",
+      label: raw.city ? `${raw.address_1}, ${raw.city}` : raw.address_1,
+    };
+    handleAddressSelect(address);
+    closeDeliveryPopover();
+  };
+
+  const pillAddressLine = useMemo(() => {
+    if (deliveryAddress) {
+      const parts = [deliveryAddress.street, deliveryAddress.city].filter(
+        Boolean,
+      );
+      if (parts.length) return parts.join(", ");
+      return deliveryAddress.label || deliveryAddress.postalCode || "";
+    }
+    if (userProfileLabel) return userProfileLabel;
+    if (legacyDeliveryLabel) return legacyDeliveryLabel;
+    return "";
+  }, [deliveryAddress, userProfileLabel, legacyDeliveryLabel]);
   const cartSubtotal = cartItems.reduce(
     (sum, item) => sum + (Number(item.price) || 0) * item.quantity,
     0,
@@ -452,7 +591,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [searchQuery, flatCategoryList, products]);
 
   const handleProductSelect = (product: Product) => {
-    navigate(`/product/${product.id}`);
+    navigate(buildProductUrl(product));
     setSearchQuery(""); // Clear search
     setSearchResults(null);
   };
@@ -565,14 +704,16 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
                <button
                  type="button"
-                 onClick={() => openDeliveryLocationPanel("delivery")}
+                 onClick={openDeliveryPopover}
                  className="topbar__delivery-item"
                >
                  <Truck size={15} className="flex-shrink-0" strokeWidth={1.75} />
                  <span className="topbar__delivery-text">
                    <span>Deliver to:</span>
                    <span className="truncate">
-                     {hasDeliveryAddress ? deliveryPostalCode : "Enter your address"}
+                     {hasDeliveryAddress
+                       ? pillAddressLine || deliveryPostalCode
+                       : "Enter your address"}
                    </span>
                  </span>
                  <ChevronRight size={14} className="flex-shrink-0" />
@@ -599,27 +740,40 @@ export const Header: React.FC<HeaderProps> = ({
             </Link>
 
             {/* Address pill */}
-            <button
-              type="button"
-              onClick={() => openDeliveryLocationPanel("delivery")}
-              className="hidden md:flex items-center gap-3 rounded-xl bg-white/10 hover:bg-white/[0.14] transition-colors px-4 py-2.5 min-w-[220px] max-w-[260px] text-left focus:outline-none focus:ring-2 focus:ring-primary/60"
-            >
-              <MapPin
-                size={18}
-                strokeWidth={1.75}
-                className="flex-shrink-0 text-primary"
+            <div className="relative">
+              <button
+                type="button"
+                onClick={openDeliveryPopover}
+                className="hidden md:flex items-center gap-3 rounded-xl bg-white/10 hover:bg-white/[0.14] transition-colors px-4 py-2.5 min-w-[220px] max-w-[260px] text-left focus:outline-none focus:ring-2 focus:ring-primary/60"
+              >
+                <MapPin
+                  size={18}
+                  strokeWidth={1.75}
+                  className="flex-shrink-0 text-primary"
+                />
+                <span className="flex flex-col leading-tight min-w-0">
+                  <span className="text-[12px] font-bold uppercase tracking-normal text-white/60">
+                    Delivering to
+                  </span>
+                  <span className="text-sm font-bold text-white truncate">
+                    {hasDeliveryAddress
+                      ? pillAddressLine || deliveryPostalCode || "Enter your address"
+                      : "Enter your address"}
+                  </span>
+                </span>
+              </button>
+              <DeliveryDetailsPopover
+                open={isDeliveryPopoverOpen}
+                variant="popover"
+                isLoggedIn={!!currentUser}
+                savedAddresses={savedAddressOptions}
+                onClose={closeDeliveryPopover}
+                onDismiss={dismissDeliveryPopover}
+                onAddDetails={handleAddDeliveryDetails}
+                onLogin={handleDeliveryPopoverLogin}
+                onSelectSavedAddress={handleSelectSavedAddress}
               />
-              <span className="flex flex-col leading-tight min-w-0">
-                <span className="text-[12px] font-bold uppercase tracking-normal text-white/60">
-                  Delivering to
-                </span>
-                <span className="text-sm font-bold text-white truncate">
-                  {hasDeliveryAddress
-                    ? deliveryPostalCode || "Enter your address"
-                    : "Enter your address"}
-                </span>
-              </span>
-            </button>
+            </div>
 
             {/* Search bar (fills remaining width) */}
             <div className="flex-1 min-w-0 mx-2">
@@ -755,7 +909,9 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Account chip */}
             <button
               type="button"
-              onClick={() => setIsAccountPanelOpen(true)}
+              onClick={() =>
+                currentUser ? setIsAccountPanelOpen(true) : setIsWelcomeDrawerOpen(true)
+              }
               aria-label={
                 currentUser
                   ? `Account: ${currentUser.first_name || currentUser.username}`
@@ -909,7 +1065,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="container mx-auto px-4">
               <button
                 type="button"
-                onClick={() => openDeliveryLocationPanel("delivery")}
+                onClick={openDeliveryPopover}
                 className="flex items-center justify-between w-full py-2.5"
               >
                 <div className="flex items-center gap-3">
@@ -920,13 +1076,24 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
                 <div className="flex items-center gap-2 text-sm text-white/90">
                   <span className="truncate max-w-[200px] font-medium">
-                    {deliveryPostalCode || deliveryLabelText}
+                    {pillAddressLine || deliveryPostalCode || deliveryLabelText}
                   </span>
                   <ChevronDown size={14} />
                 </div>
               </button>
             </div>
           </div>
+          <DeliveryDetailsPopover
+            open={isDeliverySheetOpen}
+            variant="sheet"
+            isLoggedIn={!!currentUser}
+            savedAddresses={savedAddressOptions}
+            onClose={closeDeliveryPopover}
+            onDismiss={dismissDeliveryPopover}
+            onAddDetails={handleAddDeliveryDetails}
+            onLogin={handleDeliveryPopoverLogin}
+            onSelectSavedAddress={handleSelectSavedAddress}
+          />
 
           {/* ─── Coral alert banner ── conditional: no delivery address set ─── */}
           {!hasDeliveryAddress && (
@@ -1037,7 +1204,7 @@ export const Header: React.FC<HeaderProps> = ({
         {mobileMenuOpen && (
           <div className="fixed inset-0 bg-black/50 z-50 flex">
             <div className="w-[85%] max-w-sm bg-surface h-full flex flex-col">
-              <div className="p-4 bg-brand text-white flex justify-between items-center">
+              <div className="p-4 bg-primary text-white flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <User size={20} />
                   <span className="font-bold font-heading">
@@ -1049,9 +1216,9 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto bg-soft">
+              <div className="flex-1 overflow-y-auto bg-surface-muted">
                 <div className="bg-surface py-2">
-                  <div className="px-4 py-3 font-bold text-lg border-b border-subtle font-heading text-ink">
+                  <div className="px-4 py-3 font-bold text-lg border-b border-border font-heading text-text">
                     Departments
                   </div>
                   <div className="relative overflow-x-hidden">
@@ -1076,17 +1243,17 @@ export const Header: React.FC<HeaderProps> = ({
                               className="min-w-full"
                             >
                               {index > 0 && (
-                                <div className="border-b border-subtle bg-surface">
+                                <div className="border-b border-border bg-surface">
                                   <div className="flex items-center justify-between px-4 py-2">
                                     <button
-                                      className="text-sm font-bold text-muted"
+                                      className="text-sm font-bold text-text-secondary"
                                       onClick={closeMobileCategoryPanel}
                                     >
                                       Back
                                     </button>
                                     <span className="w-10" />
                                   </div>
-                                  <div className="px-4 py-2 bg-soft text-sm font-bold text-ink font-heading">
+                                  <div className="px-4 py-2 bg-surface-muted text-sm font-bold text-text font-heading">
                                     {panelLabel}
                                   </div>
                                 </div>
@@ -1095,7 +1262,7 @@ export const Header: React.FC<HeaderProps> = ({
                               <div className="bg-surface">
                                 {panelNode ? (
                                   <button
-                                    className="w-full text-left px-4 py-3 border-b border-subtle text-sm font-bold text-brand"
+                                    className="w-full text-left px-4 py-3 border-b border-border text-sm font-bold text-primary"
                                     onClick={() =>
                                       handleMobileCategorySelect(
                                         panelNode.label,
@@ -1106,7 +1273,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   </button>
                                 ) : (
                                   <button
-                                    className="w-full text-left px-4 py-3 border-b border-subtle text-sm font-bold text-brand"
+                                    className="w-full text-left px-4 py-3 border-b border-border text-sm font-bold text-primary"
                                     onClick={handleShopAll}
                                   >
                                     Shop All
@@ -1116,7 +1283,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 {panelItems.map((item) => (
                                   <button
                                     key={item.id}
-                                    className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-subtle transition-colors"
+                                    className="w-full px-4 py-3 flex justify-between items-center text-text font-bold border-b border-border hover:bg-border transition-colors"
                                     onClick={() => openMobileCategory(item)}
                                   >
                                     {item.label}
@@ -1124,7 +1291,7 @@ export const Header: React.FC<HeaderProps> = ({
                                     item.children.length > 0 ? (
                                       <ChevronDown
                                         size={16}
-                                        className="-rotate-90 text-muted transition-transform"
+                                        className="-rotate-90 text-text-secondary transition-transform"
                                       />
                                     ) : null}
                                   </button>
@@ -1139,10 +1306,10 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
 
                 <div className="bg-surface mt-2 py-2">
-                  <div className="px-4 py-3 font-bold text-lg border-b border-subtle font-heading text-ink">
+                  <div className="px-4 py-3 font-bold text-lg border-b border-border font-heading text-text">
                     Help & Settings
                   </div>
-                  <div className="px-4 py-3 border-b border-subtle text-ink">
+                  <div className="px-4 py-3 border-b border-border text-text">
                     Track Order
                   </div>
                 </div>
@@ -1162,7 +1329,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-surface  flex flex-col">
               {/* Header */}
-              <div className="p-4 bg-brand text-white flex justify-between items-center">
+              <div className="p-4 bg-primary text-white flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <LayoutGrid size={20} />
                   <span className="font-bold font-heading">Services</span>
@@ -1178,48 +1345,48 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Body */}
               <div className="flex-1 overflow-y-auto">
                 <div className="bg-surface py-0">
-                  <div className="px-4 py-3 font-bold text-lg border-b border-subtle font-heading text-ink">
+                  <div className="px-4 py-3 font-bold text-lg border-b border-border font-heading text-text">
                     Services
                   </div>
                   <Link
                     to="/services/installation"
                     onClick={() => setIsServicesPanelOpen(false)}
-                    className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
+                    className="w-full px-4 py-3 flex justify-between items-center text-text font-bold border-b border-border hover:bg-surface-muted transition-colors"
                   >
                     Installation & Services
                   </Link>
                   <Link
                     to="/services/tool-rental"
                     onClick={() => setIsServicesPanelOpen(false)}
-                    className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
+                    className="w-full px-4 py-3 flex justify-between items-center text-text font-bold border-b border-border hover:bg-surface-muted transition-colors"
                   >
                     Tool Rental
                   </Link>
                   <Link
                     to="/services/truck-rental"
                     onClick={() => setIsServicesPanelOpen(false)}
-                    className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
+                    className="w-full px-4 py-3 flex justify-between items-center text-text font-bold border-b border-border hover:bg-surface-muted transition-colors"
                   >
                     Truck Rental
                   </Link>
                   <Link
                     to="/services/equipment-rental"
                     onClick={() => setIsServicesPanelOpen(false)}
-                    className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
+                    className="w-full px-4 py-3 flex justify-between items-center text-text font-bold border-b border-border hover:bg-surface-muted transition-colors"
                   >
                     Large Equipment Rental
                   </Link>
                   <Link
                     to="/credit-cards"
                     onClick={() => setIsServicesPanelOpen(false)}
-                    className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
+                    className="w-full px-4 py-3 flex justify-between items-center text-text font-bold border-b border-border hover:bg-surface-muted transition-colors"
                   >
                     Belims Credit Cards
                   </Link>
                   <Link
                     to="/protection-plans"
                     onClick={() => setIsServicesPanelOpen(false)}
-                    className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
+                    className="w-full px-4 py-3 flex justify-between items-center text-text font-bold border-b border-border hover:bg-surface-muted transition-colors"
                   >
                     Protection Plans
                   </Link>
@@ -1228,7 +1395,7 @@ export const Header: React.FC<HeaderProps> = ({
                        setIsServicesPanelOpen(false);
                        onOpenPaintAssistant();
                      }}
-                     className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors text-left"
+                     className="w-full px-4 py-3 flex justify-between items-center text-text font-bold border-b border-border hover:bg-surface-muted transition-colors text-left"
                    >
                      Paint Assistant
                    </button>
@@ -1238,159 +1405,104 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Account Side Panel */}
-        {isAccountPanelOpen && (
-          <div className="fixed inset-0 z-[9999] overflow-hidden">
-            <div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-              onClick={() => setIsAccountPanelOpen(false)}
-            ></div>
+        {/* Welcome Drawer — unauthenticated users */}
+        <WelcomeDrawer
+          isOpen={isWelcomeDrawerOpen}
+          onClose={() => setIsWelcomeDrawerOpen(false)}
+          setCurrentUser={setCurrentUser}
+          showToast={showToast ?? (() => {})}
+        />
 
-            <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-surface  flex flex-col">
-              {/* Header */}
-              <div className="p-4 bg-brand text-white flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <User size={20} />
-                  <span className="font-bold font-heading">
-                    {currentUser
-                      ? `Welcome, ${currentUser.first_name || currentUser.username}!`
-                      : "Sign in or Create an Account"}
-                  </span>
-                </div>
+        {/* Account Drawer */}
+        <Drawer
+          isOpen={isAccountPanelOpen}
+          onClose={() => setIsAccountPanelOpen(false)}
+          title={currentUser ? `Welcome, ${currentUser.first_name || currentUser.username}!` : "My Account"}
+          widthClassName="w-full max-w-md"
+          footer={
+            currentUser ? (
+              <div className="p-5">
                 <button
-                  onClick={() => setIsAccountPanelOpen(false)}
-                  className="text-white hover:text-white/70"
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700 transition-colors"
                 >
-                  <X size={24} />
+                  <LogOut size={18} />
+                  Log out
                 </button>
               </div>
-
-              {/* Body */}
-              <div className="flex-1 overflow-y-auto bg-soft">
-                {currentUser ? (
-                  <>
-                    {/* Dashboard Button for Logged In Users */}
-                    <div className="bg-surface py-0 mb-2">
-                      <div className="px-4 py-3 font-bold text-lg border-b border-subtle font-heading text-ink">
-                        Account
-                      </div>
-                      <button
-                        onClick={() => {
-                          navigate("/account");
-                          setIsAccountPanelOpen(false);
-                        }}
-                        className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-subtle transition-colors text-left"
-                      >
-                        Dashboard
-                      </button>
-                    </div>
-                  </>
-                ) : null}
-
-                {/* Account Links - Only show when logged in */}
-                {currentUser && (
-                  <>
-                    <div className="bg-surface py-0">
-                      <div className="px-4 py-3 font-bold text-lg border-b border-subtle font-heading text-ink">
-                        Extra Links
-                      </div>
-                      <Link
-                        to="/track-order"
-                        onClick={() => setIsAccountPanelOpen(false)}
-                        className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors text-left"
-                      >
-                        Track Order
-                      </Link>
-                      <Link
-                        to="/account/cards"
-                        onClick={() => setIsAccountPanelOpen(false)}
-                        className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
-                      >
-                        Cards & Accounts
-                      </Link>
-                      <Link
-                        to="/account/pay"
-                        onClick={() => setIsAccountPanelOpen(false)}
-                        className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
-                      >
-                        Pay Credit Card Bill
-                      </Link>
-                      <Link
-                        to="/account/discounts"
-                        onClick={() => setIsAccountPanelOpen(false)}
-                        className="w-full px-4 py-3 flex justify-between items-center text-ink font-bold border-b border-subtle hover:bg-soft transition-colors"
-                      >
-                        Discount Benefits
-                      </Link>
-                    </div>
-                  </>
-                )}
-
-                {/* Contractor/Trade Block - Only show when not logged in OR when logged in but not a contractor */}
-                {(!currentUser ||
-                  !currentUser.roles?.includes("contractor")) && (
-                  <div className="p-5 bg-canvas border-b">
-                    <div className="flex gap-3">
-                      <div className="flex-1">
-                        <div className="font-bold text-ink mb-2">
-                          Are you a Contractor?
-                        </div>
-                        <div className="text-sm text-muted mb-3 leading-relaxed">
-                          See trade pricing across our range and unlock checkout
-                          access with a trade account.
-                        </div>
-                        <div className="text-sm text-muted mb-3 leading-relaxed">
-                          Bulk pricing, site delivery and exclusive trade-only
-                          deals — built for professionals.
-                        </div>
-                        <Link
-                          to="/register?type=trade"
-                          onClick={() => setIsAccountPanelOpen(false)}
-                          className="text-accent font-bold text-sm hover:underline inline-flex items-center gap-1"
-                        >
-                          Register for Trade Deals
-                          <ArrowRight size={14} />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom action area */}
-              {currentUser ? (
-                <div className="p-5 border-t bg-surface">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white font-bold rounded-pill hover:bg-accent/90 transition-colors"
+            ) : (
+              <div className="p-5">
+                <p className="text-sm text-text-secondary mb-4 leading-relaxed">
+                  Sign in or create a profile now for access to the widest range of products all in one place, saving you time and money.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Link
+                    to="/login"
+                    onClick={() => setIsAccountPanelOpen(false)}
+                    className="w-full h-[46px] flex items-center justify-center gap-2 px-4 text-sm font-semibold bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 transition-colors"
                   >
-                    <LogOut size={18} />
-                    Log out
-                  </button>
+                    Sign in
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => setIsAccountPanelOpen(false)}
+                    className="h-[46px] flex items-center justify-center gap-2 px-4 text-sm font-semibold border border-neutral-200 text-neutral-900 rounded-lg hover:bg-neutral-50 transition-colors"
+                  >
+                    Create an Account
+                  </Link>
                 </div>
-              ) : (
-                <div className="p-5 border-t bg-surface">
-                  <div className="grid grid-cols-2 gap-3">
-                    <Link
-                      to="/login"
-                      onClick={() => setIsAccountPanelOpen(false)}
-                      className="w-full h-[46px] flex items-center justify-center gap-2 px-4 py-3 btn-primary rounded-pill"
-                    >
-                      Sign in
-                    </Link>
-                    <Link
-                      to="/register"
-                      onClick={() => setIsAccountPanelOpen(false)}
-                      className="h-[46px] btn-outline flex items-center justify-center gap-2 rounded-pill"
-                    >
-                      Create an Account
-                    </Link>
-                  </div>
-                </div>
-              )}
+              </div>
+            )
+          }
+        >
+          {currentUser && (
+            <div className="border-b border-gray-100">
+              {[
+                { label: "Dashboard", to: "/account/dashboard", icon: <LayoutGrid size={20} /> },
+                { label: "Orders", to: "/account/orders", icon: <ShoppingBasket size={20} /> },
+                { label: "Addresses", to: "/account/addresses", icon: <MapPin size={20} /> },
+                { label: "Wishlist", to: "/account/wishlist", icon: <Heart size={20} /> },
+                { label: "Payment Methods", to: "/account/payment", icon: <CreditCard size={20} /> },
+                { label: "Account Details", to: "/account/details", icon: <User size={20} /> },
+              ].map(({ label, to, icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setIsAccountPanelOpen(false)}
+                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-surface-muted border-b border-gray-100"
+                >
+                  <span className="text-text-tertiary">{icon}</span>
+                  <span className="flex-1 text-sm font-semibold text-text">{label}</span>
+                  <span className="text-text-tertiary"><ChevronRight size={18} /></span>
+                </Link>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+
+          {!currentUser && (
+            <div className="p-5">
+              <div className="text-sm font-semibold text-text mb-2">
+                Let's get started
+              </div>
+              <div className="text-sm text-text-secondary mb-3 leading-relaxed">
+                See trade pricing across our range and unlock checkout
+                access with a trade account.
+              </div>
+              <div className="text-sm text-text-secondary mb-3 leading-relaxed">
+                Bulk pricing, site delivery and exclusive trade-only
+                deals — built for professionals.
+              </div>
+              <Link
+                to="/register?type=trade"
+                onClick={() => setIsAccountPanelOpen(false)}
+                className="text-sm font-semibold text-text hover:underline inline-flex items-center gap-1"
+              >
+                Let's get started
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          )}
+        </Drawer>
 
         {/* Delivery Location Modal */}
         <DeliveryLocationModal

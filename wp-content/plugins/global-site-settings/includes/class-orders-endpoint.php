@@ -45,13 +45,41 @@ class Belims_Orders_Endpoint {
             return new WP_Error('unauthorized', 'You must be logged in to view orders', array('status' => 401));
         }
 
-        // Get customer orders
-        $customer_orders = wc_get_orders(array(
+        $statuses     = array('processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed');
+        $user         = wp_get_current_user();
+        $user_email   = $user->user_email;
+
+        // Query 1: registered customer orders (by customer_id)
+        $by_id = wc_get_orders(array(
             'customer_id' => $user_id,
-            'limit' => -1, // Get all orders
-            'orderby' => 'date',
-            'order' => 'DESC',
+            'status'      => $statuses,
+            'limit'       => -1,
+            'orderby'     => 'date',
+            'order'       => 'DESC',
         ));
+
+        // Query 2: guest orders placed with the same billing email
+        $by_email = $user_email ? wc_get_orders(array(
+            'billing_email' => $user_email,
+            'status'        => $statuses,
+            'limit'         => -1,
+            'orderby'       => 'date',
+            'order'         => 'DESC',
+        )) : array();
+
+        // Merge, dedupe by order ID, sort newest first
+        $seen = array();
+        $customer_orders = array();
+        foreach ( array_merge( $by_id, $by_email ) as $order ) {
+            $oid = $order->get_id();
+            if ( ! isset( $seen[ $oid ] ) ) {
+                $seen[ $oid ] = true;
+                $customer_orders[] = $order;
+            }
+        }
+        usort( $customer_orders, function( $a, $b ) {
+            return $b->get_date_created()->getTimestamp() - $a->get_date_created()->getTimestamp();
+        } );
 
         $orders = array();
         foreach ($customer_orders as $order) {

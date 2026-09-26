@@ -23,6 +23,7 @@ interface DeliveryLocationModalProps {
   currentStore?: Store | null;
   onStoreSelect?: (store: Store | null) => void;
   currentUser?: UserData;
+  persistToDevice?: boolean;
 }
 
 type StoreHours = {
@@ -113,19 +114,19 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
     <button
       type="button"
       onClick={onDetectLocation}
-      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 py-3 text-base font-semibold text-ink hover:bg-soft transition-colors"
+      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 py-3 text-base font-semibold text-text hover:bg-surface-muted transition-colors"
     >
       <MapPin size={16} /> Use your location.
     </button>
 
-    <hr className="border-subtle" />
+    <hr className="border-border" />
 
     {isEditingDeliveryAddress ? (
       <div className="space-y-4">
         <div className="relative">
           <Search
             size={16}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary"
           />
           <input
             ref={inputRef}
@@ -133,13 +134,13 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
             placeholder="Enter Postal Code"
             value={input}
             onChange={onInputChange}
-            className="w-full border border-subtle py-3 pl-10 pr-10 text-base text-ink placeholder:text-muted focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+            className="w-full border border-border py-3 pl-10 pr-10 text-base text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
           />
           {input && (
             <button
               type="button"
               onClick={onClearLocation}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text"
             >
               <X size={14} />
             </button>
@@ -147,26 +148,26 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
         </div>
 
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-muted">
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
             <Loader size={14} className="animate-spin" />
             Finding address suggestions...
           </div>
         )}
 
         {suggestions.length > 0 && (
-          <div className="divide-y border border-subtle overflow-hidden">
+          <div className="divide-y border border-border overflow-hidden">
             {suggestions.map((suggestion, index) => (
               <button
                 key={`${suggestion.source || "google"}-${suggestion.place_id || index}`}
                 type="button"
                 onClick={() => onSuggestionClick(suggestion)}
-                className="w-full px-4 py-3 text-left text-sm hover:bg-soft transition-colors"
+                className="w-full px-4 py-3 text-left text-sm hover:bg-surface-muted transition-colors"
               >
                 {suggestion.mainText ? (
                   <div className="flex flex-col">
-                    <span className="text-sm text-ink">{suggestion.mainText}</span>
+                    <span className="text-sm text-text">{suggestion.mainText}</span>
                     {suggestion.secondaryText && (
-                      <span className="text-xs text-muted">{suggestion.secondaryText}</span>
+                      <span className="text-xs text-text-secondary">{suggestion.secondaryText}</span>
                     )}
                   </div>
                 ) : (
@@ -178,8 +179,8 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
         )}
 
         {detectedLocationAddress && (
-          <div className="space-y-3 border border-subtle px-4 py-4">
-            <p className="text-sm font-semibold text-ink">
+          <div className="space-y-3 border border-border px-4 py-4">
+            <p className="text-sm font-semibold text-text">
               {detectedLocationAddress.label ||
                 [detectedLocationAddress.street, detectedLocationAddress.city, detectedLocationAddress.province]
                   .filter(Boolean)
@@ -207,8 +208,8 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
         )}
 
         {savedDeliveryAddress && !detectedLocationAddress && (
-          <div className="flex items-center justify-between gap-3 border border-subtle px-4 py-4">
-            <p className="text-sm text-ink">
+          <div className="flex items-center justify-between gap-3 border border-border px-4 py-4">
+            <p className="text-sm text-text">
               {savedDeliveryAddress.label ||
                 [savedDeliveryAddress.street, savedDeliveryAddress.city, savedDeliveryAddress.province]
                   .filter(Boolean)
@@ -232,8 +233,8 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
         )}
       </div>
     ) : (
-      <div className="flex items-center justify-between gap-3 border border-subtle px-4 py-4">
-        <p className="text-sm text-ink">
+      <div className="flex items-center justify-between gap-3 border border-border px-4 py-4">
+        <p className="text-sm text-text">
           {savedDeliveryAddress?.label ||
             [savedDeliveryAddress?.street, savedDeliveryAddress?.city, savedDeliveryAddress?.province]
               .filter(Boolean)
@@ -243,7 +244,7 @@ const DeliveryPanel: React.FC<DeliveryPanelProps> = ({
         <button
           type="button"
           onClick={onEditAddress}
-          className="text-sm font-semibold text-grey underline"
+          className="text-sm font-semibold text-text underline"
         >
           Edit
         </button>
@@ -272,12 +273,12 @@ const PickupPanel: React.FC<PickupPanelProps> = ({
     <button
       type="button"
       onClick={onEnableDefaultStore}
-      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 py-3 text-base font-semibold text-ink hover:bg-soft transition-colors"
+      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 py-3 text-base font-semibold text-text hover:bg-surface-muted transition-colors"
     >
       <MapPin size={16} /> Use your location.
     </button>
 
-    <hr className="border-subtle" />
+    <hr className="border-border" />
 
     <div className="space-y-3">
       {stores.map((store) => {
@@ -287,7 +288,7 @@ const PickupPanel: React.FC<PickupPanelProps> = ({
           ? "text-green-600"
           : status.isOpen === false
             ? "text-red-600"
-            : "text-muted";
+            : "text-text-secondary";
         const isExpanded = expandedStoreId === store.id;
 
         return (
@@ -376,6 +377,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   currentStore,
   onStoreSelect,
   currentUser,
+  persistToDevice = true,
 }) => {
   const emitDeliveryAddressUpdated = () => {
     if (typeof window === "undefined") return;
@@ -412,6 +414,13 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     useState<ShippingAddress | null>(null);
   const [isEditingDeliveryAddress, setIsEditingDeliveryAddress] =
     useState(true);
+  const [pendingAddress, setPendingAddress] = useState<ShippingAddress | null>(null);
+  const [pendingAddressName, setPendingAddressName] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [pendingStreet, setPendingStreet] = useState("");
+  const [pendingCity, setPendingCity] = useState("");
+  const [pendingProvince, setPendingProvince] = useState("");
+  const [pendingPostalCode, setPendingPostalCode] = useState("");
 
   const mapUserShippingToAddress = (shipping: UserData["shipping"]): ShippingAddress | null => {
     if (!shipping) return null;
@@ -902,6 +911,13 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setDetectedLocationAddress(null);
+      setPendingAddress(null);
+      setPendingAddressName("");
+      setHouseNumber("");
+      setPendingStreet("");
+      setPendingCity("");
+      setPendingProvince("");
+      setPendingPostalCode("");
       hasAutoLocatedRef.current = false;
     }
   }, [isOpen]);
@@ -1084,7 +1100,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           return;
         }
 
-        handleAddressSaved(address);
+        openPendingAddress(address);
         return;
       }
 
@@ -1144,7 +1160,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         return;
       }
 
-      handleAddressSaved(resolvedAddress);
+      openPendingAddress(resolvedAddress);
     } catch (error) {
       console.error("Place details error:", error);
       setErrorMessage("Unable to read address details. Try another address.");
@@ -1299,7 +1315,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
               setSuggestions([]);
               localStorage.setItem("fulfillmentType", "delivery");
               setLoading(false);
-              setDetectedLocationAddress(address);
+              openPendingAddress(address); // go directly to editable confirm screen
             } else {
               throw new Error(`API returned ${response.status}`);
             }
@@ -1360,7 +1376,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           }
         }
 
-        console.error("Geolocation error:", error);
+        console.warn("Geolocation unavailable, trying IP fallback:", error?.message ?? error?.code);
         const ipFallback = async () => {
           try {
             const response = await fetch("https://ipapi.co/json/");
@@ -1406,8 +1422,11 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
           setInput(fallbackAddress.label || "");
           setDetectedLocationAddress(fallbackAddress);
           setLoading(false);
+          // IP fallback succeeded — show a soft hint rather than an error
           setErrorMessage(
-            "We could not access a precise location. Please confirm or refine your address above.",
+            fallbackAddress.city && fallbackAddress.province
+              ? null
+              : "Location detected via network. Please confirm your address.",
           );
           return;
         }
@@ -1443,28 +1462,66 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     setDetectedLocationAddress(null);
     setSavedDeliveryAddress(null);
     setIsEditingDeliveryAddress(true);
-    saveStoredAddress(null);
+    if (persistToDevice) {
+      saveStoredAddress(null);
+      emitDeliveryAddressUpdated();
+    }
     onAddressSelect(null);
-    emitDeliveryAddressUpdated();
+  };
+
+  const openPendingAddress = (address: ShippingAddress) => {
+    setPendingAddress(address);
+    setPendingAddressName("");
+    setHouseNumber("");
+    setPendingStreet(address.street || "");
+    setPendingCity(address.city || "");
+    setPendingProvince(address.province || "");
+    setPendingPostalCode(address.postalCode || "");
   };
 
   const handleAddressSaved = (address: ShippingAddress) => {
     console.log("[delivery-location-modal] full address save requested", {
       address,
     });
-    localStorage.setItem("fulfillmentType", "delivery");
-    saveStoredAddress(address);
+    if (persistToDevice) {
+      localStorage.setItem("fulfillmentType", "delivery");
+      saveStoredAddress(address);
+      emitDeliveryAddressUpdated();
+    }
     onAddressSelect(address);
     setSavedDeliveryAddress(address);
     setDetectedLocationAddress(null);
     setInput(address.label || buildAddressLabel(address));
     setIsEditingDeliveryAddress(false);
-    emitDeliveryAddressUpdated();
   };
 
   const handleSaveDetectedAddress = () => {
     if (!detectedLocationAddress) return;
-    handleAddressSaved(detectedLocationAddress);
+    if (detectedLocationAddress) openPendingAddress(detectedLocationAddress);
+    setDetectedLocationAddress(null);
+  };
+
+  const handleConfirmPendingAddress = () => {
+    if (!pendingAddress) return;
+    const trimmedHouseNo = houseNumber.trim();
+    const baseStreet = pendingStreet || pendingAddress.street;
+    const mergedStreet = trimmedHouseNo
+      ? [trimmedHouseNo, baseStreet].filter(Boolean).join(" ")
+      : baseStreet;
+    const assembled: ShippingAddress = {
+      ...pendingAddress,
+      street: mergedStreet,
+      city: pendingCity || pendingAddress.city,
+      province: pendingProvince || pendingAddress.province,
+      postalCode: pendingPostalCode || pendingAddress.postalCode,
+    };
+    const finalAddress = pendingAddressName.trim()
+      ? { ...assembled, label: pendingAddressName.trim() }
+      : { ...assembled, label: buildAddressLabel(assembled) };
+    handleAddressSaved(finalAddress);
+    setPendingAddress(null);
+    setPendingAddressName("");
+    setHouseNumber("");
     onClose();
   };
 
@@ -1695,18 +1752,18 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   }, [userLocation]);
 
   const primaryButtonClass =
-    "group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full border border-grey bg-grey px-4 py-2 transition-colors hover:border-belims-blue";
+    "group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full border border-border-strong bg-surface-dark px-4 py-2 transition-colors hover:border-belims-blue";
   const primaryButtonLabelClass =
     "relative z-10 font-heading font-bold text-white transition-colors group-hover:text-white";
   const primaryButtonOverlayClass =
     "absolute inset-0 origin-left scale-x-0 bg-belims-blue transition-transform duration-300 ease-out group-hover:scale-x-100";
 
   const secondaryButtonClass =
-    "group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full border border-red bg-grey-light px-4 py-2 transition-colors hover:border-red-muted";
+    "group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-full border border-red bg-surface-muted px-4 py-2 transition-colors hover:border-deal-sale";
   const secondaryButtonLabelClass =
-    "relative z-10 font-heading font-bold text-grey transition-colors group-hover:text-white";
+    "relative z-10 font-heading font-bold text-text transition-colors group-hover:text-white";
   const secondaryButtonOverlayClass =
-    "absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100";
+    "absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100";
 
   const buildPostalCodeOnlyAddress = (): ShippingAddress | null => {
     const postalCode = input.trim();
@@ -1731,7 +1788,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         input,
         reason: "Input is not a valid 4-digit postal code",
       });
-      emitDeliveryAddressUpdated();
+      if (persistToDevice) emitDeliveryAddressUpdated();
       return;
     }
 
@@ -1739,14 +1796,16 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
       input,
       postalCodeAddress,
     });
-    localStorage.setItem("fulfillmentType", "delivery");
-    localStorage.setItem("belims_fulfillment_tab", "delivery");
-    saveStoredAddress(postalCodeAddress);
+    if (persistToDevice) {
+      localStorage.setItem("fulfillmentType", "delivery");
+      localStorage.setItem("belims_fulfillment_tab", "delivery");
+      saveStoredAddress(postalCodeAddress);
+      emitDeliveryAddressUpdated();
+    }
     onAddressSelect(postalCodeAddress);
     setSavedDeliveryAddress(postalCodeAddress);
     setLegacyLabel(postalCodeAddress.label || postalCodeAddress.postalCode);
     setIsEditingDeliveryAddress(false);
-    emitDeliveryAddressUpdated();
   };
 
   const handleClose = () => {
@@ -1792,7 +1851,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
     >
       <div className="h-full bg-surface flex flex-col">
         {/* Header */}
-        <div className="p-4 bg-brand text-white flex justify-between items-center flex-shrink-0">
+        <div className="p-4 bg-primary text-white flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-2">
             <MapPin size={20} aria-hidden="true" />
             <span className="font-bold font-heading">
@@ -1810,9 +1869,112 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto bg-soft">
+        <div className="flex-1 overflow-y-auto bg-surface-muted">
           <div className="px-5 py-5">
-            {fulfillmentType === "delivery" ? (
+            {fulfillmentType === "delivery" && pendingAddress ? (
+              <section className="space-y-5">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 mb-1">Confirm your address</h2>
+                  <p className="text-sm text-gray-500">Review and edit your address, then save.</p>
+                </div>
+
+                {/* House / unit number */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                    House / Unit No. <span className="font-normal text-gray-400 normal-case tracking-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={houseNumber}
+                    onChange={(e) => setHouseNumber(e.target.value)}
+                    placeholder="e.g. 12, Unit 4B, Flat 2"
+                    className="w-full border border-border py-2.5 px-3 text-sm text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Editable address fields */}
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Street</label>
+                    <input
+                      type="text"
+                      value={pendingStreet}
+                      onChange={(e) => setPendingStreet(e.target.value)}
+                      placeholder="Street address"
+                      className="w-full border border-border py-2.5 px-3 text-sm text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">City</label>
+                      <input
+                        type="text"
+                        value={pendingCity}
+                        onChange={(e) => setPendingCity(e.target.value)}
+                        placeholder="City"
+                        className="w-full border border-border py-2.5 px-3 text-sm text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Postal Code</label>
+                      <input
+                        type="text"
+                        value={pendingPostalCode}
+                        onChange={(e) => setPendingPostalCode(e.target.value)}
+                        placeholder="0000"
+                        className="w-full border border-border py-2.5 px-3 text-sm text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Province</label>
+                    <select
+                      value={pendingProvince}
+                      onChange={(e) => setPendingProvince(e.target.value)}
+                      className="w-full border border-border py-2.5 px-3 text-sm text-text focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue bg-white"
+                    >
+                      <option value="">Select province</option>
+                      {PROVINCES.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Address nickname */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                    Address name <span className="font-normal text-gray-400 normal-case tracking-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={pendingAddressName}
+                    onChange={(e) => setPendingAddressName(e.target.value)}
+                    placeholder="e.g. Home, Office, Warehouse"
+                    className="w-full border border-border py-2.5 px-3 text-sm text-text placeholder:text-text-secondary focus:border-belims-blue focus:outline-none focus:ring-1 focus:ring-belims-blue"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleConfirmPendingAddress}
+                    className={primaryButtonClass}
+                  >
+                    <span className={primaryButtonOverlayClass} />
+                    <span className={primaryButtonLabelClass}>Save Address</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setPendingAddress(null); setPendingAddressName(""); setHouseNumber(""); setPendingStreet(""); setPendingCity(""); setPendingProvince(""); setPendingPostalCode(""); setIsEditingDeliveryAddress(true); }}
+                    className={secondaryButtonClass}
+                  >
+                    <span className={secondaryButtonOverlayClass} />
+                    <span className={secondaryButtonLabelClass}>Change</span>
+                  </button>
+                </div>
+              </section>
+            ) : fulfillmentType === "delivery" ? (
               <DeliveryPanel
                 inputRef={inputRef}
                 input={input}
@@ -1853,7 +2015,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
 
         {/* Sticky footer */}
         <div className="p-5 border-t bg-surface flex-shrink-0">
-          {fulfillmentType === "delivery" ? (
+          {fulfillmentType === "delivery" && pendingAddress ? null : fulfillmentType === "delivery" ? (
             <button
               type="button"
               onClick={handleUpdatePostalCode}

@@ -88,7 +88,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
         <div className="flex-1 overflow-y-auto pr-2">
           {displayProducts.length > 0 ? (
             <>
-              <h3 className="text-lg font-semibold text-grey mb-4">
+              <h3 className="text-lg font-semibold text-text mb-4">
                 Related Products
               </h3>
               <ul className="grid grid-cols-5 gap-4 mb-6">
@@ -114,15 +114,15 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 
               <button
                 type="button"
-                className="group relative h-12 rounded-full border border-subtle bg-white px-14 pr-1 overflow-hidden transition-colors hover:border-grey hover:text-white"
+                className="group relative h-12 rounded-full border border-border bg-white px-14 pr-1 overflow-hidden transition-colors hover:border-border-strong hover:text-white"
                 onClick={onViewAllResults}
               >
-                <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+                <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
                 <div className="relative z-10 flex items-center gap-3">
-                  <span className="text-base mr-5 font-bold text-grey transition-colors group-hover:text-white">
+                  <span className="text-base mr-5 font-bold text-text transition-colors group-hover:text-white">
                     See all results
                   </span>
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-grey-light text-grey transition-colors group-hover:bg-white">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-muted text-text transition-colors group-hover:bg-white">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="26"

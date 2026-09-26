@@ -10,10 +10,16 @@ import {
   Target,
   Loader2,
   Clock,
+  Heart,
 } from "lucide-react";
+import {
+  toggleWishlist,
+  isInWishlist,
+} from "../services/wishlistService";
 import { Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
 import { formatCurrency, isProductPurchasable } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
 import { StockBar } from "./StockBar";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import { VideoPlayer } from "./VideoPlayer";
@@ -46,7 +52,6 @@ import { FulfillmentBlock } from "./FulfillmentBlock";
 import { FulfillmentTab } from "./FulfillmentTabs";
 import { ProductAccordions } from "./ProductAccordions";
 import { TradePricingAvailable } from "./TradePricingAvailable";
-
 interface SingleProductProps {
   product: Product;
   allProducts?: Product[];
@@ -154,6 +159,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   // Gallery / image
   const [mainImage, setMainImage] = useState(product.image);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(() => isInWishlist(product.id));
 
   // Qty
   const [qty, setQty] = useState(1);
@@ -850,7 +856,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
   const handleBuyNowAction = () => {
     handleAddToCart();
-    onBuyNow(product);
+    navigate("/checkout");
   };
 
   const runActionWithIndicator = (
@@ -1097,7 +1103,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         <div className="fixed inset-0 z-[80] bg-black/95 flex flex-col items-center justify-center p-4 animate-fadeIn">
           <button
             onClick={() => setIsGalleryOpen(false)}
-            className="absolute top-6 right-6 text-white hover:text-gray-300 z-50"
+            className="absolute top-6 right-6 text-white hover:text-text-disabled z-50"
           >
             <X size={32} />
           </button>
@@ -1305,14 +1311,14 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 </div>
                 <div className="p-5 space-y-4">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-sm font-semibold text-text">
                       Schedule pickup
                     </p>
-                    <p className="mt-0.5 text-xs text-gray-500">
+                    <p className="mt-0.5 text-xs text-text-tertiary">
                       Choose your preferred pickup date and time.
                     </p>
                   </div>
-                  <label className="block text-xs font-semibold text-gray-700">
+                  <label className="block text-xs font-semibold text-text-secondary">
                     Date
                     <input
                       type="date"
@@ -1322,10 +1328,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         setSchedulePickupDate(e.target.value);
                         setSchedulePickupTime("");
                       }}
-                      className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-belims-blue outline-none"
+                      className="mt-1 w-full rounded border border-border px-3 py-2 text-sm focus:ring-2 focus:ring-belims-blue outline-none"
                     />
                   </label>
-                  <label className="block text-xs font-semibold text-gray-700">
+                  <label className="block text-xs font-semibold text-text-secondary">
                     Time
                     <input
                       type="time"
@@ -1344,13 +1350,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         }
                         setSchedulePickupTime(val);
                       }}
-                      className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-belims-blue outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                      className="mt-1 w-full rounded border border-border px-3 py-2 text-sm focus:ring-2 focus:ring-belims-blue outline-none disabled:bg-surface-muted disabled:text-text-tertiary"
                     />
                   </label>
                   <button
                     type="button"
                     onClick={handleSave}
-                    className="w-full rounded bg-belims-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-belims-navy"
+                    className="w-full rounded-md bg-belims-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-belims-navy"
                   >
                     Save pickup time
                   </button>
@@ -1422,12 +1428,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         size={14}
                         className="text-gray flex-shrink-0"
                       />
-                      <span className="text-gray-600">{breadcrumb.label}</span>
+                      <span className="text-text-secondary">{breadcrumb.label}</span>
                     </React.Fragment>
                   ))}
                   <ChevronRight
                     size={14}
-                    className="text-gray-400 flex-shrink-0"
+                    className="text-text-tertiary flex-shrink-0"
                   />
                 </>
               )}
@@ -1444,7 +1450,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             {/* LEFT COLUMN */}
             <div className="order-1 lg:order-1 lg:col-span-7">
               {/* Featured Image / Gallery */}
-              <div className="bg-[#F9F9F9] rounded-xl overflow-hidden border border-gray-100">
+              <div className="bg-[#F9F9F9] rounded-xl overflow-hidden border border-border">
                 <div className="w-full h-[340px] md:h-[520px] flex items-center justify-center p-6 cursor-zoom-in">
                   {mainImage.startsWith("video:") ? (
                     <VideoPlayer
@@ -1464,7 +1470,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 </div>
 
                 {/* {gallery.length > 1 && (
-                  <div className="flex gap-3 overflow-x-auto p-4 border-t border-gray-200 bg-white no-scrollbar">
+                  <div className="flex gap-3 overflow-x-auto p-4 border-t border-border bg-white no-scrollbar">
                     {gallery.map((item, idx) => (
                       <button
                         key={idx}
@@ -1502,53 +1508,80 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 {/* ProductSummary */}
                 <div className="bg-white">
                   <div className="pb-0">
-                    {/* Brand + Badge — inline chip row */}
-                    {(product.brand || dealBadgeLabel) && (
-                      <div className={`flex flex-wrap items-center gap-2 ${dealBadgeLabel ? "mb-4" : "mb-3"}`}>
-                        {product.brand &&
-                          (onBrandClick ? (
-                            <button
-                              type="button"
-                              onClick={() => onBrandClick(product.brand!)}
-                              className="inline-block rounded border border-gray-200 bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-gray-500 hover:border-brand hover:text-brand transition-colors"
-                            >
-                              {product.brand}
-                            </button>
-                          ) : (
-                            <span className="inline-block rounded border border-gray-200 bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-gray-500">
-                              {product.brand}
-                            </span>
-                          ))}
-                        {dealBadgeLabel && (
-                          <span
-                            className={[
-                              "inline-flex items-center rounded px-2.5 py-1 text-xs font-bold uppercase",
-                              badgeToneClass,
-                            ].join(" ")}
+                    {/* Brand + Badge + Wishlist — inline chip row */}
+                    <div className={`flex flex-wrap items-center gap-2 ${dealBadgeLabel ? "mb-4" : "mb-3"}`}>
+                      {product.brand &&
+                        (onBrandClick ? (
+                          <button
+                            type="button"
+                            onClick={() => onBrandClick(product.brand!)}
+                            className="inline-block rounded border border-border bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-text-tertiary hover:border-primary hover:text-primary transition-colors"
                           >
-                            {dealBadgeLabel}
+                            {product.brand}
+                          </button>
+                        ) : (
+                          <span className="inline-block rounded border border-border bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-text-tertiary">
+                            {product.brand}
                           </span>
-                        )}
-                      </div>
-                    )}
-                    <h1 className="text-3xl font-bold text-grey font-heading mb-1">
+                        ))}
+                      {dealBadgeLabel && (
+                        <span
+                          className={[
+                            "inline-flex items-center rounded px-2.5 py-1 text-xs font-bold uppercase",
+                            badgeToneClass,
+                          ].join(" ")}
+                        >
+                          {dealBadgeLabel}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                        onClick={() => {
+                          const nowIn = toggleWishlist({
+                            id: product.id,
+                            name: product.name,
+                            sku: product.sku || "",
+                            price: consumerPrice || product.price || 0,
+                            image: product.image || "",
+                            slug: product.slug || "",
+                            brand: product.brand,
+                            category: product.category,
+                          });
+                          setIsWishlisted(nowIn);
+                        }}
+                        className={`ml-auto flex items-center justify-center rounded-full p-2 border transition-colors ${
+                          isWishlisted
+                            ? "border-red-200 bg-red-50 hover:bg-red-100"
+                            : "border-border bg-white hover:border-red-200 hover:bg-red-50"
+                        }`}
+                      >
+                        <Heart
+                          size={18}
+                          className={isWishlisted ? "text-red-500" : "text-text-tertiary"}
+                          fill={isWishlisted ? "currentColor" : "none"}
+                          strokeWidth={isWishlisted ? 2 : 1.5}
+                        />
+                      </button>
+                    </div>
+                    <h1 className="text-h3 font-bold text-text font-heading mb-1">
                       {product.name}
                     </h1>
-                    <div className="text-base text-grey-medium mb-3">
+                    <div className="text-base text-text-tertiary mb-3">
                       {/* {product.category || "N/A"} |  */}SKU:{" "}
                       {product.sku || "N/A"}
                     </div>
 
                     {product.features && product.features.length > 0 && (
                       <div className="mt-4">
-                        <h3 className="font-semibold text-base text-gray-900 font-heading mb-2">
+                        <h3 className="font-semibold text-base text-text font-heading mb-2">
                           Key Features
                         </h3>
                         <ul className="space-y-1">
                           {product.features.map((feature, idx) => (
                             <li
                               key={idx}
-                              className="text-[12px] text-gray-600 flex items-center gap-2"
+                              className="text-[12px] text-text-secondary flex items-center gap-2"
                             >
                               <Target
                                 size={8}
@@ -1565,7 +1598,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   {/* BuyBoxCard */}
                   <div
                     ref={buyBoxRef}
-                    className="mt-6 rounded-lg border-gray-200 bg-white p-0 shadow-sm"
+                    className="mt-6 rounded-lg border-border bg-white p-0 shadow-sm"
                   >
                     {/* Price + stock */}
                     <div className="flex justify-between items-start mb-4">
@@ -1607,11 +1640,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                     {/* Qty + CTAs */}
                     <div className="space-y-3 mt-4 mb-4">
                       <div className="flex gap-4">
-                        <div className="flex items-center border border-gray-300 rounded-sm bg-white h-11">
+                        <div className="flex items-center border border-border rounded-sm bg-white h-11">
                           <button
                             onClick={() => setQty(Math.max(1, qty - 1))}
                             disabled={qty <= 1}
-                            className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="px-3 hover:bg-surface-muted text-text-secondary h-full rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <Minus size={15} />
                           </button>
@@ -1623,7 +1656,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                               setQty(Math.min(product.stock ?? 1, qty + 1))
                             }
                             disabled={qty >= (product.stock ?? 1)}
-                            className="px-3 hover:bg-gray-100 text-gray-600 h-full rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="px-3 hover:bg-surface-muted text-text-secondary h-full rounded disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <Plus size={15} />
                           </button>
@@ -1637,9 +1670,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                               isAddToCartLoading ||
                               isBuyNowLoading
                             }
-                            className="group relative h-11 w-full overflow-hidden rounded-pill bg-belims-blue text-white transition-colors disabled:opacity-50"
+                            className="group relative h-11 w-full overflow-hidden rounded-md bg-belims-blue text-white transition-colors disabled:opacity-50"
                           >
-                            <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                            <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
                             <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors group-hover:text-white">
                               {isAddToCartLoading ? (
                                 <>
@@ -1663,9 +1696,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           isAddToCartLoading ||
                           isBuyNowLoading
                         }
-                        className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50"
+                        className="group relative h-11 w-full overflow-hidden rounded-md bg-surface-dark text-white transition-colors disabled:opacity-50"
                       >
-                        <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                        <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
                         <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors">
                           {isBuyNowLoading ? (
                             <>
@@ -1685,7 +1718,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         {isTradeApproved ? (
                           <>
                             <div className="flex items-center justify-between gap-3 mb-3">
-                              <h3 className="text-sm font-bold text-gray-700">
+                              <h3 className="text-sm font-bold text-text-secondary">
                                 Trade price
                               </h3>
                               <span className="bg-green-100 border uppercase border-green-500 px-5 py-1 text-xs font-extrabold text-green-700 rounded-full tabular-nums">
@@ -1693,12 +1726,12 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                               </span>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-3 text-center rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                            <div className="grid grid-cols-3 gap-3 text-center rounded-lg border border-border bg-white p-4 shadow-sm">
                               <div className="flex flex-col items-center justify-center">
-                                <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                <div className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wide">
                                   Retail
                                 </div>
-                                <div className="mt-1 text-base font-bold text-gray-900 tabular-nums">
+                                <div className="mt-1 text-base font-bold text-text tabular-nums">
                                   {formatCurrency(pricingInfo.retailPrice)}
                                 </div>
                               </div>
@@ -1711,7 +1744,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                 </div>
                               </div>
                               <div className="flex flex-col items-center justify-center">
-                                <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                <div className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wide">
                                   Discount
                                 </div>
                                 <div className="mt-1 inline-flex items-center gap-1 rounded bg-green-100 border border-green-500 px-5 py-1 text-sm font-extrabold text-green-700 tabular-nums">
@@ -1720,7 +1753,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                               </div>
                             </div>
 
-                            <div className="mt-4 text-xs text-gray-600 text-center">
+                            <div className="mt-4 text-xs text-text-secondary text-center">
                               <span className="font-medium">
                                 Trade pricing applied.
                               </span>
@@ -1736,10 +1769,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                               <>
                                 <div className="flex items-center justify-between gap-3 mb-3">
                                   <div className="expandedTitle">
-                                    <div className="text-sm font-bold text-gray-900 mb-1">
+                                    <div className="text-sm font-bold text-text mb-1">
                                       Trade deal details
                                     </div>
-                                    <div className="text-xs text-gray-600 mb-3">
+                                    <div className="text-xs text-text-secondary mb-3">
                                       Available to contractors with a Belims
                                       trade account.
                                     </div>
@@ -1748,18 +1781,18 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => setShowTradeDeal(false)}
-                                    className="text-[11px] font-bold uppercase tracking-wide text-gray-600 bg-white px-2 py-1 rounded border border-gray-300 hover:border-gray-400 transition-colors"
+                                    className="text-[11px] font-bold uppercase tracking-wide text-text-secondary bg-white px-2 py-1 rounded-md border border-border hover:border-border-soft transition-colors"
                                   >
                                     VIEW RETAIL PRICE
                                   </button>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-3 text-center rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                                <div className="grid grid-cols-3 gap-3 text-center rounded-lg border border-border bg-white p-4 shadow-sm">
                                   <div className="flex flex-col items-center justify-center">
-                                    <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                    <div className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wide">
                                       Retail
                                     </div>
-                                    <div className="mt-1 text-base font-bold text-gray-900 tabular-nums">
+                                    <div className="mt-1 text-base font-bold text-text tabular-nums">
                                       {formatCurrency(pricingInfo.retailPrice)}
                                     </div>
                                   </div>
@@ -1776,7 +1809,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                     </div>
                                   </div>
                                   <div className="flex flex-col items-center justify-center">
-                                    <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                    <div className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wide">
                                       Save
                                     </div>
                                     <div className="mt-1 inline-flex items-center gap-1 rounded bg-green-100 border border-green-500 px-5 py-1 text-sm font-extrabold text-green-700 tabular-nums">
@@ -1788,13 +1821,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                 <div className="flex flex-col sm:flex-row sm:justify-center sm:items-center gap-4 mt-2">
                                   <a
                                     href="/trade-accounts"
-                                    className="mt-3 text-center text-xs text-gray-500 underline hover:text-gray-700"
+                                    className="mt-3 text-center text-xs text-text-tertiary underline hover:text-text-secondary"
                                   >
                                     Learn about the Belims trade accounts
                                   </a>
                                   <a
                                     href="/trade-accounts"
-                                    className="inline mt-3 text-center text-xs text-gray-500 underline hover:text-gray-700"
+                                    className="inline mt-3 text-center text-xs text-text-tertiary underline hover:text-text-secondary"
                                   >
                                     Register for a Belims trade account
                                   </a>
@@ -1813,6 +1846,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   fulfillmentType={fulfillmentType}
                   onSelectFulfillment={handleSelectFulfillment}
                   onSetDeliveryLocation={handleOpenDeliveryLocation}
+                  onAddDeliveryAddress={() => navigate("/delivery-details/add-address")}
                   hasDeliveryLocation={hasDeliveryLocation}
                   deliveryAddress={deliveryAddress}
                   pickupStore={selectedStore}
@@ -1835,8 +1869,114 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   focusDeliveryPanelSignal={focusDeliveryPanelSignal}
                 />
 
-                {/* Perfect Match With - Slider in Right Column */}
+                {/* Perfect Match With — bundle candidates grid */}
+                {product.bundleCandidates && product.bundleCandidates.length > 0 && (
+                  <section className="mt-8">
+                    <h3 className="text-h6 font-bold text-text mb-4">
+                      Perfect Match With
+                    </h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      {product.bundleCandidates.slice(0, 3).map((item) => {
+                        const hasSale =
+                          typeof item.regular_price === "number" &&
+                          item.regular_price > item.price;
+                        const inStock =
+                          typeof item.stock !== "number" || item.stock > 0;
+                        return (
+                          <div key={item.id} className="flex flex-col">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(
+                                  buildProductUrl({
+                                    id: item.id,
+                                    name: item.name,
+                                  } as Product),
+                                )
+                              }
+                              className="aspect-square rounded-xl bg-surface-muted overflow-hidden mb-3 flex items-center justify-center hover:opacity-90 transition-opacity"
+                              aria-label={`View ${item.name}`}
+                            >
+                              {item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  loading="lazy"
+                                  className="w-full h-full object-contain mix-blend-multiply p-3"
+                                />
+                              ) : (
+                                <span className="text-xs text-text-tertiary">
+                                  No image
+                                </span>
+                              )}
+                            </button>
+                            <div className="text-sm font-semibold text-text mb-1 line-clamp-2 min-h-[2.5rem]">
+                              {item.name}
+                            </div>
+                            <div className="mb-3 flex items-baseline gap-2">
+                              <span
+                                className={`text-sm font-bold ${
+                                  hasSale ? "text-red-600" : "text-text"
+                                }`}
+                              >
+                                {formatCurrency(item.price)}
+                              </span>
+                              {hasSale && (
+                                <span className="text-xs text-text-tertiary line-through">
+                                  {formatCurrency(item.regular_price as number)}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!inStock) {
+                                  navigate(
+                                    buildProductUrl({
+                                      id: item.id,
+                                      name: item.name,
+                                    } as Product),
+                                  );
+                                  return;
+                                }
+                                addToCart({
+                                  id: item.id,
+                                  name: item.name,
+                                  price: item.price,
+                                  regular_price: item.regular_price,
+                                  image: item.image,
+                                  category: item.category,
+                                  stock:
+                                    typeof item.stock === "number"
+                                      ? item.stock
+                                      : 99,
+                                  maxStock:
+                                    typeof item.stock === "number"
+                                      ? item.stock
+                                      : 99,
+                                  in_stock: inStock,
+                                  quantity: 1,
+                                } as unknown as Product);
+                              }}
+                              className="mt-auto w-full rounded-md bg-black py-2.5 text-sm font-bold text-white hover:bg-secondary transition-colors"
+                            >
+                              {inStock ? "Add" : "View"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+
+                {/* Recommended slider (fallback when no bundle candidates) */}
                 {(() => {
+                  // Hide when the bundle-candidates grid above has already rendered
+                  if (product.bundleCandidates && product.bundleCandidates.length > 0) {
+                    return null;
+                  }
                   const mainCategory =
                     product.breadcrumbs?.find((b) => b.label !== "Shop")
                       ?.label || product.category;
@@ -1907,9 +2047,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   };
 
                   return (
-                    <div className="mt-8 pt-6 border-t border-gray-200">
+                    <div className="mt-8 pt-6 border-t border-border">
                       <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-grey font-heading">
+                        <h3 className="text-h6 font-bold text-text font-heading">
                           Perfect Match With
                         </h3>
                       </div>
@@ -1963,16 +2103,16 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             <div className="order-3 lg:order-3 lg:col-span-7">
               {/* Product Description */}
               <div className="mt-10 lg:mt-0">
-                <h3 className="text-xl font-bold text-grey font-heading mb-3 border-b border-grey pb-3">
+                <h3 className="text-h6 font-bold text-text font-heading mb-3 border-b border-border-strong pb-3">
                   Product Description
                 </h3>
-                <div className="prose prose-sm max-w-none text-grey-medium text-base [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-grey [&_h3]:mt-4 [&_h3]:mb-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-grey [&_h4]:mt-3 [&_h4]:mb-2 [&_strong]:font-bold [&_strong]:text-grey [&_b]:font-bold [&_b]:text-grey [&_em]:italic [&_i]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:mb-3 [&_ul]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:mb-3 [&_ol]:mt-2 [&_li]:text-grey [&_li]:leading-relaxed [&_p]:mb-2 [&_p]:leading-relaxed [&_br]:content-[''] [&_table]:w-full [&_table]:border-collapse [&_table]:mb-3 [&_th]:border [&_th]:border-grey [&_th]:bg-grey [&_th]:p-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-grey [&_td]:p-2">
+                <div className="prose prose-sm max-w-none text-text-tertiary text-base [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-text [&_h3]:mt-4 [&_h3]:mb-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-text [&_h4]:mt-3 [&_h4]:mb-2 [&_strong]:font-bold [&_strong]:text-text [&_b]:font-bold [&_b]:text-text [&_em]:italic [&_i]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:mb-3 [&_ul]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:mb-3 [&_ol]:mt-2 [&_li]:text-text [&_li]:leading-relaxed [&_p]:mb-2 [&_p]:leading-relaxed [&_br]:content-[''] [&_table]:w-full [&_table]:border-collapse [&_table]:mb-3 [&_th]:border [&_th]:border-border-strong [&_th]:bg-surface-dark [&_th]:p-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-border-strong [&_td]:p-2">
                   {product.description ? (
                     <div
                       dangerouslySetInnerHTML={{ __html: product.description }}
                     />
                   ) : (
-                    <p className="text-grey-medium italic">
+                    <p className="text-text-tertiary italic">
                       No description available.
                     </p>
                   )}
@@ -1994,7 +2134,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       {/* Sticky Bottom CTA (Athens-like: only appears when BuyBox actions are out of view) */}
       <div
         data-sticky-cart-bar
-        className={`fixed left-0 right-0 bottom-0 z-[260] bg-white border-t border-gray-200 px-4 py-3 transition-transform duration-300 ${
+        className={`fixed left-0 right-0 bottom-0 z-[260] bg-white border-t border-border px-4 py-3 transition-transform duration-300 ${
           showBottomCta ? "translate-y-0" : "translate-y-full"
         }`}
       >
@@ -2004,15 +2144,15 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             <img
               src={product.image}
               alt={product.name}
-              className="h-14 w-14 flex-shrink-0 rounded bg-gray-50 object-contain"
+              className="h-14 w-14 flex-shrink-0 rounded bg-surface-muted object-contain"
               loading="lazy"
               decoding="async"
             />
             <div className="flex-1 min-w-0">
-              <div className="truncate font-heading text-base font-bold text-grey">
+              <div className="truncate font-heading text-base font-bold text-text">
                 {product.name}
               </div>
-              <div className="text-base font-bold text-grey">
+              <div className="text-base font-bold text-text">
                 {formatCurrency(
                   product.deals_resolved?.consumer?.price ?? product.price,
                 )}
@@ -2027,9 +2167,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               disabled={
                 !isProductPurchasable(product) || isAddToCartLoading || isBuyNowLoading
               }
-              className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey-light text-grey transition-colors disabled:opacity-50 md:w-[140px]"
+              className="group relative h-11 w-full overflow-hidden rounded-md bg-surface-muted text-text transition-colors disabled:opacity-50 md:w-[140px]"
             >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors group-hover:text-white">
                 {isAddToCartLoading ? (
                   <>
@@ -2050,9 +2190,9 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               disabled={
                 !isProductPurchasable(product) || isAddToCartLoading || isBuyNowLoading
               }
-              className="group relative hidden h-11 w-full overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50 md:block md:w-[140px]"
+              className="group relative hidden h-11 w-full overflow-hidden rounded-md bg-surface-dark text-white transition-colors disabled:opacity-50 md:block md:w-[140px]"
             >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors">
                 {isBuyNowLoading ? (
                   <>
@@ -2070,13 +2210,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
       {product.bundleCandidates && product.bundleCandidates.length > 0 && (
         <>
-          <section className="border-y border-gray-200 bg-white">
+          {/* <section className="border-y border-border bg-white">
             <style>
               {`@keyframes bundle-marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}
             </style>
             <div className="overflow-hidden">
               <div
-                className="flex items-center whitespace-nowrap py-3 text-[13px] font-semibold text-gray-900"
+                className="flex items-center whitespace-nowrap py-3 text-[13px] font-semibold text-text"
                 style={{
                   animation: "bundle-marquee 28s linear infinite",
                   width: "max-content",
@@ -2097,20 +2237,20 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                     className="flex items-center"
                   >
                     <span className="px-4">{message}</span>
-                    <span className="text-gray-300">|</span>
+                    <span className="text-text-disabled">|</span>
                   </div>
                 ))}
               </div>
             </div>
-          </section>
+          </section> */}
         </>
       )}
 
       {/* How About These Section */}
       {allProducts.length > 0 && (
-        <section className="py-12 bg-white border-t border-gray-200 mb-0">
+        <section className="py-12 bg-white border-t border-border mb-0">
           <div className="container mx-auto px-4">
-            <h3 className="text-2xl font-bold text-gray-900 font-heading mb-8">
+            <h3 className="text-2xl font-bold text-text font-heading mb-8">
               How about these
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -2137,7 +2277,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       <RecentlyViewed
         addToCart={addToCart}
         onBuyNow={onBuyNow}
-        onProductClick={(p) => navigate(`/product/${p.id}`)}
+        onProductClick={(p) => navigate(buildProductUrl(p))}
         onCompare={onCompare}
         currentProductId={product.id}
         isAuthenticated={isAuthenticated}

@@ -58,7 +58,7 @@ export const TradeDeals: React.FC<TradeDealsProps> = ({
               <button
                 type="button"
                 onClick={() => navigate("/shop/hand-tools")}
-                className="group relative mt-5 h-12 overflow-hidden rounded-pill bg-white text-grey px-6 transition-colors"
+                className="group relative mt-5 h-12 overflow-hidden rounded-pill bg-white text-text px-6 transition-colors"
               >
                 <span className="absolute inset-0 origin-left scale-x-0 bg-gray-900 transition-transform duration-300 ease-out group-hover:scale-x-100" />
                 <span className="relative z-10 font-heading font-bold transition-colors group-hover:text-white">

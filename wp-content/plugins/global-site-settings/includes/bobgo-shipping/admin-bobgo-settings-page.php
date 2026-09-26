@@ -65,42 +65,70 @@ function render_bobgo_shipping_settings_tab() {
                     $bobgo_env = get_option('bobgo_environment', 'production');
                     $bobgo_prod_token = get_option('bobgo_api_token', '');
                     $bobgo_sandbox_token = get_option('bobgo_sandbox_api_token', '');
+                    $bobgo_settings_saved = !empty($bobgo_prod_token);
                     ?>
 
-                    <form method="post" action="options.php" style="display: grid; gap: 10px; max-width: 520px;">
-                        <?php settings_fields('global_site_settings_bobgo'); ?>
-
-                        <label style="display: grid; gap: 4px; font-size: 13px;">
-                            <span style="font-weight: 600;">Environment</span>
-                            <select name="bobgo_environment" style="max-width: 220px;">
-                                <option value="production" <?php selected($bobgo_env, 'production'); ?>>Production</option>
-                                <option value="sandbox" <?php selected($bobgo_env, 'sandbox'); ?>>Sandbox</option>
-                            </select>
-                            <span style="color: #64748b;">
-                                Production uses the live BobGo API. Sandbox uses <code>https://api.sandbox.bobgo.co.za/v2/</code>
-                                for test orders.
-                            </span>
-                        </label>
-
-                        <label class="bobgo-token-field bobgo-token-field-production" style="display: grid; gap: 4px; font-size: 13px;">
-                            <span style="font-weight: 600;">Production API Token</span>
-                            <input type="password" name="bobgo_api_token" value="<?php echo esc_attr($bobgo_prod_token); ?>" style="max-width: 420px;" autocomplete="off" />
-                            <span style="color: #64748b;">Bearer token for the live BobGo API.</span>
-                        </label>
-
-                        <label class="bobgo-token-field bobgo-token-field-sandbox" style="display: grid; gap: 4px; font-size: 13px;">
-                            <span style="font-weight: 600;">Sandbox API Token</span>
-                            <input type="password" name="bobgo_sandbox_api_token" value="<?php echo esc_attr($bobgo_sandbox_token); ?>" style="max-width: 420px;" autocomplete="off" />
-                            <span style="color: #64748b;">
-                                Optional. If left blank, the plugin will use the <code>BOBGO_SANDBOX_API_KEY</code>
-                                environment variable when in sandbox mode.
-                            </span>
-                        </label>
-
-                        <div>
-                            <button type="submit" class="button button-primary">Save BobGo Settings</button>
+                    <?php if ($bobgo_settings_saved): ?>
+                    <div id="bobgo-settings-saved" class="ftg-credentials-saved">
+                        <div class="ftg-saved-row">
+                            <span class="ftg-saved-label">Environment</span>
+                            <span class="ftg-saved-value"><?php echo ucfirst(esc_html($bobgo_env)); ?></span>
                         </div>
-                    </form>
+                        <div class="ftg-saved-row">
+                            <span class="ftg-saved-label">API Token</span>
+                            <span class="ftg-saved-value"><?php echo esc_html(substr($bobgo_prod_token, 0, 8)); ?>••••••••</span>
+                        </div>
+                        <?php if (!empty($bobgo_sandbox_token)): ?>
+                        <div class="ftg-saved-row">
+                            <span class="ftg-saved-label">Sandbox Token</span>
+                            <span class="ftg-saved-value"><?php echo esc_html(substr($bobgo_sandbox_token, 0, 8)); ?>••••••••</span>
+                        </div>
+                        <?php endif; ?>
+                        <div class="ftg-saved-actions">
+                            <button type="button" id="bobgo-edit-settings" class="button button-secondary">✏️ Edit Settings</button>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <div id="bobgo-settings-form" <?php echo $bobgo_settings_saved ? 'style="display:none;"' : ''; ?>>
+                        <form method="post" action="options.php" style="display: grid; gap: 10px; max-width: 520px;">
+                            <?php settings_fields('global_site_settings_bobgo'); ?>
+
+                            <label style="display: grid; gap: 4px; font-size: 13px;">
+                                <span style="font-weight: 600;">Environment</span>
+                                <select name="bobgo_environment" style="max-width: 220px;">
+                                    <option value="production" <?php selected($bobgo_env, 'production'); ?>>Production</option>
+                                    <option value="sandbox" <?php selected($bobgo_env, 'sandbox'); ?>>Sandbox</option>
+                                </select>
+                                <span style="color: #64748b;">
+                                    Production uses the live BobGo API. Sandbox uses <code>https://api.sandbox.bobgo.co.za/v2/</code>
+                                    for test orders.
+                                </span>
+                            </label>
+
+                            <label class="bobgo-token-field bobgo-token-field-production" style="display: grid; gap: 4px; font-size: 13px;">
+                                <span style="font-weight: 600;">Production API Token</span>
+                                <input type="password" name="bobgo_api_token" value="<?php echo esc_attr($bobgo_prod_token); ?>" style="max-width: 420px;" autocomplete="off" />
+                                <span style="color: #64748b;">Bearer token for the live BobGo API.</span>
+                            </label>
+
+                            <label class="bobgo-token-field bobgo-token-field-sandbox" style="display: grid; gap: 4px; font-size: 13px;">
+                                <span style="font-weight: 600;">Sandbox API Token</span>
+                                <input type="password" name="bobgo_sandbox_api_token" value="<?php echo esc_attr($bobgo_sandbox_token); ?>" style="max-width: 420px;" autocomplete="off" />
+                                <span style="color: #64748b;">
+                                    Optional. If left blank, the plugin will use the <code>BOBGO_SANDBOX_API_KEY</code>
+                                    environment variable when in sandbox mode.
+                                </span>
+                            </label>
+
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button type="submit" class="button button-primary">Save BobGo Settings</button>
+                                <?php if ($bobgo_settings_saved): ?>
+                                <button type="button" id="bobgo-cancel-edit" class="button button-secondary">Cancel</button>
+                                <?php endif; ?>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -126,6 +154,17 @@ function render_bobgo_shipping_settings_tab() {
     
     <script>
     jQuery(document).ready(function($) {
+        $('#bobgo-edit-settings').on('click', function() {
+            $('#bobgo-settings-saved').hide();
+            $('#bobgo-settings-form').slideDown();
+        });
+
+        $('#bobgo-cancel-edit').on('click', function() {
+            $('#bobgo-settings-form').slideUp(function() {
+                $('#bobgo-settings-saved').show();
+            });
+        });
+
         function toggleBobgoTokenFields() {
             var env = $('select[name="bobgo_environment"]').val();
             if (env === 'production') {

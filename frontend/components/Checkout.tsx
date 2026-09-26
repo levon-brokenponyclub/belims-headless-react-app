@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { CartItem, Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, FREE_SHIPPING_THRESHOLD, STORES } from "../constants";
 import { formatCurrency } from "../utils/price";
@@ -7,13 +7,13 @@ import {
   getShippingRates,
   getFallbackShipping,
 } from "../services/bobGoService";
-import { readStoredAddress } from "../services/shippingAddress";
+import { readStoredAddress, mapNominatimAddress, normalizeProvince } from "../services/shippingAddress";
 import {
   createWooOrder,
   initializePayment,
   verifyPayment,
 } from "../services/paymentService";
-import { registerUser, getCurrentUser, UserData } from "../services/authService";
+import { registerUser, getCurrentUser, loginUser, UserData, getAuthToken } from "../services/authService";
 import { getApiBaseUrl, validateCoupon } from "../services/wooCommerceService";
 import {
   ChevronDown,
@@ -21,6 +21,8 @@ import {
   ChevronRight,
   Check,
   CreditCard,
+  Eye,
+  EyeOff,
   Loader2,
   Lock,
   Mail,
@@ -333,6 +335,18 @@ export const Checkout: React.FC<CheckoutProps> = ({
   const [accountUsername, setAccountUsername] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
 
+  // Checkout login state
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [isInitializingCheckout, setIsInitializingCheckout] = useState(
+    () => (typeof window !== "undefined" ? getAuthToken() !== null : false),
+  );
+  const [loginPanelOpen, setLoginPanelOpen] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+
   // Form State
   const [customer, setCustomer] = useState<CustomerDetails>({
     firstName: "",
@@ -359,6 +373,11 @@ export const Checkout: React.FC<CheckoutProps> = ({
   // Single-step checkout state
   const [editingAddress, setEditingAddress] = useState(true);
   const [addressAutoPopulated, setAddressAutoPopulated] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<Array<{ label: string; address: ShippingAddress }>>([]);
+
+  // Current location detection for shipping address
+  const [locatingAddress, setLocatingAddress] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Totals
   const subtotal = cartItems.reduce(
@@ -403,6 +422,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
       try {
         const user = await getCurrentUser();
         if (user) {
+        setIsUserLoggedIn(true);
         const billing = (user.billing || {}) as UserData['billing'];
         const shipping = (user.shipping || {}) as UserData['shipping'];
           const source = billing.address_1 ? billing : shipping;
@@ -429,6 +449,22 @@ export const Checkout: React.FC<CheckoutProps> = ({
             }));
             setAddressAutoPopulated(true);
             setEditingAddress(false);
+
+            // Build saved address list for the selector
+            const options: Array<{ label: string; address: ShippingAddress }> = [];
+            const toAddr = (src: typeof billing, label: string): ShippingAddress | null => {
+              if (!src?.address_1 && !src?.city) return null;
+              return { street: src.address_1 || "", city: src.city || "", province: src.state || "", postalCode: src.postcode || "", country: "ZA" };
+            };
+            const ba = toAddr(billing, "Billing");
+            const sa = toAddr(shipping, "Shipping");
+            if (ba) options.push({ label: "Billing", address: ba });
+            if (sa && (sa.street !== (ba?.street ?? "") || sa.city !== (ba?.city ?? ""))) options.push({ label: "Shipping", address: sa });
+            const { address: storedAddr } = readStoredAddress();
+            if (storedAddr?.city && !options.find(o => o.address.street === storedAddr.street && o.address.city === storedAddr.city)) {
+              options.push({ label: storedAddr.label || "Saved", address: storedAddr });
+            }
+            setSavedAddresses(options);
           }
         }
       } catch (error) {
@@ -504,7 +540,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
       }
     };
 
-    initializeFromSavedLocation();
+    initializeFromSavedLocation().finally(() =>
+      setIsInitializingCheckout(false),
+    );
   }, []);
 
   useEffect(() => {
@@ -811,6 +849,88 @@ export const Checkout: React.FC<CheckoutProps> = ({
     ? returnSource.toUpperCase()
     : "PAYFAST";
 
+  const handleCheckoutLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError(null);
+    try {
+      const { user } = await loginUser({ email: loginEmail, password: loginPassword });
+      setIsUserLoggedIn(true);
+      setLoginPanelOpen(false);
+      const billing = (user.billing || {}) as UserData["billing"];
+      const shipping = (user.shipping || {}) as UserData["shipping"];
+      const source = billing?.address_1 ? billing : shipping;
+      setCustomer((prev) => ({
+        ...prev,
+        firstName: user.first_name || prev.firstName,
+        lastName: user.last_name || prev.lastName,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        ...(source?.address_1
+          ? {
+              address: source.address_1 || "",
+              city: source.city || "",
+              province: source.state || "",
+              postalCode: source.postcode || "",
+            }
+          : {}),
+      }));
+      window.dispatchEvent(new Event("user-updated"));
+    } catch (err: any) {
+      setLoginError(err.message || "Sign in failed. Check your details and try again.");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setLocatingAddress(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            { headers: { "User-Agent": "Belims-Store" } },
+          );
+          if (!response.ok) throw new Error("Geocoding failed");
+          const data = await response.json();
+          const mapped = mapNominatimAddress(data);
+          if (!mapped || (!mapped.city && !mapped.province)) {
+            setLocationError("Could not detect a full address. Please enter it manually.");
+            return;
+          }
+          setCustomer((prev) => ({
+            ...prev,
+            address: mapped.street || prev.address,
+            city: mapped.city || prev.city,
+            province: normalizeProvince(mapped.province) || prev.province,
+            postalCode: mapped.postalCode || prev.postalCode,
+          }));
+          setEditingAddress(true);
+        } catch {
+          setLocationError("Unable to detect address. Please enter it manually.");
+        } finally {
+          setLocatingAddress(false);
+        }
+      },
+      (err) => {
+        setLocatingAddress(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationError("Location permission denied. Please enter your address manually.");
+        } else {
+          setLocationError("Unable to detect location. Please enter your address manually.");
+        }
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+    );
+  };
+
   // STEP 1: Details Submit -> Shipping/Pickup details
   const handleDetailsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -859,6 +979,13 @@ export const Checkout: React.FC<CheckoutProps> = ({
           lastName: customer.lastName,
           phone: customer.phone,
           orderId: order.id,
+          shippingAddress: {
+            street: customer.address,
+            city: customer.city,
+            province: customer.province,
+            postalCode: customer.postalCode,
+            country: "ZA" as const,
+          },
         };
         localStorage.setItem(
           "pendingAccountCreation",
@@ -1349,17 +1476,18 @@ export const Checkout: React.FC<CheckoutProps> = ({
               </div>
 
               {step === "details" ? (
-                <div className="rounded-lg border border-neutral-200 bg-white p-6 md:p-8">
-                  <form onSubmit={handleDetailsSubmit} className="space-y-8">
-                    <section className="space-y-4">
-                      <div className="flex w-full rounded-full bg-neutral-100 p-1 sm:w-fit">
+                <div className="rounded-lg border border-neutral-200 bg-white p-6 md:p-8 space-y-8">
+                  {/* Delivery toggle + Sign In trigger — outside the checkout form */}
+                  <section className="space-y-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex rounded-full bg-neutral-100 p-1">
                         {(["delivery", "pickup"] as DeliveryType[]).map(
                           (type) => (
                             <button
                               key={type}
                               type="button"
                               onClick={() => setDeliveryType(type)}
-                              className={`h-9 flex-1 rounded-full px-4 text-sm font-semibold capitalize transition-colors sm:flex-none ${
+                              className={`h-9 rounded-full px-4 text-sm font-semibold capitalize transition-colors ${
                                 deliveryType === type
                                   ? "bg-neutral-950 text-white"
                                   : "text-neutral-600 hover:text-neutral-950"
@@ -1370,12 +1498,126 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           ),
                         )}
                       </div>
-                    </section>
+                      {!isUserLoggedIn && (
+                        <button
+                          type="button"
+                          onClick={() => setLoginPanelOpen((p) => !p)}
+                          className="text-sm font-semibold text-belims-blue hover:underline"
+                        >
+                          {loginPanelOpen ? "Cancel" : "Sign In"}
+                        </button>
+                      )}
+                    </div>
+                  </section>
 
+                  {/* Login card — standalone form, outside the checkout form */}
+                  {!isUserLoggedIn && loginPanelOpen && (
+                    <section className="rounded-lg border border-neutral-200 bg-neutral-50 p-5 space-y-4">
+                      <div>
+                        <h3 className="text-base font-semibold text-neutral-950">Sign in for faster checkout</h3>
+                        <p className="text-sm text-neutral-500 mt-0.5">Your saved details and addresses will be auto-filled.</p>
+                      </div>
+                      <form onSubmit={handleCheckoutLogin} className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <label className={labelClass} htmlFor="login-email">Email</label>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                              <input
+                                id="login-email"
+                                type="email"
+                                required
+                                autoComplete="email"
+                                placeholder="name@example.com"
+                                value={loginEmail}
+                                onChange={(e) => setLoginEmail(e.target.value)}
+                                className={inputWithIconClass}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className={labelClass} htmlFor="login-password">Password</label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                              <input
+                                id="login-password"
+                                type={showLoginPassword ? "text" : "password"}
+                                required
+                                autoComplete="current-password"
+                                placeholder="Your password"
+                                value={loginPassword}
+                                onChange={(e) => setLoginPassword(e.target.value)}
+                                className={`${inputWithIconClass} pr-10`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowLoginPassword((p) => !p)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700"
+                              >
+                                {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        {loginError && (
+                          <p className="text-sm text-red-600">{loginError}</p>
+                        )}
+                        <div className="flex items-center gap-4">
+                          <button
+                            type="submit"
+                            disabled={loginLoading}
+                            className={`${primaryButtonClass} h-10 px-6`}
+                          >
+                            {loginLoading && <Loader2 size={15} className="animate-spin" />}
+                            {loginLoading ? "Signing in..." : "Sign in"}
+                          </button>
+                          <Link
+                            to="/login?redirect=/checkout"
+                            className="text-sm text-neutral-500 hover:text-neutral-950 hover:underline"
+                          >
+                            Forgot password?
+                          </Link>
+                        </div>
+                      </form>
+                      <p className="text-xs text-neutral-400">
+                        New customer?{" "}
+                        <Link to="/register" className="underline hover:text-neutral-700">
+                          Create an account
+                        </Link>{" "}
+                        or continue as a guest below.
+                      </p>
+                    </section>
+                  )}
+
+                  <form onSubmit={handleDetailsSubmit} className="space-y-8">
                     <section className="space-y-4">
                       <h2 className="text-xl font-semibold text-neutral-950">
                         Personal Details
                       </h2>
+                      {isInitializingCheckout ? (
+                        <div className="space-y-4" aria-busy="true" aria-live="polite">
+                          <div className="space-y-1.5">
+                            <div className="h-4 w-24 rounded bg-neutral-200 animate-pulse" />
+                            <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                          </div>
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                              <div className="h-4 w-20 rounded bg-neutral-200 animate-pulse" />
+                              <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <div className="h-4 w-20 rounded bg-neutral-200 animate-pulse" />
+                              <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="h-4 w-24 rounded bg-neutral-200 animate-pulse" />
+                            <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                          </div>
+                          <span className="sr-only">Loading your saved details…</span>
+                        </div>
+                      ) : (
+                      <>
                       <div className="space-y-1.5">
                         <label className={labelClass} htmlFor="email">
                           Email address
@@ -1467,24 +1709,28 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           />
                         </div>
                       </div>
+                      </>
+                      )}
 
-                      <div className="flex items-center gap-3">
-                        <input
-                          id="createAccount"
-                          type="checkbox"
-                          checked={createAccount}
-                          onChange={(e) => setCreateAccount(e.target.checked)}
-                          className="h-5 w-5 rounded border-neutral-300 text-neutral-950 focus:ring-neutral-950"
-                        />
-                        <label
-                          className="cursor-pointer text-sm font-medium text-neutral-500"
-                          htmlFor="createAccount"
-                        >
-                          Create an account for faster checkout next time
-                        </label>
-                      </div>
+                      {!isInitializingCheckout && !isUserLoggedIn && (
+                        <div className="flex items-center gap-3">
+                          <input
+                            id="createAccount"
+                            type="checkbox"
+                            checked={createAccount}
+                            onChange={(e) => setCreateAccount(e.target.checked)}
+                            className="h-5 w-5 rounded border-neutral-300 text-neutral-950 focus:ring-neutral-950"
+                          />
+                          <label
+                            className="cursor-pointer text-sm font-medium text-neutral-500"
+                            htmlFor="createAccount"
+                          >
+                            Create an account for faster checkout next time
+                          </label>
+                        </div>
+                      )}
 
-                      {createAccount ? (
+                      {!isInitializingCheckout && !isUserLoggedIn && createAccount ? (
                         <div className="grid grid-cols-1 gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 sm:grid-cols-2">
                           <div className="space-y-1.5">
                             <label
@@ -1615,23 +1861,57 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       ) : (
                         <>
                           {addressAutoPopulated && !editingAddress ? (
-                            <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-                              <div className="text-sm text-neutral-500">
-                                <p className="font-medium text-neutral-950">
-                                  {customer.address}
-                                </p>
-                                <p>
-                                  {customer.city}, {customer.province}{" "}
-                                  {customer.postalCode}
-                                </p>
+                            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm text-neutral-500">
+                                  <p className="font-medium text-neutral-950">
+                                    {customer.address}
+                                  </p>
+                                  <p>
+                                    {customer.city}, {customer.province}{" "}
+                                    {customer.postalCode}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingAddress(true)}
+                                  className="text-sm font-medium text-neutral-950 underline underline-offset-2"
+                                >
+                                  Edit
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => setEditingAddress(true)}
-                                className="text-sm font-medium text-neutral-950 underline underline-offset-2"
-                              >
-                                Edit
-                              </button>
+                              {savedAddresses.length > 1 && (
+                                <div className="flex flex-wrap gap-1.5 pt-1 border-t border-neutral-200">
+                                  {savedAddresses.map((saved, i) => {
+                                    const isActive =
+                                      customer.address === saved.address.street &&
+                                      customer.city === saved.address.city;
+                                    return (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() =>
+                                          setCustomer((prev) => ({
+                                            ...prev,
+                                            address: saved.address.street,
+                                            city: saved.address.city,
+                                            province: saved.address.province,
+                                            postalCode: saved.address.postalCode,
+                                          }))
+                                        }
+                                        className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                          isActive
+                                            ? "border-belims-blue bg-belims-blue text-white"
+                                            : "border-neutral-200 bg-white text-neutral-600 hover:border-belims-blue hover:text-belims-blue"
+                                        }`}
+                                      >
+                                        <MapPin size={10} />
+                                        {saved.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           ) : null}
 
@@ -1641,13 +1921,71 @@ export const Checkout: React.FC<CheckoutProps> = ({
                               display: editingAddress ? "block" : "none",
                             }}
                           >
+                            {savedAddresses.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Saved addresses</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {savedAddresses.map((saved, i) => {
+                                    const isActive =
+                                      customer.address === saved.address.street &&
+                                      customer.city === saved.address.city;
+                                    return (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => {
+                                          setCustomer((prev) => ({
+                                            ...prev,
+                                            address: saved.address.street,
+                                            city: saved.address.city,
+                                            province: saved.address.province,
+                                            postalCode: saved.address.postalCode,
+                                          }));
+                                          setAddressAutoPopulated(true);
+                                          setEditingAddress(false);
+                                        }}
+                                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                          isActive
+                                            ? "border-belims-blue bg-belims-blue text-white"
+                                            : "border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-belims-blue hover:text-belims-blue"
+                                        }`}
+                                      >
+                                        <MapPin size={11} />
+                                        <span>{saved.label}</span>
+                                        {saved.address.city && (
+                                          <span className="font-normal opacity-70">· {saved.address.city}</span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <hr className="border-neutral-100" />
+                              </div>
+                            )}
+
                             <div className="space-y-1.5">
-                              <label
-                                className={labelClass}
-                                htmlFor="streetAddress"
-                              >
-                                Street address
-                              </label>
+                              <div className="flex items-center justify-between">
+                                <label
+                                  className={labelClass}
+                                  htmlFor="streetAddress"
+                                >
+                                  Street address
+                                </label>
+                                {!customer.address && !customer.city && (
+                                  <button
+                                    type="button"
+                                    onClick={handleUseCurrentLocation}
+                                    disabled={locatingAddress}
+                                    className="flex items-center gap-1 text-xs font-semibold text-belims-blue hover:underline disabled:opacity-50"
+                                  >
+                                    <MapPin size={12} />
+                                    {locatingAddress ? "Detecting..." : "Use current location"}
+                                  </button>
+                                )}
+                              </div>
+                              {locationError && (
+                                <p className="text-xs text-red-600">{locationError}</p>
+                              )}
                               <div className="relative">
                                 <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
                                 <input

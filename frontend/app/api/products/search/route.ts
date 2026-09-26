@@ -8,11 +8,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const params = new URLSearchParams({
     view: "listing",
-    per_page: String(limit),
-    fields:
-      "id,name,slug,price,regular_price,sale_price,image,featured_image,stock,stock_status,maxStock,in_stock,rating,reviews,sku,category",
-  });
-  if (query) {
+    
     params.set("search", query);
   }
 
@@ -40,13 +36,7 @@ export async function POST(request: Request): Promise<Response> {
     rating:
       typeof item.rating === "number"
         ? item.rating
-        : Number(item.rating ?? 0) || undefined,
-    reviewCount:
-      typeof item.reviews === "number"
-        ? item.reviews
-        : Number(item.reviews ?? 0) || undefined,
-    inStock: Boolean(item.in_stock ?? true),
-    stockQty:
+        
       typeof item.stock === "number"
         ? item.stock
         : Number(item.maxStock ?? 0) || undefined,

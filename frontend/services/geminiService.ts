@@ -336,11 +336,7 @@ export const generateProductDescription = async (
             "${brand} delivers exceptional quality with this ${name}. ${description} Trusted by professionals nationwide for reliable performance and outstanding durability.",
         },
         {
-          prefix: "\u2b50 **Customer Choice**:",
-          template:
-            "Experience the difference with ${brand}'s ${name}. ${description} Rated ${rating}/5 stars by ${reviews} satisfied customers who trust this quality.",
-        },
-        {
+          
           prefix: "\ud83d\udcaa **Built to Last**:",
           template:
             "Invest in quality with ${brand}'s ${name}. ${description} Engineered for both professional contractors and serious DIY enthusiasts.",
@@ -360,10 +356,7 @@ export const generateProductDescription = async (
           /\$\{description\}/g,
           product.description ||
             `High-quality ${product.category.toLowerCase()} for all your project needs.`,
-        )
-        .replace(/\$\{rating\}/g, product.rating?.toString() || "4.5")
-        .replace(/\$\{reviews\}/g, product.reviews?.toString() || "many");
-
+        );
       return `${selectedStyle.prefix} ${dynamicDescription}`;
     }
 

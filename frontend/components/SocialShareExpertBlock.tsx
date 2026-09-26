@@ -126,8 +126,8 @@ export const SocialShareExpertBlock: React.FC<SocialShareExpertBlockProps> = ({
           <div className="text-lg font-semibold text-gray-900">
             {expertTitle}
           </div>
-          <div className="text-[18px] text-grey font-bold">{expertName}</div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-base text-grey-medium">
+          <div className="text-[18px] text-text font-bold">{expertName}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-base text-text-tertiary">
             {contactLinks.length > 0 ? (
               contactLinks.map((item, index) => (
                 <React.Fragment key={item.label}>
@@ -135,7 +135,7 @@ export const SocialShareExpertBlock: React.FC<SocialShareExpertBlockProps> = ({
                     {item.label}
                   </a>
                   {index < contactLinks.length - 1 && (
-                    <span className="text-grey-medium">|</span>
+                    <span className="text-text-tertiary">|</span>
                   )}
                 </React.Fragment>
               ))

@@ -1,8 +1,10 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Loader2, Minus, Plus, X } from "lucide-react";
 import { Product } from "../types";
 import { formatCurrency } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
 import { StockBar } from "./StockBar";
 
 interface QuickViewProps {
@@ -78,20 +80,28 @@ export const QuickView: React.FC<QuickViewProps> = ({
     }
   };
 
-  const handleAddToCartClick = () => {
+  const handleAddToCartClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
     if (product.stock <= 0 || isAddToCartLoading || isBuyNowLoading) return;
     runActionWithIndicator("add", () => onAddToCart(quickViewQty));
   };
 
-  const handleBuyNowClick = () => {
+  const handleBuyNowClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
     if (product.stock <= 0 || isAddToCartLoading || isBuyNowLoading) return;
     runActionWithIndicator("buy", () => onBuyNow(quickViewQty));
   };
 
   if (!shouldRender) return null;
+  if (typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-[1201] flex items-end md:items-center justify-center p-0 md:p-4">
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 z-[1201] flex items-end md:items-center justify-center p-0 md:p-4"
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Backdrop */}
       <div
         className={`absolute inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
@@ -125,7 +135,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
         <button
           type="button"
           onClick={closeQuickView}
-          className="absolute right-4 top-11 md:right-8 md:top-8 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-grey-medium transition-colors hover:text-grey hover:border-black/20"
+          className="absolute right-4 top-11 md:right-8 md:top-8 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-text-tertiary transition-colors hover:text-text hover:border-black/20"
           aria-label="Close quick view"
         >
           <X size={18} />
@@ -147,7 +157,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
                   className="max-h-[280px] md:max-h-[400px] w-full object-contain mix-blend-multiply"
                 />
               ) : (
-                <div className="flex h-[240px] w-full items-center justify-center rounded bg-soft text-sm text-muted">
+                <div className="flex h-[240px] w-full items-center justify-center rounded bg-surface-muted text-sm text-text-secondary">
                   No image
                 </div>
               )}
@@ -162,7 +172,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
                       )
                     }
                     disabled={activeImageIndex === 0}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white shadow-sm transition-colors hover:bg-grey-light disabled:opacity-30"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white shadow-sm transition-colors hover:bg-surface-muted disabled:opacity-30"
                     aria-label="Previous image"
                   >
                     <ChevronLeft size={15} />
@@ -175,7 +185,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
                       )
                     }
                     disabled={activeImageIndex === gallery.length - 1}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white shadow-sm transition-colors hover:bg-grey-light disabled:opacity-30"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white shadow-sm transition-colors hover:bg-surface-muted disabled:opacity-30"
                     aria-label="Next image"
                   >
                     <ChevronRight size={15} />
@@ -193,7 +203,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
                     onClick={() => setActiveImageIndex(i)}
                     className={`flex-shrink-0 h-14 w-14 rounded-lg border-2 overflow-hidden transition-colors ${
                       i === activeImageIndex
-                        ? "border-grey"
+                        ? "border-border-strong"
                         : "border-transparent hover:border-black/20"
                     }`}
                     aria-label={`Image ${i + 1}`}
@@ -201,7 +211,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
                     <img
                       src={img}
                       alt=""
-                      className="h-full w-full object-contain mix-blend-multiply bg-grey-light/30"
+                      className="h-full w-full object-contain mix-blend-multiply bg-surface-muted/30"
                     />
                   </button>
                 ))}
@@ -218,16 +228,16 @@ export const QuickView: React.FC<QuickViewProps> = ({
                 <Link
                   to={`/shop?brand=${encodeURIComponent(product.brand)}`}
                   onClick={closeQuickView}
-                  className="mb-2 inline-block text-sm font-semibold uppercase tracking-wide text-grey-medium hover:text-brand transition-colors"
+                  className="mb-2 inline-block text-sm font-semibold uppercase tracking-wide text-text-tertiary hover:text-primary transition-colors"
                 >
                   {product.brand}
                 </Link>
               )}
-              <h2 className="text-3xl font-bold text-grey font-heading mb-1">
+              <h2 className="text-3xl font-bold text-text font-heading mb-1">
                 {product.name}
               </h2>
               {product.sku && (
-                <div className="text-base text-grey-medium mb-3">
+                <div className="text-base text-text-tertiary mb-3">
                   SKU: {product.sku}
                 </div>
               )}
@@ -238,12 +248,12 @@ export const QuickView: React.FC<QuickViewProps> = ({
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <div className="flex justify-start gap-2 items-end">
-                    <div className="font-heading text-[28px] font-bold text-grey">
+                    <div className="font-heading text-[28px] font-bold text-text">
                       {formatCurrency(displayPrice)}
                     </div>
                     {product.regular_price &&
                       product.regular_price > displayPrice && (
-                        <div className="font-heading text-base font-bold text-grey-medium line-through mb-1">
+                        <div className="font-heading text-base font-bold text-text-tertiary line-through mb-1">
                           {formatCurrency(product.regular_price)}
                         </div>
                       )}
@@ -300,7 +310,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
                       }
                       className="group relative h-11 w-full overflow-hidden rounded-pill bg-belims-blue text-white transition-colors disabled:opacity-50"
                     >
-                      <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                      <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
                       <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors group-hover:text-white">
                         {isAddToCartLoading ? (
                           <>
@@ -325,9 +335,9 @@ export const QuickView: React.FC<QuickViewProps> = ({
                     isAddToCartLoading ||
                     isBuyNowLoading
                   }
-                  className="group relative h-11 w-full overflow-hidden rounded-pill bg-grey text-white transition-colors disabled:opacity-50"
+                  className="group relative h-11 w-full overflow-hidden rounded-pill bg-surface-dark text-white transition-colors disabled:opacity-50"
                 >
-                  <span className="absolute inset-0 origin-left scale-x-0 bg-red-muted transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                  <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
                   <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors">
                     {isBuyNowLoading ? (
                       <>
@@ -345,9 +355,9 @@ export const QuickView: React.FC<QuickViewProps> = ({
             {/* View full details */}
             <div className="pt-4 border-t border-black/5">
               <Link
-                to={`/product/${product.id}`}
+                to={buildProductUrl(product)}
                 onClick={closeQuickView}
-                className="inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline"
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
               >
                 View full details
                 <ChevronRight size={14} />
@@ -356,6 +366,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

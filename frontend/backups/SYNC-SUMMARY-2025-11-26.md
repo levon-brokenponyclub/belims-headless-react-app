@@ -23,11 +23,7 @@ All products include:
 - ✅ VAT-adjusted pricing (15% included)
 - ✅ Live SKU numbers
 - ✅ Stock levels
-- ✅ Product images from staging
-- ✅ Categories and tags
-- ✅ Ratings and reviews
 
-### Category Breakdown
 - **Hand Tools**: 9 products
 - **Power Tools**: 5 products
 - **Drills**: 2 products

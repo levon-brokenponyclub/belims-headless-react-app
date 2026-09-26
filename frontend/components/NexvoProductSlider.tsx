@@ -192,19 +192,19 @@ export const NexvoProductSlider: React.FC<NexvoProductSliderProps> = ({
             <button
               type="button"
               onClick={prev}
-              className="group relative h-10 w-10 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white flex items-center justify-center"
+              className="group relative h-10 w-10 overflow-hidden rounded-full border border-border bg-white text-text transition-colors duration-300 ease-out hover:border-border-strong hover:bg-surface-dark hover:text-white flex items-center justify-center"
               aria-label="Previous products"
             >
-              <span className="absolute inset-0 origin-right scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="absolute inset-0 origin-right scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <ChevronLeft size={20} strokeWidth={1.5} className="relative z-10" />
             </button>
             <button
               type="button"
               onClick={next}
-              className="group relative h-10 w-10 overflow-hidden rounded-full border border-subtle bg-white text-grey transition-colors duration-300 ease-out hover:border-grey hover:bg-grey hover:text-white flex items-center justify-center"
+              className="group relative h-10 w-10 overflow-hidden rounded-full border border-border bg-white text-text transition-colors duration-300 ease-out hover:border-border-strong hover:bg-surface-dark hover:text-white flex items-center justify-center"
               aria-label="Next products"
             >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-grey transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
               <ChevronRight size={20} strokeWidth={1.5} className="relative z-10" />
             </button>
           </div>

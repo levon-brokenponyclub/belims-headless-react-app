@@ -74,18 +74,7 @@ export default {
         "deal-info-on": "var(--color-deal-info-on)",
         "deal-strike": "var(--color-deal-strike)",
 
-        // ── Legacy aliases (repointed to Nexvo; remove next release) ──
-        canvas: "var(--color-canvas)",
-        ink: "var(--color-ink)",
-        muted: "var(--color-muted)",
-        soft: "var(--color-soft)",
-        subtle: "var(--color-subtle)",
-        brand: "var(--color-brand)",
-        accent: "var(--color-accent)",
-        grey: "var(--color-grey)",
-        "grey-light": "var(--color-grey-light)",
-        "grey-medium": "var(--color-grey-medium)",
-        "red-muted": "var(--color-red-muted)",
+        // ── Belims brand ──
         "belims-blue": "var(--color-belims-blue)",
         "belims-light": "var(--color-belims-blue)",
         "belims-accent": "var(--color-primary)",
@@ -94,7 +83,7 @@ export default {
           red: "var(--color-deal-sale)",
           orange: "var(--color-primary-soft)",
           white: "var(--color-surface)",
-          canvas: "var(--color-canvas)",
+          canvas: "var(--color-surface)",
           surface: "var(--color-surface)",
           soft: "var(--color-surface-muted)",
           border: "var(--color-border)",
