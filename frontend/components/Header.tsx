@@ -19,6 +19,7 @@ import {
   Grid3x3,
   AlertCircle,
   Clock,
+  CreditCard,
 } from "lucide-react";
 import {
   Store,
@@ -33,6 +34,7 @@ import { buildProductUrl } from "../utils/product";
 import { initializeCategoryTree } from "../categoryTree";
 import { logoutUser, UserData } from "../services/authService";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
+import { Drawer } from "./Drawer";
 import { WelcomeDrawer } from "./WelcomeDrawer";
 import { DeliveryDetailsPopover, SavedAddressOption } from "./DeliveryDetailsPopover";
 
@@ -1411,124 +1413,96 @@ export const Header: React.FC<HeaderProps> = ({
           showToast={showToast ?? (() => {})}
         />
 
-        {/* Account Side Panel */}
-        {isAccountPanelOpen && (
-          <div className="fixed inset-0 z-[9999] overflow-hidden">
-            <div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-              onClick={() => setIsAccountPanelOpen(false)}
-            ></div>
-
-            <div className="absolute right-0 top-0 bottom-0 w-full max-w-md bg-surface  flex flex-col">
-              {/* Header */}
-              <div className="p-4 bg-primary text-white flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <User size={20} />
-                  <span className="font-bold font-heading">
-                    {currentUser
-                      ? `Welcome, ${currentUser.first_name || currentUser.username}!`
-                      : "Sign in or Create an Account"}
-                  </span>
-                </div>
+        {/* Account Drawer */}
+        <Drawer
+          isOpen={isAccountPanelOpen}
+          onClose={() => setIsAccountPanelOpen(false)}
+          title={currentUser ? `Welcome, ${currentUser.first_name || currentUser.username}!` : "My Account"}
+          widthClassName="w-full max-w-md"
+          footer={
+            currentUser ? (
+              <div className="p-5">
                 <button
-                  onClick={() => setIsAccountPanelOpen(false)}
-                  className="text-white hover:text-white/70"
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700 transition-colors"
                 >
-                  <X size={24} />
+                  <LogOut size={18} />
+                  Log out
                 </button>
               </div>
-
-              {/* Body */}
-              <div className="flex-1 overflow-y-auto bg-surface-muted">
-                {currentUser && (
-                  <div className="bg-surface py-0">
-                    {[
-                      { label: "Dashboard", to: "/account/dashboard" },
-                      { label: "Orders", to: "/account/orders" },
-                      { label: "Addresses", to: "/account/addresses" },
-                      { label: "Wishlist", to: "/account/wishlist" },
-                      { label: "Payment Methods", to: "/account/payment" },
-                      { label: "Account Details", to: "/account/details" },
-                    ].map(({ label, to }) => (
-                      <Link
-                        key={to}
-                        to={to}
-                        onClick={() => setIsAccountPanelOpen(false)}
-                        className="w-full px-4 py-3 flex justify-between items-center text-text font-bold border-b border-border hover:bg-surface-muted transition-colors"
-                      >
-                        {label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-
-                {/* Contractor/Trade Block - Only show when not logged in */}
-                {!currentUser && (
-                  <div className="p-5 bg-surface border-b">
-                    <div className="flex gap-3">
-                      <div className="flex-1">
-                        <div className="font-bold text-text mb-2">
-                          Let's get started
-                        </div>
-                        <div className="text-sm text-text-secondary mb-3 leading-relaxed">
-                          See trade pricing across our range and unlock checkout
-                          access with a trade account.
-                        </div>
-                        <div className="text-sm text-text-secondary mb-3 leading-relaxed">
-                          Bulk pricing, site delivery and exclusive trade-only
-                          deals — built for professionals.
-                        </div>
-                        <Link
-                          to="/register?type=trade"
-                          onClick={() => setIsAccountPanelOpen(false)}
-                          className="text-primary-soft font-bold text-sm hover:underline inline-flex items-center gap-1"
-                        >
-                          Let's get started
-                          <ArrowRight size={14} />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom action area */}
-              {currentUser ? (
-                <div className="p-5 border-t bg-surface">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-soft text-white font-bold rounded-pill hover:bg-primary-soft/90 transition-colors"
+            ) : (
+              <div className="p-5">
+                <p className="text-sm text-text-secondary mb-4 leading-relaxed">
+                  Sign in or create a profile now for access to the widest range of products all in one place, saving you time and money.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Link
+                    to="/login"
+                    onClick={() => setIsAccountPanelOpen(false)}
+                    className="w-full h-[46px] flex items-center justify-center gap-2 px-4 text-sm font-semibold bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 transition-colors"
                   >
-                    <LogOut size={18} />
-                    Log out
-                  </button>
+                    Sign in
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => setIsAccountPanelOpen(false)}
+                    className="h-[46px] flex items-center justify-center gap-2 px-4 text-sm font-semibold border border-neutral-200 text-neutral-900 rounded-lg hover:bg-neutral-50 transition-colors"
+                  >
+                    Create an Account
+                  </Link>
                 </div>
-              ) : (
-                <div className="p-5 border-t bg-surface">
-                  <p className="text-sm text-text-secondary mb-4 leading-relaxed">
-                    Sign in or create a profile now for access to the widest range of products all in one place, saving you time and money.
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Link
-                      to="/login"
-                      onClick={() => setIsAccountPanelOpen(false)}
-                      className="w-full h-[46px] flex items-center justify-center gap-2 px-4 py-3 btn-primary rounded-pill"
-                    >
-                      Sign in
-                    </Link>
-                    <Link
-                      to="/register"
-                      onClick={() => setIsAccountPanelOpen(false)}
-                      className="h-[46px] btn-outline flex items-center justify-center gap-2 rounded-pill"
-                    >
-                      Create an Account
-                    </Link>
-                  </div>
-                </div>
-              )}
+              </div>
+            )
+          }
+        >
+          {currentUser && (
+            <div className="border-b border-gray-100">
+              {[
+                { label: "Dashboard", to: "/account/dashboard", icon: <LayoutGrid size={20} /> },
+                { label: "Orders", to: "/account/orders", icon: <ShoppingBasket size={20} /> },
+                { label: "Addresses", to: "/account/addresses", icon: <MapPin size={20} /> },
+                { label: "Wishlist", to: "/account/wishlist", icon: <Heart size={20} /> },
+                { label: "Payment Methods", to: "/account/payment", icon: <CreditCard size={20} /> },
+                { label: "Account Details", to: "/account/details", icon: <User size={20} /> },
+              ].map(({ label, to, icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setIsAccountPanelOpen(false)}
+                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-surface-muted border-b border-gray-100"
+                >
+                  <span className="text-text-tertiary">{icon}</span>
+                  <span className="flex-1 text-sm font-semibold text-text">{label}</span>
+                  <span className="text-text-tertiary"><ChevronRight size={18} /></span>
+                </Link>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+
+          {!currentUser && (
+            <div className="p-5">
+              <div className="text-sm font-semibold text-text mb-2">
+                Let's get started
+              </div>
+              <div className="text-sm text-text-secondary mb-3 leading-relaxed">
+                See trade pricing across our range and unlock checkout
+                access with a trade account.
+              </div>
+              <div className="text-sm text-text-secondary mb-3 leading-relaxed">
+                Bulk pricing, site delivery and exclusive trade-only
+                deals — built for professionals.
+              </div>
+              <Link
+                to="/register?type=trade"
+                onClick={() => setIsAccountPanelOpen(false)}
+                className="text-sm font-semibold text-text hover:underline inline-flex items-center gap-1"
+              >
+                Let's get started
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          )}
+        </Drawer>
 
         {/* Delivery Location Modal */}
         <DeliveryLocationModal
