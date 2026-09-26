@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-09-26 — Google reviews + CategoryGrid pill slider
+
+### 1. Google Reviews — Vercel Serverless Function (`api/google-reviews.ts`)
+- New `api/google-reviews.ts` Vercel serverless function. Calls Google Places API server-side using `GOOGLE_PLACES_API_KEY` (sensitive env var — never exposed to the browser bundle).
+- Hardcoded Place ID `ChIJE4HCbjw39h4Rfq_ZYEWcvKM` (Belims Hardware). Returns normalised payload: `placeRating`, `totalRatings`, and `reviews[]` (id, reviewer, rating, review text, ISO date, relativeTime, photoUrl, source: "google").
+- `Cache-Control: s-maxage=3600, stale-while-revalidate=86400` — Vercel CDN caches for 1 hour; Google API is hit at most once per hour regardless of traffic.
+- `@vercel/node` added as devDependency for function request/response types.
+- `GOOGLE_PLACES_API_KEY` added to Vercel project (production + preview) as sensitive type via Vercel API.
+
+### 2. BelimsReviews component (`components/BelimsReviews.tsx`)
+- New reusable `<BelimsReviews />` component. Fetches from `/api/google-reviews` on mount with `AbortController` cleanup.
+- Displays overall star rating + total Google review count in the section header with a "View all on Google" link (desktop inline, mobile below grid).
+- Review cards: reviewer avatar (Google photo or initials fallback), star rating, relative time, review text (`line-clamp-5`), Google badge footer.
+- States: 3-column skeleton loader (pulse animation), inline error message, empty state, review grid.
+- Props: `title` (default "What Our Customers Say"), `limit` (default 5).
+
+### 3. BelimsReviews added to SingleProduct page
+- `<BelimsReviews title="What Our Customers Say" />` inserted between the "How About These" related-products section and the "Recently Viewed" section on every product page.
+
+### 4. CategoryGrid — pill slider refactor
+- Removed all icon imports (`Anchor`, `Droplet`, `PaintBucket`, `Plug`, `Scissors`, `Settings`, `Zap`, `Hand`, `LucideIcon`) and the large circular tile layout.
+- Removed page-dot indicator, `pageCount`/`activePage` state, `ResizeObserver`, and `scrollToPage`.
+- Replaced with a compact single-row pill slider: bold "Shop by Category" label left-aligned, inline `<ChevronLeft>` / `<ChevronRight>` scroll buttons, horizontally scrollable `rounded-full border` pill track.
+- Section reduced from `py-14` to `py-3` with a `border-b border-border` separator.
+- Scroll advances 320 px per arrow click.
+
+---
+
 ## 2026-09-26 — Auth page redesign + ProductCard category hidden
 
 ### 1. Auth page — social buttons repositioned
