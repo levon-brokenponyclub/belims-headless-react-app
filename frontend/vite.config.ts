@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
           bypass(req) {
             const vercelFunctions = ["/api/google-reviews"];
             if (vercelFunctions.some((fn) => req.url?.startsWith(fn))) {
-              return false; // 404 locally → component shows graceful empty state
+              return false;
             }
           },
         },
