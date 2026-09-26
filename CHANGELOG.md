@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-09-26 — Google reviews bugfixes + file corruption recovery
+
+### 1. Google Places API — legacy → Places API (New)
+- Initial function called `maps.googleapis.com/maps/api/place/details/json` (legacy). Google returned `REQUEST_DENIED` because the legacy Places API was not enabled on the project.
+- Switched to `places.googleapis.com/v1/places/{placeId}` (Places API New) with `X-Goog-Api-Key` + `X-Goog-FieldMask` headers. Response shape changes: `user_ratings_total` → `userRatingCount`, `reviews[].text` → `reviews[].text.text`, `reviews[].time` (unix) → `reviews[].publishTime` (ISO-8601), `reviews[].author_name` → `reviews[].authorAttribution.displayName`.
+
+### 2. Google Places API — HTTP referrer restriction removed
+- API key had HTTP referrer restrictions set in Google Cloud Console. Server-to-server calls from Vercel functions have no referrer (`<empty>`), causing `PERMISSION_DENIED` / `API_KEY_HTTP_REFERRER_BLOCKED`.
+- Fix: removed HTTP referrer restriction from the key; kept API restriction to Places API (New) only.
+- Result: `GET /api/google-reviews` now returns `200` with Vercel CDN caching (`cache=HIT` on subsequent requests).
+
+### 3. Vite proxy — bypass Vercel function routes locally
+- `vite.config.ts`: added `bypass()` function to the `/api` proxy. Routes matching `/api/google-reviews` return `false` (clean 404 locally) instead of being proxied to the CMS — which had no such endpoint and returned misleading errors.
+- `BelimsReviews.tsx`: added silent `return null` when the fetch returns 404 (local dev without Vercel runtime). All other HTTP errors still show the error state.
+
+### 4. File corruption recovery
+- `geminiService.ts:355–360` — `.replace()` chain was truncated, losing the closing `);`, `return` statement, and the `if (!client)` closing `}`. Restored.
+- `vite.config.ts` — `rewrite` and `bypass` functions inside the proxy config were deleted, leaving an invalid empty object. Restored.
+- `BelimsReviews.tsx` — file was truncated mid-component (missing interface closing brace, component state, and most of the JSX). Full rewrite restored.
+- `AccountPage.tsx:934–936` — Display Name `<input>` was missing its closing `/>` and the enclosing `</div>`. Restored.
+
+---
+
 ## 2026-09-26 — Google reviews + CategoryGrid pill slider
 
 ### 1. Google Reviews — Vercel Serverless Function (`api/google-reviews.ts`)
