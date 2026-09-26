@@ -933,9 +933,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
               }
               className="w-full border border-gray-300 rounded px-4 py-2.5 focus:border-belims-blue outline-none text-sm transition-colors"
             />
-            <p className="text-[10px] text-gray-400 mt-1.5 italic">
-              This is how your name will appear in reviews and account sections.
-            </p>
           </div>
 
           <div>
