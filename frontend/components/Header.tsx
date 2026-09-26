@@ -169,10 +169,6 @@ export const Header: React.FC<HeaderProps> = ({
     navigate("/delivery-details/add-address");
   };
 
-  const handleDeliveryPopoverLogin = () => {
-    closeDeliveryPopover();
-    navigate("/login");
-  };
   const [fulfillmentType, setFulfillmentType] = useState<
     "pickup" | "delivery" | null
   >(null);
@@ -461,8 +457,17 @@ export const Header: React.FC<HeaderProps> = ({
     closeDeliveryPopover();
   };
 
+  const handleSavePostalCode = (address: ShippingAddress) => {
+    handleAddressSelect(address);
+    closeDeliveryPopover();
+  };
+
   const pillAddressLine = useMemo(() => {
     if (deliveryAddress) {
+      // Guest postal-code-only location: "4001, Glenwood"
+      if (!deliveryAddress.street && deliveryAddress.postalCode) {
+        return deliveryAddress.label || deliveryAddress.postalCode;
+      }
       const parts = [deliveryAddress.street, deliveryAddress.city].filter(
         Boolean,
       );
@@ -770,7 +775,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClose={closeDeliveryPopover}
                 onDismiss={dismissDeliveryPopover}
                 onAddDetails={handleAddDeliveryDetails}
-                onLogin={handleDeliveryPopoverLogin}
+                onSavePostalCode={handleSavePostalCode}
                 onSelectSavedAddress={handleSelectSavedAddress}
               />
             </div>
@@ -1091,7 +1096,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClose={closeDeliveryPopover}
             onDismiss={dismissDeliveryPopover}
             onAddDetails={handleAddDeliveryDetails}
-            onLogin={handleDeliveryPopoverLogin}
+            onSavePostalCode={handleSavePostalCode}
             onSelectSavedAddress={handleSelectSavedAddress}
           />
 
