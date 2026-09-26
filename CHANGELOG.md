@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-09-26 — Checkout fulfilment step + register form + PHP parse fix
+
+### 1. AuthPage.tsx — single-step register with required mobile number
+- Collapsed multi-step registration to a single form: First name + Last name (2-col grid) → Email → Password → Mobile number.
+- Mobile number field is `required`; uses existing `regDialCode` / `regLocalPhone` / `buildRegPhone()` state.
+- Removed: `registerStep` state, `handleRegisterStep1`, progress bar, and step 2 JSX entirely.
+
+### 2. Checkout.tsx — post-registration auto-populate + shipping advance
+- Auto-populate effect now always sets personal details (name, email, phone) from user profile on login, regardless of whether a WooCommerce address exists.
+- If WooCommerce profile has an address, address fields are also pre-filled and step advances to shipping automatically.
+
+### 3. Checkout.tsx — Fulfilment step redesign
+- Delivery/Pickup toggle moved from details step to shipping/fulfilment step as radio-card buttons (Truck / Store icons).
+- "Delivery Details" section only renders when delivery is selected; pickup section unchanged.
+- Address source of truth: localStorage Address Pill no longer pre-fills checkout address — first-time users always start with an empty form.
+
+### 4. Checkout.tsx — address form updated to match spec
+- Fields reordered: Street Address → Complex/Building → Postal Code | Suburb (2-col grid) → City/Town | Province (2-col grid) → Type of Address radio → action buttons.
+- Removed "Address Label" text input; replaced with "Type of Address" radio: Home (All day delivery) / Work (Delivery between 10 AM – 5 PM).
+- Added `suburb` field to `CustomerDetails` interface and initial state.
+- "Use current location" button moved from beside Street Address to bottom-left of form (outlined, with `MapPin` icon).
+- "Save and Deliver Here" dark button added bottom-right; calls `handleSaveAddress()` which fetches shipping rates and collapses form to pill view.
+- Shipping method section gated: only renders after address is saved (`addressAutoPopulated && !editingAddress`).
+
+### 5. Geolocation — two-attempt retry pattern
+- First attempt: `enableHighAccuracy: false, timeout: 10000, maximumAge: 300000` (fast / cached).
+- On `POSITION_UNAVAILABLE` (code 2): retry with `enableHighAccuracy: true, timeout: 30000, maximumAge: 0`.
+- Fixes `kCLErrorLocationUnknown` failures on macOS/iOS.
+
+### 6. class-products-endpoint.php — PHP parse fix
+- Two `$candidates[] = array(` blocks (lines ~644 and ~697) were truncated mid-edit, missing `'slug'`, `'image'`, `'rating'`, and the closing `);`.
+- Both arrays completed to match the full product DTO pattern used elsewhere in the file.
+- `php -l` confirms: no syntax errors.
+
+---
+
 ## 2026-09-26 — TailGrids card standard + Archive + slider unification
 
 ### 1. ProductCard.tsx — TailGrids refactor

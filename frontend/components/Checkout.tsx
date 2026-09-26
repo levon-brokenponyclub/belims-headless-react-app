@@ -30,6 +30,7 @@ import {
   Phone,
   RotateCcw,
   ShieldCheck,
+  Store as StoreIcon,
   Tag,
   Truck,
   User,
@@ -56,7 +57,10 @@ interface CustomerDetails {
   lastName: string;
   email: string;
   phone: string;
+  addressType: "home" | "work";
   address: string;
+  address2: string;
+  suburb: string;
   city: string;
   province: string;
   postalCode: string;
@@ -353,7 +357,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
     lastName: "",
     email: "",
     phone: "",
+    addressType: "home",
     address: "",
+    address2: "",
+    suburb: "",
     city: "",
     province: "",
     postalCode: "",
@@ -427,6 +434,15 @@ export const Checkout: React.FC<CheckoutProps> = ({
         const shipping = (user.shipping || {}) as UserData['shipping'];
           const source = billing.address_1 ? billing : shipping;
 
+          // Always populate personal details when logged in
+          setCustomer((prev) => ({
+            ...prev,
+            firstName: user.first_name || prev.firstName,
+            lastName: user.last_name || prev.lastName,
+            email: user.email || prev.email,
+            phone: user.phone || prev.phone,
+          }));
+
           if (source.address_1 || source.city || source.postcode) {
           addressToUse = {
             street: source.address_1 || "",
@@ -438,10 +454,6 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
             setCustomer((prev) => ({
               ...prev,
-              firstName: user.first_name || prev.firstName,
-              lastName: user.last_name || prev.lastName,
-              email: user.email || prev.email,
-              phone: user.phone || prev.phone,
               address: addressToUse!.street,
               city: addressToUse!.city,
               province: addressToUse!.province,
@@ -460,38 +472,13 @@ export const Checkout: React.FC<CheckoutProps> = ({
             const sa = toAddr(shipping, "Shipping");
             if (ba) options.push({ label: "Billing", address: ba });
             if (sa && (sa.street !== (ba?.street ?? "") || sa.city !== (ba?.city ?? ""))) options.push({ label: "Shipping", address: sa });
-            const { address: storedAddr } = readStoredAddress();
-            if (storedAddr?.city && !options.find(o => o.address.street === storedAddr.street && o.address.city === storedAddr.city)) {
-              options.push({ label: storedAddr.label || "Saved", address: storedAddr });
-            }
             setSavedAddresses(options);
+            // Full profile available — skip details step
+            setStep("shipping");
           }
         }
       } catch (error) {
         console.error("Failed to fetch user profile for checkout autofill:", error);
-      }
-
-      // Priority 2: Fallback to localStorage if no user profile address
-      if (!addressToUse) {
-        const { address } = readStoredAddress();
-
-        if (
-          address &&
-          address.city &&
-          address.province &&
-          !addressAutoPopulated
-        ) {
-          addressToUse = address;
-          setCustomer((prev) => ({
-            ...prev,
-            address: address.street || "",
-            city: address.city || "",
-            province: address.province || "",
-            postalCode: address.postalCode || "",
-          }));
-          setAddressAutoPopulated(true);
-          setEditingAddress(false);
-        }
       }
 
       // Fetch shipping rates for the resolved address
@@ -545,43 +532,6 @@ export const Checkout: React.FC<CheckoutProps> = ({
     );
   }, []);
 
-  useEffect(() => {
-    const storedFulfillment = localStorage.getItem("fulfillmentType");
-    const pickupSelected =
-      localStorage.getItem("pickupStoreSelected") === "true";
-    if (storedFulfillment === "pickup" && pickupSelected) {
-      setDeliveryType("pickup");
-    }
-
-    const rawStore = localStorage.getItem("selectedPickupStore");
-    if (rawStore) {
-      try {
-        const parsed = JSON.parse(rawStore) as Store;
-        if (parsed?.id && parsed?.name) {
-          setPickupStore(parsed);
-        }
-      } catch {
-        setPickupStore(null);
-      }
-    }
-
-    if (!rawStore && pickupSelected) {
-      const defaultStore = STORES.find((store) => store.id === "umzinto");
-      if (defaultStore) setPickupStore(defaultStore);
-    }
-
-    const rawSchedule = localStorage.getItem("pickupSchedule");
-    if (rawSchedule) {
-      try {
-        const parsed = JSON.parse(rawSchedule) as PickupSchedule;
-        if (parsed?.date && parsed?.time) {
-          setPickupSchedule(parsed);
-        }
-      } catch {
-        setPickupSchedule(null);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if (!pickupStore || pickupStore.hours) return;
@@ -890,45 +840,89 @@ export const Checkout: React.FC<CheckoutProps> = ({
     }
     setLocatingAddress(true);
     setLocationError(null);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-            { headers: { "User-Agent": "Belims-Store" } },
-          );
-          if (!response.ok) throw new Error("Geocoding failed");
-          const data = await response.json();
-          const mapped = mapNominatimAddress(data);
-          if (!mapped || (!mapped.city && !mapped.province)) {
-            setLocationError("Could not detect a full address. Please enter it manually.");
-            return;
-          }
-          setCustomer((prev) => ({
-            ...prev,
-            address: mapped.street || prev.address,
-            city: mapped.city || prev.city,
-            province: normalizeProvince(mapped.province) || prev.province,
-            postalCode: mapped.postalCode || prev.postalCode,
-          }));
-          setEditingAddress(true);
-        } catch {
-          setLocationError("Unable to detect address. Please enter it manually.");
-        } finally {
-          setLocatingAddress(false);
+
+    const applyPosition = async (position: GeolocationPosition) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+          { headers: { "User-Agent": "Belims-Store" } },
+        );
+        if (!response.ok) throw new Error("Geocoding failed");
+        const data = await response.json();
+        const mapped = mapNominatimAddress(data);
+        if (!mapped || (!mapped.city && !mapped.province)) {
+          setLocationError("Could not detect a full address. Please enter it manually.");
+          return;
         }
-      },
-      (err) => {
+        setCustomer((prev) => ({
+          ...prev,
+          address: mapped.street || prev.address,
+          city: mapped.city || prev.city,
+          province: normalizeProvince(mapped.province) || prev.province,
+          postalCode: mapped.postalCode || prev.postalCode,
+        }));
+        setEditingAddress(true);
+      } catch {
+        setLocationError("Unable to detect address. Please enter it manually.");
+      } finally {
         setLocatingAddress(false);
+      }
+    };
+
+    // First attempt: low accuracy, accept cached position
+    navigator.geolocation.getCurrentPosition(
+      applyPosition,
+      (err) => {
         if (err.code === err.PERMISSION_DENIED) {
+          setLocatingAddress(false);
           setLocationError("Location permission denied. Please enter your address manually.");
-        } else {
-          setLocationError("Unable to detect location. Please enter your address manually.");
+          return;
         }
+        // POSITION_UNAVAILABLE or TIMEOUT — retry with high accuracy
+        navigator.geolocation.getCurrentPosition(
+          applyPosition,
+          () => {
+            setLocatingAddress(false);
+            setLocationError("Unable to detect location. Please enter your address manually.");
+          },
+          { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
+        );
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
     );
+  };
+
+  const handleSaveAddress = async () => {
+    if (!customer.address || !customer.city || !customer.province || !customer.postalCode) return;
+    setAddressAutoPopulated(true);
+    setEditingAddress(false);
+    setLoadingSavedRates(true);
+    try {
+      const rates = await getShippingRates({
+        destination_address: {
+          street: customer.address,
+          city: customer.city,
+          province: customer.province,
+          postal_code: customer.postalCode,
+          country: "ZA",
+        },
+      });
+      let finalRates = (rates && rates.length > 0) ? rates : getFallbackShipping();
+      const classifiedRates = finalRates.map((rate: any) => ({
+        ...rate,
+        tier: classifyRate(rate, finalRates),
+      }));
+      setSavedLocationRates(classifiedRates);
+      const fastest = selectFastestRate(classifiedRates);
+      if (fastest) setSelectedShipping(fastest);
+    } catch {
+      const fb = getFallbackShipping().map((r: any) => ({ ...r, tier: classifyRate(r, getFallbackShipping()) }));
+      setSavedLocationRates(fb);
+      if (fb.length > 0) setSelectedShipping(fb[0]);
+    } finally {
+      setLoadingSavedRates(false);
+    }
   };
 
   // STEP 1: Details Submit -> Shipping/Pickup details
@@ -1477,38 +1471,18 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
               {step === "details" ? (
                 <div className="rounded-lg border border-neutral-200 bg-white p-6 md:p-8 space-y-8">
-                  {/* Delivery toggle + Sign In trigger — outside the checkout form */}
-                  <section className="space-y-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex rounded-full bg-neutral-100 p-1">
-                        {(["delivery", "pickup"] as DeliveryType[]).map(
-                          (type) => (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => setDeliveryType(type)}
-                              className={`h-9 rounded-full px-4 text-sm font-semibold capitalize transition-colors ${
-                                deliveryType === type
-                                  ? "bg-neutral-950 text-white"
-                                  : "text-neutral-600 hover:text-neutral-950"
-                              }`}
-                            >
-                              {type}
-                            </button>
-                          ),
-                        )}
-                      </div>
-                      {!isUserLoggedIn && (
-                        <button
-                          type="button"
-                          onClick={() => setLoginPanelOpen((p) => !p)}
-                          className="text-sm font-semibold text-belims-blue hover:underline"
-                        >
-                          {loginPanelOpen ? "Cancel" : "Sign In"}
-                        </button>
-                      )}
-                    </div>
-                  </section>
+                  {/* Sign In trigger — outside the checkout form */}
+                  {!isUserLoggedIn && (
+                    <section className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setLoginPanelOpen((p) => !p)}
+                        className="text-sm font-semibold text-belims-blue hover:underline"
+                      >
+                        {loginPanelOpen ? "Cancel" : "Sign In"}
+                      </button>
+                    </section>
+                  )}
 
                   {/* Login card — standalone form, outside the checkout form */}
                   {!isUserLoggedIn && loginPanelOpen && (
@@ -1808,127 +1782,121 @@ export const Checkout: React.FC<CheckoutProps> = ({
               {step === "shipping" ? (
                 <div className="rounded-lg border border-neutral-200 bg-white p-6 md:p-8">
                   <form onSubmit={handleShippingSubmit} className="space-y-8">
+
+                    {/* Fulfilment type selector */}
                     <section className="space-y-4">
                       <h2 className="text-xl font-semibold text-neutral-950">
-                        Shipping Address
+                        How would you like to receive your order?
                       </h2>
-
-                      {deliveryType === "pickup" ? (
-                        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <p className="text-sm text-neutral-950">
-                                Pickup at:{" "}
-                                <span className="font-semibold">
-                                  {pickupStore?.name || "Select a store"}
-                                </span>
-                              </p>
-                              <p className="mt-1 text-sm text-neutral-500">
-                                {scheduledLabel ? (
-                                  <>Scheduled: {scheduledLabel}</>
-                                ) : pickupStatus ? (
-                                  <>
-                                    <span
-                                      className={`${pickupTone} font-semibold`}
-                                    >
-                                      {pickupStatus.label}
-                                    </span>
-                                    {pickupStatus.detail ? (
-                                      <span> - {pickupStatus.detail}</span>
-                                    ) : null}
-                                  </>
-                                ) : (
-                                  "Check hours"
-                                )}
-                              </p>
-                              <p className="mt-1 text-sm text-neutral-500">
-                                Distance:{" "}
-                                {pickupDistance !== null &&
-                                pickupDistance !== undefined
-                                  ? `${pickupDistance} km away from you`
-                                  : "Unavailable"}
-                              </p>
-                            </div>
+                      <div className="space-y-3">
+                        {(["delivery", "pickup"] as DeliveryType[]).map((type) => {
+                          const isSelected = deliveryType === type;
+                          return (
                             <button
+                              key={type}
                               type="button"
-                              onClick={() => onSchedulePickup?.()}
-                              className="shrink-0 text-sm font-medium text-neutral-950 underline underline-offset-2"
+                              onClick={() => setDeliveryType(type)}
+                              className={`flex w-full items-center gap-4 rounded-xl border-2 p-4 text-left transition-colors ${
+                                isSelected
+                                  ? "border-belims-blue bg-blue-50"
+                                  : "border-neutral-200 bg-white hover:border-neutral-300"
+                              }`}
                             >
-                              {scheduledLabel ? "Change" : "Schedule"}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {addressAutoPopulated && !editingAddress ? (
-                            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-3">
-                              <div className="flex items-center justify-between">
-                                <div className="text-sm text-neutral-500">
-                                  <p className="font-medium text-neutral-950">
-                                    {customer.address}
-                                  </p>
-                                  <p>
-                                    {customer.city}, {customer.province}{" "}
-                                    {customer.postalCode}
-                                  </p>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingAddress(true)}
-                                  className="text-sm font-medium text-neutral-950 underline underline-offset-2"
-                                >
-                                  Edit
-                                </button>
+                              <div
+                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                                  isSelected
+                                    ? "border-belims-blue"
+                                    : "border-neutral-300"
+                                }`}
+                              >
+                                {isSelected && (
+                                  <div className="h-3 w-3 rounded-full bg-belims-blue" />
+                                )}
                               </div>
-                              {savedAddresses.length > 1 && (
-                                <div className="flex flex-wrap gap-1.5 pt-1 border-t border-neutral-200">
-                                  {savedAddresses.map((saved, i) => {
-                                    const isActive =
-                                      customer.address === saved.address.street &&
-                                      customer.city === saved.address.city;
-                                    return (
-                                      <button
-                                        key={i}
-                                        type="button"
-                                        onClick={() =>
-                                          setCustomer((prev) => ({
-                                            ...prev,
-                                            address: saved.address.street,
-                                            city: saved.address.city,
-                                            province: saved.address.province,
-                                            postalCode: saved.address.postalCode,
-                                          }))
-                                        }
-                                        className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
-                                          isActive
-                                            ? "border-belims-blue bg-belims-blue text-white"
-                                            : "border-neutral-200 bg-white text-neutral-600 hover:border-belims-blue hover:text-belims-blue"
-                                        }`}
-                                      >
-                                        <MapPin size={10} />
-                                        {saved.label}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
+                              <span className="flex-1 text-base font-semibold capitalize text-neutral-950">
+                                {type === "pickup" ? "Pick up" : "Delivery"}
+                              </span>
+                              {type === "delivery" ? (
+                                <Truck className="h-6 w-6 text-neutral-400" />
+                              ) : (
+                                <StoreIcon className="h-6 w-6 text-neutral-400" />
                               )}
-                            </div>
-                          ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
 
-                          <div
-                            className="space-y-4"
-                            style={{
-                              display: editingAddress ? "block" : "none",
-                            }}
-                          >
-                            {savedAddresses.length > 0 && (
+                    {/* Delivery address form */}
+                    {deliveryType === "delivery" && (
+                      <section className="space-y-4">
+                        <h2 className="text-xl font-semibold text-neutral-950">
+                          Delivery Details
+                        </h2>
+
+                        {/* Saved address pill — returning user */}
+                        {addressAutoPopulated && !editingAddress && (
+                          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-neutral-500">
+                                {customer.addressLabel && (
+                                  <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-0.5">
+                                    {customer.addressLabel}
+                                  </p>
+                                )}
+                                <p className="font-medium text-neutral-950">{customer.address}</p>
+                                {customer.address2 && <p>{customer.address2}</p>}
+                                <p>{customer.city}, {customer.province} {customer.postalCode}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setEditingAddress(true)}
+                                className="shrink-0 text-sm font-medium text-neutral-950 underline underline-offset-2"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                            {savedAddresses.length > 1 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1 border-t border-neutral-200">
+                                {savedAddresses.map((saved, i) => {
+                                  const isActive = customer.address === saved.address.street && customer.city === saved.address.city;
+                                  return (
+                                    <button
+                                      key={i}
+                                      type="button"
+                                      onClick={() => setCustomer((prev) => ({
+                                        ...prev,
+                                        address: saved.address.street,
+                                        city: saved.address.city,
+                                        province: saved.address.province,
+                                        postalCode: saved.address.postalCode,
+                                      }))}
+                                      className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                        isActive
+                                          ? "border-belims-blue bg-belims-blue text-white"
+                                          : "border-neutral-200 bg-white text-neutral-600 hover:border-belims-blue hover:text-belims-blue"
+                                      }`}
+                                    >
+                                      <MapPin size={10} />
+                                      {saved.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Address form — new user or editing */}
+                        {(!addressAutoPopulated || editingAddress) && (
+                          <div className="space-y-4">
+                            {/* Saved address chips (returning user editing) */}
+                            {savedAddresses.length > 0 && editingAddress && (
                               <div className="space-y-2">
                                 <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Saved addresses</p>
                                 <div className="flex flex-wrap gap-2">
                                   {savedAddresses.map((saved, i) => {
-                                    const isActive =
-                                      customer.address === saved.address.street &&
-                                      customer.city === saved.address.city;
+                                    const isActive = customer.address === saved.address.street && customer.city === saved.address.city;
                                     return (
                                       <button
                                         key={i}
@@ -1963,114 +1931,45 @@ export const Checkout: React.FC<CheckoutProps> = ({
                               </div>
                             )}
 
+                            {/* Street Address */}
                             <div className="space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <label
-                                  className={labelClass}
-                                  htmlFor="streetAddress"
-                                >
-                                  Street address
-                                </label>
-                                {!customer.address && !customer.city && (
-                                  <button
-                                    type="button"
-                                    onClick={handleUseCurrentLocation}
-                                    disabled={locatingAddress}
-                                    className="flex items-center gap-1 text-xs font-semibold text-belims-blue hover:underline disabled:opacity-50"
-                                  >
-                                    <MapPin size={12} />
-                                    {locatingAddress ? "Detecting..." : "Use current location"}
-                                  </button>
-                                )}
-                              </div>
+                              <label className={labelClass} htmlFor="streetAddress">
+                                Street Address <span className="text-red-500">*</span>
+                              </label>
                               {locationError && (
                                 <p className="text-xs text-red-600">{locationError}</p>
                               )}
-                              <div className="relative">
-                                <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-                                <input
-                                  id="streetAddress"
-                                  required
-                                  autoComplete="address-line1"
-                                  placeholder="Street address"
-                                  className={inputWithIconClass}
-                                  value={customer.address}
-                                  onChange={(e) =>
-                                    setCustomer({
-                                      ...customer,
-                                      address: e.target.value,
-                                    })
-                                  }
-                                />
-                              </div>
+                              <input
+                                id="streetAddress"
+                                required
+                                autoComplete="address-line1"
+                                placeholder="Street address"
+                                className={inputClass}
+                                value={customer.address}
+                                onChange={(e) => setCustomer({ ...customer, address: e.target.value })}
+                              />
                             </div>
 
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            {/* Complex / Building */}
+                            <div className="space-y-1.5">
+                              <label className={labelClass} htmlFor="address2">
+                                Complex, building, unit/floor number
+                              </label>
+                              <input
+                                id="address2"
+                                type="text"
+                                placeholder="Unit 4, Sunrise Park"
+                                autoComplete="address-line2"
+                                className={inputClass}
+                                value={customer.address2}
+                                onChange={(e) => setCustomer({ ...customer, address2: e.target.value })}
+                              />
+                            </div>
+
+                            {/* Postal Code / Suburb */}
+                            <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-1.5">
-                                <label className={labelClass} htmlFor="city">
-                                  City
-                                </label>
-                                <input
-                                  id="city"
-                                  required
-                                  autoComplete="address-level2"
-                                  placeholder="City"
-                                  className={inputClass}
-                                  value={customer.city}
-                                  onChange={(e) =>
-                                    setCustomer({
-                                      ...customer,
-                                      city: e.target.value,
-                                    })
-                                  }
-                                />
-                              </div>
-                              <div className="space-y-1.5">
-                                <label
-                                  className={labelClass}
-                                  htmlFor="province"
-                                >
-                                  Province
-                                </label>
-                                <select
-                                  id="province"
-                                  required
-                                  className={inputClass}
-                                  value={customer.province}
-                                  onChange={(e) =>
-                                    setCustomer({
-                                      ...customer,
-                                      province: e.target.value,
-                                    })
-                                  }
-                                >
-                                  <option value="">Select province</option>
-                                  <option value="Eastern Cape">
-                                    Eastern Cape
-                                  </option>
-                                  <option value="Free State">Free State</option>
-                                  <option value="Gauteng">Gauteng</option>
-                                  <option value="KwaZulu-Natal">
-                                    KwaZulu-Natal
-                                  </option>
-                                  <option value="Limpopo">Limpopo</option>
-                                  <option value="Mpumalanga">Mpumalanga</option>
-                                  <option value="Northern Cape">
-                                    Northern Cape
-                                  </option>
-                                  <option value="North West">North West</option>
-                                  <option value="Western Cape">
-                                    Western Cape
-                                  </option>
-                                </select>
-                              </div>
-                              <div className="space-y-1.5">
-                                <label
-                                  className={labelClass}
-                                  htmlFor="postalCode"
-                                >
-                                  Postal code
-                                </label>
+                                <label className={labelClass} htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></label>
                                 <input
                                   id="postalCode"
                                   required
@@ -2078,21 +1977,163 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                   placeholder="Postal code"
                                   className={inputClass}
                                   value={customer.postalCode}
-                                  onChange={(e) =>
-                                    setCustomer({
-                                      ...customer,
-                                      postalCode: e.target.value,
-                                    })
-                                  }
+                                  onChange={(e) => setCustomer({ ...customer, postalCode: e.target.value })}
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className={labelClass} htmlFor="suburb">Suburb <span className="text-red-500">*</span></label>
+                                <input
+                                  id="suburb"
+                                  required
+                                  placeholder="Suburb"
+                                  className={inputClass}
+                                  value={customer.suburb}
+                                  onChange={(e) => setCustomer({ ...customer, suburb: e.target.value })}
                                 />
                               </div>
                             </div>
-                          </div>
-                        </>
-                      )}
-                    </section>
 
-                    {deliveryType === "delivery" ? (
+                            {/* City / Province */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <label className={labelClass} htmlFor="city">City/Town <span className="text-red-500">*</span></label>
+                                <input
+                                  id="city"
+                                  required
+                                  autoComplete="address-level2"
+                                  placeholder="City"
+                                  className={inputClass}
+                                  value={customer.city}
+                                  onChange={(e) => setCustomer({ ...customer, city: e.target.value })}
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className={labelClass} htmlFor="province">Province <span className="text-red-500">*</span></label>
+                                <select
+                                  id="province"
+                                  required
+                                  className={inputClass}
+                                  value={customer.province}
+                                  onChange={(e) => setCustomer({ ...customer, province: e.target.value })}
+                                >
+                                  <option value="">Select province</option>
+                                  <option value="Eastern Cape">Eastern Cape</option>
+                                  <option value="Free State">Free State</option>
+                                  <option value="Gauteng">Gauteng</option>
+                                  <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+                                  <option value="Limpopo">Limpopo</option>
+                                  <option value="Mpumalanga">Mpumalanga</option>
+                                  <option value="Northern Cape">Northern Cape</option>
+                                  <option value="North West">North West</option>
+                                  <option value="Western Cape">Western Cape</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Type of Address */}
+                            <div className="space-y-2">
+                              <p className={labelClass}>Type of Address</p>
+                              <div className="flex gap-6">
+                                {(["home", "work"] as const).map((type) => (
+                                  <label key={type} className="flex cursor-pointer items-center gap-2">
+                                    <div
+                                      className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
+                                        customer.addressType === type ? "border-neutral-950" : "border-neutral-300"
+                                      }`}
+                                    >
+                                      {customer.addressType === type && (
+                                        <div className="h-2.5 w-2.5 rounded-full bg-neutral-950" />
+                                      )}
+                                    </div>
+                                    <input
+                                      type="radio"
+                                      className="sr-only"
+                                      name="addressType"
+                                      value={type}
+                                      checked={customer.addressType === type}
+                                      onChange={() => setCustomer({ ...customer, addressType: type })}
+                                    />
+                                    <span className="text-sm text-neutral-700">
+                                      {type === "home" ? "Home (All day delivery)" : "Work (Delivery between 10 AM – 5 PM)"}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Bottom actions */}
+                            <div className="grid grid-cols-2 gap-3 pt-2">
+                              <button
+                                type="button"
+                                onClick={handleUseCurrentLocation}
+                                disabled={locatingAddress}
+                                className="flex h-12 items-center justify-center gap-2 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-700 transition-colors hover:border-neutral-400 hover:bg-neutral-50 disabled:opacity-50"
+                              >
+                                <MapPin size={16} />
+                                {locatingAddress ? "Detecting..." : "Use my location"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSaveAddress}
+                                disabled={!customer.address || !customer.city || !customer.province || !customer.postalCode}
+                                className={`${primaryButtonClass} h-12`}
+                              >
+                                Save and Deliver Here
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </section>
+                    )}
+
+                    {/* Pick up info */}
+                    {deliveryType === "pickup" && (
+                      <section className="space-y-4">
+                        <h2 className="text-xl font-semibold text-neutral-950">
+                          Pick Up Details
+                        </h2>
+                        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-sm text-neutral-950">
+                                Pickup at:{" "}
+                                <span className="font-semibold">
+                                  {pickupStore?.name || "Select a store"}
+                                </span>
+                              </p>
+                              <p className="mt-1 text-sm text-neutral-500">
+                                {scheduledLabel ? (
+                                  <>Scheduled: {scheduledLabel}</>
+                                ) : pickupStatus ? (
+                                  <>
+                                    <span className={`${pickupTone} font-semibold`}>{pickupStatus.label}</span>
+                                    {pickupStatus.detail ? <span> - {pickupStatus.detail}</span> : null}
+                                  </>
+                                ) : (
+                                  "Check hours"
+                                )}
+                              </p>
+                              <p className="mt-1 text-sm text-neutral-500">
+                                Distance:{" "}
+                                {pickupDistance !== null && pickupDistance !== undefined
+                                  ? `${pickupDistance} km away from you`
+                                  : "Unavailable"}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onSchedulePickup?.()}
+                              className="shrink-0 text-sm font-medium text-neutral-950 underline underline-offset-2"
+                            >
+                              {scheduledLabel ? "Change" : "Schedule"}
+                            </button>
+                          </div>
+                        </div>
+                      </section>
+                    )}
+
+                    {/* Shipping method — delivery only, after address saved */}
+                    {deliveryType === "delivery" && addressAutoPopulated && !editingAddress && (
                       <section className="space-y-4">
                         <h2 className="text-xl font-semibold text-neutral-950">
                           Shipping method
@@ -2104,89 +2145,50 @@ export const Checkout: React.FC<CheckoutProps> = ({
                         ) : activeRates.length > 0 ? (
                           <div className="space-y-3">
                             {activeRates.map((rate, idx) => {
-                              const tier =
-                                rate.tier || classifyRate(rate, activeRates);
-                              const isSelected =
-                                selectedShipping?.service_name ===
-                                rate.service_name;
-                              const isFastest =
-                                fastestRate?.service_name === rate.service_name;
-
+                              const tier = rate.tier || classifyRate(rate, activeRates);
+                              const isSelected = selectedShipping?.service_name === rate.service_name;
+                              const isFastest = fastestRate?.service_name === rate.service_name;
                               return (
                                 <label
                                   key={`${rate.service_name}-${idx}`}
                                   className={`flex cursor-pointer items-center gap-4 rounded-lg border p-4 transition-colors focus-within:ring-2 focus-within:ring-neutral-950 focus-within:ring-offset-2 ${
-                                    isSelected
-                                      ? "border-neutral-950 bg-neutral-50"
-                                      : "border-neutral-200 hover:border-neutral-400"
+                                    isSelected ? "border-neutral-950 bg-neutral-50" : "border-neutral-200 hover:border-neutral-400"
                                   }`}
                                 >
-                                  <input
-                                    className="sr-only"
-                                    type="radio"
-                                    name="shipping"
-                                    checked={isSelected}
-                                    onChange={() => handleShippingSelect(rate)}
-                                  />
-                                  <div
-                                    className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
-                                      isSelected
-                                        ? "border-neutral-950"
-                                        : "border-neutral-300"
-                                    }`}
-                                  >
-                                    {isSelected ? (
-                                      <div className="h-2.5 w-2.5 rounded-full bg-neutral-950" />
-                                    ) : null}
+                                  <input className="sr-only" type="radio" name="shipping" checked={isSelected} onChange={() => handleShippingSelect(rate)} />
+                                  <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? "border-neutral-950" : "border-neutral-300"}`}>
+                                    {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-neutral-950" />}
                                   </div>
                                   <Truck className="h-5 w-5 text-neutral-500" />
                                   <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
-                                      <span className="font-medium">
-                                        {rate.service_name}
-                                      </span>
-                                      {tier === "Express" || isFastest ? (
-                                        <Pill
-                                          tone="warning"
-                                          icon={<Zap size={12} />}
-                                        >
-                                          Faster
-                                        </Pill>
-                                      ) : null}
-                                      {tier === "Economy" ? (
-                                        <Pill tone="success">Budget</Pill>
-                                      ) : null}
+                                      <span className="font-medium">{rate.service_name}</span>
+                                      {tier === "Express" || isFastest ? <Pill tone="warning" icon={<Zap size={12} />}>Faster</Pill> : null}
+                                      {tier === "Economy" ? <Pill tone="success">Budget</Pill> : null}
                                     </div>
-                                    <p className="mt-0.5 text-xs text-neutral-500">
-                                      {formatEta(rate.expected_delivery_date)}
-                                    </p>
+                                    <p className="mt-0.5 text-xs text-neutral-500">{formatEta(rate.expected_delivery_date)}</p>
                                   </div>
-                                  <span className="font-medium">
-                                    {formatCurrency(rate.total_price)}
-                                  </span>
+                                  <span className="font-medium">{formatCurrency(rate.total_price)}</span>
                                 </label>
                               );
                             })}
                           </div>
                         ) : (
                           <p className="rounded-lg border border-neutral-200 py-8 text-center text-sm text-neutral-500">
-                            No shipping options available.
+                            No shipping options available. Enter your address above to calculate rates.
                           </p>
                         )}
                       </section>
-                    ) : null}
+                    )}
 
+                    {/* Navigation */}
                     <div className="flex items-center justify-between">
-                      <button
-                        type="button"
-                        className={secondaryButtonClass}
-                        onClick={goToDetails}
-                      >
+                      <button type="button" className={secondaryButtonClass} onClick={goToDetails}>
                         <ChevronLeft className="h-4 w-4" />
                         Return to information
                       </button>
                       <button
-                        disabled={!selectedShipping}
+                        disabled={deliveryType === "delivery" ? !selectedShipping : false}
                         className={`${primaryButtonClass} hidden h-12 px-8 md:flex`}
                         type="submit"
                       >
@@ -2196,7 +2198,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
                     <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white p-4 md:hidden">
                       <button
-                        disabled={!selectedShipping}
+                        disabled={deliveryType === "delivery" ? !selectedShipping : false}
                         className={`${primaryButtonClass} h-12 w-full`}
                         type="submit"
                       >
