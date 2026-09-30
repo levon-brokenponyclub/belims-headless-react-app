@@ -1190,6 +1190,8 @@ export const Header: React.FC<HeaderProps> = ({
           onNavigate={handleCategorySelect}
           onShopAll={handleShopAll}
           hamburgerRef={hamburgerRef}
+          onOpenStoreLocator={toggleStoreLocator}
+          onOpenAccount={() => setIsAccountPanelOpen(true)}
         />
 
         {/* Services Side Panel */}

@@ -45,9 +45,20 @@
 /*
    Three states (CSS handles all animation — no inline styles):
 
-   default                 translateX(100%)   off-screen right, non-interactive
-   [data-state="active"]   translateX(0)      in view, interactive
-   [data-state="behind"]   translateX(-30%)   parallax exit, non-interactive
+   default                 translateX(100%)    off-screen right, non-interactive
+   [data-state="active"]   translateX(0)       in view, interactive
+   [data-state="behind"]   translateX(-100%)   off-screen left, non-interactive
+
+   inset: 0 guarantees panels always fill the full drawer width regardless of
+   any deferred box-sizing or containing-block quirks — width is derived from
+   the drawer, not the panel itself.
+
+   behind uses -100% (fully off-screen) rather than a parallax -30% so only
+   one panel is ever visible at a time, avoiding any bleed or stacking issues.
+
+   will-change is scoped to active/behind only — applying it to every panel
+   simultaneously would promote all panels to compositor layers, risking
+   incorrect GPU z-ordering on iOS Safari.
 */
 .mn-panel {
   position: absolute;
@@ -57,17 +68,21 @@
   background: var(--color-surface, #ffffff);
   transform: translateX(100%);
   transition: transform var(--mn-duration) var(--mn-ease);
-  will-change: transform;
   pointer-events: none;
   overflow: hidden;
+  z-index: 0;
 }
 .mn-panel[data-state="active"] {
   transform: translateX(0);
   pointer-events: auto;
+  will-change: transform;
+  z-index: 2;
 }
 .mn-panel[data-state="behind"] {
-  transform: translateX(-30%);
+  transform: translateX(-100%);
   pointer-events: none;
+  will-change: transform;
+  z-index: 1;
 }
 
 /* Suppress transitions during instant snap-to-root on re-open */

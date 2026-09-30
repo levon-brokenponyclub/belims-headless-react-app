@@ -47,6 +47,8 @@ export interface MobileNavProps {
   onNavigate: (label: string) => void;
   onShopAll: () => void;
   hamburgerRef?: React.RefObject<HTMLButtonElement | null>;
+  onOpenStoreLocator?: () => void;
+  onOpenAccount?: () => void;
 }
 
 // ── MobileNav ──────────────────────────────────────────────
@@ -57,6 +59,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   onNavigate,
   onShopAll,
   hamburgerRef,
+  onOpenStoreLocator,
+  onOpenAccount,
 }) => {
   // Stack of panel IDs. 'root' is the sentinel for the root panel.
   const [stack, setStack] = useState<string[]>(['root']);
@@ -257,6 +261,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           onPop={onClose}
           onClose={onClose}
           onShopAll={onShopAll}
+          onOpenStoreLocator={onOpenStoreLocator}
+          onOpenAccount={onOpenAccount}
         />
 
         {/* One sub-panel per category node that has children */}
