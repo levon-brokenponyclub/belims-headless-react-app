@@ -188,7 +188,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     const onEnd = (e: TouchEvent) => {
       const dx = e.changedTouches[0].clientX - startX;
       const dy = Math.abs(e.changedTouches[0].clientY - startY);
-      if (dx > 55 && dy < 28) pop();
+      if (dx > 55 && dy < 28) { stack.length > 1 ? pop() : onClose(); }
     };
     el.addEventListener('touchstart', onStart, { passive: true });
     el.addEventListener('touchend', onEnd, { passive: true });
@@ -196,7 +196,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       el.removeEventListener('touchstart', onStart);
       el.removeEventListener('touchend', onEnd);
     };
-  }, [isOpen, pop]);
+  }, [isOpen, stack, pop, onClose]);
 
   // ── Focus trap ───────────────────────────────────────────
   useEffect(() => {
@@ -243,6 +243,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         id="mn-drawer"
         className={`mn-drawer${isOpen ? ' mn-open' : ''}`}
         aria-label="Departments"
+        aria-modal="true"
       >
         {/* Root panel */}
         <MobileNavPanel
