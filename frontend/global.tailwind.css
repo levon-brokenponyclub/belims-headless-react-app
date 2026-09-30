@@ -1,95 +1,16 @@
-@import url("https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&display=swap");
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* ============================================
-   @LAYER BASE - Global Type & Element Defaults
-   ============================================ */
-@layer base {
-  /* CSS Custom Properties for semantic colors */
-  :root {
-    --color-canvas: #f9f9f9;
-    --color-surface: #ffffff;
-    --color-ink: #322783;
-    --color-muted: #565969;
-    --color-soft: #ecf0f1;
-    --color-subtle: #e0e0e0;
-    --color-brand: #312883;
-    --color-accent: #f97316;
-    --color-red-muted: #c4301c;
-    --color-grey: #111111;
-    --color-grey-light: #f3f4f6;
-    --color-grey-medium: #666666;
-  }
-
-  /* Page & Body Reset */
-  body {
-    @apply font-sans text-base;
-    background-color: var(--color-surface);
-    color: var(--color-text);
-  }
-
-  /* Headings - Consistent Type Hierarchy */
-  h1 {
-    @apply text-h1 font-heading font-bold leading-tight;
-    color: var(--color-text);
-  }
-
-  h2 {
-    @apply text-h2 font-heading font-bold leading-tight;
-    color: var(--color-text);
-  }
-
-  h3 {
-    @apply text-h3 font-heading font-semibold leading-tight;
-    color: var(--color-text);
-  }
-
-  h4 {
-    @apply text-h4 font-heading font-semibold leading-tight;
-    color: var(--color-text);
-  }
-
-  h5 {
-    @apply text-h5 font-heading font-semibold;
-    color: var(--color-text);
-  }
-
-  h6 {
-    @apply text-h6 font-heading font-semibold;
-    color: var(--color-text);
-  }
-
-  /* Link defaults */
-  a {
-    color: var(--color-text);
-    @apply transition-colors duration-200;
-  }
-
-  a:hover {
-    color: var(--color-primary);
-  }
-
-  /* Form inputs reset */
-  input,
-  textarea,
-  select {
-    @apply font-sans text-base;
-  }
-}
-
-/* ============================================
-   @LAYER COMPONENTS - Reusable UI Primitives
-   ============================================ */
+/* ============================================================
+   Bellums UI component classes — button, form, icon-btn
+   Imported by Header.tsx; available globally in the SPA.
+   Do NOT add @tailwind directives here (index.css is the entry).
+   Do NOT add :root vars here (index.css owns all CSS tokens).
+   ============================================================ */
 @layer components {
   /* ---- BUTTONS ---- */
   .btn {
     @apply inline-flex items-center justify-center gap-2 font-bold min-h-12 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed capitalize;
     border-radius: var(--radius-button);
     color: var(--color-text);
-    font-size: 15px;
+    font-size: var(--text-base);
   }
 
   .btn-primary {
@@ -172,7 +93,7 @@
     outline-color: var(--color-primary);
   }
 
-  /* ---- LEGACY CLASSES (backwards compatibility) ---- */
+  /* ---- LEGACY CLASSES ---- */
   .header-signin {
     @apply items-start text-left;
   }
