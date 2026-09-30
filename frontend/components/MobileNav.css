@@ -23,11 +23,11 @@
 
 /* ─── Drawer shell ──────────────────────────────────────── */
 .mn-drawer {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   z-index: 1300;
-  width: var(--mn-width);
+  width: 100%;
   height: 100dvh;
   background: var(--color-surface, #ffffff);
   overflow: hidden;
@@ -66,7 +66,7 @@
   display: flex;
   flex-direction: column;
   background: var(--color-surface, #ffffff);
-  transform: translateX(100%);
+  /* transform: translateX(100%); */
   transition: transform var(--mn-duration) var(--mn-ease);
   pointer-events: none;
   overflow: hidden;
