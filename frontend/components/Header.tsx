@@ -1013,7 +1013,8 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                aria-label="Location"
+                aria-label="Delivery location"
+                onClick={openDeliveryPopover}
                 className="text-white flex items-center justify-center transition-opacity duration-200 hover:opacity-70"
               >
                 <MapPin size={20} strokeWidth={1.75} />
@@ -1042,28 +1043,46 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Mobile Delivery Bar - moved below logo bar */}
-          <div className="md:hidden w-full bg-primary text-white border-t border-white/20">
-            <div className="container mx-auto px-4">
-              <button
-                type="button"
-                onClick={openDeliveryPopover}
-                className="flex items-center justify-between w-full py-2.5"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/10 p-1.5 rounded-full">
-                    <Truck size={16} />
-                  </div>
-                  <span className="font-bold text-sm">Delivery</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-white/90">
-                  <span className="truncate max-w-[200px] font-medium">
-                    {pillAddressLine || deliveryPostalCode || deliveryLabelText}
-                  </span>
-                  <ChevronDown size={14} />
-                </div>
-              </button>
-            </div>
+          {/* Mobile Search Bar */}
+          <div className="md:hidden w-full bg-belims-blue px-4 pb-3 relative">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="flex items-center h-11 bg-white/10 rounded-full overflow-hidden"
+            >
+              <div className="pl-4 pr-2 flex-shrink-0 text-white/60">
+                <Search size={18} strokeWidth={2} />
+              </div>
+              <input
+                type="text"
+                placeholder="Search products and brands"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent text-white placeholder:text-white/50 text-sm font-medium focus:outline-none border-0 focus:ring-0 h-full px-0"
+                aria-label="Search products"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setSearchResults(null); }}
+                  className="pr-4 text-white/60 hover:text-white transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </form>
+            <SearchResults
+              searchResults={searchResults}
+              searchQuery={searchQuery}
+              onViewAllResults={() => handleSearchSubmit()}
+              onCategorySelect={handleCategorySelect}
+              onProductSelect={handleProductSelect}
+              addToCart={() => {}}
+              onBuyNow={() => {}}
+              onCompare={onCompare}
+              isAuthenticated={!!currentUser}
+              isTradeApproved={false}
+            />
           </div>
           <DeliveryDetailsPopover
             open={isDeliverySheetOpen}
