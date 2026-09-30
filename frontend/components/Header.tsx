@@ -40,6 +40,7 @@ import { DeliveryDetailsPopover, SavedAddressOption } from "./DeliveryDetailsPop
 
 const DELIVERY_POPOVER_DISMISSED_KEY = "belims_delivery_popover_dismissed";
 import { MegaMenu } from "./MegaMenu";
+import { MobileNav } from "./MobileNav";
 import { SearchResults } from "./SearchResults";
 import {
   buildAddressLabel,
@@ -169,10 +170,6 @@ export const Header: React.FC<HeaderProps> = ({
     navigate("/delivery-details/add-address");
   };
 
-  const handleDeliveryPopoverLogin = () => {
-    closeDeliveryPopover();
-    navigate("/login");
-  };
   const [fulfillmentType, setFulfillmentType] = useState<
     "pickup" | "delivery" | null
   >(null);
@@ -189,10 +186,8 @@ export const Header: React.FC<HeaderProps> = ({
   const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
   const [activeMegaCategory, setActiveMegaCategory] =
     useState<CategoryNode | null>(null);
-  const [mobileCategoryStack, setMobileCategoryStack] = useState<
-    CategoryNode[]
-  >([]);
   const megaMenuCloseTimerRef = useRef<number | null>(null);
+  const hamburgerRef = useRef<HTMLButtonElement | null>(null);
 
   const syncDeliveryFromStorage = React.useCallback(() => {
     const { address, legacyLabel } = readStoredAddress();
@@ -461,8 +456,17 @@ export const Header: React.FC<HeaderProps> = ({
     closeDeliveryPopover();
   };
 
+  const handleSavePostalCode = (address: ShippingAddress) => {
+    handleAddressSelect(address);
+    closeDeliveryPopover();
+  };
+
   const pillAddressLine = useMemo(() => {
     if (deliveryAddress) {
+      // Guest postal-code-only location: "4001, Glenwood"
+      if (!deliveryAddress.street && deliveryAddress.postalCode) {
+        return deliveryAddress.label || deliveryAddress.postalCode;
+      }
       const parts = [deliveryAddress.street, deliveryAddress.city].filter(
         Boolean,
       );
@@ -513,18 +517,11 @@ export const Header: React.FC<HeaderProps> = ({
   );
 
   const toggleMobileMenu = () => {
-    setMobileMenuOpen((prev) => {
-      const next = !prev;
-      if (!next) {
-        setMobileCategoryStack([]);
-      }
-      return next;
-    });
+    setMobileMenuOpen((prev) => !prev);
   };
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
-    setMobileCategoryStack([]);
   };
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -609,24 +606,6 @@ export const Header: React.FC<HeaderProps> = ({
     navigate(`/shop/${encodeURIComponent(category)}`);
     setIsMegaMenuOpen(false);
     setMobileMenuOpen(false);
-  };
-
-  const openMobileCategory = (category: CategoryNode) => {
-    if (!category.children || category.children.length === 0) {
-      handleCategorySelect(category.label);
-      setMobileCategoryStack([]);
-      return;
-    }
-    setMobileCategoryStack((prev) => [...prev, category]);
-  };
-
-  const closeMobileCategoryPanel = () => {
-    setMobileCategoryStack((prev) => prev.slice(0, -1));
-  };
-
-  const handleMobileCategorySelect = (label: string) => {
-    handleCategorySelect(label);
-    setMobileCategoryStack([]);
   };
 
   const handleShopAll = () => {
@@ -770,7 +749,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClose={closeDeliveryPopover}
                 onDismiss={dismissDeliveryPopover}
                 onAddDetails={handleAddDeliveryDetails}
-                onLogin={handleDeliveryPopoverLogin}
+                onSavePostalCode={handleSavePostalCode}
                 onSelectSavedAddress={handleSelectSavedAddress}
               />
             </div>
@@ -964,10 +943,13 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <div className="relative flex items-center gap-2 flex-shrink-0 min-h-[44px]">
               <button
+                ref={hamburgerRef}
                 type="button"
                 className="md:hidden text-white"
                 onClick={toggleMobileMenu}
                 aria-label="Open menu"
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mn-drawer"
               >
                 <div className="w-8 h-8 relative flex items-center justify-center">
                   <svg
@@ -1091,7 +1073,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClose={closeDeliveryPopover}
             onDismiss={dismissDeliveryPopover}
             onAddDetails={handleAddDeliveryDetails}
-            onLogin={handleDeliveryPopoverLogin}
+            onSavePostalCode={handleSavePostalCode}
             onSelectSavedAddress={handleSelectSavedAddress}
           />
 
@@ -1200,124 +1182,17 @@ export const Header: React.FC<HeaderProps> = ({
           onMouseLeave={closeMegaMenu}
         />
 
-        {/* Mobile Menu Overlay */}
-        {mobileMenuOpen && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex">
-            <div className="w-[85%] max-w-sm bg-surface h-full flex flex-col">
-              <div className="p-4 bg-primary text-white flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <User size={20} />
-                  <span className="font-bold font-heading">
-                    Sign In / Account
-                  </span>
-                </div>
-                <button onClick={closeMobileMenu}>
-                  <X />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto bg-surface-muted">
-                <div className="bg-surface py-2">
-                  <div className="px-4 py-3 font-bold text-lg border-b border-border font-heading text-text">
-                    Departments
-                  </div>
-                  <div className="relative overflow-x-hidden">
-                    <div
-                      className="flex transition-transform duration-300"
-                      style={{
-                        transform: `translateX(-${mobileCategoryStack.length * 100}%)`,
-                      }}
-                    >
-                      {[null, ...mobileCategoryStack].map(
-                        (panelNode, index) => {
-                          const panelLabel = panelNode
-                            ? panelNode.label
-                            : "Departments";
-                          const panelItems = panelNode
-                            ? panelNode.children || []
-                            : categoryTree;
-
-                          return (
-                            <div
-                              key={panelNode ? panelNode.id : "root"}
-                              className="min-w-full"
-                            >
-                              {index > 0 && (
-                                <div className="border-b border-border bg-surface">
-                                  <div className="flex items-center justify-between px-4 py-2">
-                                    <button
-                                      className="text-sm font-bold text-text-secondary"
-                                      onClick={closeMobileCategoryPanel}
-                                    >
-                                      Back
-                                    </button>
-                                    <span className="w-10" />
-                                  </div>
-                                  <div className="px-4 py-2 bg-surface-muted text-sm font-bold text-text font-heading">
-                                    {panelLabel}
-                                  </div>
-                                </div>
-                              )}
-
-                              <div className="bg-surface">
-                                {panelNode ? (
-                                  <button
-                                    className="w-full text-left px-4 py-3 border-b border-border text-sm font-bold text-primary"
-                                    onClick={() =>
-                                      handleMobileCategorySelect(
-                                        panelNode.label,
-                                      )
-                                    }
-                                  >
-                                    View all {panelNode.label}
-                                  </button>
-                                ) : (
-                                  <button
-                                    className="w-full text-left px-4 py-3 border-b border-border text-sm font-bold text-primary"
-                                    onClick={handleShopAll}
-                                  >
-                                    Shop All
-                                  </button>
-                                )}
-
-                                {panelItems.map((item) => (
-                                  <button
-                                    key={item.id}
-                                    className="w-full px-4 py-3 flex justify-between items-center text-text font-bold border-b border-border hover:bg-border transition-colors"
-                                    onClick={() => openMobileCategory(item)}
-                                  >
-                                    {item.label}
-                                    {item.children &&
-                                    item.children.length > 0 ? (
-                                      <ChevronDown
-                                        size={16}
-                                        className="-rotate-90 text-text-secondary transition-transform"
-                                      />
-                                    ) : null}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        },
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-surface mt-2 py-2">
-                  <div className="px-4 py-3 font-bold text-lg border-b border-border font-heading text-text">
-                    Help & Settings
-                  </div>
-                  <div className="px-4 py-3 border-b border-border text-text">
-                    Track Order
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex-1" onClick={closeMobileMenu}></div>
-          </div>
-        )}
+        {/* Mobile sliding nav — replaces inline mobile menu block */}
+        <MobileNav
+          isOpen={mobileMenuOpen}
+          onClose={closeMobileMenu}
+          categoryTree={categoryTree}
+          onNavigate={handleCategorySelect}
+          onShopAll={handleShopAll}
+          hamburgerRef={hamburgerRef}
+          onOpenStoreLocator={toggleStoreLocator}
+          onOpenAccount={() => setIsAccountPanelOpen(true)}
+        />
 
         {/* Services Side Panel */}
         {isServicesPanelOpen && (

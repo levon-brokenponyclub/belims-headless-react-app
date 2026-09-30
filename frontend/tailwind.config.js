@@ -110,65 +110,42 @@ export default {
       },
 
       fontWeight: {
-        normal: "500",
-        medium: "500",
+        regular:  "400",
+        normal:   "400",
+        medium:   "500",
         semibold: "600",
-        bold: "700",
+        bold:     "700",
       },
 
       fontSize: {
-        xs: ["11px", { lineHeight: "1.6", letterSpacing: "0.02em" }],
-        sm: ["12px", { lineHeight: "1.6", letterSpacing: "0.01em" }],
-        base: ["15px", { lineHeight: "1.6", letterSpacing: "0" }],
-        md: ["15px", { lineHeight: "1.6", letterSpacing: "0" }],
-        lg: ["16px", { lineHeight: "1.6", letterSpacing: "-0.01em" }],
+        // ── Utility scale — consume CSS vars ──
+        xs:   ["var(--text-xs)",   { lineHeight: "1.5",  letterSpacing: "0.02em" }],
+        sm:   ["var(--text-sm)",   { lineHeight: "1.5",  letterSpacing: "0.02em" }],
+        base: ["var(--text-base)", { lineHeight: "1.6",  letterSpacing: "0" }],
+        md:   ["var(--text-base)", { lineHeight: "1.6",  letterSpacing: "0" }],
+        lg:   ["var(--text-lg)",   { lineHeight: "1.55", letterSpacing: "-0.01em" }],
+        xl:   ["var(--text-xl)",   { lineHeight: "1.5",  letterSpacing: "-0.01em" }],
 
-        // Nexvo token-driven heading ramp (sources: --text-h{n} → --font-h{n}-size)
-        h1: ["var(--text-h1)", { lineHeight: "1.1" }],
-        h2: ["var(--text-h2)", { lineHeight: "1.15" }],
-        h3: ["var(--text-h3)", { lineHeight: "1.2" }],
-        h4: ["var(--text-h4)", { lineHeight: "1.25" }],
-        h5: ["var(--text-h5)", { lineHeight: "1.3" }],
-        h6: ["var(--text-h6)", { lineHeight: "1.4" }],
+        // ── Heading ramp — token-driven ──
+        h1: ["var(--text-h1)", { lineHeight: "1.15" }],
+        h2: ["var(--text-h2)", { lineHeight: "1.2"  }],
+        h3: ["var(--text-h3)", { lineHeight: "1.25" }],
+        h4: ["var(--text-h4)", { lineHeight: "1.3"  }],
+        h5: ["var(--text-h5)", { lineHeight: "1.35" }],
+        h6: ["var(--text-h6)", { lineHeight: "1.4"  }],
 
-        "display-sm": [
-          "64px",
-          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
-        ],
-        "display-md": [
-          "72px",
-          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
-        ],
-        "display-lg": [
-          "88px",
-          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
-        ],
+        // ── Display — for hero / campaign sections ──
+        "display-sm": ["var(--text-h1)", { lineHeight: "1.1",  letterSpacing: "-0.02em", fontWeight: "700" }],
+        "display-md": ["44px",           { lineHeight: "1.1",  letterSpacing: "-0.02em", fontWeight: "700" }],
+        "display-lg": ["56px",           { lineHeight: "1.05", letterSpacing: "-0.03em", fontWeight: "700" }],
 
-        price: [
-          "20px",
-          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
-        ],
-        "price-lg": [
-          "28px",
-          { lineHeight: "1.6", letterSpacing: "0", fontWeight: "700" },
-        ],
-
-        label: [
-          "11px",
-          { lineHeight: "1.6", letterSpacing: "0.05em", fontWeight: "600" },
-        ],
-        // Nexvo token-driven button text (replaces pixel literal)
-        button: ["var(--text-base)", { lineHeight: "1", fontWeight: "700" }],
-
-        // Nexvo eyebrow + body utility classes
-        eyebrow: [
-          "var(--text-xs)",
-          { lineHeight: "1.2", letterSpacing: "0.06em" },
-        ],
-        body: [
-          "var(--text-base)",
-          { lineHeight: "var(--font-body-line-height)" },
-        ],
+        // ── Semantic / named tokens ──
+        price:      ["var(--text-xl)",  { lineHeight: "1",   letterSpacing: "0",      fontWeight: "700" }],
+        "price-lg": ["var(--text-h3)",  { lineHeight: "1",   letterSpacing: "0",      fontWeight: "700" }],
+        label:      ["var(--text-xs)",  { lineHeight: "1.5", letterSpacing: "0.05em", fontWeight: "600" }],
+        button:     ["var(--text-base)",{ lineHeight: "1",   fontWeight: "700" }],
+        eyebrow:    ["var(--text-sm)",  { lineHeight: "1.2", letterSpacing: "0.06em" }],
+        body:       ["var(--text-base)",{ lineHeight: "var(--leading-body)" }],
       },
 
       letterSpacing: {

@@ -1,19 +1,23 @@
 // ProductCard.tsx
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
   CheckCircle,
   Zap,
-  ChevronRight,
   ShoppingCart,
-  ShoppingBasket,
   Eye,
+  Heart,
 } from "lucide-react";
 import { Product } from "../types";
 import { formatCurrency, isProductPurchasable } from "../utils/price";
 import { buildProductUrl } from "../utils/product";
 import { QuickView } from "./QuickView";
+import {
+  getWishlist,
+  toggleWishlist,
+  isInWishlist,
+} from "../services/wishlistService";
 
 interface ProductCardProps {
   product: Product;
@@ -83,20 +87,19 @@ export const PRODUCT_CARD_PRESETS: Record<
   ProductCardCustomizations
 > = {
   compactCard: createProductCardCustomizations({
-    imageBlockClassName: "h-44 min-h-[220px]",
+    imageBlockClassName: "aspect-square w-full",
   }),
   searchCard: createProductCardCustomizations({
     hiddenElements: ["category", "quickViewIcon"],
-    imageBlockClassName: "h-40 min-h-[190px]",
+    imageBlockClassName: "aspect-square w-full",
   }),
   perfectMatchCard: createProductCardCustomizations({
     hiddenElements: ["category", "quickViewIcon"],
-    imageBlockClassName: "h-44 min-h-[220px]",
+    imageBlockClassName: "aspect-square w-full",
   }),
 };
 
 const formatMoney = (value: number) => formatCurrency(value);
-
 const formatTwo = (value: number) => value.toString().padStart(2, "0");
 
 const getTimeLeft = (target: Date) => {
@@ -113,36 +116,57 @@ const getTimeLeft = (target: Date) => {
   };
 };
 
-/**
- * Rules:
- * - TRADE SPECIAL: show dominant RETAIL price; show trade price + savings line; add-to-cart uses trade metadata.
- * - ALL other deal types: show compare/regular strikethrough → sale price (when there is a true difference AND show_strikethrough !== false).
- * - Badges:
- *   - Trade specials: "TRADE SPECIAL" (red)
- *   - Other deals: use ACF label logic (manual/template/auto) and badge_style.
- */
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   addToCart,
   onNotify,
   onBuyNow,
   className = "",
-  showDealName = false,
   variant = "default",
   customizations,
 }) => {
-  const isFlat = variant === "flat" || variant === "flat-horizontal";
   const isFlatHorizontal = variant === "flat-horizontal";
   const navigate = useNavigate();
-  const [notifyStatus, setNotifyStatus] = React.useState<
+
+  const [notifyStatus, setNotifyStatus] = useState<
     "idle" | "pending" | "sent" | "error"
   >("idle");
-  const [shouldRenderQuickView, setShouldRenderQuickView] =
-    React.useState(false);
-  const [isQuickViewClosing, setIsQuickViewClosing] = React.useState(false);
-  const [isQuickViewOpening, setIsQuickViewOpening] = React.useState(false);
-  const [isImageHovering, setIsImageHovering] = React.useState(false);
-  const hiddenElements = React.useMemo(
+  const [shouldRenderQuickView, setShouldRenderQuickView] = useState(false);
+  const [isQuickViewClosing, setIsQuickViewClosing] = useState(false);
+  const [isQuickViewOpening, setIsQuickViewOpening] = useState(false);
+
+  // Wishlist state tracking
+  const [isWishlisted, setIsWishlisted] = useState<boolean>(() =>
+    isInWishlist(Number(product.id)),
+  );
+
+  useEffect(() => {
+    const handleWishlistChange = () => {
+      setIsWishlisted(isInWishlist(Number(product.id)));
+    };
+    window.addEventListener("belims:wishlist-updated", handleWishlistChange);
+    return () => {
+      window.removeEventListener("belims:wishlist-updated", handleWishlistChange);
+    };
+  }, [product.id]);
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const updated = toggleWishlist({
+      id: Number(product.id),
+      name: product.name,
+      sku: product.sku || "",
+      price: product.price,
+      image: product.image || "",
+      slug: product.slug || "",
+      brand: product.brand,
+      category: product.category,
+    });
+    setIsWishlisted(updated);
+  };
+
+  const hiddenElements = useMemo(
     () => new Set(customizations?.hiddenElements || []),
     [customizations?.hiddenElements],
   );
@@ -172,18 +196,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const consumerBest = consumerDeal?.bestDeal;
   const isDailyDeal = consumerBest?.type === "deal_of_day";
   const isWeeklyDeal = consumerBest?.type === "weekly_special";
-  const isLowStockUrgent = product.stock > 0 && product.stock <= 2;
 
-  const dailyDealEndsAt = React.useMemo(() => {
+  const dailyDealEndsAt = useMemo(() => {
     const end = new Date();
     end.setHours(23, 59, 59, 999);
     return end;
   }, []);
-  const [dailyTimeLeft, setDailyTimeLeft] = React.useState(() =>
+  const [dailyTimeLeft, setDailyTimeLeft] = useState(() =>
     getTimeLeft(dailyDealEndsAt),
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isDailyDeal) return;
     const timer = window.setInterval(() => {
       setDailyTimeLeft(getTimeLeft(dailyDealEndsAt));
@@ -193,18 +216,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   // Price sources
   const retailPrice = (product.regular_price || product.price || 0) as number;
-  const productPrice = (product.price || 0) as number;
 
-  // Consumer sale price:
-  // prefer consumer deal price, else product.price, else sale_price fallback.
   const consumerPrice = ((consumerDeal?.price ??
     product.price ??
     product.sale_price ??
     retailPrice) ||
     retailPrice) as number;
 
-  // Consumer compare-at:
-  // prefer consumer deal compareAtPrice, else regular_price when it is higher.
   const consumerCompareAtRaw =
     (consumerDeal?.compareAtPrice as number | undefined | null) ??
     ((product.regular_price && product.regular_price > consumerPrice
@@ -216,7 +234,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       ? consumerCompareAtRaw
       : null;
 
-  // ACF behavior: defaults to true if undefined
   const shouldShowStrikethrough = consumerBest?.show_strikethrough !== false;
 
   const hasConsumerStrike =
@@ -229,7 +246,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     ? Math.max(0, (consumerCompareAt as number) - consumerPrice)
     : 0;
 
-  // Trade price
   const tradePrice =
     isTradeSpecial && tradeDeal?.price ? (tradeDeal.price as number) : 0;
 
@@ -238,20 +254,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       ? Math.max(0, retailPrice - tradePrice)
       : 0;
 
-  // Display price (dominant)
-  // - Trade special: dominant price is RETAIL (per your requirement)
-  // - Otherwise: consumer price
   const displayPrice = isTradeSpecial ? retailPrice : consumerPrice;
 
-  // ----------------------------
   // Badge generation
-  // ----------------------------
   const activeDeal = isTradeSpecial ? tradeBest : consumerBest;
-
   const labelMode = (activeDeal as any)?.label_mode || "auto";
   const showBadge = (activeDeal as any)?.show_badge !== false;
 
-  // Percent off: only meaningful for non-trade strikes
   const percentOff =
     !isTradeSpecial && consumerCompareAt && consumerCompareAt > 0
       ? Math.round(
@@ -260,7 +269,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       : 0;
 
   const getBadgeLabel = (): string | undefined => {
-    if (!activeDeal || !showBadge) return undefined;
+    if (!activeDeal || !showBadge) {
+      if (product.sale_price && product.regular_price && product.regular_price > product.sale_price) {
+        return "SALE";
+      }
+      return undefined;
+    }
 
     if (labelMode === "manual") {
       return (
@@ -290,7 +304,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         .replace("{percent_off}", String(pct));
     }
 
-    // auto
     const type = (activeDeal as any)?.type;
     if (isTradeSpecial) return "TRADE SPECIAL";
     if (type === "clearance") return "CLEARANCE";
@@ -305,60 +318,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     "sale") as "sale" | "clearance" | "info" | "trade" | string;
 
   const badgeClass = (() => {
-    // premium defaults: red for "sale"; keep others restrained
-    if (isTradeSpecial) return "left-3 bg-belims-accent text-white";
-    if (badgeStyle === "clearance") return "left-3 bg-[#DF1119] text-white";
-    if (badgeStyle === "info") return "left-3 bg-[#ECF0F1] text-[#04223E]";
-    if (badgeStyle === "trade") return "right-3 bg-[#ECF0F1] text-[#04223E]";
-    return "left-3 bg-[#DF1119] text-white";
+    if (isTradeSpecial) return "bg-belims-accent text-white";
+    if (badgeStyle === "clearance") return "bg-[#DF1119] text-white";
+    if (badgeStyle === "info") return "bg-[#ECF0F1] text-[#04223E]";
+    if (badgeStyle === "trade") return "bg-[#ECF0F1] text-[#04223E]";
+    return "bg-deal-sale text-white";
   })();
 
-  const stockLevel = product.stock ?? 0;
-  const stockIndicator = (() => {
-    if (stockLevel <= 0) {
-      return {
-        text: "Out of stock",
-        tone: "text-stock-out",
-        dot: "bg-stock-out",
-        light: "bg-stock-out-bg",
-      };
-    }
-
-    if (stockLevel <= 3) {
-      return {
-        text: `Only ${stockLevel} left`,
-        tone: "text-stock-low",
-        dot: "bg-stock-low",
-        light: "bg-stock-low-bg",
-      };
-    }
-
-    if (stockLevel <= 10) {
-      return {
-        text: "Low stock",
-        tone: "text-stock-low",
-        dot: "bg-stock-low",
-        light: "bg-stock-low-bg",
-      };
-    }
-
-    return {
-      text: "In stock",
-      tone: "text-stock-ok",
-      dot: "bg-stock-ok",
-      light: "bg-stock-ok-bg",
-    };
-  })();
-
-  // ----------------------------
-  // Add to cart (wire price mode)
-  // ----------------------------
   const addWithPriceMode = (mode: "retail" | "trade") => {
-    // Block backorder and zero/invalid price products
     if (!isProductPurchasable(product)) return;
 
     const p = { ...product };
-
     if (mode === "trade" && isTradeSpecial && tradeBest?.deal_id) {
       p.cartMetadata = {
         priceMode: "trade",
@@ -394,16 +364,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     handleNotify,
   };
 
-  const quickViewIconAction = customizations?.actions?.quickViewIcon;
-  const quickViewButtonAction = customizations?.actions?.quickViewButton;
-  const resolvedCategoryText =
-    typeof customizations?.categoryText === "function"
-      ? customizations.categoryText(product)
-      : customizations?.categoryText;
-  const imageBlockClassName =
-    customizations?.imageBlockClassName ||
-    (isFlatHorizontal ? "h-full w-[33%]" : "h-52 min-h-[260px]");
-
   const openQuickView = actionHelpers.openQuickView;
   const closeQuickView = actionHelpers.closeQuickView;
 
@@ -421,10 +381,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       addWithPriceMode(isTradeSpecial ? "trade" : "retail");
     }
     closeQuickView();
-    navigate("/checkout");
+    if (onBuyNow) {
+      onBuyNow(product);
+    } else {
+      navigate("/checkout");
+    }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!shouldRenderQuickView) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeQuickView();
@@ -434,396 +398,189 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [shouldRenderQuickView]);
 
+  const productUrl = buildProductUrl(product);
+  const displayCategory =
+    (typeof customizations?.categoryText === "function"
+      ? customizations.categoryText(product)
+      : customizations?.categoryText) ||
+    product.category ||
+    product.brand ||
+    "Hardware";
+
   return (
     <>
-      <style>
-        {`@keyframes deal-marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}
-      </style>
-      <div
+      <article
         className={[
-          `relative flex h-full overflow-hidden ${
-            isFlatHorizontal ? "flex-row" : "flex-col"
+          `group flex flex-col h-full rounded-2xl border border-border/70 bg-white p-3 sm:p-4 shadow-xs hover:shadow-md hover:border-border-strong transition-all duration-300 ${
+            isFlatHorizontal ? "sm:flex-row sm:gap-4" : ""
           }`,
-          isFlat ? "min-w-full max-w-full w-full" : "w-full min-w-0 max-w-full",
-          isFlat ? "bg-white" : "rounded-lg bg-white transition-shadow",
           className,
         ].join(" ")}
-        onMouseEnter={() => setIsImageHovering(true)}
-        onMouseLeave={() => setIsImageHovering(false)}
       >
         {customizations?.slots?.beforeImage?.(product)}
 
-        {/* Deal Badge */}
-        {badgeLabel && !isHidden("badge") && (
-          <div
-            className={[
-              "absolute top-3 z-10 rounded-2xl px-2.5 py-1 font-semibold uppercase",
-              isFlat ? "text-[10px]" : "text-[11px]",
-              badgeClass,
-            ].join(" ")}
-          >
-            {badgeLabel}
-          </div>
-        )}
-
-        {/* Image */}
-        <Link
-          to={buildProductUrl(product)}
-          className={`relative flex items-center justify-center rounded-lg bg-surface-muted overflow-hidden ${
-            imageBlockClassName
-          } ${isFlat && !isFlatHorizontal ? "" : !isFlatHorizontal ? "p-5" : ""}`}
+        {/* Image Container */}
+        <div
+          className={`relative aspect-square w-full rounded-xl bg-[#F8F9FA] overflow-hidden flex items-center justify-center p-3 mb-3 ${
+            isFlatHorizontal ? "sm:w-48 sm:mb-0 sm:flex-shrink-0" : ""
+          }`}
         >
-          {/* Quick View Icon Button - Top Right */}
-          {!isHidden("quickViewIcon") && (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (quickViewIconAction?.onClick) {
-                  quickViewIconAction.onClick(product, actionHelpers);
-                  return;
-                }
-                openQuickView();
-              }}
-              className={[
-                "group absolute right-2 top-4 z-20 h-10 w-10 overflow-hidden rounded-full border border-border bg-white text-text transition-all duration-300 ease-out hover:border-border-strong hover:bg-surface-dark hover:text-white",
-                isImageHovering
-                  ? "translate-x-0 opacity-100"
-                  : "translate-x-4 opacity-0",
-                quickViewIconAction?.className || "",
-              ].join(" ")}
-              aria-label={quickViewIconAction?.ariaLabel || "Quick view"}
-            >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
-              <span className="relative z-10 flex items-center justify-center">
-                {quickViewIconAction?.icon || <Eye size={18} strokeWidth={2} />}
-              </span>
-            </button>
-          )}
-
-          {product.image ? (
-            <>
-              {/* Image */}
+          {/* Main Product Image Link */}
+          <Link
+            to={productUrl}
+            className="flex h-full w-full items-center justify-center"
+          >
+            {product.image ? (
               <img
                 src={product.image}
                 alt={product.name}
                 loading="lazy"
                 decoding="async"
-                className={[
-                  "absolute max-h-[165px] max-w-[160px] p-4 object-contain transition-transform duration-300 mix-blend-multiply",
-                  isImageHovering ? "scale-90" : "scale-100",
-                  customizations?.imageClassName || "",
-                ].join(" ")}
+                referrerPolicy="no-referrer"
+                className="max-h-full max-w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105"
               />
-            </>
-          ) : (
-            <div className="flex h-full w-full items-center justify-center rounded bg-[#F2F2F2] text-sm text-text-secondary">
-              No image
-            </div>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs text-text-tertiary">
+                No image
+              </div>
+            )}
+          </Link>
+
+          {/* Wishlist Floating Button (shows on hover) */}
+          <button
+            type="button"
+            onClick={handleToggleWishlist}
+            className={`absolute right-2.5 top-2.5 z-10 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-xs text-text transition-all duration-200 hover:bg-white hover:text-red-500 ${
+              isWishlisted
+                ? "opacity-100 text-red-500"
+                : "opacity-0 group-hover:opacity-100"
+            }`}
+            aria-label={
+              isWishlisted ? "Remove from wishlist" : "Add to wishlist"
+            }
+            title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          >
+            <Heart
+              size={17}
+              className={isWishlisted ? "fill-red-500 text-red-500" : ""}
+            />
+          </button>
+
+          {/* Deal / Sale Badge (Top Left) */}
+          {badgeLabel && !isHidden("badge") && (
+            <span
+              className={`absolute left-2.5 top-2.5 z-10 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xs ${badgeClass}`}
+            >
+              {badgeLabel}
+            </span>
           )}
 
+          {/* Daily Deal Timer Badge if active */}
           {isDailyDeal && !isFlatHorizontal && !isHidden("dailyMarquee") && (
-            <div
-              className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-surface-muted transition-opacity duration-200 ease-out ${
-                isImageHovering ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              <div className="flex items-center justify-center gap-4 py-2 pl-3 pr-4">
-                {/*  <span className="text-grey-900 font-semibold text-[13px]">
-                  Deal ends:
-                </span> */}
-                <span className="text-deal-sale font-semibold text-[13px] text-center">
-                  {formatTwo(dailyTimeLeft.hours)}H{" "}
-                  {formatTwo(dailyTimeLeft.minutes)}M{" "}
-                  {formatTwo(dailyTimeLeft.seconds)}S
-                </span>
-              </div>
+            <div className="absolute left-2 right-2 bottom-2 z-10 px-1 py-1 rounded bg-white/95 border border-border text-center shadow-xs backdrop-blur-xs">
+              <span className="text-deal-sale font-semibold text-[11px]">
+                {formatTwo(dailyTimeLeft.hours)}h {formatTwo(dailyTimeLeft.minutes)}m {formatTwo(dailyTimeLeft.seconds)}s
+              </span>
             </div>
           )}
-
-          {isWeeklyDeal && !isFlatHorizontal && !isHidden("weeklyMarquee") && (
-            <div
-              className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-surface-muted transition-opacity duration-200 ease-out ${
-                isImageHovering ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              <div
-                className="flex items-center gap-4 py-2 pl-3 pr-4 whitespace-nowrap"
-                style={{
-                  animation: "deal-marquee 25s linear infinite",
-                  width: "max-content",
-                }}
-              >
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <div
-                    key={`weekly-deal-${index}`}
-                    className="flex items-center gap-2 text-text font-semibold text-[13px]"
-                  >
-                    <Zap className="h-4 w-4 text-primary-soft" />
-                    <span>Weekly Deal</span>
-                  </div>
-                ))}
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <div
-                    key={`weekly-deal-dup-${index}`}
-                    className="flex items-center gap-2 text-text font-semibold text-[13px]"
-                  >
-                    <Zap className="h-4 w-4 text-primary-soft" />
-                    <span>Weekly Deal</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isTradeSpecial &&
-            tradePrice > 0 &&
-            !isFlatHorizontal &&
-            !isHidden("tradeMarquee") && (
-              <div
-                className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded-md bg-white border border-surface-muted transition-opacity duration-200 ease-out ${
-                  isImageHovering ? "opacity-0" : "opacity-100"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3 px-1.5 py-2">
-                  <span className="text-[13px] font-semibold text-belims-accent">
-                    Trade price available
-                  </span>
-                  {/* <span className="text-[13px] font-bold text-belims-accent">
-                  {formatMoney(tradePrice)}
-                </span> */}
-                </div>
-              </div>
-            )}
-
-          {isLowStockUrgent &&
-            !isFlatHorizontal &&
-            !isDailyDeal &&
-            !isWeeklyDeal &&
-            !(isTradeSpecial && tradePrice > 0) &&
-            !isHidden("lowStockMarquee") && (
-              <div
-                className={`absolute left-4 right-4 bottom-3 z-10 px-1 overflow-hidden rounded bg-white border border-surface-muted transition-opacity duration-200 ease-out ${
-                  isImageHovering ? "opacity-0" : "opacity-100"
-                }`}
-              >
-                <div
-                  className="flex items-center gap-4 py-2 pl-3 pr-4 whitespace-nowrap"
-                  style={{
-                    animation: "deal-marquee 35s linear infinite",
-                    width: "max-content",
-                  }}
-                >
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div
-                      key={`low-stock-${index}`}
-                      className="flex items-center gap-2 text-text font-semibold text-[13px]"
-                    >
-                      <Zap className="h-4 w-4 text-primary-soft" />
-                      <span>Low stock. Order soon</span>
-                    </div>
-                  ))}
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div
-                      key={`low-stock-dup-${index}`}
-                      className="flex items-center gap-2 text-text font-semibold text-[13px]"
-                    >
-                      <Zap className="h-4 w-4 text-primary-soft" />
-                      <span>Low stock. Order soon</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          {/* Quick View Button - Animated Reveal */}
-          {!isHidden("quickViewButton") && (
-            <div
-              className={`absolute bottom-3 left-0 right-0 flex justify-center transition-all duration-500 ease-in-out z-50 transform ${
-                isImageHovering
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-7"
-              }`}
-            >
-              <button
-                type="button"
-                className={
-                  quickViewButtonAction?.className ||
-                  "group absolute left-4 right-4 bottom-0 flex h-11 items-center justify-center overflow-hidden rounded-md border border-surface-muted bg-white px-1 py-2 text-base font-bold text-text transition-colors hover:border-border-strong hover:text-white"
-                }
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (quickViewButtonAction?.onClick) {
-                    quickViewButtonAction.onClick(product, actionHelpers);
-                    return;
-                  }
-                  addWithPriceMode(isTradeSpecial ? "trade" : "retail");
-                }}
-              >
-                <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
-
-                <span className="relative z-10 flex items-center gap-3">
-                  {quickViewButtonAction?.icon && (
-                    <span className="inline-flex items-center justify-center">
-                      {quickViewButtonAction.icon}
-                    </span>
-                  )}
-                  <span className="font-heading font-semibold transition-colors group-hover:text-white">
-                    {quickViewButtonAction?.label || "Add to cart"}
-                  </span>
-                </span>
-              </button>
-            </div>
-          )}
-        </Link>
+        </div>
 
         {customizations?.slots?.afterImage?.(product)}
 
         {/* Content */}
         {customizations?.slots?.beforeContent?.(product)}
-        <div
-          className={`flex flex-1 flex-col ${
-            isFlat ? "" : "py-5 pb-0 px-1"
-          } ${isFlatHorizontal ? "px-4 pr-0" : ""}`}
-        >
+        <div className="flex flex-1 flex-col justify-between">
+          <div>
+            {/* Category above title */}
+            {!isHidden("category") && (
+              <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-text-tertiary mb-1 truncate">
+                {displayCategory}
+              </p>
+            )}
 
-          {product.brand && !isHidden("brand") && (
-            <Link
-              to={`/shop?brand=${encodeURIComponent(product.brand)}`}
-              onClick={(e) => e.stopPropagation()}
-              className="mb-1 inline-block text-[11px] font-semibold uppercase tracking-wide text-text-tertiary hover:text-primary transition-colors"
-            >
-              {product.brand}
-            </Link>
-          )}
+            {/* Product Title */}
+            <h3 className="font-heading font-semibold text-text text-sm sm:text-[15px] line-clamp-2 min-h-[38px] leading-snug hover:text-belims-blue transition-colors mb-2">
+              <Link to={productUrl}>{product.name}</Link>
+            </h3>
+          </div>
 
-          {/* Title - Fixed height for 2 lines */}
-          <Link
-            to={buildProductUrl(product)}
-            className={`mb-0 mt-0 line-clamp-2 font-heading font-semibold leading-[1.35] text-text min-h-[35px] ${
-              isFlat ? "text-[15px] min-h-[10px] mt-1" : "text-base"
-            }`}
-          >
-            {product.name}
-          </Link>
+          {/* Price Area: Dominant Price + Sale Price replacing stars */}
+          <div className="mt-auto pt-1">
+            <div className="flex items-center justify-between gap-2 min-h-[26px]">
+              <span className="font-heading text-base sm:text-lg font-bold text-text">
+                {formatMoney(displayPrice)}
+              </span>
 
-          {/* <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase text-text-secondary">
-            <span
-              className={`flex h-4 w-4 items-center justify-center rounded-full ${stockIndicator.light}`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${stockIndicator.dot}`}
-              />
-            </span>
-            <span className={stockIndicator.tone}>{stockIndicator.text}</span>
-          </div> */}
-
-          {/* SKU */}
-          {/* <div className="mb-4 text-[11px] font-semibold uppercase text-text-secondary">
-            {product.sku || product.id}
-          </div> */}
-
-          {/* Price Block */}
-          {isFlat ? (
-            <div className="mt-auto py-2">
-              {isTradeSpecial && tradePrice > 0 ? (
-                isFlatHorizontal ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-left">
-                      <span className="font-heading text-base font-bold text-belims-accent bg-belims-accent/10 inline-block rounded px-2 py-1">
-                        {formatMoney(tradePrice)}
-                      </span>
-                    </div>
-                    <div className="text-right flex flex-col justify-between">
-                      <span className="font-heading text-[13] font-semibold text-deal-strike line-through">
-                        {formatMoney(retailPrice)}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[12px] font-semibold text-deal-strike line-through">
-                      {formatMoney(retailPrice)}
-                    </span>
-                    <span className="font-heading text-[16px] font-bold text-belims-accent bg-belims-accent/10 inline-block rounded px-2 py-1">
-                      {formatMoney(tradePrice)}
-                    </span>
-                  </div>
-                )
-              ) : (
-                <span className="font-heading text-base font-bold text-text">
-                  {formatMoney(displayPrice)}
+              {hasConsumerStrike && consumerCompareAt ? (
+                <span className="text-xs sm:text-sm font-semibold text-text-tertiary line-through">
+                  {formatMoney(consumerCompareAt)}
                 </span>
-              )}
+              ) : isTradeSpecial && tradePrice > 0 ? (
+                <span className="text-xs font-bold text-belims-accent bg-belims-accent/10 px-1.5 py-0.5 rounded">
+                  Trade: {formatMoney(tradePrice)}
+                </span>
+              ) : null}
             </div>
-          ) : (
-            <div className="mt-auto py-1 pb-3">
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
-                {/* Dominant price */}
-                <span className="font-heading text-base font-bold text-deal-sale">
-                  {formatMoney(displayPrice)}
-                </span>
 
-                {/* Non-trade deals: compare → sale */}
-                {hasConsumerStrike && (
-                  <span className="text-[14px] font-light text-text-tertiary line-through">
-                    {formatMoney(consumerCompareAt as number)}
+            {/* Action Buttons: Add to cart + Quick View square button */}
+            <div className="mt-3 flex items-center gap-2">
+              {product.stock > 0 ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    addWithPriceMode(isTradeSpecial ? "trade" : "retail");
+                  }}
+                  className="flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-border bg-white px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold font-heading text-text shadow-2xs transition-all duration-200 hover:bg-belims-blue hover:border-belims-blue hover:text-white"
+                >
+                  <ShoppingCart size={15} />
+                  <span className="truncate">Add to cart</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleNotify}
+                  disabled={notifyStatus === "pending" || notifyStatus === "sent"}
+                  className="flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-border bg-gray-50 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold font-heading text-text-tertiary shadow-2xs transition-colors hover:bg-gray-100"
+                >
+                  {notifyStatus === "sent" ? (
+                    <CheckCircle size={15} className="text-green-600" />
+                  ) : (
+                    <Bell size={15} />
+                  )}
+                  <span className="truncate">
+                    {notifyStatus === "sent"
+                      ? "Notified"
+                      : notifyStatus === "pending"
+                        ? "Setting..."
+                        : "Notify me"}
                   </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* CTA */}
-          {/* {product.stock > 0 ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                addWithPriceMode(isTradeSpecial ? "trade" : "retail");
-              }}
-              className={`mt-0 w-full rounded-md bg-[#04223E] font-heading text-sm font-semibold text-white transition-colors ${
-                isTradeSpecial
-                  ? "hover:bg-belims-accent"
-                  : "hover:bg-[rgb(50_39_131_/_var(--tw-bg-opacity,1))]"
-              } ${isFlat ? "h-9" : "h-11"}`}
-            >
-              Add to cart
-            </button>
-          ) : (
-            <button
-              onClick={handleNotify}
-              disabled={notifyStatus === "pending" || notifyStatus === "sent"}
-              className={[
-                `mt-0 ${isFlat ? "h-9" : "h-11"} w-full rounded-md font-heading text-sm font-semibold`,
-                "flex items-center justify-center gap-2 transition-colors",
-                notifyStatus === "sent"
-                  ? "bg-green-50 text-green-800 border border-green-200"
-                  : notifyStatus === "error"
-                    ? "bg-red-50 text-red-700 border border-red-200"
-                    : "bg-[#04223E] text-white hover:bg-red-600",
-                notifyStatus === "pending" ? "opacity-70 cursor-wait" : "",
-              ].join(" ")}
-            >
-              {notifyStatus === "sent" ? (
-                <CheckCircle size={16} />
-              ) : (
-                <Bell size={16} />
+                </button>
               )}
-              {notifyStatus === "sent"
-                ? "Notification set"
-                : notifyStatus === "pending"
-                  ? "Setting reminder…"
-                  : notifyStatus === "error"
-                    ? "Try again"
-                    : "Notify me"}
-            </button>
-          )} */}
-        </div>
-        {customizations?.slots?.afterContent?.(product)}
-      </div>
 
+              {/* Quick View Button (Square) */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openQuickView();
+                }}
+                className="flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-white text-text shadow-2xs transition-all duration-200 hover:border-text hover:bg-surface-dark hover:text-white"
+                title="Quick View"
+                aria-label="Quick View"
+              >
+                <Eye size={17} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {customizations?.slots?.afterContent?.(product)}
+      </article>
+
+      {/* Quick View Modal */}
       <QuickView
         product={product}
         quickViewId={quickViewId}

@@ -77,8 +77,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Register multi-step
-  const [registerStep, setRegisterStep] = useState<1 | 2 | 3>(1);
+  // Register (single step)
   const [addressStreet, setAddressStreet] = useState("");
   const [addressCity, setAddressCity] = useState("");
   const [addressProvince, setAddressProvince] = useState("");
@@ -193,14 +192,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
     }
   };
 
-  // --- Register: advance step 1 → 2 ---
-  const handleRegisterStep1 = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setRegisterStep(2);
-  };
-
-  // --- Register: final submission ---
+  // --- Register: single-step submission ---
   const handleRegisterComplete = async (includeAddress: boolean) => {
     setError(null);
     setIsSubmitting(true);
@@ -231,7 +223,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
       const msg = err?.message || "Something went wrong. Please try again.";
       setError(msg);
       showToast(msg, "error");
-      setRegisterStep(1);
     } finally {
       setIsSubmitting(false);
     }
@@ -576,127 +567,93 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
 
           {/* ── REGISTER FLOW ── */}
           {isRegisterMode && (
-            <div className="space-y-6">
-              {/* Step progress bar */}
-              <div className="flex items-center gap-1.5">
-                {([1, 2] as const).map((s) => (
-                  <div
-                    key={s}
-                    className={`h-1 flex-1 rounded-full transition-colors ${s <= registerStep ? "bg-neutral-950" : "bg-neutral-200"}`}
+            <form onSubmit={(e) => { e.preventDefault(); handleRegisterComplete(false); }} className="space-y-5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className={labelClass}>First name</label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    placeholder="Jane"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className={inputClass}
                   />
-                ))}
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClass}>Last name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Smith"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
               </div>
-
-              {/* Step 1: Credentials */}
-              {registerStep === 1 && (
-                <form onSubmit={handleRegisterStep1} className="space-y-5">
-                  <div className="space-y-1.5">
-                    <label className={labelClass}>Email address</label>
-                    <input
-                      type="email"
-                      required
-                      autoFocus
-                      placeholder="name@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className={labelClass}>Password</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <button type="submit" className={primaryButtonClass}>
-                    Create Account
-                  </button>
-                  <p className="text-center text-sm text-neutral-500">
-                    Already have an account?{" "}
-                    {isModal ? (
-                      <button type="button" onClick={onSwitchMode} className="font-medium text-neutral-950 hover:underline">Log in here</button>
-                    ) : (
-                      <Link to="/login" className="font-medium text-neutral-950 hover:underline">Log in here</Link>
-                    )}
-                    .
-                  </p>
-                </form>
-              )}
-
-              {/* Step 2: Personal Details */}
-              {registerStep === 2 && (
-                <form onSubmit={(e) => { e.preventDefault(); handleRegisterComplete(false); }} className="space-y-5">
-                  <h2 className="text-xl font-semibold text-neutral-950">Personal Details</h2>
-                  <div className="space-y-1.5">
-                    <label className={labelClass}>First name</label>
-                    <input
-                      type="text"
-                      required
-                      autoFocus
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className={labelClass}>Last name</label>
-                    <input
-                      type="text"
-                      required
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className={labelClass}>Mobile number</label>
-                    <div className="flex h-12 overflow-hidden rounded-md border border-neutral-200 transition-colors focus-within:border-neutral-950 focus-within:ring-2 focus-within:ring-neutral-950/10">
-                      <select
-                        value={regDialCode}
-                        onChange={(e) => setRegDialCode(e.target.value)}
-                        className="shrink-0 border-r border-neutral-200 bg-neutral-50 px-2 py-2 text-sm outline-none"
-                        aria-label="Country code"
-                      >
-                        {DIAL_CODES.map(({ code, flag }) => (
-                          <option key={code} value={code}>{flag} {code}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="tel"
-                        required
-                        placeholder="82 123 4567"
-                        value={regLocalPhone}
-                        onChange={(e) => setRegLocalPhone(e.target.value.replace(/[^\d\s]/g, ""))}
-                        className="min-w-0 flex-1 px-3 py-2 text-sm text-neutral-950 outline-none placeholder:text-neutral-400"
-                        inputMode="numeric"
-                      />
-                    </div>
-                  </div>
-                  {error && <div className={errorClass}>{error}</div>}
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setRegisterStep(1)}
-                      className={outlineButtonClass}
-                    >
-                      Back
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className={primaryButtonClass}
-                    >
-                      {isSubmitting ? "Please wait..." : "Register"}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
+              <div className="space-y-1.5">
+                <label className={labelClass}>Email address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClass}>Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClass}>Mobile number</label>
+                <div className="flex h-12 overflow-hidden rounded-md border border-neutral-200 transition-colors focus-within:border-neutral-950 focus-within:ring-2 focus-within:ring-neutral-950/10">
+                  <select
+                    value={regDialCode}
+                    onChange={(e) => setRegDialCode(e.target.value)}
+                    className="shrink-0 border-r border-neutral-200 bg-neutral-50 px-2 py-2 text-sm outline-none"
+                    aria-label="Country code"
+                  >
+                    {DIAL_CODES.map(({ code, flag }) => (
+                      <option key={code} value={code}>{flag} {code}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    type="tel"
+                    required
+                    placeholder="82 123 4567"
+                    value={regLocalPhone}
+                    onChange={(e) => setRegLocalPhone(e.target.value.replace(/[^\d\s]/g, ""))}
+                    className="min-w-0 flex-1 px-3 py-2 text-sm text-neutral-950 outline-none placeholder:text-neutral-400"
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+              {error && <div className={errorClass}>{error}</div>}
+              <button type="submit" disabled={isSubmitting} className={primaryButtonClass}>
+                {isSubmitting ? "Please wait..." : "Create Account"}
+              </button>
+              <p className="text-center text-sm text-neutral-500">
+                Already have an account?{" "}
+                {isModal ? (
+                  <button type="button" onClick={onSwitchMode} className="font-medium text-neutral-950 hover:underline">Log in here</button>
+                ) : (
+                  <Link to="/login" className="font-medium text-neutral-950 hover:underline">Log in here</Link>
+                )}
+                .
+              </p>
+            </form>
           )}
 
     </div>

@@ -80,9 +80,6 @@ function getWorldVectorLogoCandidates(name: string, slug?: string) {
 }
 
 function getCmsBaseUrl() {
-  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-    return "http://belims-headless.local/wp-json";
-  }
   return "/api";
 }
 

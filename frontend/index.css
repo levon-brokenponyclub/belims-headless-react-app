@@ -66,19 +66,26 @@
 
   /* ── Typography ── */
   --font-sans: "Archivo", system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
-  --weight-regular: 400;
-  --weight-medium:  600;
-  --weight-bold:    700;
-  --tracking-eyebrow: 0.05em;
-  --leading-tight:   1.20; /* large display headings */
-  --leading-snug:    1.36; /* h2/h3 */
-  --leading-normal:  1.60; /* body, button */
-  --leading-loose:   2.00; /* small-cap button text */
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --tracking-eyebrow: 0.06em;
 
-  /* ── Nexvo type system (canonical Nexvo values) ── */
+  /* ── Named line heights ── */
+  --leading-display:    1.1;
+  --leading-heading:    1.2;
+  --leading-subheading: 1.35;
+  --leading-body:       1.6;
+  --leading-tight:      1.2;
+  --leading-snug:       1.36;
+  --leading-normal:     1.6;
+  --leading-loose:      2.0;
+
+  /* ── Nexvo type system (Bellums retail scale) ── */
   --font-body-family:        Archivo, sans-serif;
-  --font-body-size:          1.5rem;
-  --font-body-line-height:   1.6;
+  --font-body-size:          15px;
+  --font-body-line-height:   var(--leading-body);
   --font-body-weight:        400;
   --font-body-weight-bold:   600;
   --font-body-weight-bolder: 700;
@@ -88,28 +95,28 @@
   --font-heading-weight:         700;
   --font-heading-style:          normal;
   --font-heading-transform:      none;
-  --font-heading-letter-spacing: 0.0em;
-  --font-heading-scale:          1.0;
-  --font-heading-mobile-scale:   0.7;
+  --font-heading-letter-spacing: 0em;
 
   --font-button-family: Archivo, sans-serif;
   --font-button-weight: 700;
 
-  /* Nexvo heading sizes (driven by --font-heading-scale) */
-  --font-h1-size: calc(var(--font-heading-scale) * 4rem);
-  --font-h2-size: calc(var(--font-heading-scale) * 3.2rem);
-  --font-h3-size: calc(var(--font-heading-scale) * 2.8rem);
-  --font-h4-size: calc(var(--font-heading-scale) * 2.2rem);
-  --font-h5-size: calc(var(--font-heading-scale) * 1.8rem);
-  --font-h6-size: calc(var(--font-heading-scale) * 1.6rem);
+  /* ── Heading sizes — direct px, no calc() ── */
+  --font-h1-size: 36px;
+  --font-h2-size: 30px;
+  --font-h3-size: 24px;
+  --font-h4-size: 20px;
+  --font-h5-size: 18px;
+  --font-h6-size: 16px;
 
-  /* Utility text scale (Nexvo canonical values) */
-  --text-xs:    1.2rem;
-  --text-sm:    1.35rem;
-  --text-button: 1.5rem;
-  --text-base:  15px;
-  --text-lg:    1.8rem;
-  --text-xl:    1.96rem;
+  /* ── Mobile heading scale ── */
+  --font-heading-mobile-scale: 0.78;
+
+  /* ── Utility text scale — px only ── */
+  --text-xs:   10px;
+  --text-sm:   11px;
+  --text-base: 15px;
+  --text-lg:   16px;
+  --text-xl:   18px;
   --text-h1: var(--font-h1-size);
   --text-h2: var(--font-h2-size);
   --text-h3: var(--font-h3-size);
@@ -442,7 +449,7 @@
     text-transform: var(--font-heading-transform);
     color: rgb(var(--rgb-text));
     margin: 0;
-    line-height: calc(1 + 0.2 / max(1, var(--font-heading-scale)));
+    line-height: var(--leading-heading);
   }
   .h1 { font-size: var(--font-h1-size); }
   .h2 { font-size: var(--font-h2-size); }
@@ -452,12 +459,12 @@
   .h6 { font-size: var(--font-h6-size); }
 
   @media (max-width: 767.98px) {
-    .h1 { font-size: calc(var(--font-h1-size) * 0.7); }
-    .h2 { font-size: calc(var(--font-h2-size) * 0.7); }
-    .h3 { font-size: calc(var(--font-h3-size) * 0.7); }
-    .h4 { font-size: calc(var(--font-h4-size) * 0.7); }
-    .h5 { font-size: calc(var(--font-h5-size) * 0.7); }
-    .h6 { font-size: calc(var(--font-h6-size) * 0.7); }
+    .h1 { font-size: calc(var(--font-h1-size) * var(--font-heading-mobile-scale)); }
+    .h2 { font-size: calc(var(--font-h2-size) * var(--font-heading-mobile-scale)); }
+    .h3 { font-size: calc(var(--font-h3-size) * var(--font-heading-mobile-scale)); }
+    .h4 { font-size: calc(var(--font-h4-size) * var(--font-heading-mobile-scale)); }
+    .h5 { font-size: calc(var(--font-h5-size) * var(--font-heading-mobile-scale)); }
+    /* h6 stays at 16px on all viewports */
   }
 
   /* ── Eyebrow ── */

@@ -2078,7 +2078,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           {recommendedProducts.map((p) => (
                             <div
                               key={p.id}
-                              className="flex-shrink-0 snap-start basis-[calc((100%-1.5rem)/3)] min-w-0"
+                              className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-4rem)/5)] min-w-0"
                               data-fbw-slider-item
                             >
                               <ProductCard

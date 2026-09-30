@@ -1,0 +1,100 @@
+/* ─── MobileNav custom properties ───────────────────────── */
+:root {
+  --mn-duration: 260ms;
+  --mn-ease:     cubic-bezier(0.4, 0, 0.2, 1);
+  --mn-width:    min(360px, 100vw);
+}
+
+/* ─── Overlay ───────────────────────────────────────────── */
+.mn-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1299;
+  background: rgba(0, 0, 0, 0.46);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mn-duration) var(--mn-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.mn-overlay.mn-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ─── Drawer shell ──────────────────────────────────────── */
+.mn-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1300;
+  width: var(--mn-width);
+  height: 100dvh;
+  background: var(--color-surface, #ffffff);
+  overflow: hidden;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+  transform: translateX(-100%);
+  transition: transform var(--mn-duration) var(--mn-ease);
+  will-change: transform;
+  -webkit-font-smoothing: antialiased;
+}
+.mn-drawer.mn-open {
+  transform: translateX(0);
+}
+
+/* ─── Panel engine ──────────────────────────────────────── */
+/*
+   Three states (CSS handles all animation — no inline styles):
+
+   default                 translateX(100%)    off-screen right, non-interactive
+   [data-state="active"]   translateX(0)       in view, interactive
+   [data-state="behind"]   translateX(-100%)   off-screen left, non-interactive
+
+   inset: 0 guarantees panels always fill the full drawer width regardless of
+   any deferred box-sizing or containing-block quirks — width is derived from
+   the drawer, not the panel itself.
+
+   behind uses -100% (fully off-screen) rather than a parallax -30% so only
+   one panel is ever visible at a time, avoiding any bleed or stacking issues.
+
+   will-change is scoped to active/behind only — applying it to every panel
+   simultaneously would promote all panels to compositor layers, risking
+   incorrect GPU z-ordering on iOS Safari.
+*/
+.mn-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface, #ffffff);
+  transform: translateX(100%);
+  transition: transform var(--mn-duration) var(--mn-ease);
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.mn-panel[data-state="active"] {
+  transform: translateX(0);
+  pointer-events: auto;
+  will-change: transform;
+  z-index: 2;
+}
+.mn-panel[data-state="behind"] {
+  transform: translateX(-100%);
+  pointer-events: none;
+  will-change: transform;
+  z-index: 1;
+}
+
+/* Suppress transitions during instant snap-to-root on re-open */
+.mn-panel.mn-no-anim {
+  transition: none !important;
+}
+
+/* ─── Reduced motion ────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .mn-panel,
+  .mn-drawer,
+  .mn-overlay {
+    transition-duration: 1ms !important;
+  }
+}

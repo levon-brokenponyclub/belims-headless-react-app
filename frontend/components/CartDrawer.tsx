@@ -28,7 +28,10 @@ interface CartDrawerProps {
   items: CartItem[];
   updateQuantity: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
+  isAuthenticated?: boolean;
+  onRequestAuth?: () => void;
   onCheckout?: () => void;
+  onViewCart?: () => void;
   onApplyCoupon?: (coupon: { code: string; discount_type: string; amount: string }) => void;
   couponDetails?: { code: string; discount_type: string; amount: string } | null;
   onSaveOrderNote?: (note: string) => void;
@@ -43,7 +46,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   items,
   updateQuantity,
   removeItem,
+  isAuthenticated,
+  onRequestAuth,
   onCheckout,
+  onViewCart,
   onApplyCoupon,
   couponDetails,
   onSaveOrderNote,
@@ -383,15 +389,24 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
             </div>
 
-            <div className="px-6 pb-6">
+            <div className="px-6 pb-6 space-y-2">
               <button
                 type="button"
-                onClick={onCheckout}
+                onClick={isAuthenticated ? onCheckout : onRequestAuth}
                 className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-belims-blue text-base font-medium text-white transition-colors hover:bg-deal-sale focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-strong focus-visible:ring-offset-2"
               >
                 <span>Checkout</span>
                 <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
               </button>
+              {onViewCart && (
+                <button
+                  type="button"
+                  onClick={onViewCart}
+                  className="inline-flex h-10 w-full items-center justify-center rounded-md border border-border text-sm font-medium text-text-secondary hover:bg-surface-muted transition-colors"
+                >
+                  View Cart
+                </button>
+              )}
             </div>
 
             <div className="flex items-center justify-center gap-6 border-t border-border px-6 pb-4 pt-4 text-[12px] font-normal leading-4 tracking-normal text-text">

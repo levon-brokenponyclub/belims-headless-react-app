@@ -47,6 +47,8 @@ import { AuthPage } from "./components/AuthPage";
 import { DeliveryDetailsAddAddress } from "./components/DeliveryDetailsAddAddress";
 import { AccountPage } from "./components/AccountPage";
 import { WishlistPage } from "./components/WishlistPage";
+import { CartPage } from "./components/CartPage";
+import { AuthModal } from "./components/AuthModal";
 import { Toast } from "./components/Toast";
 import { CookieConsent } from "./components/CookieConsent";
 import { Skeleton, SkeletonLine, SkeletonImage } from "./components/Skeleton";
@@ -1204,7 +1206,10 @@ function MainApp(props) {
   const [displayLocation, setDisplayLocation] = useState(location);
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [isCookieConsentOpen, setIsCookieConsentOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const isCheckoutRoute = ["/checkout", "/login", "/register"].includes(displayLocation.pathname);
+
+  const openAuthForCheckout = () => setIsAuthModalOpen(true);
 
   useEffect(() => {
     const isSameLocation =
@@ -1396,6 +1401,20 @@ function MainApp(props) {
               }
             />
             <Route
+              path="/cart"
+              element={
+                <CartPage
+                  cartItems={props.cartItems}
+                  updateQuantity={props.updateQuantity}
+                  removeItem={props.removeItem}
+                  couponDetails={props.cartCoupon}
+                  onApplyCoupon={props.onCartApplyCoupon}
+                  isAuthenticated={isAuthenticated}
+                  onRequestAuth={openAuthForCheckout}
+                />
+              }
+            />
+            <Route
               path="/wishlist"
               element={<WishlistPage addToCart={props.addToCart} />}
             />
@@ -1441,6 +1460,17 @@ function MainApp(props) {
 
       {/* <FreeShippingWidget cartItems={props.cartItems} /> */}
 
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={(user) => {
+          props.handleLogin(user);
+          setIsAuthModalOpen(false);
+          navigate("/checkout");
+        }}
+        showToast={props.showToast}
+      />
+
       {!isCheckoutRoute && !SHOW_COMING_SOON && (
         <CartDrawer
           isOpen={props.isCartOpen}
@@ -1448,9 +1478,18 @@ function MainApp(props) {
           items={props.cartItems}
           updateQuantity={props.updateQuantity}
           removeItem={props.removeItem}
+          isAuthenticated={isAuthenticated}
+          onRequestAuth={() => {
+            props.setIsCartOpen(false);
+            openAuthForCheckout();
+          }}
           onCheckout={() => {
             props.setIsCartOpen(false);
             navigate("/checkout");
+          }}
+          onViewCart={() => {
+            props.setIsCartOpen(false);
+            navigate("/cart");
           }}
           onSaveOrderNote={props.onCartSaveOrderNote}
           onApplyCoupon={props.onCartApplyCoupon}

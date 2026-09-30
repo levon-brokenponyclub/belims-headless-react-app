@@ -285,6 +285,27 @@ export const fetchCategories = async (): Promise<WooCommerceCategory[]> => {
   }
 };
 
+export interface ProductFiltersData {
+  range?: Array<{ id: number; name: string; slug: string; count: number }>;
+  color?: Array<{ id: number; name: string; slug: string; count: number }>;
+  brand?: Array<{ id: number; name: string; slug: string; count: number }>;
+}
+
+/**
+ * Fetch Product dynamic filters (range, color, brand)
+ */
+export const fetchProductFilters = async (): Promise<ProductFiltersData> => {
+  try {
+    const url = `${BASE_URL}/products/filters`;
+    const data = await cachedGetJson<ProductFiltersData>(url);
+    if (data && typeof data === "object") {
+      return data;
+    }
+  } catch {}
+
+  return { range: [], color: [], brand: [] };
+};
+
 /**
  * Create an Order via custom API
  */

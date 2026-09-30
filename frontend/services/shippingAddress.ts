@@ -270,3 +270,132 @@ export const resolveAddressFromPostalCode = async (
 
   return null;
 };
+
+// ─── Postal-code-only location (guest address pill) ───
+
+export interface PostalCodeSuggestion {
+  id: string;
+  postalCode: string;
+  suburb: string;
+  city: string;
+  province: string;
+}
+
+const pickSuburb = (address: any): string =>
+  address?.suburb ||
+  address?.neighbourhood ||
+  address?.neighborhood ||
+  address?.quarter ||
+  address?.village ||
+  address?.town ||
+  address?.city ||
+  "";
+
+export const buildPostalCodeAddress = (location: {
+  postalCode: string;
+  suburb?: string;
+  city?: string;
+  province?: string;
+}): ShippingAddress => {
+  const place = location.suburb || location.city || "";
+  return {
+    street: "",
+    city: location.city || location.suburb || "",
+    province: normalizeProvince(location.province),
+    postalCode: location.postalCode,
+    country: "ZA",
+    label: [location.postalCode, place].filter(Boolean).join(", "),
+  };
+};
+
+const toSuggestion = (
+  result: any,
+  fallbackPostalCode: string,
+): PostalCodeSuggestion | null => {
+  const mapped = mapNominatimAddress(result);
+  if (!mapped) return null;
+  const postalCode = (result?.address?.postcode || fallbackPostalCode).trim();
+  if (postalCode !== fallbackPostalCode) return null;
+  const suburb = pickSuburb(result.address);
+  if (!suburb && !mapped.city) return null;
+  return {
+    id: `${postalCode}|${suburb}|${mapped.city}`.toLowerCase(),
+    postalCode,
+    suburb,
+    city: mapped.city,
+    province: mapped.province,
+  };
+};
+
+export const searchPostalCodeSuggestions = async (
+  postalCode: string,
+  signal?: AbortSignal,
+): Promise<PostalCodeSuggestion[]> => {
+  const code = postalCode.trim();
+  if (!/^\d{4}$/.test(code)) return [];
+
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&countrycodes=za&addressdetails=1&limit=10&postalcode=${encodeURIComponent(code)}`,
+    { signal },
+  );
+  if (!response.ok) return [];
+
+  const results = (await response.json()) as any[];
+  if (!Array.isArray(results)) return [];
+
+  const seen = new Set<string>();
+  const out: PostalCodeSuggestion[] = [];
+  for (const result of results) {
+    const suggestion = toSuggestion(result, code);
+    if (!suggestion || seen.has(suggestion.id)) continue;
+    seen.add(suggestion.id);
+    out.push(suggestion);
+  }
+  return out;
+};
+
+export type LocationErrorCode = "unsupported" | "denied" | "not_found";
+
+export class LocationError extends Error {
+  code: LocationErrorCode;
+  constructor(code: LocationErrorCode) {
+    super(code);
+    this.code = code;
+  }
+}
+
+export const detectPostalCodeFromLocation =
+  async (): Promise<ShippingAddress> => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      throw new LocationError("unsupported");
+    }
+
+    const position = await new Promise<GeolocationPosition>(
+      (resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 300000,
+        }),
+    ).catch((error: GeolocationPositionError) => {
+      throw new LocationError(error?.code === 1 ? "denied" : "not_found");
+    });
+
+    const { latitude, longitude } = position.coords;
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+    ).catch(() => null);
+    if (!response?.ok) throw new LocationError("not_found");
+
+    const data = await response.json();
+    const postalCode = (data?.address?.postcode || "").trim();
+    if (!/^\d{4}$/.test(postalCode)) throw new LocationError("not_found");
+
+    const mapped = mapNominatimAddress(data);
+    return buildPostalCodeAddress({
+      postalCode,
+      suburb: pickSuburb(data.address),
+      city: mapped?.city,
+      province: mapped?.province,
+    });
+  };

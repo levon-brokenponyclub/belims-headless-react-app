@@ -23,11 +23,7 @@ class Belims_Products_Endpoint {
         'stock',
         'stock_status',
         'maxStock',
-        'in_stock',
-        'rating',
-        'reviews',
-        'sku',
-        'brand',
+        
         'isFeatured',
         'deals',
         'best_deal_consumer',
@@ -285,11 +281,7 @@ class Belims_Products_Endpoint {
             'stock' => intval($product->get_stock_quantity()),
             'stock_status' => $product->is_in_stock() ? 'instock' : 'outofstock',
             'maxStock' => 100,
-            'in_stock' => $product->is_in_stock(),
-            'rating' => floatval($product->get_average_rating()),
-            'reviews' => intval($product->get_review_count()),
-            'sku' => $product->get_sku(),
-            'brand' => $brand ?: '',
+            
             'isFeatured' => $this->is_product_featured($product),
             'deals' => $normalized_deals,
             'best_deal_consumer' => $best_consumer_deal,
@@ -356,11 +348,7 @@ class Belims_Products_Endpoint {
             'acf' => $acf_data,
             'deals' => $normalized_deals,
             'best_deal_consumer' => $best_consumer_deal,
-            'best_deal_trade' => $best_trade_deal,
-            'rating' => floatval($product->get_average_rating()),
-            'reviews' => intval($product->get_review_count()),
-            'stock' => intval($product->get_stock_quantity()),
-            'stock_status' => $product->is_in_stock() ? 'instock' : 'outofstock',
+            
             'maxStock' => 100, // UI reference
             'weight' => $weight,
             'description' => apply_filters('the_content', $product->get_description()),
@@ -656,12 +644,11 @@ class Belims_Products_Endpoint {
                     $candidates[] = array(
                         'id' => (string) $bundled_wc_product->get_id(),
                         'name' => $bundled_wc_product->get_name(),
+                        'slug' => $bundled_wc_product->get_slug(),
                         'price' => $price_incl_vat,
                         'regular_price' => $price_incl_vat,
                         'image' => wp_get_attachment_url($bundled_wc_product->get_image_id()) ?: '',
                         'rating' => $rating,
-                        'reviews' => intval($bundled_wc_product->get_review_count()),
-                        'stock' => intval($bundled_wc_product->get_stock_quantity()),
                     );
                 }
             }
@@ -713,13 +700,11 @@ class Belims_Products_Endpoint {
                     $candidates[] = array(
                         'id' => (string) $related_product->get_id(),
                         'name' => $related_product->get_name(),
+                        'slug' => $related_product->get_slug(),
                         'price' => $price_incl_vat,
                         'regular_price' => $price_incl_vat,
                         'image' => wp_get_attachment_url($related_product->get_image_id()) ?: '',
-                        'category' => $categories[0],
                         'rating' => $rating,
-                        'reviews' => intval($related_product->get_review_count()),
-                        'stock' => intval($related_product->get_stock_quantity()),
                     );
                 }
             }
