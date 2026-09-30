@@ -4,9 +4,9 @@
    Do NOT add @tailwind directives here (index.css is the entry).
    Do NOT add :root vars here (index.css owns all CSS tokens).
    ============================================================ */
-@layer components {
-  /* ---- BUTTONS ---- */
-  .btn {
+
+/* ---- BUTTONS ---- */
+.btn {
     @apply inline-flex items-center justify-center gap-2 font-bold min-h-12 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed capitalize;
     border-radius: var(--radius-button);
     color: var(--color-text);
@@ -113,4 +113,3 @@
   .bg-belims-blue-light {
     background-color: #f1f5f9;
   }
-}
