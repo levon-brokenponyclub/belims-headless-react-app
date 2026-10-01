@@ -9,7 +9,7 @@ _Last reviewed: 2026-10-01_
 ## 🚨 Urgent
 
 - [ ] **Rotate the Cloudways master SSH password.** It was committed to `README.md` in `63b6388e` (2026-02-20) and the GitHub repo is **public**. Removing it from the file does not remove it from history. After rotating, update the SSH Vault entry. (Server #1482444 → Master Credentials.)
-- [ ] **Order data exposure (IDOR):** `GET /belims/v1/orders/:id` is public with no ownership or `order_key` check and returns billing details + `order_key` for any (sequential) order ID. Require the order key (or a logged-in owner) and pass it from `/order-confirmation` and `TrackOrderPage`. Code: [`class-orders-endpoint.php`](../wp-content/plugins/global-site-settings/includes/class-orders-endpoint.php) `get_order()`.
+- [ ] **Order endpoint access control** — harden access checks on the orders REST endpoints (details tracked privately, not in this public repo).
 - [ ] **Imunify360 SplashScreen on `/wp-json/`** — get Cloudways support (root) to whitelist `cms.belims.co.za` / exclude `/wp-json/` from WebShield. Until then some uncached API calls return HTML and products fail to load. See [OPERATIONS → Cloudways](OPERATIONS.md#cloudways--cms).
 
 ## Launch checklist (`www.belims.co.za`)

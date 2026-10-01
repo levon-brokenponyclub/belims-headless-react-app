@@ -107,7 +107,7 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/ai/config` | Public | AI feature config |
 | `POST` | `/orders` | Public | Create WooCommerce order from headless checkout |
 | `GET` | `/orders` | Logged in | Customer order history |
-| `GET` | `/orders/:id` | **Public** ⚠ | Single order details — no ownership/`order_key` check (see [ROADMAP](../../../docs/ROADMAP.md)) |
+| `GET` | `/orders/:id` | Public (hardening pending) | Single order details |
 | `POST` | `/shipping/calculate` | Public | BobGo shipping rates for an address |
 | `POST` | `/track` | Public | Track a shipment |
 | `POST` | `/users/register` · `/users/login` · `/users/logout` · `/users/check-email` | Public | Account auth |
