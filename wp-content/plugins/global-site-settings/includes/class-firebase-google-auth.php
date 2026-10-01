@@ -42,7 +42,6 @@ class Belims_Firebase_Google_Auth {
 
     public static function handle( WP_REST_Request $request ): WP_REST_Response {
         $firebase_token = $request->get_param( 'firebase_token' );
-        $client_email   = $request->get_param( 'email' ) ?? '';
         $client_name    = $request->get_param( 'name' ) ?? '';
 
         // 1. Verify the Firebase ID token and extract the verified email.
@@ -55,8 +54,8 @@ class Belims_Firebase_Google_Auth {
             );
         }
 
-        // Prefer the server-verified email; fall back to client-supplied value.
-        $email      = ! empty( $verified['email'] )        ? $verified['email']        : $client_email;
+        // Only the Firebase-verified email identifies the account; never the client-supplied one.
+        $email      = $verified['email'] ?? '';
         $first_name = ! empty( $verified['first_name'] )   ? $verified['first_name']   : '';
         $last_name  = ! empty( $verified['last_name'] )    ? $verified['last_name']    : '';
 
@@ -131,8 +130,8 @@ class Belims_Firebase_Google_Auth {
             : get_option( 'belims_firebase_api_key', '' );
 
         if ( empty( $firebase_api_key ) ) {
-            // No API key — skip server-side verification and trust the client-supplied email.
-            return [];
+            // Fail closed: without the key the token cannot be verified.
+            return new WP_Error( 'firebase_not_configured', 'Google sign-in is temporarily unavailable.' );
         }
 
         $url      = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' . urlencode( $firebase_api_key );

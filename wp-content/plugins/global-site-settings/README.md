@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.7.0  
+**Version:** 2.7.1  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -270,7 +270,7 @@ Do not override files owned by other plugins (e.g. `uafrica-shipping`).
 
 ## Known Constraints
 
-- **Firebase verification (open)**: `BELIMS_FIREBASE_API_KEY` is not defined on production and `belims_firebase_api_key` is empty, so `Belims_Firebase_Phone_Auth::verify_firebase_token()` skips server-side verification and trusts the client-supplied phone number. Fix: define the key in `wp-config.php` and fail closed when it is missing. Firebase Auth tab shows this warning until resolved.
+- **Firebase verification**: `BELIMS_FIREBASE_API_KEY` must be defined in `wp-config.php` (set on production 2026-10-01). Without it, `/auth/firebase-phone` and `/auth/firebase-google` refuse sign-in (fail closed). Accounts are identified only by the Firebase-verified phone/email — client-supplied values are ignored.
 - **BobGo API keys**: The current BobGo plan does not allow API key creation. Direct API calls (`class-bobgo-order-handler.php`) are disabled. Order sync relies on the BobGo ↔ WooCommerce channel integration.
 - **CORS**: Only one origin is allowed at a time. The ACF `headless_frontend_url` option overrides all other CORS settings.
 - **FTG last sync format**: Two code paths write different formats to `belims_ftg_last_sync`. Always use `belims_get_ftg_last_sync_timestamp()` to read it.

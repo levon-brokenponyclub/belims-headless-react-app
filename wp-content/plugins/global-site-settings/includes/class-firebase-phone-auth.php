@@ -43,7 +43,6 @@ class Belims_Firebase_Phone_Auth {
      */
     public static function handle( WP_REST_Request $request ): WP_REST_Response {
         $firebase_token = $request->get_param( 'firebase_token' );
-        $phone          = $request->get_param( 'phone' );
 
         // 1. Verify the Firebase ID token with Google's public endpoint.
         $verified_phone = self::verify_firebase_token( $firebase_token );
@@ -55,9 +54,14 @@ class Belims_Firebase_Phone_Auth {
             );
         }
 
-        // The phone number from Firebase (E.164) is the authoritative source.
-        // Fall back to the client-supplied value only if the token payload omits it.
-        $canonical_phone = $verified_phone ?: $phone;
+        // Only the Firebase-verified phone number (E.164) identifies the account; never the client-supplied one.
+        if ( $verified_phone === '' ) {
+            return new WP_REST_Response(
+                [ 'message' => 'This sign-in token does not contain a verified phone number.' ],
+                401
+            );
+        }
+        $canonical_phone = $verified_phone;
 
         // 2. Find or create a WP user for this phone number.
         $user = self::find_user_by_phone( $canonical_phone );
@@ -104,9 +108,8 @@ class Belims_Firebase_Phone_Auth {
             : get_option( 'belims_firebase_api_key', '' );
 
         if ( empty( $firebase_api_key ) ) {
-            // Fallback: trust token but skip server-side verification.
-            // Replace with proper verification once BELIMS_FIREBASE_API_KEY is set.
-            return '';
+            // Fail closed: without the key the token cannot be verified.
+            return new WP_Error( 'firebase_not_configured', 'Phone sign-in is temporarily unavailable.' );
         }
 
         $url      = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' . urlencode( $firebase_api_key );

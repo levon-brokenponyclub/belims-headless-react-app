@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-01 — Global Site Settings 2.7.1: Firebase sign-in security fix
+
+### Account-takeover vulnerability closed (production)
+- **Issue:** `BELIMS_FIREBASE_API_KEY` was not set on production, so `/auth/firebase-phone` and `/auth/firebase-google` skipped token verification and issued a WordPress JWT for whatever phone/email the client sent (any customer — or admin, by email — could be impersonated). Both endpoints also fell back to client-supplied phone/email when a verified token lacked that field.
+- **Fix:**
+  - `BELIMS_FIREBASE_API_KEY` added to production `wp-config.php` (Belims Firebase web key, matched to the storefront bundle). Backup: `private_html/belims-img/wp-config.php.bak-20261001`.
+  - `class-firebase-phone-auth.php` / `class-firebase-google-auth.php`: fail closed when the key is missing; identify accounts only by the Firebase-verified phone/email; unused client fields removed.
+- **Verified:** bogus tokens return 401 `INVALID_ID_TOKEN` on both endpoints; no user or JWT created. Dashboard Firebase Auth card now reports Active.
+
+---
+
 ## 2026-10-01 — Global Site Settings 2.7.0: dashboard + navigation refactor
 
 ### 1. Navigation (sidebar) — each feature listed once
