@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.9.0  
+**Version:** 2.9.1  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -97,7 +97,7 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/products` | Public | Product listing (`view=listing\|detail`, `fields`, `featured`, `category`, `search`, `page`, `per_page`). Sends `Cache-Control: public, s-maxage=300` + ETag |
+| `GET` | `/products` | Public | Product listing (`view=listing\|detail`, `fields`, `featured`, `category`, `search`, `page`, `per_page`). Only sellable products (2.9.1): in stock, `_price` > 0, a category other than Uncategorized — `Belims_Products_Endpoint::is_sellable()`. Sends `Cache-Control: public, s-maxage=300` + ETag |
 | `GET` | `/products/home` | Public | Homepage rail set (newest, best-stocked, deals, on sale, featured, Hand Tools), in stock, de-duplicated, listing fields. `Cache-Control: public, s-maxage=300` |
 | `GET` | `/products/:id` | Public | Single product |
 | `GET` | `/products/filters` | Public | Archive filter options (registered in `ftg-sync/class-ftg-sync-endpoint.php`) |
@@ -151,9 +151,13 @@ Syncs brand/product data from the FTG supplier feed.
 | `class-ftg-sync-endpoint.php` | REST endpoint + sync logic. Writes `belims_ftg_last_sync` as `['time' => mysql_datetime, ...]` |
 | `admin-ftg-sync-page.php` | Legacy admin page (writes `belims_ftg_last_sync` as Unix timestamp) |
 
-### Sync eligibility (v2.5.0)
+### Sync eligibility (v2.5.0, trash/restore v2.9.1)
 
-A product is only created/updated when FTG provides **stock quantity > 0**, **selling price > 0** and **at least one web category** (`webUrlHierarchyCollection.web_hierarchy`). Applies to bulk sync and single-SKU sync via `get_missing_required_fields()`. Failing products are reported as skipped (`reason: Missing stock, price, …`); existing CMS products that fail are left untouched — not updated, not unpublished.
+A product is only created/updated when FTG provides **stock quantity > 0**, **selling price > 0** and **at least one web category** (`webUrlHierarchyCollection.web_hierarchy`). Applies to bulk sync and single-SKU sync via `get_missing_required_fields()`. Failing products are never imported and are reported as skipped (`reason: Missing stock, price, …`).
+
+- **Existing CMS product fails** → moved to the trash (`trash_ineligible_products()`), reason suffixed *— CMS product moved to trash*.
+- **Trashed product qualifies again** → `resolve_existing_product_id()` untrashes it **and publishes it** (same ID/URL), then updates it. (WordPress restores trashed posts as drafts by default.)
+- Lookup by SKU / `_ftg_product_code` / `_ftg_one_id` across all statuses: `find_existing_product_ids()`.
 
 ### Last sync storage
 

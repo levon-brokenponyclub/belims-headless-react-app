@@ -425,13 +425,14 @@ class Belims_FTG_Sync_Endpoint {
 
             $missing = $this->get_missing_required_fields($product_data);
             if (!empty($missing)) {
+                $trashed = $this->trash_ineligible_products($sku, $ftg_id_report);
                 $skipped_count++;
                 $skipped_items[] = array(
                     'sku' => $sku,
-                    'reason' => 'Missing ' . implode(', ', $missing),
+                    'reason' => 'Missing ' . implode(', ', $missing) . ($trashed ? ' — CMS product moved to trash' : ''),
                     'brand' => $brand,
                 );
-                error_log('SKIPPED Product (Missing ' . implode(', ', $missing) . '): ' . $sku);
+                error_log('SKIPPED Product (Missing ' . implode(', ', $missing) . '): ' . $sku . ($trashed ? ' — trashed #' . implode(', #', $trashed) : ''));
                 continue;
             }
 
@@ -926,10 +927,31 @@ class Belims_FTG_Sync_Endpoint {
      * creating a new product throws "already present in the lookup table".
      */
     private function resolve_existing_product_id($sku, $ftg_id = '') {
+        foreach ($this->find_existing_product_ids($sku, $ftg_id) as $candidate_id) {
+            // Trashed earlier for missing stock/price/category; it qualifies again, so restore it live.
+            if (get_post_status($candidate_id) === 'trash') {
+                wp_untrash_post($candidate_id);
+                wp_update_post(array('ID' => $candidate_id, 'post_status' => 'publish'));
+            }
+
+            if (wc_get_product($candidate_id)) {
+                return (int) $candidate_id;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * CMS product IDs matching an FTG SKU / ftgOneId (any status, trash included).
+     *
+     * @return int[]
+     */
+    private function find_existing_product_ids($sku, $ftg_id = '') {
         global $wpdb;
 
         if (empty($sku) && empty($ftg_id)) {
-            return 0;
+            return array();
         }
 
         $candidate_ids = array();
@@ -969,24 +991,25 @@ class Belims_FTG_Sync_Endpoint {
 
         $candidate_ids = array_values(array_unique(array_filter(array_map('intval', $candidate_ids))));
 
-        foreach ($candidate_ids as $candidate_id) {
-            $post = get_post($candidate_id);
-            if (!$post || !in_array($post->post_type, array('product', 'product_variation'), true)) {
-                continue;
-            }
+        return array_values(array_filter($candidate_ids, function ($candidate_id) {
+            return in_array(get_post_type($candidate_id), array('product', 'product_variation'), true);
+        }));
+    }
 
-            if ($post->post_status === 'trash') {
-                wp_untrash_post($candidate_id);
-                $post = get_post($candidate_id);
-            }
-
-            $product = wc_get_product($candidate_id);
-            if ($product) {
-                return (int) $candidate_id;
+    /**
+     * An FTG product no longer qualifies (no stock, price or category): move any live CMS copy to the trash
+     * so the storefront never shows it. A later sync restores it once FTG has the data again.
+     *
+     * @return int[] Trashed product IDs.
+     */
+    private function trash_ineligible_products($sku, $ftg_id = '') {
+        $trashed = array();
+        foreach ($this->find_existing_product_ids($sku, $ftg_id) as $candidate_id) {
+            if (get_post_status($candidate_id) !== 'trash' && wp_trash_post($candidate_id)) {
+                $trashed[] = $candidate_id;
             }
         }
-
-        return 0;
+        return $trashed;
     }
     
     /**
@@ -995,7 +1018,7 @@ class Belims_FTG_Sync_Endpoint {
     /**
      * Required FTG data before a product is created or updated in the CMS:
      * stock quantity > 0, selling price > 0, at least one web category.
-     * Existing CMS products that fail are left untouched (not updated, not unpublished).
+     * Products that fail are never imported; an existing CMS copy is moved to the trash (2.9.1).
      *
      * @return string[] Missing field labels; empty when the product qualifies.
      */
@@ -1991,12 +2014,15 @@ class Belims_FTG_Sync_Endpoint {
                 );
             }
             
-            $missing = $this->get_missing_required_fields($found_product['productData'] ?? $found_product);
+            $found_data = $found_product['productData'] ?? $found_product;
+            $missing = $this->get_missing_required_fields($found_data);
             if (!empty($missing)) {
-                error_log("⏭️ Skipped $sku — missing " . implode(', ', $missing));
+                $trashed = $this->trash_ineligible_products($sku, $found_product['ftgOneId'] ?? $found_data['ftgOneId'] ?? '');
+                error_log("⏭️ Skipped $sku — missing " . implode(', ', $missing) . ($trashed ? ' — trashed #' . implode(', #', $trashed) : ''));
                 return array(
                     'success' => false,
-                    'message' => 'Skipped: FTG product is missing ' . implode(', ', $missing) . '. Not pulled into the CMS.',
+                    'message' => 'Skipped: FTG product is missing ' . implode(', ', $missing) . '. Not pulled into the CMS'
+                        . ($trashed ? '; the existing CMS product was moved to the trash.' : '.'),
                 );
             }
 

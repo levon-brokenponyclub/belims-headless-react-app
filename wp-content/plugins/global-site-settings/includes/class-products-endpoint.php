@@ -98,12 +98,22 @@ class Belims_Products_Endpoint {
         $products = array();
         foreach (array_unique(array_map('intval', $ids)) as $id) {
             $product = wc_get_product($id);
-            if ($product && $product->is_visible()) {
+            if ($product && $product->is_visible() && self::is_sellable($product)) {
                 $products[] = $this->format_product($product, 'listing', $fields);
             }
         }
 
         return $this->build_cached_response($request, $products);
+    }
+
+    /**
+     * Storefront rule: in stock (no backorders), price > 0, and a category other than Uncategorized.
+     */
+    public static function is_sellable($product) {
+        $categories = array_diff($product->get_category_ids(), array((int) get_option('default_product_cat')));
+        return $product->get_stock_status() === 'instock'
+            && (float) $product->get_price() > 0
+            && !empty($categories);
     }
 
     /**
@@ -129,24 +139,28 @@ class Belims_Products_Endpoint {
             'posts_per_page' => $per_page, // -1 keeps existing all-products behavior
             'paged' => $per_page > 0 ? $page : 1,
             'post_status' => 'publish',
+            // Storefront rule: only in-stock, priced, categorised products (see is_sellable()).
+            'meta_query' => array(
+                array('key' => '_stock_status', 'value' => 'instock'),
+                array('key' => '_price', 'value' => 0, 'compare' => '>', 'type' => 'DECIMAL(10,2)'),
+            ),
+            'tax_query' => array(
+                array('taxonomy' => 'product_cat', 'operator' => 'EXISTS'),
+                array('taxonomy' => 'product_cat', 'field' => 'term_id', 'terms' => array((int) get_option('default_product_cat')), 'operator' => 'NOT IN'),
+            ),
         );
 
         // Filter by featured products
         if (!empty($params['featured']) && $params['featured'] === 'true') {
-            $args['tax_query'] = array(
-                array(
-                    'taxonomy' => 'product_visibility',
-                    'field' => 'name',
-                    'terms' => 'featured',
-                )
+            $args['tax_query'][] = array(
+                'taxonomy' => 'product_visibility',
+                'field' => 'name',
+                'terms' => 'featured',
             );
         }
 
         // Filter by category
         if (!empty($params['category'])) {
-            if (!isset($args['tax_query'])) {
-                $args['tax_query'] = array();
-            }
             $args['tax_query'][] = array(
                 'taxonomy' => 'product_cat',
                 'field' => 'slug',
@@ -156,9 +170,6 @@ class Belims_Products_Endpoint {
 
         // Filter by brand (if using brand taxonomy)
         if (!empty($params['brand'])) {
-            if (!isset($args['tax_query'])) {
-                $args['tax_query'] = array();
-            }
             $args['tax_query'][] = array(
                 'taxonomy' => 'product_brand',
                 'field' => 'slug',

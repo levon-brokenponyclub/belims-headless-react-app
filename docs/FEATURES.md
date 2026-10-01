@@ -18,7 +18,7 @@ What the storefront and CMS do today, and where each feature lives. Start at the
 | Comparison | `ComparisonModal` | Up to 4 products. |
 | Brands | `BrandStrip` | CMS brands (`/wp/v2/product_brand`) with self-hosted logos. |
 | Deals & trade pricing | `DealsSection`, `TradeDeals`, `DealBadge`, `DualPriceSwitcher`, `TradePricingAvailable`, `services/dealService.ts` | Consumer vs trade deal resolution from the products endpoint (`best_deal_consumer` / `best_deal_trade`). |
-| Purchasability guard | `utils/price.ts` (`isProductPurchasable`) | Backorder, zero-price and out-of-stock items are hidden from listings and blocked from cart. |
+| Purchasability guard | `utils/price.ts` (`isProductPurchasable`) + CMS `is_sellable()` | Out-of-stock (no backorders), zero-price and uncategorised products are hidden from listings and blocked from cart. The CMS `/products` endpoint excludes them too, and FTG sync trashes them (GSS 2.9.1). |
 | Reviews | `BelimsReviews` (in `Footer`) | Google Places via Vercel function `api/google-reviews.ts`. |
 | Coming Soon | `ComingSoon` | Shown on `/` when `VITE_COMING_SOON=true` (production only); hides the app shell. |
 

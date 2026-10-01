@@ -15,6 +15,26 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 
 ---
 
+## 2026-10-01 — Global Site Settings 2.9.1: storefront shows only sellable products; FTG sync trashes/restores
+
+Rule: the storefront never shows a product that is **out of stock (no backorders)**, has **no price**, or has **no category**.
+
+### Global Site Settings 2.9.1
+- `includes/ftg-sync/class-ftg-sync-endpoint.php`: products missing stock, price or category are still never imported; an **existing** CMS copy is now moved to the trash (bulk + single-SKU sync). When it qualifies again, the sync untrashes **and publishes** it (WordPress would restore it as a draft). Lookup split into `find_existing_product_ids()`.
+- `includes/class-products-endpoint.php`: `/products` queries only in-stock, `_price` > 0, categorised products (correct pagination totals); `/products/home` applies `is_sellable()`; new `Belims_Products_Endpoint::is_sellable()`.
+
+### Storefront
+- `utils/price.ts` `isProductPurchasable`: also requires a category other than "Uncategorized".
+
+### CMS data (outside the repo)
+- 323 of 1,705 published products moved to the trash (146 out of stock only, 73 no price only, 18 no category only, 86 with several). 0 products allowed backorders. ID list: server `~/belims-trashed-2026-10-01.txt`. Restore: Products → Trash, or `wp post update <ids> --post_status=publish` after `wp post untrash`.
+- Plugin backup: `~/gss-backup-20261001-231501`.
+
+### Verified
+- `php -l` (local + server, before swap), `npm run build`; server checksums match git.
+
+---
+
 ## 2026-10-01 — Global Site Settings 2.9.0: storefront allowlist, homepage targets, `/products/home`, order + payment hardening
 
 ### Global Site Settings 2.9.0

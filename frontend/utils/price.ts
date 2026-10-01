@@ -35,6 +35,7 @@ export const getEffectivePrice = (product: Product): number => {
  *  - Has a valid (> 0) price
  *  - Is NOT on backorder (stock_status !== "onbackorder")
  *  - Has stock > 0 OR stock_status === "instock"
+ *  - Has a category other than "Uncategorized"
  *
  * "onbackorder" products are treated as unavailable in this storefront
  * because backorders are disabled by policy.
@@ -53,5 +54,9 @@ export const isProductPurchasable = (product: Product): boolean => {
     (typeof product.stock === "number" && product.stock > 0) ||
     (typeof product.in_stock === "boolean" && product.in_stock);
 
-  return hasStock;
+  if (!hasStock) return false;
+
+  // Must be assigned to a real category
+  const category = product.category?.trim().toLowerCase();
+  return Boolean(category) && category !== "uncategorized";
 };

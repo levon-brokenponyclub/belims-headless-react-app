@@ -1,6 +1,6 @@
 # Global Site Settings — User Guide
 
-**Plugin version:** 2.9.0 · **For:** Belims Hardware store administrators
+**Plugin version:** 2.9.1 · **For:** Belims Hardware store administrators
 
 > Technical overview for developers: [README.md](README.md) · Project docs: [root README](../../../README.md)
 
@@ -103,7 +103,7 @@ Brings products from the FTG supplier feed into WooCommerce.
 - **Price** above 0
 - At least one **category**
 
-Anything missing one of these is listed as **skipped** with the reason (e.g. *Missing stock, price*). Products already in the store that later fail these checks are left as they are. FTG prices exclude VAT; 15% VAT is added automatically. Imported product images go into **Media → Folders → Products**.
+Anything missing one of these is never imported and is listed as **skipped** with the reason (e.g. *Missing stock, price*). If that product is already in the store, it is moved to **Products → Trash** so customers never see it. When FTG has stock, a price and a category for it again, the next sync restores it automatically (same page and link). FTG prices exclude VAT; 15% VAT is added automatically. Imported product images go into **Media → Folders → Products**.
 
 **Sync products** — choose a brand first (or **Search Available Brands** / **Custom Brand**), then:
 
