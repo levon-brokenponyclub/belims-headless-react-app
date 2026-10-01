@@ -1,6 +1,16 @@
 # Changelog
 
-## 2026-10-01 — Global Site Settings 2.8.0: CMS-editable homepage hero (local, not deployed)
+## 2026-10-01 — Static asset cache headers (GTmetrix "Add Expires headers")
+
+### frontend/vercel.json — `headers`
+- `/assets/*` (Vite content-hashed JS/CSS): `public, max-age=31536000, immutable`.
+- `/images/*`, `/brands/*`, `/favicon.svg` (unhashed): `public, max-age=604800, stale-while-revalidate=86400` — rename files to bust cache.
+- HTML documents unchanged (`max-age=0, must-revalidate`) so deploys propagate immediately.
+- Compression: HTML/JS/CSS/SVG/JSON already served Brotli/gzip; raster images intentionally uncompressed — no change.
+
+---
+
+## 2026-10-01 — Global Site Settings 2.8.0: CMS-editable homepage hero
 
 ### CMS (plugin)
 - ACF `group_belims_homepage`: Flexible Content `homepage_sections` with a Hero layout (title, description, button, desktop + optional mobile image, alt, show toggle).
@@ -18,6 +28,12 @@
 - Local CMS: endpoint payload, debounced deploy scheduling (no duplicate on unchanged save), admin tab renders.
 - Builds: CMS content path, fallback path (prod 404), transforms + mobile preload/srcset parity (unit check).
 - Lighthouse desktop (local preview): 99 — LCP 0.8s, single hero request, LCP discovery passes.
+
+### Production rollout
+- Storefront: commit `70f422e7`; on Vercel `/` serves the hero preload, `/shop` and `/product/*` serve `app.html` without it.
+- Vercel Deploy Hook "CMS Homepage" (branch `vercel`) created and saved in CMS (masked).
+- CMS: plugin 2.8.0 deployed; hero image imported (attachment 5564, Global folder); Hero seeded with the existing content; published via hook.
+- Verified: hook build `source: cms`, version `617b6034004a`; Homepage tab status in sync; preload uses Cloudflare AVIF (1280w = 63.8KB).
 
 ---
 
