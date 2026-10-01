@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-10-01 — Global Site Settings 2.8.0: CMS-editable homepage hero (local, not deployed)
+
+### CMS (plugin)
+- ACF `group_belims_homepage`: Flexible Content `homepage_sections` with a Hero layout (title, description, button, desktop + optional mobile image, alt, show toggle).
+- `includes/class-homepage.php`: `GET /belims/v1/homepage`; on save of changed content, schedules the Vercel deploy hook 60s later (debounced); publish-now + hook-URL AJAX; live-version check via storefront `homepage-version.json`.
+- Site Settings → **Homepage** tab (`admin-homepage-tab.php`, `assets/js/homepage-tools.js`); dashboard tile + endpoint row.
+
+### Storefront
+- `frontend/build/homepagePlugin.ts`: fetches homepage at build (fallback `content/homepage.fallback.json`), `virtual:homepage` module, hero preload injected into `index.html` only; writes `app.html` (no preload) + `homepage-version.json`.
+- `vercel.json`: SPA routes rewrite to `/app.html` (homepage keeps `index.html`).
+- `HeroBanner.tsx`: renders from `virtual:homepage` with `<picture>` (optional mobile image) and responsive Cloudflare URLs identical to the preload.
+- `utils/cmsImageUrl.ts`: shared pure URL builder; `utils/image.ts` now uses it.
+- `index.html`: static hero preload removed (now injected per build).
+
+### Verified locally
+- Local CMS: endpoint payload, debounced deploy scheduling (no duplicate on unchanged save), admin tab renders.
+- Builds: CMS content path, fallback path (prod 404), transforms + mobile preload/srcset parity (unit check).
+- Lighthouse desktop (local preview): 99 — LCP 0.8s, single hero request, LCP discovery passes.
+
+---
+
 ## 2026-10-01 — Homepage LCP + font loading (Lighthouse follow-up)
 
 - `HeroBanner.tsx`: hero image now self-hosted (`/images/development/home-banner-placeholder.webp`, 1260×739, 71KB) instead of the Shopify demo store; `loading="eager"`, `fetchPriority="high"`, explicit width/height. Shopify demo hero video (~5MB) and its idle-load/Play logic removed.

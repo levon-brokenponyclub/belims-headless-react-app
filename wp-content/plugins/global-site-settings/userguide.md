@@ -1,6 +1,6 @@
 # Global Site Settings — User Guide
 
-**Plugin version:** 2.7.0 · **For:** Belims Hardware store administrators
+**Plugin version:** 2.8.0 · **For:** Belims Hardware store administrators
 
 Global Site Settings is the control centre for the Belims online store. The storefront customers see (www.belims.co.za) is a separate website that reads products, prices and orders from this WordPress CMS. This plugin connects the two, and brings in products from the FTG supplier feed, shipping (BobGo), customer sign-in (Firebase), AI product descriptions and media tools.
 
@@ -9,7 +9,7 @@ Everything lives in **WP Admin → Site Settings**. The sidebar is grouped into:
 | Group | Pages |
 |-------|-------|
 | Overview | Dashboard |
-| Settings | Branding · Store Details · CORS & Security · WooCommerce |
+| Settings | Branding · Store Details · Homepage · CORS & Security · WooCommerce |
 | Integrations | FTG Sync · BobGo Shipping · Firebase Auth · AI Services |
 | Tools | Media Management |
 
@@ -19,7 +19,7 @@ Everything lives in **WP Admin → Site Settings**. The sidebar is grouped into:
 
 - **System strip** — WordPress, WooCommerce and PHP versions, plus the storefront address the CMS is connected to.
 - **Integrations** — a card each for FTG Sync, BobGo Shipping, Firebase Auth and AI Services with its status. Use the toggle on FTG Sync or BobGo to switch it on/off; **Configure →** opens its page.
-- **Settings** — shortcuts to Branding, Store Details, CORS & Security and WooCommerce.
+- **Settings** — shortcuts to Branding, Store Details, Homepage, CORS & Security and WooCommerce.
 - **REST API Endpoints** — technical list of what the storefront uses (for developers).
 - **Quick Tools → Clear Cache** — opens the admin with caching bypassed.
 
@@ -50,6 +50,25 @@ Store information and the policies shown on product pages.
 **Ask an Expert Block** — Expert Name, Title, Avatar (**Upload Avatar**, square image), Video Chat URL, Chat URL, Email and Phone shown on product pages.
 
 Click **Save Settings** at the bottom.
+
+## Homepage
+
+Edit the storefront homepage. Changes go live about **1–2 minutes** after saving (the storefront rebuilds itself).
+
+**Hero** (the large banner at the top):
+1. Under **Homepage Sections**, open the **Hero** section (or **Add Section → Hero** if none exists).
+2. Fill in **Title**, **Description**, **Button Text** and **Button Link** (e.g. `/shop`).
+3. Choose a **Desktop Image** (recommended 1600×800 WebP) and optionally a **Mobile Image** (800×800) for phones.
+4. Add **Image Alt Text** describing the picture.
+5. Untick **Show on homepage** to hide the hero without deleting it.
+6. Click **Save Homepage**.
+
+**Publishing** card:
+- **Storefront** shows *Up to date*, *Publishing…* or *Out of date*.
+- **Publish now** rebuilds the storefront without changing content (e.g. if a build failed).
+- **Vercel Deploy Hook** — set once by your developer; shown partly hidden.
+
+If the storefront can't reach the CMS during a rebuild it keeps a default hero and shows *Out of date* — click **Publish now** to retry.
 
 ## CORS & Security
 

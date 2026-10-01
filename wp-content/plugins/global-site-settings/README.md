@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.7.2  
+**Version:** 2.8.0  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -17,7 +17,8 @@ global-site-settings/
 │   ├── css/admin.css                 # All BPC admin UI styles (variables, layout, components)
 │   ├── js/admin.js                   # Admin tab switching and shared JS
 │   ├── js/media-folders.js           # Media Library grid folder filter
-│   └── js/media-tools.js             # Site Settings → Media tab controls
+│   ├── js/media-tools.js             # Site Settings → Media tab controls
+│   └── js/homepage-tools.js          # Site Settings → Homepage publishing controls
 ├── includes/
 │   ├── acf-field-groups.php          # ACF field group registration
 │   ├── class-orders-endpoint.php     # POST /orders — headless checkout order creation
@@ -30,6 +31,8 @@ global-site-settings/
 │   ├── class-media-folders.php       # Media → Folders (media_folder taxonomy)
 │   ├── class-image-optimizer.php     # WebP conversion queue, auto-convert, archive, Products folder
 │   ├── admin-media-tab.php           # Site Settings → Media tab markup
+│   ├── class-homepage.php            # GET /homepage + Vercel deploy hook on save
+│   ├── admin-homepage-tab.php        # Site Settings → Homepage tab markup
 │   ├── bobgo-shipping/               # BobGo shipping integration (see below)
 │   ├── payfast/                      # PayFast payment gateway (see below)
 │   └── ftg-sync/                     # FTG brand sync integration
@@ -48,6 +51,7 @@ Single-page tabbed interface at **WP Admin → Site Settings**.
 | Overview | Dashboard | `tab-dashboard` | System status, integrations, settings shortcuts, REST API reference, Clear Cache |
 | Settings | Branding | `tab-branding` | WP admin dashboard colours |
 | Settings | Store Details | `tab-ecommerce` | Store locations + hours, Google Maps key (masked), product page policies, Ask an Expert block |
+| Settings | Homepage | `tab-homepage` | Homepage sections (Hero), Vercel deploy hook, publish + live-version status |
 | Settings | CORS & Security | `tab-cors-security` | Allowed origins and REST API security |
 | Settings | WooCommerce | `tab-woocommerce` | WooCommerce API and product description import |
 | Integrations | FTG Sync | `tab-ftg-sync` | FTG credentials, product sync, cron schedule |
@@ -94,6 +98,7 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/products` | None | Product listing with filters |
 | `GET` | `/products/:id` | None | Single product |
 | `GET` | `/categories` | None | Product categories |
+| `GET` | `/homepage` | None | Homepage sections (baked into the storefront at build time) |
 | `POST` | `/orders` | None | Create WooCommerce order from headless checkout |
 | `GET` | `/orders` | Logged in | Customer order history |
 | `GET` | `/orders/:id` | None | Single order details |
@@ -244,6 +249,22 @@ Hierarchical `media_folder` taxonomy on attachments.
 - Folder column + dropdown filter in Media Library list view; folder dropdown in grid view / media modal (`assets/js/media-folders.js`, filtered server-side via `ajax_query_attachments_args`).
 - Assign a folder from the attachment edit screen (Folders field).
 - `Belims_Media_Folders::assign_to($attachment_id, $slug)` adds an attachment to a folder without removing existing ones. FTG sync assigns every imported product image to **Products** (v2.6.0).
+
+---
+
+## Homepage (`includes/class-homepage.php`, v2.8.0)
+
+Homepage content is edited in **Site Settings → Homepage** and baked into the storefront **at build time** (keeps the hero LCP preload static and home-only).
+
+| Piece | Detail |
+|-------|--------|
+| ACF | `group_belims_homepage` → Flexible Content `homepage_sections` (options). Layout `hero` (max 1): enabled, title, description, button_text, button_link, image (ID), image_mobile (ID, optional), alt |
+| Endpoint | `GET /belims/v1/homepage` → `{ version, sections: [{ type: "hero", title, description, button:{text,link}, image:{url,width,height,alt}, image_mobile }] }`. Disabled/incomplete sections omitted. `Cache-Control: public, max-age=60` |
+| Rebuild on save | `acf/save_post` (options) compares payload `version` with option `belims_homepage_version`; when changed, schedules Action Scheduler `belims_homepage_deploy` (group `belims-homepage`) 60s out — rapid saves coalesce into one build |
+| Deploy hook | Option `belims_vercel_deploy_hook` (must start `https://api.vercel.com/v1/integrations/deploy/`), masked in UI. Result of last call in `belims_homepage_deploy_log` |
+| Live check | Reads `<frontend_url>/homepage-version.json` written by the storefront build; tab shows Up to date / Out of date / Publishing… |
+
+Storefront side: `frontend/build/homepagePlugin.ts` fetches the endpoint at build (10s timeout; falls back to `frontend/content/homepage.fallback.json` with a build-log warning), exposes `virtual:homepage`, injects the hero preload into `index.html`, and writes `app.html` (no preload, served for all other routes via `vercel.json`) + `homepage-version.json`.
 
 ---
 

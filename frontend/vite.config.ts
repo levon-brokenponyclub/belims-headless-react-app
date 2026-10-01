@@ -1,6 +1,7 @@
 import path from "path";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { homepagePlugin } from "./build/homepagePlugin";
 
 export default defineConfig(({ mode }) => {
   // Load environment variables
@@ -32,6 +33,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      homepagePlugin({ cmsUrl, transforms: env.VITE_CF_IMAGE_TRANSFORMS === "true" }),
       {
         name: "dev-api-mock-stub",
         configureServer(server) {

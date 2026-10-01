@@ -1,0 +1,18 @@
+{
+  "version": "fallback",
+  "sections": [
+    {
+      "type": "hero",
+      "title": "Trade pricing that works as hard as you do",
+      "description": "Get access to exclusive trade-only rates, expert support, and logistical advantages designed to keep your projects on track and your business growing.",
+      "button": { "text": "Shop Now", "link": "/shop" },
+      "image": {
+        "url": "/images/development/home-banner-placeholder.webp",
+        "width": 1260,
+        "height": 739,
+        "alt": "Trade tools"
+      },
+      "image_mobile": null
+    }
+  ]
+}

@@ -3,7 +3,7 @@
  * Plugin Name: Global Site Settings
  * Plugin URI: https://belims.co.za
  * Description: Unified plugin for Belims site settings, ACF field groups, REST API endpoints, and third-party integrations (WooCommerce, FTG, BobGo, AI).
- * Version: 2.7.2
+ * Version: 2.8.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: global-site-settings
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('GLOBAL_SITE_SETTINGS_VERSION', '2.7.2');
+define('GLOBAL_SITE_SETTINGS_VERSION', '2.8.0');
 define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-09-10 19:56:35');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -99,6 +99,7 @@ function global_site_settings_init() {
         'includes/class-bundled-products.php', // Bundled Products for WooCommerce
         'includes/class-media-folders.php', // Media Library folders (media_folder taxonomy)
         'includes/class-image-optimizer.php', // WebP conversion queue, auto-convert, archive, Products folder
+        'includes/class-homepage.php', // GET /homepage + storefront deploy hook
         // FTG Sync integration
         'includes/ftg-sync/class-ftg-api.php',
         'includes/ftg-sync/class-ftg-sync-endpoint.php',
@@ -708,6 +709,18 @@ function global_site_settings_enqueue_admin_assets($hook) {
         'ajaxurl' => admin_url('admin-ajax.php'),
         'nonce'   => wp_create_nonce('belims_media_tools'),
     ));
+
+    wp_enqueue_script(
+        'belims-homepage-tools',
+        GLOBAL_SITE_SETTINGS_PLUGIN_URL . 'assets/js/homepage-tools.js',
+        array('jquery'),
+        GLOBAL_SITE_SETTINGS_VERSION,
+        true
+    );
+    wp_localize_script('belims-homepage-tools', 'belimsHomepageTools', array(
+        'ajaxurl' => admin_url('admin-ajax.php'),
+        'nonce'   => wp_create_nonce('belims_homepage_tools'),
+    ));
 }
 add_action('admin_enqueue_scripts', 'global_site_settings_enqueue_admin_assets');
 
@@ -807,6 +820,9 @@ function global_site_settings_main_page() {
                 </a>
                 <a class="bpc-nav-item" data-tab="ecommerce">
                     Store Details
+                </a>
+                <a class="bpc-nav-item" data-tab="homepage">
+                    Homepage
                 </a>
                 <a class="bpc-nav-item" data-tab="cors-security">
                     CORS &amp; Security
@@ -1150,6 +1166,7 @@ function global_site_settings_main_page() {
                         $settings_tiles = [
                             ['tab' => 'branding',      'icon' => '🎨', 'label' => 'Branding',        'desc' => 'Admin dashboard colours'],
                             ['tab' => 'ecommerce',     'icon' => '🏬', 'label' => 'Store Details',   'desc' => 'Store locations, hours and product page policies'],
+                            ['tab' => 'homepage',      'icon' => '🏠', 'label' => 'Homepage',        'desc' => 'Homepage hero and sections'],
                             ['tab' => 'cors-security', 'icon' => '🔒', 'label' => 'CORS & Security', 'desc' => 'Allowed origins and REST API security'],
                             ['tab' => 'woocommerce',   'icon' => '🏪', 'label' => 'WooCommerce',     'desc' => 'WooCommerce API and product description import'],
                         ];
@@ -1197,6 +1214,7 @@ function global_site_settings_main_page() {
                                     ['POST', '/coupons/validate',    'Validate a coupon code and return discount', 'Public'],
                                     // Ecommerce policies
                                     ['GET',  '/ecommerce-policies',  'Returns, warranty, shipping policy content', 'Public'],
+                                    ['GET',  '/homepage',            'Homepage sections (baked into the storefront at build time)', 'Public'],
                                     // BobGo
                                     ['POST', '/bobgo/rates',         'Fetch shipping rates for a destination', 'Public'],
                                     ['GET',  '/bobgo/tracking/{id}', 'Get shipment tracking status', 'Public'],
@@ -3408,6 +3426,9 @@ function global_site_settings_main_page() {
                     ?>
                 </div>
             </div>
+
+            <!-- Homepage Tab -->
+            <?php require GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/admin-homepage-tab.php'; ?>
 
             <!-- Media Tab -->
             <?php require GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/admin-media-tab.php'; ?>

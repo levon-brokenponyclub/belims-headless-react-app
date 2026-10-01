@@ -595,4 +595,115 @@ acf_add_local_field_group(array(
     'menu_order' => 6,
 ));
 
+// Homepage sections (Site Settings → Homepage). Served by GET /belims/v1/homepage;
+// the storefront bakes it in at build time (Vercel deploy hook on save).
+acf_add_local_field_group(array(
+    'key' => 'group_belims_homepage',
+    'title' => 'Homepage',
+    'fields' => array(
+        array(
+            'key' => 'field_belims_homepage_sections',
+            'label' => 'Homepage Sections',
+            'name' => 'homepage_sections',
+            'type' => 'flexible_content',
+            'instructions' => 'Sections shown on the storefront homepage, in order.',
+            'button_label' => 'Add Section',
+            'layouts' => array(
+                'layout_belims_homepage_hero' => array(
+                    'key' => 'layout_belims_homepage_hero',
+                    'name' => 'hero',
+                    'label' => 'Hero',
+                    'display' => 'block',
+                    'max' => 1,
+                    'sub_fields' => array(
+                        array(
+                            'key' => 'field_belims_hero_enabled',
+                            'label' => 'Show on homepage',
+                            'name' => 'enabled',
+                            'type' => 'true_false',
+                            'ui' => 1,
+                            'default_value' => 1,
+                        ),
+                        array(
+                            'key' => 'field_belims_hero_title',
+                            'label' => 'Title',
+                            'name' => 'title',
+                            'type' => 'text',
+                            'required' => 1,
+                            'maxlength' => 80,
+                        ),
+                        array(
+                            'key' => 'field_belims_hero_description',
+                            'label' => 'Description',
+                            'name' => 'description',
+                            'type' => 'textarea',
+                            'rows' => 3,
+                            'maxlength' => 240,
+                            'new_lines' => '',
+                        ),
+                        array(
+                            'key' => 'field_belims_hero_button_text',
+                            'label' => 'Button Text',
+                            'name' => 'button_text',
+                            'type' => 'text',
+                            'default_value' => 'Shop Now',
+                            'maxlength' => 30,
+                            'wrapper' => array('width' => '50'),
+                        ),
+                        array(
+                            'key' => 'field_belims_hero_button_link',
+                            'label' => 'Button Link',
+                            'name' => 'button_link',
+                            'type' => 'text',
+                            'instructions' => 'Storefront path (e.g. /shop) or full URL.',
+                            'default_value' => '/shop',
+                            'wrapper' => array('width' => '50'),
+                        ),
+                        array(
+                            'key' => 'field_belims_hero_image',
+                            'label' => 'Desktop Image',
+                            'name' => 'image',
+                            'type' => 'image',
+                            'instructions' => 'Recommended 1600×800 WebP. Shown at full width, up to 360px tall.',
+                            'required' => 1,
+                            'return_format' => 'id',
+                            'preview_size' => 'medium',
+                            'library' => 'all',
+                            'wrapper' => array('width' => '50'),
+                        ),
+                        array(
+                            'key' => 'field_belims_hero_image_mobile',
+                            'label' => 'Mobile Image (optional)',
+                            'name' => 'image_mobile',
+                            'type' => 'image',
+                            'instructions' => 'Used below 768px wide. Recommended 800×800 WebP. Falls back to the desktop image.',
+                            'return_format' => 'id',
+                            'preview_size' => 'medium',
+                            'library' => 'all',
+                            'wrapper' => array('width' => '50'),
+                        ),
+                        array(
+                            'key' => 'field_belims_hero_alt',
+                            'label' => 'Image Alt Text',
+                            'name' => 'alt',
+                            'type' => 'text',
+                            'instructions' => 'Describes the image for screen readers. Falls back to the image\'s Media alt text.',
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    ),
+    'location' => array(
+        array(
+            array(
+                'param' => 'options_page',
+                'operator' => '==',
+                'value' => 'belims-site-settings',
+            ),
+        ),
+    ),
+    'menu_order' => 7,
+));
+
 endif;
