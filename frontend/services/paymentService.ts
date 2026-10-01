@@ -5,9 +5,10 @@ import { createOrder as createWooCommerceOrder } from "./wooCommerceService";
 import { getApiBaseUrl } from "./wooCommerceService";
 
 interface PaymentInitParams {
-  amount: number;
   currency: string;
   orderId: string;
+  /** Proves the caller placed the order; the server charges the order total. */
+  orderKey: string;
   customerEmail: string;
   customerName?: string;
   customerPhone?: string;
@@ -21,8 +22,6 @@ interface PaymentResult {
 
 interface PayFastConfig {
   merchantId: string;
-  merchantKey: string;
-  passPhrase?: string;
   testMode: boolean;
   returnUrl: string;
   cancelUrl: string;
@@ -130,7 +129,7 @@ export const initializePayment = async (
       },
       body: JSON.stringify({
         order_id: params.orderId,
-        amount: params.amount,
+        order_key: params.orderKey,
         currency: params.currency,
         customer_email: params.customerEmail,
         customer_name: params.customerName,
@@ -159,11 +158,12 @@ export const initializePayment = async (
  */
 export const verifyPayment = async (
   orderId: string,
+  orderKey: string,
 ): Promise<PaymentResult> => {
   try {
     const apiBase = getApiBaseUrl();
     const response = await fetch(
-      `${apiBase}/payfast/verify-payment/${orderId}`,
+      `${apiBase}/payfast/verify-payment/${orderId}?key=${encodeURIComponent(orderKey)}`,
       {
         method: "GET",
         headers: {
@@ -200,6 +200,7 @@ export const verifyPayment = async (
  */
 export const getPaymentStatus = async (
   orderId: string,
+  orderKey: string,
 ): Promise<{
   status: "pending" | "paid" | "failed" | "cancelled";
   transactionId?: string;
@@ -208,7 +209,7 @@ export const getPaymentStatus = async (
   try {
     const apiBase = getApiBaseUrl();
     const response = await fetch(
-      `${apiBase}/payfast/payment-status/${orderId}`,
+      `${apiBase}/payfast/payment-status/${orderId}?key=${encodeURIComponent(orderKey)}`,
       {
         method: "GET",
         headers: {

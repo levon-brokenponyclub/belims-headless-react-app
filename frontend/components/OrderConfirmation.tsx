@@ -86,13 +86,14 @@ export const OrderConfirmation: React.FC = () => {
   const [showDetails, setShowDetails] = useState(false);
 
   const orderId = searchParams.get("order_id");
+  const orderKey = searchParams.get("order_key") || "";
   const paymentStatus = searchParams.get("payment_status");
   const timestamp = searchParams.get("timestamp");
   const returnSource = searchParams.get("return_source");
 
   const fetchOrder = async (id: string) => {
     const apiUrl = getApiBaseUrl();
-    const response = await fetch(`${apiUrl}/orders/${id}`, {
+    const response = await fetch(`${apiUrl}/orders/${id}?key=${encodeURIComponent(orderKey)}`, {
       headers: {
         "Content-Type": "application/json",
       },

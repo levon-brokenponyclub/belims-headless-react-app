@@ -69,6 +69,7 @@ import {
   fetchProducts,
   fetchProductById,
   fetchFeaturedProducts,
+  fetchHomeProducts,
   fetchCategories,
   fetchEcommercePolicies,
 } from "./services/wooCommerceService";
@@ -247,6 +248,8 @@ const ArchivePage = ({
 const HomePage = ({
   products,
   featuredProducts,
+  homeProducts,
+  isLoadingHomeProducts,
   isLoadingProducts,
   addToCart,
   handleBuyNow,
@@ -322,6 +325,10 @@ const HomePage = ({
     };
   }, [isLoadingProducts, products]);
 
+  // Homepage rails: the small home set; fall back to the full catalogue if it came back empty
+  const railProducts = homeProducts.length > 0 ? homeProducts : products;
+  const isLoadingRails = homeProducts.length > 0 ? false : isLoadingHomeProducts || isLoadingProducts;
+
   return (
     <>
       <HeroBanner />
@@ -333,8 +340,8 @@ const HomePage = ({
       /> */}
 
       <ShopByCategory
-        products={products}
-        isLoadingProducts={isLoadingProducts}
+        products={railProducts}
+        isLoadingProducts={isLoadingRails}
         addToCart={addToCart}
         onBuyNow={handleBuyNow}
         onCompare={addToCompare}
@@ -347,8 +354,8 @@ const HomePage = ({
       <CollageGrid />
 
       <DealsSection
-        products={products}
-        isLoadingProducts={isLoadingProducts}
+        products={railProducts}
+        isLoadingProducts={isLoadingRails}
         addToCart={addToCart}
         onBuyNow={handleBuyNow}
         onCompare={addToCompare}
@@ -361,7 +368,7 @@ const HomePage = ({
       {/* Featured Category Spotlights */}
 
       <TradeDeals
-        products={products}
+        products={railProducts}
         addToCart={addToCart}
         onBuyNow={handleBuyNow}
         onCompare={addToCompare}
@@ -669,6 +676,8 @@ export default function App() {
     localStorage.getItem("devSkipDefaultStore") === "true";
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [homeProducts, setHomeProducts] = useState<Product[]>([]);
+  const [isLoadingHomeProducts, setIsLoadingHomeProducts] = useState(true);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const cartStorageKey = "belimsCartItems";
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
@@ -1002,6 +1011,12 @@ export default function App() {
     const loadProducts = async () => {
       setIsLoadingProducts(true);
 
+      // Homepage rails use a small dedicated set so the homepage never waits
+      // on (or breaks with) the ~1 MB full catalogue.
+      fetchHomeProducts()
+        .then((apiHome) => setHomeProducts((apiHome ?? []).filter(isProductPurchasable)))
+        .finally(() => setIsLoadingHomeProducts(false));
+
       // Featured (~1s) must not wait on the full catalogue (~10s+) — fire both
       // concurrently so homepage card images can start loading immediately.
       fetchFeaturedProducts().then((apiFeatured) => {
@@ -1134,6 +1149,8 @@ export default function App() {
       <MainApp
         products={products}
         featuredProducts={featuredProducts}
+        homeProducts={homeProducts}
+        isLoadingHomeProducts={isLoadingHomeProducts}
         isLoadingProducts={isLoadingProducts}
         cartItems={cartItems}
         isCartOpen={isCartOpen}

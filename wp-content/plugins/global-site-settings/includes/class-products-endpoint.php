@@ -46,6 +46,64 @@ class Belims_Products_Endpoint {
             'callback' => array($this, 'get_product'),
             'permission_callback' => '__return_true',
         ));
+
+        // Small product set for the storefront homepage rails (instead of the full catalogue)
+        register_rest_route('belims/v1', '/products/home', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_home_products'),
+            'permission_callback' => '__return_true', // Public endpoint
+        ));
+    }
+
+    /**
+     * Homepage products: newest, best-stocked, deal/sale/featured and hand-tools
+     * candidates in one de-duplicated listing. The storefront sections keep their
+     * own sorting/filtering over this set, as they did over the full catalogue.
+     */
+    public function get_home_products($request) {
+        $fields = $this->parse_fields_param($request->get_param('fields'));
+        $in_stock = array('key' => '_stock_status', 'value' => 'instock');
+        $base = array(
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'fields' => 'ids',
+            'no_found_rows' => true,
+        );
+
+        $ids = array_merge(
+            // ShopByCategory "New arrivals": newest by ID
+            get_posts($base + array('posts_per_page' => 24, 'orderby' => 'ID', 'order' => 'DESC', 'meta_query' => array($in_stock))),
+            // ShopByCategory "Best sellers": most stock
+            get_posts($base + array('posts_per_page' => 24, 'meta_key' => '_stock', 'orderby' => 'meta_value_num', 'order' => 'DESC', 'meta_query' => array($in_stock))),
+            // DealsSection: products with consumer/trade deals
+            get_posts($base + array('posts_per_page' => 40, 'meta_query' => array(
+                'relation' => 'AND',
+                $in_stock,
+                array(
+                    'relation' => 'OR',
+                    array('key' => 'deals', 'value' => 0, 'compare' => '>', 'type' => 'NUMERIC'),
+                    array('key' => '_consumer_deal_type', 'value' => '', 'compare' => '!='),
+                    array('key' => '_trade_deal_type', 'value' => '', 'compare' => '!='),
+                ),
+            ))),
+            // DealsSection fallback: on sale or featured
+            array_slice(wc_get_product_ids_on_sale(), 0, 40),
+            array_slice(wc_get_featured_product_ids(), 0, 20),
+            // TradeDeals: hand tools
+            get_posts($base + array('posts_per_page' => 12, 'meta_query' => array($in_stock), 'tax_query' => array(
+                array('taxonomy' => 'product_cat', 'field' => 'name', 'terms' => array('Hand Tools'), 'include_children' => true),
+            )))
+        );
+
+        $products = array();
+        foreach (array_unique(array_map('intval', $ids)) as $id) {
+            $product = wc_get_product($id);
+            if ($product && $product->is_visible()) {
+                $products[] = $this->format_product($product, 'listing', $fields);
+            }
+        }
+
+        return $this->build_cached_response($request, $products);
     }
 
     /**

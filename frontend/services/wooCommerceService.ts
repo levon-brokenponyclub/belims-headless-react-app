@@ -274,6 +274,27 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
 };
 
 /**
+ * Homepage rail products (~100 newest / best-stocked / deal / hand-tools items)
+ * — lets the homepage render without waiting for the full catalogue.
+ */
+export const fetchHomeProducts = async (): Promise<Product[]> => {
+  try {
+    const params = new URLSearchParams();
+    params.append("fields", DEFAULT_LISTING_FIELDS.join(","));
+    const data = await cachedGetJson<any[]>(`${BASE_URL}/products/home?${params.toString()}`);
+    return (data as Product[]).map((item) =>
+      enrichProductWithDeals({
+        ...item,
+        image: item.image || item.featured_image || "",
+      }),
+    );
+  } catch (error) {
+    console.error("Belims API Error:", error);
+    return [];
+  }
+};
+
+/**
  * Store locations + ecommerce policies. Routed through cachedGetJson so the
  * several components that need it on one page share a single request.
  */

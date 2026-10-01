@@ -27,12 +27,33 @@ class Belims_Orders_Endpoint {
             'permission_callback' => '__return_true',
         ));
 
-        // Get single order
+        // Get single order — requires the order key, the owning customer, or a shop manager
         register_rest_route('belims/v1', '/orders/(?P<id>\d+)', array(
             'methods' => 'GET',
             'callback' => array($this, 'get_order'),
-            'permission_callback' => '__return_true',
+            'permission_callback' => '__return_true', // access enforced in get_order() so failures look like "not found"
+            'args' => array(
+                'key' => array('type' => 'string', 'required' => false),
+            ),
         ));
+    }
+
+    /**
+     * Whether the current request may read this order: matching order key,
+     * the logged-in customer who owns it, or a shop manager.
+     */
+    public static function can_access_order($order, $key) {
+        if (!$order) {
+            return false;
+        }
+        if (is_string($key) && $key !== '' && hash_equals($order->get_order_key(), $key)) {
+            return true;
+        }
+        $user_id = get_current_user_id();
+        if ($user_id && (int) $order->get_customer_id() === $user_id) {
+            return true;
+        }
+        return current_user_can('manage_woocommerce');
     }
 
     /**
@@ -120,6 +141,8 @@ class Belims_Orders_Endpoint {
                 'line_items' => $line_items,
                 'shipping_address' => array(
                     'street' => $order->get_shipping_address_1(),
+                    'address2' => $order->get_shipping_address_2(),
+                    'suburb' => $order->get_shipping_city(),
                     'city' => $order->get_shipping_city(),
                     'province' => $order->get_shipping_state(),
                     'postalCode' => $order->get_shipping_postcode(),
@@ -127,6 +150,8 @@ class Belims_Orders_Endpoint {
                 ),
                 'billing_address' => array(
                     'street' => $order->get_billing_address_1(),
+                    'address2' => $order->get_billing_address_2(),
+                    'suburb' => $order->get_billing_city(),
                     'city' => $order->get_billing_city(),
                     'province' => $order->get_billing_state(),
                     'postalCode' => $order->get_billing_postcode(),
@@ -167,7 +192,8 @@ class Belims_Orders_Endpoint {
             $order->set_billing_email(sanitize_email($customer['email']));
             $order->set_billing_phone(sanitize_text_field($customer['phone']));
             $order->set_billing_address_1(sanitize_text_field($customer['address']));
-            $order->set_billing_city(sanitize_text_field($customer['city']));
+            $order->set_billing_address_2(sanitize_text_field($customer['address2'] ?? ''));
+            $order->set_billing_city(sanitize_text_field($customer['suburb'] ?: $customer['city']));
             $order->set_billing_state(sanitize_text_field($customer['province']));
             $order->set_billing_postcode(sanitize_text_field($customer['postalCode']));
             $order->set_billing_country('ZA');
@@ -176,7 +202,8 @@ class Belims_Orders_Endpoint {
             $order->set_shipping_first_name(sanitize_text_field($customer['firstName']));
             $order->set_shipping_last_name(sanitize_text_field($customer['lastName']));
             $order->set_shipping_address_1(sanitize_text_field($customer['address']));
-            $order->set_shipping_city(sanitize_text_field($customer['city']));
+            $order->set_shipping_address_2(sanitize_text_field($customer['address2'] ?? ''));
+            $order->set_shipping_city(sanitize_text_field($customer['suburb'] ?: $customer['city']));
             $order->set_shipping_state(sanitize_text_field($customer['province']));
             $order->set_shipping_postcode(sanitize_text_field($customer['postalCode']));
             $order->set_shipping_country('ZA');
@@ -207,6 +234,12 @@ class Belims_Orders_Endpoint {
             // Set order status
             $order->set_status('pending'); // Will be updated after payment
 
+            // Remember which storefront placed the order so PayFast returns the customer there
+            $frontend_origin = isset($params['frontend_origin']) ? esc_url_raw($params['frontend_origin']) : '';
+            if ($frontend_origin !== '' && function_exists('belims_is_allowed_origin') && belims_is_allowed_origin($frontend_origin)) {
+                $order->update_meta_data('_belims_frontend_origin', rtrim($frontend_origin, '/'));
+            }
+
             // Add order note
             $order->add_order_note('Order created via Belims Headless API');
 
@@ -232,7 +265,7 @@ class Belims_Orders_Endpoint {
         $order_id = $request['id'];
         $order = wc_get_order($order_id);
 
-        if (!$order) {
+        if (!$order || !self::can_access_order($order, $request->get_param('key'))) {
             return new WP_Error('order_not_found', 'Order not found', array('status' => 404));
         }
 

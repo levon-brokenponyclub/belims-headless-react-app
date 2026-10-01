@@ -3,7 +3,7 @@
  * Plugin Name: Global Site Settings
  * Plugin URI: https://belims.co.za
  * Description: Unified plugin for Belims site settings, ACF field groups, REST API endpoints, and third-party integrations (WooCommerce, FTG, BobGo, AI).
- * Version: 2.8.1
+ * Version: 2.9.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: global-site-settings
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('GLOBAL_SITE_SETTINGS_VERSION', '2.8.1');
+define('GLOBAL_SITE_SETTINGS_VERSION', '2.9.0');
 define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-10-01 19:29:07');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -52,11 +52,47 @@ function get_frontend_url() {
 }
 
 /**
+ * Storefronts allowed to call the CMS (CORS) and to receive customers back from PayFast.
+ * Production, preview and local dev all work at the same time — no switching needed.
+ */
+function get_cors_origins() {
+    $origins = array(
+        'https://www.belims.co.za',
+        'https://belims.vercel.app',
+        'http://localhost:3000',
+        get_cors_origin(),
+        get_frontend_url(),
+    );
+    $origins = array_map(function ($origin) {
+        return rtrim((string) $origin, '/');
+    }, $origins);
+
+    return apply_filters('belims_cors_origins', array_values(array_unique(array_filter($origins))));
+}
+
+function belims_is_allowed_origin($origin) {
+    return in_array(rtrim((string) $origin, '/'), get_cors_origins(), true);
+}
+
+/** CORS origin for this request: the caller's Origin when allowed, else the default. */
+function belims_request_cors_origin() {
+    $origin = isset($_SERVER['HTTP_ORIGIN']) ? rtrim(esc_url_raw(wp_unslash($_SERVER['HTTP_ORIGIN'])), '/') : '';
+    return belims_is_allowed_origin($origin) ? $origin : get_cors_origin();
+}
+
+/** Storefront an order was placed on (saved at checkout), falling back to the default frontend URL. */
+function belims_order_frontend_url($order) {
+    $origin = $order ? (string) $order->get_meta('_belims_frontend_origin') : '';
+    return ($origin !== '' && belims_is_allowed_origin($origin)) ? $origin : get_frontend_url();
+}
+
+/**
  * Handle OPTIONS preflight requests FIRST (before WordPress does anything)
  */
 add_action('init', function() {
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-        header('Access-Control-Allow-Origin: ' . get_cors_origin());
+        header('Access-Control-Allow-Origin: ' . belims_request_cors_origin());
+        header('Vary: Origin');
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-WP-Nonce');
         header('Access-Control-Allow-Credentials: true');
@@ -71,8 +107,8 @@ add_action('init', function() {
  * This fires AFTER WordPress processes the request but BEFORE sending response
  */
 add_filter('rest_pre_serve_request', function($served, $result, $request, $server) {
-    // Use dynamic CORS origin based on environment setting
-    header('Access-Control-Allow-Origin: ' . get_cors_origin());
+    header('Access-Control-Allow-Origin: ' . belims_request_cors_origin());
+    header('Vary: Origin', false);
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-WP-Nonce');
     header('Access-Control-Allow-Credentials: true');
@@ -305,32 +341,6 @@ function global_site_settings_register_bobgo_settings() {
     register_setting('global_site_settings_bobgo', 'bobgo_auto_create_shipments');
 }
 add_action('admin_init', 'global_site_settings_register_bobgo_settings');
-
-/**
- * AJAX: Switch frontend environment (development / production)
- */
-add_action('wp_ajax_switch_frontend_environment', 'switch_frontend_environment_handler');
-function switch_frontend_environment_handler() {
-    check_ajax_referer('switch_env_nonce', 'nonce');
-
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Unauthorized');
-        return;
-    }
-
-    $env = sanitize_text_field($_POST['environment'] ?? '');
-    if (!in_array($env, array('development', 'production'), true)) {
-        wp_send_json_error('Invalid environment');
-        return;
-    }
-
-    update_option('belims_frontend_environment', $env);
-
-    wp_send_json_success(array(
-        'environment' => $env,
-        'cors_origin' => get_cors_origin(),
-    ));
-}
 
 /**
  * AJAX handler to test BobGo connection
@@ -2764,81 +2774,22 @@ function global_site_settings_main_page() {
 
             <!-- CORS & Security Tab -->
             <div id="tab-cors-security" class="bpc-tab-content">
-                <!-- Environment Toggle Card -->
+                <!-- Allowed storefronts (read-only) -->
                 <div class="bpc-card">
                     <div class="bpc-card-header">
-                        <h2 class="bpc-card-title">Frontend Environment</h2>
-                        <p class="bpc-card-description">Switch between development and production frontends.</p>
+                        <h2 class="bpc-card-title">Allowed Storefronts</h2>
+                        <p class="bpc-card-description">Production, preview and local development can all use the CMS at the same time. PayFast returns each customer to the storefront their order was placed on.</p>
                     </div>
-
-                    <?php
-                    $current_env = get_option('belims_frontend_environment', 'production');
-                    ?>
-
-                    <div class="bpc-panel bpc-inline">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 600; margin-bottom: 8px;">Active Environment:
-                                <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; <?php echo $current_env === 'production' ? 'background: #d1fae5; color: #065f46;' : 'background: #fef3c7; color: #92400e;'; ?>">
-                                    <?php echo ucfirst($current_env); ?>
-                                </span>
-                            </div>
-                            <div style="font-size: 13px; color: #64748b;">
-                                CORS Origin: <code style="background: white; padding: 2px 6px; border-radius: 3px;"><?php echo esc_html(get_cors_origin()); ?></code>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 10px;">
-                            <button type="button" id="switch-to-dev" class="button <?php echo $current_env === 'development' ? 'button-primary' : 'button-secondary'; ?>" style="white-space: nowrap;">
-                                <span class="dashicons dashicons-laptop" style="margin-right: 5px;"></span>
-                                Development
-                            </button>
-                            <button type="button" id="switch-to-prod" class="button <?php echo $current_env === 'production' ? 'button-primary' : 'button-secondary'; ?>" style="white-space: nowrap;">
-                                <span class="dashicons dashicons-cloud" style="margin-right: 5px;"></span>
-                                Production
-                            </button>
+                    <div class="bpc-panel">
+                        <ul style="margin: 0 0 10px 18px; list-style: disc;">
+                            <?php foreach (get_cors_origins() as $allowed_origin) : ?>
+                                <li><code><?php echo esc_html($allowed_origin); ?></code></li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <div style="font-size: 13px; color: #64748b;">
+                            Default frontend URL (used when an order has no saved storefront): <code><?php echo esc_html(get_frontend_url()); ?></code>
                         </div>
                     </div>
-
-                    <div id="env-switch-status" style="margin-top: 15px;"></div>
-
-                    <script>
-                    jQuery(document).ready(function($) {
-                        $('#switch-to-dev').on('click', function() {
-                            switchEnvironment('development', $(this));
-                        });
-
-                        $('#switch-to-prod').on('click', function() {
-                            switchEnvironment('production', $(this));
-                        });
-
-                        function switchEnvironment(env, btn) {
-                            var statusDiv = $('#env-switch-status');
-                            statusDiv.html('<p>🔄 Switching to ' + env + '...</p>');
-
-                            $.ajax({
-                                url: ajaxurl,
-                                method: 'POST',
-                                data: {
-                                    action: 'switch_frontend_environment',
-                                    environment: env,
-                                    nonce: '<?php echo wp_create_nonce('switch_env_nonce'); ?>'
-                                },
-                                success: function(response) {
-                                    if (response.success) {
-                                        statusDiv.html('<div class="notice notice-success inline"><p>✅ Switched to ' + env + ' environment. CORS origin is now: <code>' + response.data.cors_origin + '</code></p></div>');
-                                        setTimeout(function() {
-                                            location.reload();
-                                        }, 1500);
-                                    } else {
-                                        statusDiv.html('<div class="notice notice-error inline"><p>❌ Failed to switch environment.</p></div>');
-                                    }
-                                },
-                                error: function() {
-                                    statusDiv.html('<div class="notice notice-error inline"><p>❌ Error switching environment.</p></div>');
-                                }
-                            });
-                        }
-                    });
-                    </script>
                 </div>
 
                 <!-- CORS Settings Card -->

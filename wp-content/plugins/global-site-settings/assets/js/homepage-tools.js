@@ -8,6 +8,7 @@ jQuery(function ($) {
   if (!config || !$card.length) return;
 
   const $el = (name) => $card.find(`[data-hp="${name}"]`);
+  const $hookRow = (target) => $card.find(`[data-hp-hook="${target}"]`);
 
   const request = (action, data = {}) =>
     $.post(config.ajaxurl, { action: `belims_homepage_${action}`, nonce: config.nonce, ...data }).then((res) => {
@@ -15,31 +16,53 @@ jQuery(function ($) {
       return res.data;
     });
 
+  const syncLabel = (status, target) => {
+    if (status.pending && target.selected) return "Publishing…";
+    if (target.in_sync) return "Up to date";
+    if (target.live) return "Out of date";
+    return "Unreachable";
+  };
+
   const render = (status) => {
-    let sync = "Unreachable";
-    if (status.pending) sync = "Publishing…";
-    else if (status.in_sync) sync = "Up to date";
-    else if (status.live) sync = "Out of date";
-    $el("sync").text(sync);
+    $card.find(`input[name="belims-hp-target"][value="${status.choice}"]`).prop("checked", true);
+
+    const $targets = $el("targets").empty();
+    let canPublish = false;
+
+    Object.entries(status.targets).forEach(([key, target]) => {
+      $("<div class=\"bpc-status-item\">")
+        .append($("<div class=\"bpc-status-title\">").text(`${target.label}${target.selected ? " (rebuilds on save)" : ""}`))
+        .append($("<div class=\"bpc-status-value\">").text(`${syncLabel(status, target)} — ${target.url}`))
+        .appendTo($targets);
+
+      const $row = $hookRow(key);
+      $row.find('[data-hp="hook-saved"]').prop("hidden", !target.hook_set);
+      $row.find('[data-hp="hook-form"]').prop("hidden", target.hook_set);
+      $row.find('[data-hp="hook-masked"]').text(target.hook_masked);
+      if (target.selected && target.hook_set) canPublish = true;
+    });
 
     const last = status.last_deploy;
     $el("last").text(last ? `${last.time} — ${last.result}` : "Never");
-
-    $el("hook-saved").prop("hidden", !status.hook_set);
-    $el("hook-form").prop("hidden", status.hook_set);
-    $el("hook-masked").text(status.hook_masked);
-    $card.find('[data-hp-action="publish"]').prop("disabled", !status.hook_set);
+    $card.find('[data-hp-action="publish"]').prop("disabled", !canPublish);
   };
 
   const message = (text) => $el("message").text(text);
   const refresh = () => request("status").then(render).catch((e) => message(e.message));
 
+  $card.on("change", 'input[name="belims-hp-target"]', function () {
+    request("save_target", { choice: $(this).val() })
+      .then((s) => { render(s); message("Rebuild target saved."); })
+      .catch((e) => message(e.message));
+  });
+
   $card.on("click", "[data-hp-action]", function () {
     const action = $(this).data("hp-action");
+    const target = $(this).closest("[data-hp-hook]").data("hp-hook");
 
     if (action === "edit-hook") {
-      $el("hook-saved").prop("hidden", true);
-      $el("hook-form").prop("hidden", false);
+      $hookRow(target).find('[data-hp="hook-saved"]').prop("hidden", true);
+      $hookRow(target).find('[data-hp="hook-form"]').prop("hidden", false);
       return;
     }
 
@@ -47,7 +70,7 @@ jQuery(function ($) {
     const done = () => $btn.prop("disabled", false);
 
     if (action === "save-hook") {
-      request("save_hook", { hook: $("#belims-deploy-hook").val() })
+      request("save_hook", { target, hook: $(`#belims-deploy-hook-${target}`).val() })
         .then((s) => { render(s); message("Deploy hook saved."); })
         .catch((e) => message(e.message))
         .always(done);

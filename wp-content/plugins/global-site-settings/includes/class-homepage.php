@@ -5,7 +5,8 @@
  * - GET /belims/v1/homepage — homepage sections (ACF `homepage_sections`) as clean JSON.
  * - The storefront bakes this in at build time; saving changed homepage content
  *   triggers the Vercel deploy hook (debounced via Action Scheduler).
- * - Site Settings → Homepage tab: deploy hook URL, publish button, live-version check.
+ * - Site Settings → Homepage tab: rebuild target (Preview / Production / Both),
+ *   a deploy hook per target, publish button, live-version check per target.
  *
  * @package GlobalSiteSettings
  */
@@ -16,7 +17,8 @@ if (!defined('ABSPATH')) {
 
 class Belims_Homepage {
 
-    const HOOK_OPTION    = 'belims_vercel_deploy_hook';
+    const LEGACY_HOOK_OPTION = 'belims_vercel_deploy_hook'; // pre-2.9.0 single hook (held the preview hook)
+    const TARGET_OPTION  = 'belims_homepage_deploy_target'; // preview | production | both
     const VERSION_OPTION = 'belims_homepage_version';
     const DEPLOY_LOG     = 'belims_homepage_deploy_log';
     const DEPLOY_ACTION  = 'belims_homepage_deploy';
@@ -24,12 +26,41 @@ class Belims_Homepage {
     const DEBOUNCE       = 60; // seconds — coalesces rapid saves into one build
     const HOOK_PREFIX    = 'https://api.vercel.com/v1/integrations/deploy/';
 
+    /** Storefronts a homepage save can rebuild. */
+    const TARGETS = array(
+        'preview'    => array('label' => 'Preview',    'url' => 'https://belims.vercel.app', 'branch' => 'main'),
+        'production' => array('label' => 'Production', 'url' => 'https://www.belims.co.za',  'branch' => 'vercel'),
+    );
+
+    public static function hook_option($target) {
+        return 'belims_vercel_deploy_hook_' . $target;
+    }
+
+    /** Targets the next save/publish rebuilds. */
+    public static function selected_targets() {
+        $choice = get_option(self::TARGET_OPTION, 'preview');
+        return $choice === 'both' ? array_keys(self::TARGETS) : (isset(self::TARGETS[$choice]) ? array($choice) : array('preview'));
+    }
+
+    /** One-time move of the pre-2.9.0 single hook into the preview slot. */
+    public static function migrate_legacy_hook() {
+        $legacy = (string) get_option(self::LEGACY_HOOK_OPTION, '');
+        if ($legacy === '') {
+            return;
+        }
+        if ((string) get_option(self::hook_option('preview'), '') === '') {
+            update_option(self::hook_option('preview'), $legacy, false);
+        }
+        delete_option(self::LEGACY_HOOK_OPTION);
+    }
+
     public function __construct() {
+        add_action('admin_init', array(__CLASS__, 'migrate_legacy_hook'));
         add_action('rest_api_init', array($this, 'register_routes'));
         add_action('acf/save_post', array($this, 'on_options_saved'), 20);
         add_action(self::DEPLOY_ACTION, array(__CLASS__, 'trigger_deploy'));
 
-        foreach (array('status', 'publish', 'save_hook') as $action) {
+        foreach (array('status', 'publish', 'save_hook', 'save_target') as $action) {
             add_action("wp_ajax_belims_homepage_$action", array($this, "ajax_$action"));
         }
     }
@@ -132,31 +163,34 @@ class Belims_Homepage {
         as_schedule_single_action(time() + self::DEBOUNCE, self::DEPLOY_ACTION, array(), self::AS_GROUP);
     }
 
-    /** Calls the Vercel deploy hook and records the result. */
+    /** Calls the deploy hook of every selected target and records the results. */
     public static function trigger_deploy() {
-        $hook = (string) get_option(self::HOOK_OPTION, '');
-        $log  = array('time' => current_time('mysql'), 'version' => self::payload()['version']);
+        $log = array('time' => current_time('mysql'), 'version' => self::payload()['version'], 'targets' => array());
 
-        if ($hook === '') {
-            $log['result'] = 'No deploy hook configured';
-        } else {
-            $response      = wp_remote_post($hook, array('timeout' => 15));
-            $code          = is_wp_error($response) ? 0 : (int) wp_remote_retrieve_response_code($response);
-            $log['result'] = is_wp_error($response)
-                ? 'Error: ' . $response->get_error_message()
-                : ($code >= 200 && $code < 300 ? 'Build started' : "Vercel responded HTTP $code");
+        foreach (self::selected_targets() as $target) {
+            $hook = (string) get_option(self::hook_option($target), '');
+            if ($hook === '') {
+                $result = 'No deploy hook configured';
+            } else {
+                $response = wp_remote_post($hook, array('timeout' => 15));
+                $code     = is_wp_error($response) ? 0 : (int) wp_remote_retrieve_response_code($response);
+                $result   = is_wp_error($response)
+                    ? 'Error: ' . $response->get_error_message()
+                    : ($code >= 200 && $code < 300 ? 'Build started' : "Vercel responded HTTP $code");
+            }
+            $log['targets'][$target] = $result;
         }
+
+        $log['result'] = implode(' · ', array_map(function ($target, $result) {
+            return self::TARGETS[$target]['label'] . ': ' . $result;
+        }, array_keys($log['targets']), $log['targets']));
 
         update_option(self::DEPLOY_LOG, $log, false);
         return $log;
     }
 
-    /** Version the storefront was last built with (from its homepage-version.json). */
-    public static function live_version() {
-        $base = function_exists('get_frontend_url') ? get_frontend_url() : '';
-        if (!$base) {
-            return null;
-        }
+    /** Version a storefront was last built with (from its homepage-version.json). */
+    public static function live_version($base) {
         $response = wp_remote_get(trailingslashit($base) . 'homepage-version.json?ts=' . time(), array('timeout' => 8));
         if (is_wp_error($response) || (int) wp_remote_retrieve_response_code($response) !== 200) {
             return null;
@@ -170,18 +204,31 @@ class Belims_Homepage {
      * ------------------------------------------------------------------ */
 
     public static function status() {
-        $hook = (string) get_option(self::HOOK_OPTION, '');
-        $live = self::live_version();
-        $current = self::payload()['version'];
+        $current  = self::payload()['version'];
+        $selected = self::selected_targets();
+        $targets  = array();
+
+        foreach (self::TARGETS as $target => $meta) {
+            $hook = (string) get_option(self::hook_option($target), '');
+            $live = self::live_version($meta['url']);
+            $targets[$target] = array(
+                'label'       => $meta['label'],
+                'url'         => $meta['url'],
+                'branch'      => $meta['branch'],
+                'selected'    => in_array($target, $selected, true),
+                'live'        => $live,
+                'in_sync'     => $live && ($live['version'] ?? '') === $current,
+                'hook_set'    => $hook !== '',
+                'hook_masked' => $hook !== '' ? substr($hook, 0, strlen(self::HOOK_PREFIX) + 6) . '••••••••' : '',
+            );
+        }
 
         return array(
-            'current'      => $current,
-            'live'         => $live,
-            'in_sync'      => $live && ($live['version'] ?? '') === $current,
-            'hook_set'     => $hook !== '',
-            'hook_masked'  => $hook !== '' ? substr($hook, 0, strlen(self::HOOK_PREFIX) + 6) . '••••••••' : '',
-            'pending'      => function_exists('as_has_scheduled_action') && as_has_scheduled_action(self::DEPLOY_ACTION, array(), self::AS_GROUP),
-            'last_deploy'  => get_option(self::DEPLOY_LOG, null),
+            'current'     => $current,
+            'choice'      => get_option(self::TARGET_OPTION, 'preview'),
+            'targets'     => $targets,
+            'pending'     => function_exists('as_has_scheduled_action') && as_has_scheduled_action(self::DEPLOY_ACTION, array(), self::AS_GROUP),
+            'last_deploy' => get_option(self::DEPLOY_LOG, null),
         );
     }
 
@@ -206,11 +253,25 @@ class Belims_Homepage {
 
     public function ajax_save_hook() {
         $this->guard();
+        $target = sanitize_key($_POST['target'] ?? '');
+        if (!isset(self::TARGETS[$target])) {
+            wp_send_json_error(array('message' => 'Unknown target.'));
+        }
         $hook = esc_url_raw(trim(wp_unslash($_POST['hook'] ?? '')));
         if ($hook !== '' && strpos($hook, self::HOOK_PREFIX) !== 0) {
             wp_send_json_error(array('message' => 'Paste a Vercel Deploy Hook URL (starts with ' . self::HOOK_PREFIX . ').'));
         }
-        update_option(self::HOOK_OPTION, $hook, false);
+        update_option(self::hook_option($target), $hook, false);
+        wp_send_json_success(self::status());
+    }
+
+    public function ajax_save_target() {
+        $this->guard();
+        $choice = sanitize_key($_POST['choice'] ?? '');
+        if (!in_array($choice, array('preview', 'production', 'both'), true)) {
+            wp_send_json_error(array('message' => 'Unknown target.'));
+        }
+        update_option(self::TARGET_OPTION, $choice, false);
         wp_send_json_success(self::status());
     }
 }

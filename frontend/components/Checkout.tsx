@@ -307,6 +307,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnOrderId = searchParams.get("order_id");
+  const returnOrderKey = searchParams.get("order_key") || "";
   const returnSource = searchParams.get("return_source");
   const isReturnFlow = Boolean(returnOrderId);
 
@@ -737,13 +738,13 @@ export const Checkout: React.FC<CheckoutProps> = ({
     let cancelled = false;
     let timeoutId: number | undefined;
     let attempts = 0;
-    const maxAttempts = 8;
+    const maxAttempts = 18; // ~45s — the order is only marked paid once PayFast's ITN arrives
     const delayMs = 2500;
 
     const verify = async () => {
       attempts += 1;
       try {
-        const res = await verifyPayment(returnOrderId);
+        const res = await verifyPayment(returnOrderId, returnOrderKey);
 
         if (cancelled) return;
 
@@ -751,7 +752,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
           const ts = Math.floor(Date.now() / 1000);
           onClearCart();
           navigate(
-            `/order-confirmation?order_id=${encodeURIComponent(returnOrderId)}&payment_status=complete&timestamp=${ts}`,
+            `/order-confirmation?order_id=${encodeURIComponent(returnOrderId)}&order_key=${encodeURIComponent(returnOrderKey)}&payment_status=complete&timestamp=${ts}`,
             { replace: true },
           );
           return;
@@ -790,7 +791,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
         window.clearTimeout(timeoutId);
       }
     };
-  }, [returnOrderId, navigate, onClearCart]);
+  }, [returnOrderId, returnOrderKey, navigate, onClearCart]);
 
   const handleBack = isReturnFlow ? () => navigate("/") : onBack;
   const paymentProviderLabel = returnSource
@@ -955,6 +956,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
             }
           : undefined,
         total,
+        frontend_origin: window.location.origin,
         order_note: orderNote.trim() || undefined,
         coupon_lines: validatedCoupon ? [{ code: validatedCoupon.code }] : promoCode.trim() ? [{ code: promoCode.trim() }] : undefined,
       });
@@ -988,7 +990,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
       // 3. Initialize PayFast Payment - Redirect to PayFast
       const paymentUrl = await initializePayment({
         orderId: order.id,
-        amount: total,
+        orderKey: order.order_key,
         currency: "ZAR",
         customerEmail: customer.email,
         customerName: `${customer.firstName} ${customer.lastName}`,
