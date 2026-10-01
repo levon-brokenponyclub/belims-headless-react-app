@@ -6,7 +6,7 @@ export const ComingSoon = () => {
       <div className="container mx-auto px-4 text-center">
         <div className="max-w-2xl mx-auto">
           <img
-            src="/images/belims-logo-white.png"
+            src="/images/belims-logo-white.webp"
             alt="Belims"
             className="h-12 mx-auto mb-8 object-contain"
           />

@@ -78,7 +78,7 @@ export const Footer = () => {
               <a href="/" className="inline-flex">
                 <img
                   alt="logo"
-                  src="/images/belims-logo-dark.png"
+                  src="/images/belims-logo-dark.webp"
                   className="h-8 w-auto"
                 />
               </a>

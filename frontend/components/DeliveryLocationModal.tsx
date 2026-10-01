@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { X, MapPin, Loader, Search } from "lucide-react";
 import { ShippingAddress, Store } from "../types";
 import { STORES } from "../constants";
-import { getApiBaseUrl } from "../services/wooCommerceService";
+import { fetchEcommercePolicies } from "../services/wooCommerceService";
 import { BottomDrawer } from "./BottomDrawer";
 import {
   buildAddressLabel,
@@ -797,9 +797,7 @@ export const DeliveryLocationModal: React.FC<DeliveryLocationModalProps> = ({
   ]);
 
   useEffect(() => {
-    const apiBase = getApiBaseUrl();
-    fetch(`${apiBase}/ecommerce-policies`)
-      .then((res) => res.json())
+    fetchEcommercePolicies()
       .then((data) => {
         const rawStores = Array.isArray(data?.store_locations)
           ? data.store_locations

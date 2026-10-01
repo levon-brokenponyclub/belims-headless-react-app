@@ -245,6 +245,13 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
   }
 };
 
+/**
+ * Store locations + ecommerce policies. Routed through cachedGetJson so the
+ * several components that need it on one page share a single request.
+ */
+export const fetchEcommercePolicies = <T = any>(): Promise<T> =>
+  cachedGetJson<T>(`${BASE_URL}/ecommerce-policies`);
+
 export const fetchProductById = async (
   id: string,
   options: { fields?: string[]; signal?: AbortSignal } = {},

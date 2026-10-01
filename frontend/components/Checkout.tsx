@@ -14,7 +14,7 @@ import {
   verifyPayment,
 } from "../services/paymentService";
 import { registerUser, getCurrentUser, loginUser, UserData, getAuthToken } from "../services/authService";
-import { getApiBaseUrl, validateCoupon } from "../services/wooCommerceService";
+import { fetchEcommercePolicies, validateCoupon } from "../services/wooCommerceService";
 import {
   ChevronDown,
   ChevronLeft,
@@ -536,12 +536,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
   useEffect(() => {
     if (!pickupStore || pickupStore.hours) return;
     let isActive = true;
-    const apiBase = getApiBaseUrl();
 
     const hydrateStoreHours = async () => {
       try {
-        const response = await fetch(`${apiBase}/ecommerce-policies`);
-        const data = await response.json();
+        const data = await fetchEcommercePolicies();
         const rawStores = Array.isArray(data?.store_locations)
           ? data.store_locations
           : [];
@@ -1357,7 +1355,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                 width="112"
                 height="32"
                 className="h-8 w-auto"
-                src="/images/belims-logo-dark.png"
+                src="/images/belims-logo-dark.webp"
               />
             </button>
 

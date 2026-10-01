@@ -70,7 +70,7 @@ import {
   fetchProductById,
   fetchFeaturedProducts,
   fetchCategories,
-  getApiBaseUrl,
+  fetchEcommercePolicies,
 } from "./services/wooCommerceService";
 import { isProductPurchasable } from "./utils/price";
 import { buildProductUrl, extractProductIdFromSlug } from "./utils/product";
@@ -799,9 +799,7 @@ export default function App() {
 
     const loadStores = async () => {
       try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}/ecommerce-policies`);
-        const data = await response.json();
+        const data = await fetchEcommercePolicies();
         const rawStores = Array.isArray(data?.store_locations)
           ? data.store_locations
           : [];

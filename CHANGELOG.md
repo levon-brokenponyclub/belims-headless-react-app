@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-01 — Static image right-sizing + shared ecommerce-policies request (Lighthouse follow-up)
+
+### Images
+- `CollageGrid`: `srcSet` (640 / 1080 / original) + per-tile `sizes`; new `-640.webp` / `-1080.webp` variants (q78) beside each `public/images/development` original. Per-tile `imageWidth` keeps descriptors accurate (rotary_01 = 1280w).
+- `PopularCategories`: `bosch-impact-kit.jpg` / `Makita-Saws.jpg` → `-360.webp` (62KB → 19KB, 58KB → 10KB).
+- Logos: `belims-logo-dark|white.png` → 400w `.webp` (12.1KB → 7.0KB, 11.1KB → 4.9KB) in Header, Footer, AuthPage, Checkout, ComingSoon. PNGs retained — still referenced by `global-site-settings/assets/css/admin.css`.
+
+### ecommerce-policies
+- New `fetchEcommercePolicies()` in `services/wooCommerceService.ts` (via `cachedGetJson`) — dedupes the homepage's two concurrent requests (App + DeliveryLocationModal); also adopted by SingleProduct, Checkout, DeliveryDetailsAddAddress.
+- Cloudflare edge caching for this endpoint **not** enabled: an `override_origin` cache rule was trialled and reverted within ~1 min because it cached Imunify360's 200 `text/html` challenge page. Safe approach requires the plugin to emit `Cache-Control: public, s-maxage=300` on JSON responses, then add the path to the existing "API catalogue" (respect-origin) rule.
+
+---
+
 ## 2026-10-01 — Static asset cache headers (GTmetrix "Add Expires headers")
 
 ### frontend/vercel.json — `headers`

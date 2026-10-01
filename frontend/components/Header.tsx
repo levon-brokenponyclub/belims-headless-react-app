@@ -712,7 +712,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex-shrink-0 flex items-center"
             >
               <img
-                src="/images/belims-logo-white.png"
+                src="/images/belims-logo-white.webp"
                 alt="Belims Hardware"
                 className="h-10 lg:h-12 w-auto object-contain"
               />
@@ -1003,7 +1003,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <Link to="/" className="flex items-center">
                 <img
-                  src="/images/belims-logo-white.png"
+                  src="/images/belims-logo-white.webp"
                   alt="Belims Hardware"
                   className="h-8 w-auto object-contain"
                 />

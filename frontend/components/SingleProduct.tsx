@@ -25,7 +25,7 @@ import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import { VideoPlayer } from "./VideoPlayer";
 import { generateProductDescription } from "../services/geminiService";
 import { addToRecentlyViewed } from "../services/storageService";
-import { getApiBaseUrl } from "../services/wooCommerceService";
+import { fetchEcommercePolicies } from "../services/wooCommerceService";
 import {
   getFallbackShipping,
   getShippingRates,
@@ -395,9 +395,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     setShowTradeDeal(false);
     setShowBottomCta(false);
 
-    const apiBase = getApiBaseUrl();
-    fetch(`${apiBase}/ecommerce-policies`)
-      .then((res) => res.json())
+    fetchEcommercePolicies()
       .then((data) => {
         setEcommercePolicies(data);
         const rawStores = Array.isArray(data?.store_locations)

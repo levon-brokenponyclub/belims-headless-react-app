@@ -321,8 +321,8 @@ export const PopularCategories: React.FC = () => {
   ];
 
   const featuredImages = [
-    "/images/bosch-impact-kit.jpg",
-    "/images/Makita-Saws.jpg",
+    "/images/bosch-impact-kit-360.webp",
+    "/images/Makita-Saws-360.webp",
   ];
 
   return (

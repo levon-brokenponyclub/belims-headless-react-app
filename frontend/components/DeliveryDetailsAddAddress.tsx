@@ -23,7 +23,7 @@ import {
   saveShippingAddress,
   UserData,
 } from "../services/authService";
-import { getApiBaseUrl } from "../services/wooCommerceService";
+import { fetchEcommercePolicies } from "../services/wooCommerceService";
 
 type Step = "address" | "option";
 type Option = "delivery" | "collection";
@@ -184,8 +184,7 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
-    fetch(`${getApiBaseUrl()}/ecommerce-policies`)
-      .then((r) => (r.ok ? r.json() : null))
+    fetchEcommercePolicies()
       .then((data) => {
         if (!mounted || !data) return;
         const rawStores = Array.isArray(data?.store_locations)

@@ -667,7 +667,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <Link to="/" aria-label="Return to store">
-              <img alt="Belims" src="/images/belims-logo-dark.png" className="h-8 w-auto" />
+              <img alt="Belims" src="/images/belims-logo-dark.webp" className="h-8 w-auto" />
             </Link>
             <div className="flex items-center gap-1.5 text-neutral-500">
               <Lock className="h-3.5 w-3.5" />

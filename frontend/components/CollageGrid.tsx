@@ -17,6 +17,8 @@ const banners = [
     cta: "Shop Now",
     href: "#",
     image: "/images/development/athens-mosaic-03.webp",
+    imageWidth: 1420,
+    imageSizes: "(min-width: 768px) 33vw, 100vw",
     ratioPercent: 88,
   },
   {
@@ -26,6 +28,8 @@ const banners = [
     cta: "Get Started",
     href: "#",
     image: "/images/development/athens-mosaic-06.webp",
+    imageWidth: 1420,
+    imageSizes: "(min-width: 768px) 33vw, 100vw",
     ratioPercent: 88,
     align: "center" as const,
   },
@@ -36,6 +40,8 @@ const banners = [
     href: "#",
 
     image: "/images/development/athens-mosaic-02d.webp",
+    imageWidth: 1420,
+    imageSizes: "(min-width: 768px) 50vw, 100vw",
     ratioPercent: 42,
   },
   {
@@ -45,6 +51,8 @@ const banners = [
     href: "#",
 
     image: "/images/development/rotary_01.webp",
+    imageWidth: 1280,
+    imageSizes: "(min-width: 768px) 67vw, 100vw",
     ratioPercent: 88,
     align: "center" as const,
     ctaVariant: "light" as const,
@@ -52,6 +60,10 @@ const banners = [
 ];
 
 type Banner = (typeof banners)[number];
+
+// Pre-generated -640/-1080 WebP variants sit beside each original (`imageWidth`).
+const collageSrcSet = (src: string, width: number) =>
+  `${src.replace(".webp", "-640.webp")} 640w, ${src.replace(".webp", "-1080.webp")} 1080w, ${src} ${width}w`;
 
 export const CollageGrid: React.FC = () => {
   const width = useWindowWidth();
@@ -135,6 +147,8 @@ export const CollageGrid: React.FC = () => {
           {/* media */}
           <img
             src={banner.image}
+            srcSet={collageSrcSet(banner.image, banner.imageWidth)}
+            sizes={banner.imageSizes}
             alt={banner.title}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
             loading="lazy"
