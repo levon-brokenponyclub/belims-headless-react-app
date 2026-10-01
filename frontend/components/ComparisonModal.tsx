@@ -6,8 +6,8 @@ import {
   ShoppingCart,
   Trash2,
   Scale,
-  Loader2,
 } from "lucide-react";
+import { Spinner } from "./Spinner";
 import { Product } from "../types";
 import { formatCurrency } from "../utils/price";
 
@@ -109,11 +109,11 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
                       <button
                         onClick={() => handleAddToCart(p)}
                         disabled={addingProductId === p.id}
-                        className="w-full bg-belims-blue text-white py-2 rounded font-bold text-sm hover:bg-belims-light flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full bg-belims-blue text-white py-2 rounded font-bold text-sm hover:bg-belims-light flex items-center justify-center gap-2 [&>[data-icon=inline-start]]:-ml-0.5 [&>[data-icon=inline-end]]:-mr-0.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {addingProductId === p.id ? (
                           <>
-                            <Loader2 size={16} className="animate-spin" />
+                            <Spinner data-icon="inline-start" />
                             Adding...
                           </>
                         ) : (

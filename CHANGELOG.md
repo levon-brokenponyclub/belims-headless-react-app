@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-10-01 — Order Confirmation redesign + shared Spinner + motion
+
+### 1. OrderConfirmation.tsx — success state redesign
+- New layout: tinted check badge → "Order Confirmed!" heading + subtitle → order card → "What's Next?" → Continue Shopping (`/shop`) / Need Help? (`/track-order`).
+- Order card: `Order #` + "Placed on" date (`M/D/YYYY`), primary "View Order Details" toggle, divider, 3-column Processing / Shipping / Estimated Delivery row.
+- Estimated delivery = order date + `ESTIMATED_DELIVERY_DAYS` (5); falls back to "To be confirmed".
+- "View Order Details" expands the existing `OrderDetailsView` receipt inline (`aria-expanded` / `aria-controls`); line items, totals and billing preserved for guest checkouts.
+- Uses Nexvo tokens (`primary`, `border`, `text-secondary`); soft tint via `color-mix` (no tint token exists yet).
+- Loading/error fallback, payment polling and post-payment account creation unchanged.
+
+### 2. OrderConfirmation.tsx — motion loading spinner
+- Replaced lucide `Loader` with a `motion.div` ring (50px, 4px `border-border` track, `border-t-primary` arc, linear 360° rotation / 1.5s, infinite), `role="status"`.
+- Based on motion.dev "Loading circle spinner" example; inline `<style>` dropped (`.container` clashes with Tailwind; `--divider` / `--hue-1` undefined).
+
+### 3. OrderDetailsView.tsx — `summaryOnly` prop
+- Optional, default `false`. When `true`, renders only the order summary column inside a `<div>` (no thank-you panel, page chrome or nested `<main>`).
+- `AdminOrderPreview` unaffected.
+
+### 4. Spinner.tsx — new shared loading spinner
+- Wraps lucide `Loader2` with `animate-spin`, `role="status"`, `aria-label`; accepts `data-icon="inline-start" | "inline-end"`.
+- Button content wrappers consume it via `[&>[data-icon=inline-start]]:-ml-0.5 [&>[data-icon=inline-end]]:-mr-0.5`.
+- Applied to async add-to-cart buttons: QuickView, SingleProduct (×2), ComparisonModal. Synchronous ATC buttons (ProductCard, NexvoProductCard, WishlistPage, AccountPage) intentionally unchanged.
+
+### 5. Dependencies
+- Added `motion@^13.4.6`.
+
+---
+
 ## 2026-09-26 — Checkout fulfilment step + register form + PHP parse fix
 
 ### 1. AuthPage.tsx — single-step register with required mobile number

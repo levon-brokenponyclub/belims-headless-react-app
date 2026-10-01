@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { AlertCircle, Loader } from "lucide-react";
+import { motion } from "motion/react";
+import {
+  AlertCircle,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Package,
+  Truck,
+} from "lucide-react";
 import { getApiBaseUrl } from "../services/wooCommerceService";
 import { OrderDetailsView } from "./OrderDetailsView";
 import { formatNumberWithSeparators } from "../utils/price";
@@ -64,6 +72,9 @@ interface OrderDetails {
   }>;
 }
 
+const ESTIMATED_DELIVERY_DAYS = 5;
+const PRIMARY_TINT = "bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]";
+
 export const OrderConfirmation: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -72,6 +83,7 @@ export const OrderConfirmation: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
   const [accountCreationMessage, setAccountCreationMessage] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   const orderId = searchParams.get("order_id");
   const paymentStatus = searchParams.get("payment_status");
@@ -218,7 +230,13 @@ export const OrderConfirmation: React.FC = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <Loader className="animate-spin text-belims-blue mb-4" size={48} />
+        <motion.div
+          role="status"
+          aria-label="Loading order details"
+          className="mb-4 h-[50px] w-[50px] rounded-full border-4 border-border border-t-primary will-change-transform"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+        />
         <p className="text-gray-600">Loading order details...</p>
       </div>
     );
@@ -374,6 +392,21 @@ export const OrderConfirmation: React.FC = () => {
     phone: order.billing?.phone || "",
   }));
 
+  const shortDate = (date: Date) => date.toLocaleDateString("en-US");
+  const estimatedDelivery = orderDate
+    ? new Date(orderDate.getTime() + ESTIMATED_DELIVERY_DAYS * 86_400_000)
+    : null;
+
+  const statusSteps = [
+    { icon: Package, title: "Processing", body: "Your order is being prepared" },
+    { icon: Truck, title: "Shipping", body: "You'll receive tracking info soon" },
+    {
+      icon: CalendarDays,
+      title: "Estimated Delivery",
+      body: estimatedDelivery ? shortDate(estimatedDelivery) : "To be confirmed",
+    },
+  ];
+
   const currencyPrefix = order.currency === "ZAR" ? "R" : order.currency || "$";
   const subtotalValue =
     parseFloat(order.total) -
@@ -381,29 +414,112 @@ export const OrderConfirmation: React.FC = () => {
     parseFloat(order.total_tax || "0");
 
   return (
-    <div className="bg-gray-50">
+    <div className="mx-auto max-w-4xl px-4 py-12 lg:py-16">
       {accountCreationMessage && (
-        <div className="mx-auto max-w-2xl px-4 pt-6">
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
-            {accountCreationMessage}
-          </div>
+        <div className="mb-8 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+          {accountCreationMessage}
         </div>
       )}
-      <OrderDetailsView
-        orderNumber={orderNumberStr}
-        date={formattedDate}
-        total={`${currencyPrefix} ${formatNumberWithSeparators(parseFloat(order.total))}`}
-        subtotal={`${currencyPrefix} ${formatNumberWithSeparators(subtotalValue)}`}
-        shipping={`${currencyPrefix} ${formatNumberWithSeparators(parseFloat(order.shipping_total || "0"))}`}
-        tax={`${currencyPrefix} ${formatNumberWithSeparators(parseFloat(order.total_tax || "0"))}`}
-        items={itemsMapped}
-        billingAddress={billingAddr}
-        payment={{
-          type: paymentMethodLabel,
-          last4: "xxxx",
-          expires: "xx / xx",
-        }}
-      />
+
+      <header className="flex flex-col items-center text-center">
+        <div className={`flex h-20 w-20 items-center justify-center rounded-full ${PRIMARY_TINT} text-primary`}>
+          <Check size={36} strokeWidth={2.5} />
+        </div>
+        <h1 className="mt-6 font-heading text-3xl font-bold text-text md:text-4xl">
+          Order Confirmed!
+        </h1>
+        <p className="mt-3 text-base text-text-secondary md:text-lg">
+          Thank you for your purchase. Your order has been received and is
+          being processed.
+        </p>
+      </header>
+
+      <section className="mt-10 rounded-xl border border-border bg-surface p-6 md:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-heading text-lg font-bold text-text md:text-xl">
+              Order #{orderNumberStr}
+            </h2>
+            <p className="mt-1 text-text-secondary">
+              Placed on {orderDate ? shortDate(orderDate) : "Pending"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDetails((open) => !open)}
+            aria-expanded={showDetails}
+            aria-controls="order-confirmation-details"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 font-heading font-semibold text-primary-on transition-opacity hover:opacity-90"
+          >
+            {showDetails ? "Hide Order Details" : "View Order Details"}
+            <ChevronDown
+              size={18}
+              className={`transition-transform duration-200 ${showDetails ? "rotate-180" : ""}`}
+            />
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-8 border-t border-border pt-8 sm:grid-cols-3">
+          {statusSteps.map(({ icon: Icon, title, body }) => (
+            <div key={title} className="flex flex-col items-center text-center">
+              <div className={`flex h-12 w-12 items-center justify-center rounded-full ${PRIMARY_TINT} text-primary`}>
+                <Icon size={22} />
+              </div>
+              <h3 className="mt-4 font-heading text-lg font-semibold text-text">
+                {title}
+              </h3>
+              <p className="mt-2 text-sm text-text-secondary">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {showDetails && (
+        <div id="order-confirmation-details" className="mt-6">
+          <OrderDetailsView
+            summaryOnly
+            orderNumber={orderNumberStr}
+            date={formattedDate}
+            total={`${currencyPrefix} ${formatNumberWithSeparators(parseFloat(order.total))}`}
+            subtotal={`${currencyPrefix} ${formatNumberWithSeparators(subtotalValue)}`}
+            shipping={`${currencyPrefix} ${formatNumberWithSeparators(parseFloat(order.shipping_total || "0"))}`}
+            tax={`${currencyPrefix} ${formatNumberWithSeparators(parseFloat(order.total_tax || "0"))}`}
+            items={itemsMapped}
+            billingAddress={billingAddr}
+            payment={{
+              type: paymentMethodLabel,
+              last4: "xxxx",
+              expires: "xx / xx",
+            }}
+          />
+        </div>
+      )}
+
+      <section className="mt-12 text-center">
+        <h2 className="font-heading text-2xl font-bold text-text md:text-3xl">
+          What's Next?
+        </h2>
+        <p className="mx-auto mt-4 max-w-2xl text-base text-text-secondary md:text-lg">
+          You will receive an email confirmation with your order details and
+          tracking information once your order ships.
+        </p>
+        <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => navigate("/shop")}
+            className="rounded-lg bg-primary px-8 py-3 font-heading font-semibold text-primary-on transition-opacity hover:opacity-90"
+          >
+            Continue Shopping
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/track-order")}
+            className="rounded-lg border border-border bg-surface px-8 py-3 font-heading font-semibold text-text transition-colors hover:bg-surface-muted"
+          >
+            Need Help?
+          </button>
+        </div>
+      </section>
     </div>
   );
 };

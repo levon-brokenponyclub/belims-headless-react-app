@@ -52,6 +52,7 @@ import { FulfillmentBlock } from "./FulfillmentBlock";
 import { FulfillmentTab } from "./FulfillmentTabs";
 import { ProductAccordions } from "./ProductAccordions";
 import { TradePricingAvailable } from "./TradePricingAvailable";
+import { Spinner } from "./Spinner";
 interface SingleProductProps {
   product: Product;
   allProducts?: Product[];
@@ -1673,10 +1674,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                             className="group relative h-11 w-full overflow-hidden rounded-md bg-belims-blue text-white transition-colors disabled:opacity-50"
                           >
                             <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                            <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors group-hover:text-white">
+                            <span className="relative z-10 flex items-center justify-center gap-2 [&>[data-icon=inline-start]]:-ml-0.5 [&>[data-icon=inline-end]]:-mr-0.5 font-heading font-bold transition-colors group-hover:text-white">
                               {isAddToCartLoading ? (
                                 <>
-                                  <Loader2 size={16} className="animate-spin" />
+                                  <Spinner data-icon="inline-start" />
                                   Adding...
                                 </>
                               ) : isProductPurchasable(product) ? (
@@ -2170,10 +2171,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               className="group relative h-11 w-full overflow-hidden rounded-md bg-surface-muted text-text transition-colors disabled:opacity-50 md:w-[140px]"
             >
               <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
-              <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors group-hover:text-white">
+              <span className="relative z-10 flex items-center justify-center gap-2 [&>[data-icon=inline-start]]:-ml-0.5 [&>[data-icon=inline-end]]:-mr-0.5 font-heading font-bold transition-colors group-hover:text-white">
                 {isAddToCartLoading ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" />
+                    <Spinner data-icon="inline-start" />
                     Adding...
                   </>
                 ) : isProductPurchasable(product) ? (

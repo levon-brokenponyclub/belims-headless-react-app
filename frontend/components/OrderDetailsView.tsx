@@ -31,6 +31,8 @@ interface OrderDetailsProps {
     last4: string;
     expires: string;
   };
+  /** Render only the order summary column (no thank-you panel or page chrome). */
+  summaryOnly?: boolean;
 }
 
 export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
@@ -43,13 +45,16 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
   items,
   billingAddress,
   payment,
+  summaryOnly = false,
 }) => {
   const navigate = useNavigate();
+  const Root = summaryOnly ? "div" : "main";
 
   return (
-    <main className="bg-gray-50">
-      <div className="container mx-auto px-4 py-10 lg:py-16">
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr]">
+    <Root className={summaryOnly ? "" : "bg-gray-50"}>
+      <div className={summaryOnly ? "" : "container mx-auto px-4 py-10 lg:py-16"}>
+        <div className={summaryOnly ? "" : "grid gap-8 lg:grid-cols-[1.1fr_1fr]"}>
+          {!summaryOnly && (
           <section className="bg-white rounded-lg border border-black/10 p-8 flex flex-col items-center text-center shadow-sm">
             <div className="h-16 w-16 rounded-full bg-green-50 border border-green-200 flex items-center justify-center">
               <div className="h-12 w-12 rounded-full bg-green-500 flex items-center justify-center text-white">
@@ -80,6 +85,7 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
               </button>
             </div>
           </section>
+          )}
 
           <section className="space-y-5">
             <div className="bg-white rounded-lg border border-black/10 p-6 shadow-sm">
@@ -213,6 +219,6 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
           </section>
         </div>
       </div>
-    </main>
+    </Root>
   );
 };

@@ -113,6 +113,7 @@ frontend/components/
 ├── ProductCard.tsx              # UPDATE
 ├── CartDrawer.tsx               # REVIEW
 ├── Footer.tsx                   # REVIEW
+├── Spinner.tsx                  # Shared loading spinner — pass data-icon="inline-start|inline-end" inside buttons
 └── ... (other existing components)
 ```
 

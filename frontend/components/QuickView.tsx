@@ -6,6 +6,7 @@ import { Product } from "../types";
 import { formatCurrency } from "../utils/price";
 import { buildProductUrl } from "../utils/product";
 import { StockBar } from "./StockBar";
+import { Spinner } from "./Spinner";
 
 interface QuickViewProps {
   product: Product;
@@ -311,10 +312,10 @@ export const QuickView: React.FC<QuickViewProps> = ({
                       className="group relative h-11 w-full overflow-hidden rounded-pill bg-belims-blue text-white transition-colors disabled:opacity-50"
                     >
                       <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                      <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors group-hover:text-white">
+                      <span className="relative z-10 flex items-center justify-center gap-2 [&>[data-icon=inline-start]]:-ml-0.5 [&>[data-icon=inline-end]]:-mr-0.5 font-heading font-bold transition-colors group-hover:text-white">
                         {isAddToCartLoading ? (
                           <>
-                            <Loader2 size={16} className="animate-spin" />
+                            <Spinner data-icon="inline-start" />
                             Adding...
                           </>
                         ) : product.stock > 0 ? (
