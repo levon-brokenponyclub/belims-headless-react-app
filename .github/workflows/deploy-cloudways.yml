@@ -1,13 +1,10 @@
 name: Deploy WordPress to Cloudways
 
+# DISABLED (2026-10-01): push trigger removed. `main` is now the Vercel preview
+# branch, and this job would SFTP plugins *and wp-config.php* into the production
+# CMS. Deploy plugins with wp-content/plugins/deploy.sh — see docs/OPERATIONS.md.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "wp-content/plugins/global-site-settings/**"
-      - "wp-content/plugins/uafrica-shipping/**"
-      - "wp-config.php"
-      - ".github/workflows/deploy-cloudways.yml"
+  workflow_dispatch:
 
 jobs:
   deploy:
