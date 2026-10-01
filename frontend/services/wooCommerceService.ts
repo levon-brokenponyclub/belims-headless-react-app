@@ -44,6 +44,7 @@ type CacheEntry<T> = {
 
 const GET_CACHE_TTL_MS = 60_000;
 const RETRY_DELAY_MS = 600;
+const RESPONSE_TIMEOUT_MS = 8_000;
 const RETRYABLE_STATUSES = new Set([403, 429, 502, 503, 504]);
 
 class RetryableError extends Error {
@@ -86,15 +87,32 @@ export const cachedGetJson = async <T>(
     return cached.promise as Promise<T>;
   }
 
-  const attempt = () =>
-    fetch(url, {
+  // The timeout covers waiting for the response to start (an origin stall),
+  // not the body download, so large catalogue payloads on slow links still finish.
+  const attempt = () => {
+    const controller = new AbortController();
+    const abortFromCaller = () => controller.abort();
+    if (options.signal?.aborted) controller.abort();
+    options.signal?.addEventListener("abort", abortFromCaller, { once: true });
+    const timer = setTimeout(() => controller.abort(), RESPONSE_TIMEOUT_MS);
+
+    return fetch(url, {
       ...options,
+      signal: controller.signal,
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         ...(options.headers || {}),
       },
-    }).then(async (response) => {
+    })
+      .catch((error) => {
+        if (controller.signal.aborted && !options.signal?.aborted) {
+          throw new RetryableError(`No response from ${url} within ${RESPONSE_TIMEOUT_MS}ms`, true);
+        }
+        throw error;
+      })
+      .finally(() => clearTimeout(timer))
+      .then(async (response) => {
       if (!response.ok) {
         if (response.status === 304 && cached) {
           return cached.promise as Promise<T>;
@@ -128,6 +146,7 @@ export const cachedGetJson = async <T>(
         );
       }
     });
+  };
 
   const requestPromise = attempt()
     .catch(async (error) => {
