@@ -15,6 +15,33 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 
 ---
 
+## 2026-10-01 — Global Site Settings 2.9.0: storefront allowlist, homepage targets, `/products/home`, order + payment hardening
+
+### Global Site Settings 2.9.0
+- **CORS allowlist:** `get_cors_origins()` (www, preview, `localhost:3000`, plus `get_cors_origin()` / `get_frontend_url()`; filter `belims_cors_origins`). Responses echo the caller's Origin when allowed (`Vary: Origin`), else the default. Core `rest_send_cors_headers` is unhooked — it echoed any Origin and overrode the allowlist.
+- **Orders remember their storefront:** `POST /orders` saves an allowed `frontend_origin` as `_belims_frontend_origin`; PayFast return/cancel URLs use `belims_order_frontend_url($order)`, so preview and production checkouts both return to the site they started on.
+- The Development/Production toggle (`switch_frontend_environment`) is removed; CORS & Security shows a read-only **Allowed Storefronts** card.
+- **Homepage rebuild target:** Site Settings → Homepage → *Saving rebuilds* = Preview / Production / Both (option `belims_homepage_deploy_target`, default preview); one deploy hook per target (`belims_vercel_deploy_hook_preview|production`) with per-target live status. The legacy `belims_vercel_deploy_hook` migrates into the preview slot on `admin_init`.
+- **`GET /products/home`:** de-duplicated, in-stock homepage rail set (newest, best-stocked, deals, on sale, featured, Hand Tools) — ~70 items / 55 KB vs the ~1 MB full listing; cacheable (`s-maxage=300`), covered by the Cloudflare "API catalogue" rule.
+- **Order access:** `GET /orders/:id` and the PayFast status routes require the order key (or the owning customer / shop manager).
+- **PayFast:** amount taken from the order server-side; ITN signature, order key, amount and PayFast server validation all checked before an order is marked paid; the browser return only redirects; `/payfast/config` returns public fields only.
+
+### Storefront (`frontend/`)
+- `App.tsx`: homepage rails load from `fetchHomeProducts()` first and fall back to the full catalogue.
+- `Checkout` / `OrderConfirmation` / `paymentService.ts`: pass the order key; send `frontend_origin`; payment status polled up to 18 times.
+- `cachedGetJson`: aborts a request that has not started responding within 8 s and retries once (body download is not time-limited).
+
+### Server / hosting (outside the repo)
+- Plugin deployed to the CMS (backups `~/gss-backup-20261001-221757`, `~/gss-backup-20261001-222341`); WP options: preview hook migrated, `belims_vercel_deploy_hook_production` = "CMS Homepage" (`vercel`), `belims_homepage_deploy_target` = `preview`.
+- Vercel: pushes to `main` stopped creating deployments (no GitHub → Vercel status on the commits); preview built via the Deployments API, GitHub app connection then re-checked by the owner.
+
+### Verified
+- `php -l` (local + server), `npm run build`, mocked-fetch tests (stall → retry → ok; caller abort → no retry).
+- Live: `/orders/:id` 404 without / with a wrong key, 200 with the key; CORS allows www, preview, localhost and rejects other origins; `/products/home` 200 (0.54 s server-side, Cloudflare cached).
+- PayFast sandbox order **#5566** on preview: marked paid by the verified ITN, customer returned to preview.
+
+---
+
 ## 2026-10-01 — API retry for challenged / cut-off responses
 
 ### frontend/services/wooCommerceService.ts — `cachedGetJson`

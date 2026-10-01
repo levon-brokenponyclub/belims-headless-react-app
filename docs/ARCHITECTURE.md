@@ -18,7 +18,7 @@ Product/media images ──► cms.belims.co.za/cdn-cgi/image/… (Cloudflare Im
 - **Frontend:** React 19 + TypeScript + Vite + Tailwind 3, single-page app in [`frontend/`](../frontend). React Router v7.
 - **Backend:** headless WordPress/WooCommerce at `cms.belims.co.za` (Cloudways). Custom REST API under `belims/v1` from the [Global Site Settings plugin](../wp-content/plugins/global-site-settings/README.md).
 - **Auth:** Firebase (phone + Google) verified server-side by the plugin; WordPress user/session via `belims/v1/users/*`.
-- **Payments:** PayFast (plugin endpoints). **Shipping:** BobGo (uAfrica plugin + `belims/v1/shipping/calculate`). **Catalogue:** FTG sync into WooCommerce.
+- **Payments:** PayFast (plugin endpoints) — an order is marked paid only by a verified ITN; the browser return just redirects. **Shipping:** BobGo (uAfrica plugin + `belims/v1/shipping/calculate`). **Catalogue:** FTG sync into WooCommerce.
 
 ## Repository layout (`app/public`)
 
@@ -54,7 +54,7 @@ Defined in [`App.tsx`](../frontend/App.tsx):
 | `/product/*` | `SingleProduct` (URL = category path + `{slug}-{id}`, see `utils/product.ts`) |
 | `/cart` | `CartPage` |
 | `/checkout` | `Checkout` (details → fulfilment → payment) |
-| `/order-confirmation` | `OrderConfirmation` (PayFast return) |
+| `/order-confirmation` | `OrderConfirmation` (PayFast return; needs `order_id` + `order_key`) |
 | `/login`, `/register` | `AuthPage` |
 | `/account`, `/account/:tab` | `AccountPage` (dashboard, orders, addresses, payment, details, wishlist) |
 | `/wishlist` | `WishlistPage` |
@@ -65,10 +65,11 @@ Defined in [`App.tsx`](../frontend/App.tsx):
 ## Data flow
 
 - **API base:** `getApiBaseUrl()` → `/api` (rewritten to `cms.belims.co.za/wp-json` by Vercel in production and by the Vite proxy locally).
-- **Request cache:** `cachedGetJson()` in `wooCommerceService.ts` dedupes concurrent GETs and caches them in memory (TTL). Use it for any shared read (e.g. `fetchEcommercePolicies()`).
+- **Request cache:** `cachedGetJson()` in `wooCommerceService.ts` dedupes concurrent GETs and caches them in memory (TTL). It retries once on challenge pages, cut-off bodies, 403/429/5xx, and when no response starts within 8 s. Use it for any shared read (e.g. `fetchEcommercePolicies()`).
 - **Edge cache:** Cloudflare caches `/api/belims/v1/(products|categories|ecommerce-policies)*` when the origin sends `Cache-Control: public, s-maxage=…` (see [OPERATIONS](OPERATIONS.md#cloudflare-belimscoza-free-plan)).
-- **Products:** full listing (`fetchProducts`) and featured (`fetchFeaturedProducts`) load in parallel on mount; unpurchasable items (backorder, zero price, out of stock) are filtered with `isProductPurchasable` (`utils/price.ts`).
+- **Products:** the homepage rails load first from `fetchHomeProducts()` (`GET /products/home`, ~55 KB) and fall back to the full catalogue; the full listing (`fetchProducts`) and featured (`fetchFeaturedProducts`) load in parallel on mount; unpurchasable items (backorder, zero price, out of stock) are filtered with `isProductPurchasable` (`utils/price.ts`).
 - **Homepage hero:** fetched from `GET /belims/v1/homepage` **at build time** by `homepagePlugin` (falls back to `content/homepage.fallback.json`), exposed as `virtual:homepage`, LCP image preloaded in `index.html`; other routes use `app.html` (no preload). The build also emits `homepage-version.json` for the CMS live-version check.
+- **Orders & CORS:** checkout sends `frontend_origin` (saved on the order) so PayFast returns the customer to the storefront they ordered on; order and payment-status reads pass the order key. The CMS allows CORS from www, preview and `localhost:3000` at the same time.
 - **Client storage:** delivery address (`shippingAddress.ts`), pickup store, fulfilment context (`src/lib/fulfillmentContext.ts`), auth token, wishlist, cart — all `localStorage`.
 
 ## Images

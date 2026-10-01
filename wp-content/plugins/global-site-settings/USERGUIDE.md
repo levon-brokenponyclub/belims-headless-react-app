@@ -1,6 +1,6 @@
 # Global Site Settings — User Guide
 
-**Plugin version:** 2.8.1 · **For:** Belims Hardware store administrators
+**Plugin version:** 2.9.0 · **For:** Belims Hardware store administrators
 
 > Technical overview for developers: [README.md](README.md) · Project docs: [root README](../../../README.md)
 
@@ -57,7 +57,10 @@ Click **Save Settings** at the bottom.
 
 Edit the storefront homepage. Changes go live about **1–2 minutes** after saving (the storefront rebuilds itself).
 
-> **Before launch:** saving rebuilds the **preview** site (https://belims.vercel.app), not www.belims.co.za — the deploy hook and the frontend URL both point at preview until launch.
+**Saving rebuilds** — choose which storefront a save rebuilds:
+- **Preview** (https://belims.vercel.app) — use while developing. This is the setting until launch.
+- **Production** (https://www.belims.co.za) — once the site is live.
+- **Both** — rebuild both.
 
 **Hero** (the large banner at the top):
 1. Under **Homepage Sections**, open the **Hero** section (or **Add Section → Hero** if none exists).
@@ -68,15 +71,15 @@ Edit the storefront homepage. Changes go live about **1–2 minutes** after savi
 6. Click **Save Homepage**.
 
 **Publishing** card:
-- **Storefront** shows *Up to date*, *Publishing…* or *Out of date*.
-- **Publish now** rebuilds the storefront without changing content (e.g. if a build failed).
-- **Vercel Deploy Hook** — set once by your developer; shown partly hidden.
+- Each storefront shows *Up to date*, *Publishing…*, *Out of date* or *Unreachable*; the one(s) a save rebuilds are marked *(rebuilds on save)*.
+- **Publish now** rebuilds the selected storefront(s) without changing content (e.g. if a build failed).
+- **Preview / Production Deploy Hook** — set once by your developer; shown partly hidden.
 
 If the storefront can't reach the CMS during a rebuild it keeps a default hero and shows *Out of date* — click **Publish now** to retry.
 
 ## CORS & Security
 
-Which storefront address is allowed to read data from the CMS. Only change this when the storefront moves to a new address.
+**Allowed Storefronts** lists every site allowed to use the CMS — the live store, the preview site and local development work at the same time, so there's nothing to switch. When a customer pays with PayFast they're returned to the storefront they ordered on. The **default frontend URL** is only used for orders with no saved storefront; your developer changes it at launch.
 
 ## WooCommerce
 

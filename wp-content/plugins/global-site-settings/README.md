@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.8.1  
+**Version:** 2.9.0  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -23,8 +23,8 @@ global-site-settings/
 │   └── js/homepage-tools.js          # Site Settings → Homepage publishing controls
 ├── includes/
 │   ├── acf-field-groups.php          # ACF field group registration
-│   ├── class-orders-endpoint.php     # POST /orders — headless checkout order creation
-│   ├── class-products-endpoint.php   # GET /products, /products/:id
+│   ├── class-orders-endpoint.php     # POST /orders, GET /orders, GET /orders/:id (order-key access)
+│   ├── class-products-endpoint.php   # GET /products, /products/home, /products/:id
 │   ├── class-categories-endpoint.php # GET /categories
 │   ├── class-user-endpoint.php       # Auth, registration, customer profile
 │   ├── class-user-admin-page.php     # User management admin UI
@@ -33,7 +33,7 @@ global-site-settings/
 │   ├── class-media-folders.php       # Media → Folders (media_folder taxonomy)
 │   ├── class-image-optimizer.php     # WebP conversion queue, auto-convert, archive, Products folder
 │   ├── admin-media-tab.php           # Site Settings → Media tab markup
-│   ├── class-homepage.php            # GET /homepage + Vercel deploy hook on save
+│   ├── class-homepage.php            # GET /homepage + Vercel deploy hooks (preview/production) on save
 │   ├── admin-homepage-tab.php        # Site Settings → Homepage tab markup
 │   ├── bobgo-shipping/               # BobGo shipping integration (see below)
 │   ├── payfast/                      # PayFast payment gateway (see below)
@@ -53,8 +53,8 @@ Single-page tabbed interface at **WP Admin → Site Settings**.
 | Overview | Dashboard | `tab-dashboard` | System status, integrations, settings shortcuts, REST API reference, Clear Cache |
 | Settings | Branding | `tab-branding` | WP admin dashboard colours |
 | Settings | Store Details | `tab-ecommerce` | Store locations + hours, Google Maps key (masked), product page policies, Ask an Expert block |
-| Settings | Homepage | `tab-homepage` | Homepage sections (Hero), Vercel deploy hook, publish + live-version status |
-| Settings | CORS & Security | `tab-cors-security` | Allowed origins and REST API security |
+| Settings | Homepage | `tab-homepage` | Homepage sections (Hero), rebuild target (Preview/Production/Both), deploy hook per target, publish + live-version status |
+| Settings | CORS & Security | `tab-cors-security` | Read-only Allowed Storefronts list + default frontend URL; REST API security |
 | Settings | WooCommerce | `tab-woocommerce` | WooCommerce API and product description import |
 | Integrations | FTG Sync | `tab-ftg-sync` | FTG credentials, product sync, cron schedule |
 | Integrations | BobGo Shipping | `tab-bobgo-shipping` | BobGo enable toggle + API settings |
@@ -98,6 +98,7 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `GET` | `/products` | Public | Product listing (`view=listing\|detail`, `fields`, `featured`, `category`, `search`, `page`, `per_page`). Sends `Cache-Control: public, s-maxage=300` + ETag |
+| `GET` | `/products/home` | Public | Homepage rail set (newest, best-stocked, deals, on sale, featured, Hand Tools), in stock, de-duplicated, listing fields. `Cache-Control: public, s-maxage=300` |
 | `GET` | `/products/:id` | Public | Single product |
 | `GET` | `/products/filters` | Public | Archive filter options (registered in `ftg-sync/class-ftg-sync-endpoint.php`) |
 | `GET` | `/categories` | Public | Category tree (cached, ETag) |
@@ -105,19 +106,19 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/ecommerce-policies` | Public | Policies, `store_locations`, `expert_contact` (`class-ecommerce-settings.php`; `Cache-Control: public, s-maxage=300` since 2.8.1) |
 | `GET` | `/coupons?code=` | Public | Validate a coupon |
 | `GET` | `/ai/config` | Public | AI feature config |
-| `POST` | `/orders` | Public | Create WooCommerce order from headless checkout |
+| `POST` | `/orders` | Public | Create WooCommerce order from headless checkout; saves an allowed `frontend_origin` as `_belims_frontend_origin` |
 | `GET` | `/orders` | Logged in | Customer order history |
-| `GET` | `/orders/:id` | Public (hardening pending) | Single order details |
+| `GET` | `/orders/:id?key=` | Order key, owning customer or shop manager | Single order details (404 otherwise) — `Belims_Orders_Endpoint::can_access_order()` |
 | `POST` | `/shipping/calculate` | Public | BobGo shipping rates for an address |
 | `POST` | `/track` | Public | Track a shipment |
 | `POST` | `/users/register` · `/users/login` · `/users/logout` · `/users/check-email` | Public | Account auth |
 | `GET` / `PUT` | `/users/me` | Logged in | Current user profile |
 | `GET` | `/users` | Admin / shop manager | List users |
 | `POST` | `/auth/firebase-phone` · `/auth/firebase-google` | Public (Firebase token verified server-side) | Firebase sign-in |
-| `GET` | `/payfast/config` | Public | PayFast config for checkout |
-| `POST` | `/payfast/initiate-payment` | Public | Start a PayFast payment |
-| `GET` | `/payfast/verify-payment/:order_id` · `/payfast/payment-status/:order_id` | Public | Payment status checks |
-| `POST` | `/payfast/itn` | Public | PayFast ITN (payment notification) |
+| `GET` | `/payfast/config` | Public | Public PayFast fields only (`merchantId`, URLs, `testMode`) |
+| `POST` | `/payfast/initiate-payment` | Order key | Start a PayFast payment for a pending/failed order; amount = order total |
+| `GET` | `/payfast/verify-payment/:order_id` · `/payfast/payment-status/:order_id` | Order key (`?key=`) | Payment status checks |
+| `POST` | `/payfast/itn` | PayFast (signature + server validation) | PayFast ITN — the only path that marks an order paid |
 | `POST` | `/payfast/test/mark-paid/:order_id` | `manage_options` | Testing only |
 | `POST` | `/ftg/login` | Admin | Exchange FTG email+password for collection token |
 | `GET` | `/ftg/brands` · `/ftg/instances` · `/ftg/products/:token` · `/ftg/product/:sku` · `/ftg/sync/status` · `/ftg/display-on-web-count` | Admin | FTG catalogue reads |
@@ -130,16 +131,13 @@ PayFast's browser return is handled outside the REST API (`includes/payfast/clas
 
 ## CORS
 
-CORS origin is controlled by the `belims_frontend_environment` WP option and the ACF `headless_frontend_url` option field (takes priority).
-
-| Environment | Origin |
-|-------------|--------|
-| Production | Value of ACF `headless_frontend_url` (currently `https://belims.vercel.app`) |
-| Development | `http://localhost:3000` (or `FRONTEND_URL` env var) |
+Several storefronts can use the CMS at once (2.9.0). REST responses (and `OPTIONS` preflights) echo the caller's `Origin` when it is on the allowlist, with `Vary: Origin`; any other origin gets the default. Core `rest_send_cors_headers` is unhooked on `rest_api_init` because it echoes every origin.
 
 Helper functions available globally:
-- `get_cors_origin()` — returns the current allowed origin
-- `get_frontend_url()` — returns the frontend base URL (used for PayFast return URLs)
+- `get_cors_origins()` — allowlist: `https://www.belims.co.za`, `https://belims.vercel.app`, `http://localhost:3000`, plus `get_cors_origin()` / `get_frontend_url()`. Filter: `belims_cors_origins`.
+- `belims_is_allowed_origin($origin)` / `belims_request_cors_origin()` — check / resolve the origin for the current request.
+- `get_cors_origin()` / `get_frontend_url()` — the **default** storefront (ACF `headless_frontend_url`, currently `https://belims.vercel.app`).
+- `belims_order_frontend_url($order)` — the storefront an order was placed on (`_belims_frontend_origin`), else the default. Used for PayFast return/cancel URLs.
 
 ---
 
@@ -225,7 +223,6 @@ View logs: **WooCommerce → Status → Logs → select `belims-bobgo`**.
 
 | Action | Description |
 |--------|-------------|
-| `switch_frontend_environment` | Switches `belims_frontend_environment` option (Production / Development) |
 | `test_bobgo_connection` | Tests BobGo Bearer token auth via `GET /webhooks` |
 | `belims_check_order_sync` | Returns shipping items and BobGo meta for a given WC order ID |
 | `belims_trigger_order_sync` | Patches `method_id` on legacy orders and manually triggers `create_bobgo_order()` |
@@ -243,11 +240,13 @@ All admin AJAX handlers require `manage_options` capability and a valid nonce.
 
 | File | Purpose |
 |------|---------|
-| `class-payfast-api.php` | Builds PayFast payment payload, signature generation |
-| `class-payfast-return-handler.php` | Handles `/payfast/return` — verifies payment, moves order to `processing`, redirects to `get_frontend_url()/order-confirmation?order_id=X&order_key=Y` |
+| `class-payfast-api.php` | REST routes; builds the payment payload from the order (server-side amount, `custom_str1` = order key); ITN handler |
+| `class-payfast-return-handler.php` | Handles `/payfast/return` — **never changes the order**; checks the key and redirects to `belims_order_frontend_url($order)/checkout?order_id=…&payment_status=…&return_source=payfast` (+ `order_key` when valid) |
 | `class-payfast-admin-page.php` | Admin test panel |
 
-**Return URL** is built from `get_frontend_url()` which reads the ACF `headless_frontend_url` option.
+**ITN (2.9.0):** an order is marked paid only when all pass — signature over the posted fields in order (empty values included, `&passphrase=` appended), `custom_str1` = order key, amount = order total (±0.01), and PayFast's `/eng/query/validate` returns `VALID`. Already-paid orders are acknowledged without changes. Logs: WooCommerce → Status → Logs → `payfast-api`.
+
+**Return / cancel URLs** use `belims_order_frontend_url($order)` — the storefront the order was placed on.
 
 ---
 
@@ -263,7 +262,7 @@ Hierarchical `media_folder` taxonomy on attachments.
 
 ---
 
-## Homepage (`includes/class-homepage.php`, v2.8.0)
+## Homepage (`includes/class-homepage.php`, v2.8.0, targets v2.9.0)
 
 Homepage content is edited in **Site Settings → Homepage** and baked into the storefront **at build time** (keeps the hero LCP preload static and home-only).
 
@@ -272,8 +271,9 @@ Homepage content is edited in **Site Settings → Homepage** and baked into the 
 | ACF | `group_belims_homepage` → Flexible Content `homepage_sections` (options). Layout `hero` (max 1): enabled, title, description, button_text, button_link, image (ID), image_mobile (ID, optional), alt |
 | Endpoint | `GET /belims/v1/homepage` → `{ version, sections: [{ type: "hero", title, description, button:{text,link}, image:{url,width,height,alt}, image_mobile }] }`. Disabled/incomplete sections omitted. `Cache-Control: public, max-age=60` |
 | Rebuild on save | `acf/save_post` (options) compares payload `version` with option `belims_homepage_version`; when changed, schedules Action Scheduler `belims_homepage_deploy` (group `belims-homepage`) 60s out — rapid saves coalesce into one build |
-| Deploy hook | Option `belims_vercel_deploy_hook` (must start `https://api.vercel.com/v1/integrations/deploy/`), masked in UI. Result of last call in `belims_homepage_deploy_log`. **Until launch it holds the "CMS Homepage (preview)" hook (branch `main`)**; switch to "CMS Homepage" (branch `vercel`) at launch |
-| Live check | Reads `<frontend_url>/homepage-version.json` written by the storefront build; tab shows Up to date / Out of date / Publishing… |
+| Rebuild target | Option `belims_homepage_deploy_target` = `preview` (default) / `production` / `both` — *Saving rebuilds* radio. `Belims_Homepage::TARGETS`: preview → `belims.vercel.app` (`main`), production → `www.belims.co.za` (`vercel`) |
+| Deploy hooks | Options `belims_vercel_deploy_hook_preview` / `_production` (must start `https://api.vercel.com/v1/integrations/deploy/`), masked in UI. A legacy `belims_vercel_deploy_hook` migrates into the preview slot on `admin_init`. Last result in `belims_homepage_deploy_log` |
+| Live check | Per target: reads `<target url>/homepage-version.json` written by the storefront build; shows Up to date / Out of date / Publishing… / Unreachable |
 
 Storefront side: `frontend/build/homepagePlugin.ts` fetches the endpoint at build (10s timeout; falls back to `frontend/content/homepage.fallback.json` with a build-log warning), exposes `virtual:homepage`, injects the hero preload into `index.html`, and writes `app.html` (no preload, served for all other routes via `vercel.json`) + `homepage-version.json`.
 
@@ -304,5 +304,5 @@ Do not override files owned by other plugins (e.g. `uafrica-shipping`).
 
 - **Firebase verification**: `BELIMS_FIREBASE_API_KEY` must be defined in `wp-config.php` (set on production 2026-10-01). Without it, `/auth/firebase-phone` and `/auth/firebase-google` refuse sign-in (fail closed). Accounts are identified only by the Firebase-verified phone/email — client-supplied values are ignored.
 - **BobGo API keys**: The current BobGo plan does not allow API key creation. Direct API calls (`class-bobgo-order-handler.php`) are disabled. Order sync relies on the BobGo ↔ WooCommerce channel integration.
-- **CORS**: Only one origin is allowed at a time. The ACF `headless_frontend_url` option overrides all other CORS settings.
+- **CORS**: The allowlist is code-defined (`get_cors_origins()`, filter `belims_cors_origins`); ACF `headless_frontend_url` only sets the default.
 - **FTG last sync format**: Two code paths write different formats to `belims_ftg_last_sync`. Always use `belims_get_ftg_last_sync_timestamp()` to read it.

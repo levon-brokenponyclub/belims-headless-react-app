@@ -26,8 +26,8 @@ There is **one CMS** behind both preview and production.
   - Rewrites: `/api/:path*` → `https://cms.belims.co.za/wp-json/:path*`; everything else → `/app.html` (the homepage is `index.html` with the hero preload).
   - Headers: `/assets/*` `max-age=31536000, immutable`; `/images/*`, `/brands/*`, `/favicon.svg` 7 days + `stale-while-revalidate`. HTML stays `max-age=0`.
 - **Env vars:** see [ARCHITECTURE → Environment variables](ARCHITECTURE.md#environment-variables-frontend). `VITE_*` values are build-time.
-- **Deploy hooks:** "CMS Homepage (preview)" → `main` (currently in the CMS option `belims_vercel_deploy_hook`); "CMS Homepage" → `vercel` (switch to it at launch).
-- **Forcing a build** of an already-deployed commit (e.g. after a fast-forward): `vercel deploy` from `frontend/`, or `POST https://api.vercel.com/v13/deployments` with `{"name":"belims","project":"<id>","gitSource":{"type":"github","repoId":1100803605,"ref":"main"}}`.
+- **Deploy hooks:** "CMS Homepage (preview)" → `main` (CMS option `belims_vercel_deploy_hook_preview`); "CMS Homepage" → `vercel` (`belims_vercel_deploy_hook_production`). Which one a Homepage save triggers is chosen in Site Settings → Homepage → *Saving rebuilds* (`belims_homepage_deploy_target`: preview / production / both).
+- **Forcing a build** of an already-deployed commit (e.g. after a fast-forward), or **when a push doesn't build**: `POST https://api.vercel.com/v13/deployments` with `{"name":"belims","project":"<id>","gitSource":{"type":"github","repoId":1100803605,"ref":"main","sha":"<sha>"}}` (a Git deployment keeps the branch domain). If pushes stop building (no Vercel status on the GitHub commit — seen 2026-10-01), check GitHub → Settings → Applications → Vercel and reconnect the repo in Vercel → Settings → Git.
 - **Do not** use *Promote* / *Redeploy to another environment* — builds carry their environment's `VITE_*` values.
 
 ## Cloudflare (`belims.co.za`, Free plan)
@@ -36,7 +36,7 @@ There is **one CMS** behind both preview and production.
 | --- | --- | --- |
 | **Bot Fight Mode** | **Off** | It challenged Vercel's server-side (AWS) calls to `cms.belims.co.za/wp-json`. On Free, WAF skip rules **cannot** bypass it. |
 | WAF custom rule "Skip bot protection for WP REST API" | Skip Super Bot Fight Mode for `/wp-json/belims/v1/`, `/wp-json/wp/v2/` | Harmless; kept. |
-| Cache rule **"API catalogue"** | `www.belims.co.za` + path starts with `/api/belims/v1/products`, `/categories`, `/ecommerce-policies` → eligible, edge TTL *use origin Cache-Control, bypass if absent*, browser TTL *respect origin* | Origin sends `public, max-age=60, s-maxage=300, stale-while-revalidate=300` on JSON. Imunify challenge pages are `private, no-store` → never cached. |
+| Cache rule **"API catalogue"** | `www.belims.co.za` + path starts with `/api/belims/v1/products` (incl. `/products/home`), `/categories`, `/ecommerce-policies` → eligible, edge TTL *use origin Cache-Control, bypass if absent*, browser TTL *respect origin* | Origin sends `public, max-age=60, s-maxage=300, stale-while-revalidate=300` on JSON. Imunify challenge pages are `private, no-store` → never cached. |
 | Images → **Transformations** | Enabled | Serves `/cdn-cgi/image/…` (AVIF/WebP, resized). Free tier: 5,000 unique transformations/month. |
 | Web Analytics (RUM) | On | Core Web Vitals in the dashboard; filter by host `www.belims.co.za` (CMS admin traffic is mixed in otherwise). |
 
@@ -51,7 +51,7 @@ Purge after urgent content changes: Cloudflare → Caching → Purge by URL (e.g
 - **Imunify360 SplashScreen ("One moment, please…")** challenges some `/wp-json/` requests from Vercel (AWS IPs) — the cause of intermittent `Belims API Error: Unexpected token '<'`. The Cloudways UI has **no per-path setting** (app Security only has Malware Protection/Vulnerability Scanner; server Security has IP-only firewall). **Open:** support escalation to whitelist `cms.belims.co.za` / exclude `/wp-json/` (server-level, root). Also see `CAPTCHA_DOS_ALERT` blacklists under server Security → Firewall.
 - **Breeze / Varnish:** `/wp-json` excluded from page caching (Cloudways default). Breeze "Never cache" URLs must be absolute (`https://…/wp-json/`).
 - **wp-config.php constants:** `BELIMS_FIREBASE_API_KEY` (required for Firebase sign-in).
-- **Frontend URL:** ACF option `headless_frontend_url` = `https://belims.vercel.app` (environment `production`) → `get_frontend_url()` / `get_cors_origin()`. Used for the PayFast return redirect, the single allowed CORS origin and the Homepage live-version check. Switch to `https://www.belims.co.za` at launch.
+- **Frontend URL:** ACF option `headless_frontend_url` = `https://belims.vercel.app` → `get_frontend_url()` / `get_cors_origin()`. It is the **default** storefront: the CORS fallback and the PayFast return for orders with no saved storefront. CORS allows every origin in `get_cors_origins()` (www, preview, `localhost:3000`, filter `belims_cors_origins`); each order saves the storefront it came from (`_belims_frontend_origin`) and PayFast returns the customer there. Switch the default to `https://www.belims.co.za` at launch.
 
 ### CMS plugin deploys
 

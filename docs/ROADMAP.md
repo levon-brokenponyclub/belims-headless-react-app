@@ -9,15 +9,16 @@ _Last reviewed: 2026-10-01_
 ## 🚨 Urgent
 
 - [ ] **Rotate the Cloudways master SSH password.** It was committed to `README.md` in `63b6388e` (2026-02-20) and the GitHub repo is **public**. Removing it from the file does not remove it from history. After rotating, update the SSH Vault entry. (Server #1482444 → Master Credentials.)
-- [ ] **Order endpoint access control** — harden access checks on the orders REST endpoints (details tracked privately, not in this public repo).
+- [ ] **Rotate the PayFast merchant passphrase** (PayFast dashboard + WooCommerce PayFast settings) — routine rotation after the 2.9.0 payment changes.
 - [ ] **Imunify360 SplashScreen on `/wp-json/`** — get Cloudways support (root) to whitelist `cms.belims.co.za` / exclude `/wp-json/` from WebShield. Until then some uncached API calls return HTML and products fail to load. See [OPERATIONS → Cloudways](OPERATIONS.md#cloudways--cms).
 
 ## Launch checklist (`www.belims.co.za`)
 
 - [ ] Imunify issue resolved; `/api/*` returns JSON for 10/10 cache-busted requests.
 - [ ] Remove `VITE_COMING_SOON` from Vercel Production.
-- [ ] Switch WP option `belims_vercel_deploy_hook` back to the **"CMS Homepage"** hook (branch `vercel`).
-- [ ] Set the CMS frontend URL (ACF option `headless_frontend_url`, Site Settings → CORS & Security) from `https://belims.vercel.app` to `https://www.belims.co.za` — it sets the **PayFast return URL**, the CORS origin and the Homepage live-version check.
+- [ ] Site Settings → Homepage → *Saving rebuilds*: switch to **Production** (or **Both**).
+- [ ] Set the CMS default frontend URL (ACF option `headless_frontend_url`) from `https://belims.vercel.app` to `https://www.belims.co.za` — the PayFast return fallback and default CORS origin.
+- [ ] Release `main:vercel` together with or after GSS 2.9.0 — the current production bundle's checkout predates the order-key requirement and fails until released.
 - [ ] Decide preview privacy: re-enable Vercel Authentication for preview deployments if `belims.vercel.app` should not stay public.
 - [ ] Release: `git push origin main:vercel` (see [README → Deployment](../README.md#deployment-vercel)); verify production, Lighthouse and Cloudflare Web Analytics (host = www).
 - [ ] Replace remaining placeholder/demo imagery (`frontend/public/images/development/*` collage tiles).
@@ -34,7 +35,8 @@ _Last reviewed: 2026-10-01_
 
 ## Reliability & code health
 
-- [ ] Homepage product rails depend on the full ~1 MB listing (`fetchProducts`) — give them a dedicated small request (e.g. `per_page=24`).
+- [ ] `POST /orders` ignores `coupon_lines` and `order_note` from checkout — applied coupons and notes don't reach the WooCommerce order.
+- [ ] Headless orders show WooCommerce order attribution "Origin: Unknown" — optionally set attribution meta in `create_order`.
 - [ ] Remove dead `wp-content/plugins/global-site-settings/includes/class-ecommerce-policies.php` (not loaded; live route is in `class-ecommerce-settings.php`).
 - [ ] `belims-ai-product-descriptions` uses `gemini-2.0-flash-exp` (experimental model) — move to a current Gemini model.
 - [ ] Exclude `frontend/backups/` from `tsconfig` (pre-existing TS errors).
