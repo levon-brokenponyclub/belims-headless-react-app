@@ -58,56 +58,42 @@ The app will open at `http://localhost:3000`.
 
 ---
 
-## ☁️ Deployment Guide (Netlify)
+## ☁️ Deployment (Vercel)
 
-Since you have your code on GitHub, deploying to Netlify is the easiest way to get your site live.
+Vercel project `belims` (team `levon-brokenponycs-projects`), root directory `frontend`, connected to `levon-brokenponyclub/belims-headless-react-app`.
 
-### Step 1: Prepare your GitHub Repo
+### Branches & environments
 
-Ensure your latest code is pushed to GitHub:
+| Branch | Vercel environment | URL | Purpose |
+| --- | --- | --- | --- |
+| `main` | Preview | https://belims.vercel.app (public) | Development & verification |
+| `vercel` | Production | https://www.belims.co.za | Live site (Coming Soon until launch) |
+
+### Workflow
+
+1. Commit to `main` and push → Vercel builds a Preview deployment and serves it on `belims.vercel.app`.
+2. Verify on https://belims.vercel.app.
+3. Release to production by fast-forwarding `vercel`:
 
 ```bash
-git add .
-git commit -m "Ready for deployment"
-git push origin main
+git push origin main:vercel
 ```
 
-### Step 2: Connect Netlify (Detailed)
+### Rules
 
-1.  Log in to your [Netlify Dashboard](https://app.netlify.com/).
-2.  Click **"Add new site"** > **"Import from an existing project"**.
-3.  Select **GitHub**.
-4.  Authorize Netlify to access your GitHub account.
-5.  Search for and select your repo: `belims-headless-react-app`.
+- **Release through Git only.** `VITE_*` variables are inlined at build time, so a build carries the environment it was built for. Do not use Vercel's *Promote* or *Redeploy* to move a build between Preview and Production — that is how a Production build (with `VITE_COMING_SOON=true`) leaked onto `belims.vercel.app`.
+- `VITE_COMING_SOON` is set for **Production only**. Remove it (and redeploy) at launch.
+- Pushing a commit that Vercel has already built (e.g. after a fast-forward) does not trigger a new build. Use `vercel deploy` or the Vercel API (`POST /v13/deployments` with `gitSource.ref`) to force one.
 
-### Step 3: Configure Build Settings
+### CMS-triggered builds
 
-You will see a screen titled **"Build settings"**. Ensure the following are set:
+- Saving **Site Settings → Homepage** in the CMS fires the deploy hook stored in the `belims_vercel_deploy_hook` option. During development it points at the **`main`** hook ("CMS Homepage (preview)"), so homepage content rebuilds `belims.vercel.app`.
+- **At launch:** switch the option back to the `vercel` hook ("CMS Homepage") so content edits rebuild production. The Homepage tab's live-version check reads production (`get_frontend_url()`), so it may show "out of sync" until then.
 
-- **Base directory**: `frontend`
-- **Build command**: `npm run build`
-- **Publish directory**: `frontend/dist`
+### CMS plugin deploys
 
-_Note: The netlify.toml file in the frontend folder will automatically configure these settings._
-
-### Step 4: Add Environment Variables (Critical)
-
-Before clicking "Deploy", look for a button that says **"Show advanced"** or **"Environment variables"**.
-
-You **MUST** add your API keys here for the live site to work:
-
-- Key: `REACT_APP_GEMINI_API_KEY` | Value: `your_actual_gemini_key`
-- Key: `REACT_APP_WOO_SITE_URL` | Value: `https://your-live-wordpress-site.com`
-- Key: `REACT_APP_WOO_CONSUMER_KEY` | Value: `your_production_consumer_key`
-- Key: `REACT_APP_WOO_CONSUMER_SECRET` | Value: `your_production_consumer_secret`
-
-_If you miss this step, you can add them later in **Site Settings > Build & deploy > Environment variables**, but you will need to trigger a new deploy after adding them._
-
-### Step 5: Deploy
-
-Click **"Deploy site"**. Netlify will take a minute to build your site and provide you with a live URL.
-
-**🌐 Live Demo:** https://belims-headless-react-app.netlify.app/
+- `wp-content/plugins/deploy.sh` bumps the deploy timestamp, commits and pushes the **current branch** (work on `main`), then uploads `global-site-settings` to the server.
+- ⚠ There is a single CMS (`cms.belims.co.za`) behind both Preview and Production — plugin and WordPress content changes reach both immediately. "Preview first" applies to frontend code only.
 
 ---
 
