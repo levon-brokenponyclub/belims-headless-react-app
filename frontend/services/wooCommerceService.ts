@@ -44,7 +44,8 @@ type CacheEntry<T> = {
 
 const GET_CACHE_TTL_MS = 60_000;
 const RETRY_DELAY_MS = 600;
-const RESPONSE_TIMEOUT_MS = 8_000;
+// Cold full-catalogue responses take ~10s to start; real stalls run 60s+.
+const RESPONSE_TIMEOUT_MS = 25_000;
 const RETRYABLE_STATUSES = new Set([403, 429, 502, 503, 504]);
 
 class RetryableError extends Error {

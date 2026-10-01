@@ -65,7 +65,7 @@ Defined in [`App.tsx`](../frontend/App.tsx):
 ## Data flow
 
 - **API base:** `getApiBaseUrl()` → `/api` (rewritten to `cms.belims.co.za/wp-json` by Vercel in production and by the Vite proxy locally).
-- **Request cache:** `cachedGetJson()` in `wooCommerceService.ts` dedupes concurrent GETs and caches them in memory (TTL). It retries once on challenge pages, cut-off bodies, 403/429/5xx, and when no response starts within 8 s. Use it for any shared read (e.g. `fetchEcommercePolicies()`).
+- **Request cache:** `cachedGetJson()` in `wooCommerceService.ts` dedupes concurrent GETs and caches them in memory (TTL). It retries once on challenge pages, cut-off bodies, 403/429/5xx, and when no response starts within 25 s. Use it for any shared read (e.g. `fetchEcommercePolicies()`).
 - **Edge cache:** Cloudflare caches `/api/belims/v1/(products|categories|ecommerce-policies)*` when the origin sends `Cache-Control: public, s-maxage=…` (see [OPERATIONS](OPERATIONS.md#cloudflare-belimscoza-free-plan)).
 - **Products:** the homepage rails load first from `fetchHomeProducts()` (`GET /products/home`, ~55 KB) and fall back to the full catalogue; the full listing (`fetchProducts`) and featured (`fetchFeaturedProducts`) load in parallel on mount; unpurchasable items (backorder, zero price, out of stock) are filtered with `isProductPurchasable` (`utils/price.ts`).
 - **Homepage hero:** fetched from `GET /belims/v1/homepage` **at build time** by `homepagePlugin` (falls back to `content/homepage.fallback.json`), exposed as `virtual:homepage`, LCP image preloaded in `index.html`; other routes use `app.html` (no preload). The build also emits `homepage-version.json` for the CMS live-version check.

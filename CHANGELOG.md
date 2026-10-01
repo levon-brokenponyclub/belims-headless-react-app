@@ -29,7 +29,7 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 ### Storefront (`frontend/`)
 - `App.tsx`: homepage rails load from `fetchHomeProducts()` first and fall back to the full catalogue.
 - `Checkout` / `OrderConfirmation` / `paymentService.ts`: pass the order key; send `frontend_origin`; payment status polled up to 18 times.
-- `cachedGetJson`: aborts a request that has not started responding within 8 s and retries once (body download is not time-limited).
+- `cachedGetJson`: aborts a request that has not started responding within 25 s and retries once (body download is not time-limited). First shipped at 8 s, which cut off cold full-catalogue responses (8.5–10 s to first byte when uncached) — raised to 25 s; real stalls ran 60 s+.
 
 ### Server / hosting (outside the repo)
 - Plugin deployed to the CMS (backups `~/gss-backup-20261001-221757`, `~/gss-backup-20261001-222341`); WP options: preview hook migrated, `belims_vercel_deploy_hook_production` = "CMS Homepage" (`vercel`), `belims_homepage_deploy_target` = `preview`.
