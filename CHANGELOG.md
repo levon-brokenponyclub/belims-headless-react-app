@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-01 — Homepage LCP + font loading (Lighthouse follow-up)
+
+- `HeroBanner.tsx`: hero image now self-hosted (`/images/development/home-banner-placeholder.webp`, 1260×739, 71KB) instead of the Shopify demo store; `loading="eager"`, `fetchPriority="high"`, explicit width/height. Shopify demo hero video (~5MB) and its idle-load/Play logic removed.
+- `index.html`: hero image preloaded; unused Inter + Sora fonts removed; Archivo loaded via non-blocking preload (`display=swap`, `<noscript>` fallback); dead AI Studio import map removed.
+- `index.css`: Archivo `@import` removed (moved to `index.html`).
+- Local Lighthouse desktop (vite preview): Performance 99 — FCP 0.6s, LCP 0.7s, TBT 10ms, CLS 0.001; LCP discovery passes. Production baseline before: 96.
+
+---
+
 ## 2026-10-01 — Global Site Settings 2.7.2: phone sign-in account matching
 
 ### class-firebase-phone-auth.php
