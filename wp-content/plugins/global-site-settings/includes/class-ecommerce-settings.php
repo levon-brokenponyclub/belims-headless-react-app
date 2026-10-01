@@ -71,7 +71,7 @@ class Ecommerce_Policies_Admin {
      * Get policies via REST API
      */
     public function get_policies() {
-        return array(
+        $response = rest_ensure_response(array(
             'return_policy' => get_option('ecommerce_return_policy', ''),
             'change_of_mind' => get_option('ecommerce_change_of_mind', ''),
             'warranty' => get_option('ecommerce_warranty', ''),
@@ -86,7 +86,13 @@ class Ecommerce_Policies_Admin {
                 'expert_email' => get_option('ecommerce_expert_email', ''),
                 'expert_phone' => get_option('ecommerce_expert_phone', ''),
             ),
-        );
+        ));
+
+        // Public, user-agnostic site options: let Cloudflare's respect-origin
+        // "API catalogue" cache rule keep it at the edge for 5 minutes.
+        $response->header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=300');
+
+        return $response;
     }
 
     /**

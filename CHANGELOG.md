@@ -9,7 +9,9 @@
 
 ### ecommerce-policies
 - New `fetchEcommercePolicies()` in `services/wooCommerceService.ts` (via `cachedGetJson`) — dedupes the homepage's two concurrent requests (App + DeliveryLocationModal); also adopted by SingleProduct, Checkout, DeliveryDetailsAddAddress.
-- Cloudflare edge caching for this endpoint **not** enabled: an `override_origin` cache rule was trialled and reverted within ~1 min because it cached Imunify360's 200 `text/html` challenge page. Safe approach requires the plugin to emit `Cache-Control: public, s-maxage=300` on JSON responses, then add the path to the existing "API catalogue" (respect-origin) rule.
+- An `override_origin` Cloudflare rule was trialled and reverted within ~1 min — it cached Imunify360's 200 `text/html` challenge page.
+- **Global Site Settings 2.8.1:** `class-ecommerce-settings.php` `get_policies()` now returns `Cache-Control: public, max-age=60, s-maxage=300, stale-while-revalidate=300`. (`class-ecommerce-policies.php` is not loaded — the live route is in `class-ecommerce-settings.php`.) Deployed to CMS (2 files; server backup `~/gss-backup-20261001172913`).
+- Cloudflare "API catalogue" rule (respect-origin) extended to `/api/belims/v1/ecommerce-policies`. Verified: JSON → `HIT` (~0.2s); Imunify challenge (`private, no-store`) → `BYPASS`, never cached.
 
 ---
 
