@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-10-01 — CMS media library converted to WebP + unused sub-sizes dropped (production)
+
+### 1. wp-content/mu-plugins/belims-image-sizes.php — new must-use plugin
+- Unsets `medium_large`, `large`, `1536x1536`, `2048x2048` via `intermediate_image_sizes_advanced`; the headless frontend consumes originals through Cloudflare Image Transformations.
+- Kept: `thumbnail`, `medium`, `woocommerce_thumbnail`, `woocommerce_single`, `woocommerce_gallery_thumbnail` (WP admin, Woo admin/emails).
+- Deployed to `cms.belims.co.za` (`applications/uhkkwupuum/public_html/wp-content/mu-plugins/`).
+
+### 2. Bulk PNG/JPEG → WebP conversion (one-off, WP-CLI)
+- Script: `private_html/belims-img/convert-webp.php` (server only). Imagick WebP q80, method 6, metadata stripped; attachment repointed (`_wp_attached_file`, `post_mime_type = image/webp`), sub-sizes regenerated.
+- Result: **1,988 attachments converted, 720.8MB → 80.8MB (−89%)**, 0 errors.
+- Skipped: WooCommerce email header image (WebP unsupported in Outlook desktop).
+- DB audit beforehand: images referenced by attachment ID only (no URLs in post content / postmeta / termmeta), so no search-replace was required.
+- Old PNG/JPEG files left in place so cached API responses (Cloudflare 5 min, browser 4h) keep resolving. Archive step pending — see follow-ups.
+- Verified: `/products/287` API returns `.webp`; file served `image/webp`; Cloudflare transform returns AVIF (79KB total → 13.5KB at 480w).
+
+### Follow-ups
+- Run `archive-old.php` (dry-run, then `--run`) ≥4h after conversion to move unreferenced PNG/JPEG into `private_html/belims-img/archive/`.
+- Enhance the converter: see project notes (convert-on-upload, archive automation, resumable batches).
+
+---
+
 ## 2026-10-01 — Image load performance (HAR audit follow-up)
 
 ### 1. App.tsx — featured products fetched concurrently
