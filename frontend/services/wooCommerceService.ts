@@ -43,6 +43,14 @@ type CacheEntry<T> = {
 };
 
 const GET_CACHE_TTL_MS = 60_000;
+const RETRY_DELAY_MS = 600;
+const RETRYABLE_STATUSES = new Set([403, 429, 502, 503, 504]);
+
+class RetryableError extends Error {
+  constructor(message: string, readonly retryable: boolean) {
+    super(message);
+  }
+}
 const GET_CACHE_MAX_ENTRIES = 120;
 const getCache = new Map<string, CacheEntry<unknown>>();
 
@@ -78,22 +86,23 @@ export const cachedGetJson = async <T>(
     return cached.promise as Promise<T>;
   }
 
-  const requestPromise = fetch(url, {
-    ...options,
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  })
-    .then(async (response) => {
+  const attempt = () =>
+    fetch(url, {
+      ...options,
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+    }).then(async (response) => {
       if (!response.ok) {
         if (response.status === 304 && cached) {
           return cached.promise as Promise<T>;
         }
         const responseText = await response.text();
-        throw new Error(
+        throw new RetryableError(
           `Request failed: ${response.status} ${response.statusText} ${responseText.substring(0, 200)}`,
+          RETRYABLE_STATUSES.has(response.status),
         );
       }
 
@@ -107,7 +116,26 @@ export const cachedGetJson = async <T>(
         }
       }
 
-      return response.json() as Promise<T>;
+      // A bot-protection challenge (HTML) or a body cut off in transit both
+      // surface as a parse failure — worth one retry.
+      const body = await response.text();
+      try {
+        return JSON.parse(body) as T;
+      } catch (parseError) {
+        throw new RetryableError(
+          `Invalid JSON from ${url} (${body.length} bytes): ${(parseError as Error).message}`,
+          true,
+        );
+      }
+    });
+
+  const requestPromise = attempt()
+    .catch(async (error) => {
+      if (!(error instanceof RetryableError) || !error.retryable || options.signal?.aborted) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      return attempt();
     })
     .catch((error) => {
       if (!hasAbortSignal) {

@@ -15,6 +15,14 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 
 ---
 
+## 2026-10-01 — API retry for challenged / cut-off responses
+
+### frontend/services/wooCommerceService.ts — `cachedGetJson`
+- Parses the body itself; an unparseable body (Imunify "One moment, please…" HTML, or a response cut off in transit — e.g. `Expected ':' after property name at position 560768` on the ~1 MB product listing) or HTTP 403/429/502/503/504 now **retries once** after 600 ms. Other errors (e.g. 404) and aborted requests are not retried.
+- Verified: `vite build`; mocked-fetch test — truncated → ok, HTML → ok, 403 → ok, 404 → no retry, two failures → error surfaced.
+
+---
+
 ## 2026-10-01 — Preview/production branch workflow + documentation consolidation
 
 ### Vercel environments

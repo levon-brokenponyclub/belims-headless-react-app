@@ -34,7 +34,6 @@ _Last reviewed: 2026-10-01_
 
 ## Reliability & code health
 
-- [ ] Frontend safety net: retry once in `cachedGetJson` when the API returns HTML or 403.
 - [ ] Homepage product rails depend on the full ~1 MB listing (`fetchProducts`) — give them a dedicated small request (e.g. `per_page=24`).
 - [ ] Remove dead `wp-content/plugins/global-site-settings/includes/class-ecommerce-policies.php` (not loaded; live route is in `class-ecommerce-settings.php`).
 - [ ] `belims-ai-product-descriptions` uses `gemini-2.0-flash-exp` (experimental model) — move to a current Gemini model.
