@@ -51,6 +51,7 @@ Purge after urgent content changes: Cloudflare → Caching → Purge by URL (e.g
 - **Imunify360 SplashScreen ("One moment, please…")** challenges some `/wp-json/` requests from Vercel (AWS IPs) — the cause of intermittent `Belims API Error: Unexpected token '<'`. The Cloudways UI has **no per-path setting** (app Security only has Malware Protection/Vulnerability Scanner; server Security has IP-only firewall). **Open:** support escalation to whitelist `cms.belims.co.za` / exclude `/wp-json/` (server-level, root). Also see `CAPTCHA_DOS_ALERT` blacklists under server Security → Firewall.
 - **Breeze / Varnish:** `/wp-json` excluded from page caching (Cloudways default). Breeze "Never cache" URLs must be absolute (`https://…/wp-json/`).
 - **wp-config.php constants:** `BELIMS_FIREBASE_API_KEY` (required for Firebase sign-in).
+- **Frontend URL:** ACF option `headless_frontend_url` = `https://belims.vercel.app` (environment `production`) → `get_frontend_url()` / `get_cors_origin()`. Used for the PayFast return redirect, the single allowed CORS origin and the Homepage live-version check. Switch to `https://www.belims.co.za` at launch.
 
 ### CMS plugin deploys
 

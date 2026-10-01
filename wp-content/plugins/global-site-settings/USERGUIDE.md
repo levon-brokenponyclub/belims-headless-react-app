@@ -57,7 +57,7 @@ Click **Save Settings** at the bottom.
 
 Edit the storefront homepage. Changes go live about **1–2 minutes** after saving (the storefront rebuilds itself).
 
-> **Before launch:** saving rebuilds the **preview** site (https://belims.vercel.app), not www.belims.co.za — the deploy hook points at the preview branch until launch. The *Storefront* status reads the live site, so it may show *Out of date* until then.
+> **Before launch:** saving rebuilds the **preview** site (https://belims.vercel.app), not www.belims.co.za — the deploy hook and the frontend URL both point at preview until launch.
 
 **Hero** (the large banner at the top):
 1. Under **Homepage Sections**, open the **Hero** section (or **Add Section → Hero** if none exists).

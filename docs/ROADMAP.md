@@ -17,6 +17,7 @@ _Last reviewed: 2026-10-01_
 - [ ] Imunify issue resolved; `/api/*` returns JSON for 10/10 cache-busted requests.
 - [ ] Remove `VITE_COMING_SOON` from Vercel Production.
 - [ ] Switch WP option `belims_vercel_deploy_hook` back to the **"CMS Homepage"** hook (branch `vercel`).
+- [ ] Set the CMS frontend URL (ACF option `headless_frontend_url`, Site Settings → CORS & Security) from `https://belims.vercel.app` to `https://www.belims.co.za` — it sets the **PayFast return URL**, the CORS origin and the Homepage live-version check.
 - [ ] Decide preview privacy: re-enable Vercel Authentication for preview deployments if `belims.vercel.app` should not stay public.
 - [ ] Release: `git push origin main:vercel` (see [README → Deployment](../README.md#deployment-vercel)); verify production, Lighthouse and Cloudflare Web Analytics (host = www).
 - [ ] Replace remaining placeholder/demo imagery (`frontend/public/images/development/*` collage tiles).
