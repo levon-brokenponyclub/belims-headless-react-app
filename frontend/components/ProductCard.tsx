@@ -12,6 +12,7 @@ import {
 import { Product } from "../types";
 import { formatCurrency, isProductPurchasable } from "../utils/price";
 import { buildProductUrl } from "../utils/product";
+import { CARD_IMAGE_SIZES, CARD_IMAGE_WIDTHS, cmsImage, cmsSrcSet } from "../utils/image";
 import { QuickView } from "./QuickView";
 import {
   getWishlist,
@@ -432,7 +433,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           >
             {product.image ? (
               <img
-                src={product.image}
+                src={cmsImage(product.image, 480)}
+                srcSet={cmsSrcSet(product.image, CARD_IMAGE_WIDTHS)}
+                sizes={CARD_IMAGE_SIZES}
                 alt={product.name}
                 loading="lazy"
                 decoding="async"

@@ -5,6 +5,7 @@ import { Product } from "../types";
 import { formatCurrency } from "../utils/price";
 import { buildProductUrl } from "../utils/product";
 import { QuickView } from "./QuickView";
+import { CARD_IMAGE_SIZES, CARD_IMAGE_WIDTHS, cmsImage, cmsSrcSet } from "../utils/image";
 
 interface NexvoProductCardProps {
   product: Product;
@@ -254,7 +255,9 @@ export const NexvoProductCard: React.FC<NexvoProductCardProps> = ({
               >
                 {product.image ? (
                   <img
-                    src={product.image}
+                    src={cmsImage(product.image, 480)}
+                    srcSet={cmsSrcSet(product.image, CARD_IMAGE_WIDTHS)}
+                    sizes={CARD_IMAGE_SIZES}
                     alt={product.name}
                     loading="lazy"
                     decoding="async"
@@ -284,7 +287,9 @@ export const NexvoProductCard: React.FC<NexvoProductCardProps> = ({
                   style={{ "--aspect-ratio": 1 } as React.CSSProperties}
                 >
                   <img
-                    src={product.images[1]}
+                    src={cmsImage(product.images[1], 480)}
+                    srcSet={cmsSrcSet(product.images[1], CARD_IMAGE_WIDTHS)}
+                    sizes={CARD_IMAGE_SIZES}
                     alt={product.name}
                     loading="lazy"
                   />

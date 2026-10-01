@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 type Brand = {
   name: string;
   logo?: string;
-  logoCandidates?: string[];
   slug?: string;
   url?: string;
 };
@@ -18,66 +17,49 @@ type CmsBrandTerm = {
 const FALLBACK_BRANDS: Brand[] = [
   {
     name: "Bosch",
-    logo: "https://cdn.worldvectorlogo.com/logos/bosch-938.svg",
+    logo: "/brands/bosch.svg",
     slug: "bosch",
     url: "/brands/bosch",
   },
   {
     name: "Makita",
-    logo: "https://cdn.worldvectorlogo.com/logos/makita-1.svg",
+    logo: "/brands/makita.svg",
     slug: "makita",
     url: "/brands/makita",
   },
   {
     name: "DeWalt",
-    logo: "https://cdn.worldvectorlogo.com/logos/dewalt-1.svg",
+    logo: "/brands/dewalt.svg",
     slug: "dewalt",
     url: "/brands/dewalt",
   },
   {
     name: "Stanley",
-    logo: "https://cdn.worldvectorlogo.com/logos/stanley-3.svg",
+    logo: "/brands/stanley.svg",
     slug: "stanley",
     url: "/brands/stanley",
   },
   {
     name: "Einhell",
-    logo: "https://cdn.worldvectorlogo.com/logos/einhell-1.svg",
+    logo: "/brands/einhell.svg",
     slug: "einhell",
     url: "/brands/einhell",
   },
   {
     name: "Ryobi",
-    logo: "https://cdn.worldvectorlogo.com/logos/ryobi-1.svg",
+    logo: "/brands/ryobi.svg",
     slug: "ryobi",
     url: "/brands/ryobi",
   },
 ];
 
-const WORLD_VECTOR_LOGO_BASE = "https://cdn.worldvectorlogo.com/logos";
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function getWorldVectorLogoCandidates(name: string, slug?: string) {
-  const base = slugify(slug || "");
-  const byName = slugify(name);
-  const tokens = [base, byName].filter(Boolean);
-  const candidates = new Set<string>();
-
-  tokens.forEach((token) => {
-    candidates.add(`${WORLD_VECTOR_LOGO_BASE}/${token}.svg`);
-    candidates.add(`${WORLD_VECTOR_LOGO_BASE}/${token}-1.svg`);
-    candidates.add(`${WORLD_VECTOR_LOGO_BASE}/${token}-2.svg`);
-    candidates.add(`${WORLD_VECTOR_LOGO_BASE}/${token}-3.svg`);
-  });
-
-  return Array.from(candidates);
-}
+// Self-hosted logos (public/brands/), keyed by CMS brand slug. Brands without
+// an entry render a text badge — no speculative third-party requests.
+const BRAND_LOGOS: Record<string, string> = {
+  "assa-abloy": "/brands/assa-abloy.svg",
+  dulux: "/brands/dulux.svg",
+  yale: "/brands/yale.svg",
+};
 
 function getCmsBaseUrl() {
   return "/api";
@@ -98,7 +80,6 @@ function useWindowWidth() {
 export function BrandStrip() {
   const width = useWindowWidth();
   const [brands, setBrands] = useState<Brand[]>(FALLBACK_BRANDS);
-  const [logoAttemptByBrand, setLogoAttemptByBrand] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -120,7 +101,7 @@ export function BrandStrip() {
           .map((term) => ({
             name: term.name,
             slug: term.slug,
-            logoCandidates: getWorldVectorLogoCandidates(term.name, term.slug),
+            logo: BRAND_LOGOS[term.slug],
             url: `/brands/${term.slug}`,
           }));
 
@@ -141,10 +122,6 @@ export function BrandStrip() {
       controller.abort();
     };
   }, []);
-
-  useEffect(() => {
-    setLogoAttemptByBrand({});
-  }, [brands]);
 
   const slidesPerView = useMemo(() => {
     if (width < 640) return 2;
@@ -268,18 +245,6 @@ export function BrandStrip() {
                 style={{ width: `${100 / slidesPerView}%` }}
                 aria-roledescription="slide"
               >
-                {(() => {
-                  const key = brand.slug || brand.name;
-                  const attemptIndex = logoAttemptByBrand[key] || 0;
-                  const candidateLogo =
-                    brand.logo ||
-                    brand.logoCandidates?.[attemptIndex] ||
-                    "";
-                  const showLogo =
-                    Boolean(candidateLogo) &&
-                    (brand.logo ? true : attemptIndex < (brand.logoCandidates?.length || 0));
-
-                  return (
                 <a
                   href={brand.url}
                   aria-label={`Shop ${brand.name}`}
@@ -293,30 +258,13 @@ export function BrandStrip() {
                   ].join(" ")}
                 >
                   <span className="flex items-center justify-center h-12 w-full overflow-hidden">
-                    {showLogo ? (
+                    {brand.logo ? (
                       <img
-                        src={candidateLogo}
+                        src={brand.logo}
                         alt={brand.name}
                         loading="lazy"
                         decoding="async"
                         className="w-[65%] object-contain"
-                        onError={() => {
-                          const fallbackCount = brand.logoCandidates?.length || 0;
-                          if (brand.logo) {
-                            return;
-                          }
-                          if (fallbackCount > 0 && attemptIndex < fallbackCount - 1) {
-                            setLogoAttemptByBrand((prev) => ({
-                              ...prev,
-                              [key]: attemptIndex + 1,
-                            }));
-                            return;
-                          }
-                          setLogoAttemptByBrand((prev) => ({
-                            ...prev,
-                            [key]: Number.MAX_SAFE_INTEGER,
-                          }));
-                        }}
                       />
                     ) : (
                       <span className="inline-flex h-10 min-w-[5rem] items-center justify-center rounded-md bg-gray-100 px-3 text-xs font-semibold uppercase tracking-wider text-gray-600">
@@ -329,8 +277,6 @@ export function BrandStrip() {
                     {brand.name}
                   </span>
                 </a>
-                  );
-                })()}
               </div>
             ))}
           </div>

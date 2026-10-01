@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-10-01 — Image load performance (HAR audit follow-up)
+
+### 1. App.tsx — featured products fetched concurrently
+- `fetchFeaturedProducts()` no longer waits for the full catalogue `fetchProducts()`; both fire on mount.
+- `isLoadingProducts` now clears as soon as the catalogue resolves (previously also waited ~1s for featured).
+
+### 2. utils/image.ts — Cloudflare Image Transformations helper
+- `cmsImage(src, width)` rewrites `cms.belims.co.za` URLs to `/cdn-cgi/image/width=…,quality=80,format=auto,fit=scale-down/…`; other hosts pass through unchanged.
+- `cmsSrcSet(src, widths)` + `CARD_IMAGE_WIDTHS` (320/480/640/800) / `CARD_IMAGE_SIZES`.
+- Gated by `VITE_CF_IMAGE_TRANSFORMS === "true"` (documented in `.env.example`); default off — `/cdn-cgi/image/` currently 404s until Transformations is enabled on the zone.
+- Applied to `ProductCard` and `NexvoProductCard` (main + hover images).
+
+### 3. BrandStrip.tsx — self-hosted brand logos
+- Removed the worldvectorlogo guess-chain (`getWorldVectorLogoCandidates`, `onError` retry state) — it produced ~20 × 404s per homepage load.
+- Logos now served from `frontend/public/brands/*.svg` via a slug-keyed `BRAND_LOGOS` map; unmapped CMS brands render the existing text badge with zero image requests.
+- Mapped: Assa Abloy, Dulux, Yale (+ fallback-list Bosch, Makita, DeWalt, Stanley, Einhell, Ryobi).
+- Dropped incorrect matches previously shown live: `fast.svg` / `hard.svg` were Russian ФАСТ / ХАРД marks; `union.svg` unverified.
+- Still need official artwork: Alcolin, Bostik, FAST, HARD, Hillaldam, Ingco, Lasher, Ruwag, Sika, Union.
+
+### 4. Cloudflare (dashboard, manual)
+- Cache Rule required for `www.belims.co.za/api/belims/v1/(products|categories)*` — origin already sends `public, s-maxage=300, stale-while-revalidate=300` but Cloudflare reports `DYNAMIC` (JSON not cache-eligible by default).
+
+---
+
 ## 2026-10-01 — Order Confirmation redesign + shared Spinner + motion
 
 ### 1. OrderConfirmation.tsx — success state redesign

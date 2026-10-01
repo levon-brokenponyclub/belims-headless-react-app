@@ -1003,6 +1003,14 @@ export default function App() {
 
     const loadProducts = async () => {
       setIsLoadingProducts(true);
+
+      // Featured (~1s) must not wait on the full catalogue (~10s+) — fire both
+      // concurrently so homepage card images can start loading immediately.
+      fetchFeaturedProducts().then((apiFeatured) => {
+        const validFeatured = (apiFeatured ?? []).filter(isProductPurchasable);
+        if (validFeatured.length) setFeaturedProducts(validFeatured);
+      });
+
       try {
         const productsFetchStart = performance.now();
         const apiProducts = await fetchProducts();
@@ -1015,10 +1023,6 @@ export default function App() {
         //   `[Inventory] Filtered ${(apiProducts?.length ?? 0) - validProducts.length} unpurchasable products (backorder/zero-price/out-of-stock)`,
         // );
         if (validProducts.length) setProducts(validProducts);
-
-        const apiFeatured = await fetchFeaturedProducts();
-        const validFeatured = (apiFeatured ?? []).filter(isProductPurchasable);
-        if (validFeatured.length) setFeaturedProducts(validFeatured);
       } catch (error) {
         console.error("Failed to load products:", error);
       } finally {
