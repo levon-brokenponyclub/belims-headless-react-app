@@ -368,7 +368,7 @@ class Belims_FTG_Sync_Endpoint {
                 error_log('Processing product ' . $index . ': ' . print_r($ftg_product, true));
             }
             
-            // VALIDATION: Skip products without name only
+            // VALIDATION: skip products without name, stock, price or categories
             $product_data = $ftg_product['productData'] ?? $ftg_product;
             $product_name = $product_data['description1'] ?? $product_data['description2'] ?? '';
             $sku = $product_data['productCode'] ?? '';
@@ -422,7 +422,19 @@ class Belims_FTG_Sync_Endpoint {
                 error_log('SKIPPED Product (No Name): ' . $sku);
                 continue; // Skip to next product
             }
-            
+
+            $missing = $this->get_missing_required_fields($product_data);
+            if (!empty($missing)) {
+                $skipped_count++;
+                $skipped_items[] = array(
+                    'sku' => $sku,
+                    'reason' => 'Missing ' . implode(', ', $missing),
+                    'brand' => $brand,
+                );
+                error_log('SKIPPED Product (Missing ' . implode(', ', $missing) . '): ' . $sku);
+                continue;
+            }
+
             $result = $this->create_or_update_wc_product($ftg_product);
             
             if ($result['success']) {
@@ -462,7 +474,7 @@ class Belims_FTG_Sync_Endpoint {
         error_log('=== FTG Sync Summary ===');
         error_log('Total products: ' . count($products));
         error_log('Successfully synced: ' . $synced_count);
-        error_log('Skipped (no price/name): ' . $skipped_count);
+        error_log('Skipped (missing name/stock/price/categories): ' . $skipped_count);
         error_log('Errors: ' . count($errors));
         
         // Calculate if there are more products to process.
@@ -980,6 +992,33 @@ class Belims_FTG_Sync_Endpoint {
     /**
      * Create or update WooCommerce product from FTG data
      */
+    /**
+     * Required FTG data before a product is created or updated in the CMS:
+     * stock quantity > 0, selling price > 0, at least one web category.
+     * Existing CMS products that fail are left untouched (not updated, not unpublished).
+     *
+     * @return string[] Missing field labels; empty when the product qualifies.
+     */
+    private function get_missing_required_fields(array $product_data) {
+        $missing = array();
+
+        if (intval($product_data['additionalErpDetails']['stockQuantity'] ?? 0) <= 0) {
+            $missing[] = 'stock';
+        }
+
+        if (floatval($product_data['sellingPrice'] ?? 0) <= 0) {
+            $missing[] = 'price';
+        }
+
+        $hierarchy = $product_data['webUrlHierarchyCollection']['web_hierarchy'] ?? array();
+        $has_category = is_array($hierarchy) && !empty(array_filter(array_column($hierarchy, 'value')));
+        if (!$has_category) {
+            $missing[] = 'categories';
+        }
+
+        return $missing;
+    }
+
     private function create_or_update_wc_product($ftg_product) {
         try {
             // FTG API returns nested productData structure
@@ -1944,8 +1983,17 @@ class Belims_FTG_Sync_Endpoint {
                 );
             }
             
+            $missing = $this->get_missing_required_fields($found_product['productData'] ?? $found_product);
+            if (!empty($missing)) {
+                error_log("⏭️ Skipped $sku — missing " . implode(', ', $missing));
+                return array(
+                    'success' => false,
+                    'message' => 'Skipped: FTG product is missing ' . implode(', ', $missing) . '. Not pulled into the CMS.',
+                );
+            }
+
             error_log("✅ Found product, creating/updating in WooCommerce");
-            
+
             // Create or update WC product
             $result = $this->create_or_update_wc_product($found_product);
             

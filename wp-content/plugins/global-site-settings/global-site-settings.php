@@ -3,7 +3,7 @@
  * Plugin Name: Global Site Settings
  * Plugin URI: https://belims.co.za
  * Description: Unified plugin for Belims site settings, ACF field groups, REST API endpoints, and third-party integrations (WooCommerce, FTG, BobGo, AI).
- * Version: 2.4.0
+ * Version: 2.5.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: global-site-settings
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('GLOBAL_SITE_SETTINGS_VERSION', '2.4.0');
+define('GLOBAL_SITE_SETTINGS_VERSION', '2.5.0');
 define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-09-10 19:56:35');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -97,6 +97,7 @@ function global_site_settings_init() {
         'includes/class-user-admin-page.php', // User management admin UI
         'includes/class-ecommerce-settings.php', // Ecommerce policies (Returns, Warranty, Shipping)
         'includes/class-bundled-products.php', // Bundled Products for WooCommerce
+        'includes/class-media-folders.php', // Media Library folders (media_folder taxonomy)
         // FTG Sync integration
         'includes/ftg-sync/class-ftg-api.php',
         'includes/ftg-sync/class-ftg-sync-endpoint.php',

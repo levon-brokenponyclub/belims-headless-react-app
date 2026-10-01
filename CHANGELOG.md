@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-01 — Global Site Settings 2.5.0: FTG sync eligibility + Media Folders
+
+### 1. FTG sync — only pull complete products
+- New `get_missing_required_fields()` in `class-ftg-sync-endpoint.php`: requires stock quantity > 0, selling price > 0 and ≥1 web category.
+- Applied to bulk sync (skipped with `reason: Missing stock, price, …` in `skipped_items`) and single-SKU sync (returns `Skipped: FTG product is missing …`).
+- Existing CMS products that fail are left untouched (not updated, not unpublished).
+
+### 2. Media → Folders
+- New `includes/class-media-folders.php`: hierarchical `media_folder` taxonomy on attachments with admin page, list-view column + filter, attachment folder field.
+- New `assets/js/media-folders.js`: folder dropdown in Media Library grid / media modal (server-side filter via `ajax_query_attachments_args`).
+- Seeds Global, Products, Brands, Campaigns once (`belims_media_folders_seeded`).
+- Plugin version 2.4.0 → 2.5.0; README updated.
+
+---
+
 ## 2026-10-01 — CMS media library converted to WebP + unused sub-sizes dropped (production)
 
 ### 1. wp-content/mu-plugins/belims-image-sizes.php — new must-use plugin

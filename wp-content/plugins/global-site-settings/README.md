@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.4.0  
+**Version:** 2.5.0  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -15,7 +15,8 @@ global-site-settings/
 ├── global-site-settings.php          # Bootstrap, CORS headers, AJAX handlers, admin menus
 ├── assets/
 │   ├── css/admin.css                 # All BPC admin UI styles (variables, layout, components)
-│   └── js/admin.js                   # Admin tab switching and shared JS
+│   ├── js/admin.js                   # Admin tab switching and shared JS
+│   └── js/media-folders.js           # Media Library grid folder filter
 ├── includes/
 │   ├── acf-field-groups.php          # ACF field group registration
 │   ├── class-orders-endpoint.php     # POST /orders — headless checkout order creation
@@ -25,6 +26,7 @@ global-site-settings/
 │   ├── class-user-admin-page.php     # User management admin UI
 │   ├── class-ecommerce-settings.php  # Returns, warranty, shipping policies
 │   ├── class-bundled-products.php    # Bundled product support
+│   ├── class-media-folders.php       # Media → Folders (media_folder taxonomy)
 │   ├── bobgo-shipping/               # BobGo shipping integration (see below)
 │   ├── payfast/                      # PayFast payment gateway (see below)
 │   └── ftg-sync/                     # FTG brand sync integration
@@ -127,6 +129,10 @@ Syncs brand/product data from the FTG supplier feed.
 | `class-ftg-sync-endpoint.php` | REST endpoint + sync logic. Writes `belims_ftg_last_sync` as `['time' => mysql_datetime, ...]` |
 | `admin-ftg-sync-page.php` | Legacy admin page (writes `belims_ftg_last_sync` as Unix timestamp) |
 
+### Sync eligibility (v2.5.0)
+
+A product is only created/updated when FTG provides **stock quantity > 0**, **selling price > 0** and **at least one web category** (`webUrlHierarchyCollection.web_hierarchy`). Applies to bulk sync and single-SKU sync via `get_missing_required_fields()`. Failing products are reported as skipped (`reason: Missing stock, price, …`); existing CMS products that fail are left untouched — not updated, not unpublished.
+
 ### Last sync storage
 
 `belims_ftg_last_sync` may be stored as either a Unix timestamp (integer) or an array `['time' => 'Y-m-d H:i:s', 'products_synced' => N, ...]` depending on which code path ran. Always read it through:
@@ -221,9 +227,20 @@ All admin AJAX handlers require `manage_options` capability and a valid nonce.
 
 ---
 
+## Media Folders (`includes/class-media-folders.php`)
+
+Hierarchical `media_folder` taxonomy on attachments.
+
+- **Media → Folders** admin page to add/rename/nest folders.
+- Seeded once (option `belims_media_folders_seeded`): Global, Products, Brands, Campaigns.
+- Folder column + dropdown filter in Media Library list view; folder dropdown in grid view / media modal (`assets/js/media-folders.js`, filtered server-side via `ajax_query_attachments_args`).
+- Assign a folder from the attachment edit screen (Folders field).
+
+---
+
 ## Deployment
 
-Plugin files are owned by app user `uhkkwupuum` on Cloudways. The SSH master user cannot write to them directly. Deploy via **Cloudways File Manager** at `public_html/wp-content/plugins/global-site-settings/`.
+Plugin files are owned by app user `uhkkwupuum`, group `www-data` (group-writable). The SSH master user (`master_ggrkakuzjf`, in `www-data`) can deploy over SSH/SCP to `applications/uhkkwupuum/public_html/wp-content/plugins/global-site-settings/` (verified 2026-10-01); Cloudways File Manager also works.
 
 Do not override files owned by other plugins (e.g. `uafrica-shipping`).
 
@@ -232,6 +249,5 @@ Do not override files owned by other plugins (e.g. `uafrica-shipping`).
 ## Known Constraints
 
 - **BobGo API keys**: The current BobGo plan does not allow API key creation. Direct API calls (`class-bobgo-order-handler.php`) are disabled. Order sync relies on the BobGo ↔ WooCommerce channel integration.
-- **SSH writes**: `master_ggrkakuzjf` cannot write files owned by `uhkkwupuum`. Use Cloudways File Manager for all plugin uploads.
 - **CORS**: Only one origin is allowed at a time. The ACF `headless_frontend_url` option overrides all other CORS settings.
 - **FTG last sync format**: Two code paths write different formats to `belims_ftg_last_sync`. Always use `belims_get_ftg_last_sync_timestamp()` to read it.
