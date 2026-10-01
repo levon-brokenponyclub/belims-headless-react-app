@@ -1497,7 +1497,11 @@ class Belims_FTG_Sync_Endpoint {
             
             // Upload to WordPress media library
             $upload = wp_upload_bits($filename, null, $image_data);
-            
+            if (class_exists('Belims_Image_Optimizer')) {
+                $upload = Belims_Image_Optimizer::maybe_convert_upload($upload);
+                $filename = basename($upload['file']);
+            }
+
             if (!empty($upload['error'])) {
                 error_log("=== FAILED to upload image for product $sku ===");
                 error_log("Upload error: " . $upload['error']);
@@ -1530,7 +1534,11 @@ class Belims_FTG_Sync_Endpoint {
             require_once(ABSPATH . 'wp-admin/includes/image.php');
             $attach_data = wp_generate_attachment_metadata($image_id, $file_path);
             wp_update_attachment_metadata($image_id, $attach_data);
-            
+
+            if (class_exists('Belims_Media_Folders')) {
+                Belims_Media_Folders::assign_to($image_id, 'products');
+            }
+
             error_log("=== Successfully downloaded image ID $image_id for product $sku ===");
             
             // Set as product image and save immediately

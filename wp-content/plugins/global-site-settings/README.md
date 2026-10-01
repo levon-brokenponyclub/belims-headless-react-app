@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.5.0  
+**Version:** 2.7.0  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -16,7 +16,8 @@ global-site-settings/
 ├── assets/
 │   ├── css/admin.css                 # All BPC admin UI styles (variables, layout, components)
 │   ├── js/admin.js                   # Admin tab switching and shared JS
-│   └── js/media-folders.js           # Media Library grid folder filter
+│   ├── js/media-folders.js           # Media Library grid folder filter
+│   └── js/media-tools.js             # Site Settings → Media tab controls
 ├── includes/
 │   ├── acf-field-groups.php          # ACF field group registration
 │   ├── class-orders-endpoint.php     # POST /orders — headless checkout order creation
@@ -27,6 +28,8 @@ global-site-settings/
 │   ├── class-ecommerce-settings.php  # Returns, warranty, shipping policies
 │   ├── class-bundled-products.php    # Bundled product support
 │   ├── class-media-folders.php       # Media → Folders (media_folder taxonomy)
+│   ├── class-image-optimizer.php     # WebP conversion queue, auto-convert, archive, Products folder
+│   ├── admin-media-tab.php           # Site Settings → Media tab markup
 │   ├── bobgo-shipping/               # BobGo shipping integration (see below)
 │   ├── payfast/                      # PayFast payment gateway (see below)
 │   └── ftg-sync/                     # FTG brand sync integration
@@ -40,27 +43,32 @@ Single-page tabbed interface at **WP Admin → Site Settings**.
 
 ### Sidebar navigation
 
-| Label | Tab ID | Purpose |
-|-------|--------|---------|
-| Dashboard | `tab-dashboard` | System status, integrations overview, REST API reference |
-| Branding | `tab-branding` | Logo, colours, frontend URL, environment |
-| Ecommerce | `tab-ecommerce` | Returns, warranty, shipping policies |
-| Products | `tab-ftg-sync` | FTG credentials, product sync, cron schedule |
-| Shipping | `tab-bobgo-shipping` | BobGo enable toggle + API settings |
-| PayFast Testing | `tab-payfast-testing` | Sandbox payment flow testing |
+| Group | Label | Tab ID | Purpose |
+|-------|-------|--------|---------|
+| Overview | Dashboard | `tab-dashboard` | System status, integrations, settings shortcuts, REST API reference, Clear Cache |
+| Settings | Branding | `tab-branding` | WP admin dashboard colours |
+| Settings | Store Details | `tab-ecommerce` | Store locations + hours, Google Maps key (masked), product page policies, Ask an Expert block |
+| Settings | CORS & Security | `tab-cors-security` | Allowed origins and REST API security |
+| Settings | WooCommerce | `tab-woocommerce` | WooCommerce API and product description import |
+| Integrations | FTG Sync | `tab-ftg-sync` | FTG credentials, product sync, cron schedule |
+| Integrations | BobGo Shipping | `tab-bobgo-shipping` | BobGo enable toggle + API settings |
+| Integrations | Firebase Auth | `tab-firebase-auth` | Read-only status: API key, JWT secret, endpoints |
+| Integrations | AI Services | `tab-ai-services` | Gemini key for product descriptions |
+| Tools | Media Management | `tab-media` | Bulk WebP conversion, auto-convert toggle, archive old originals, Products folder assignment |
 
-CORS & Security, WooCommerce, Payment Gateways, and AI Services tabs exist in the DOM but are removed from the sidebar nav.
+Each feature appears once: integrations only in the Integrations row/menu, settings only in the Settings row/menu. Payment Gateways and PayFast Testing tabs remain in the DOM but are removed from the sidebar and dashboard (v2.7.0).
 
 ### Dashboard tab
 
 - **System strip**: WordPress version, WooCommerce version, PHP version, CORS origin, Frontend URL
-- **Integrations grid**: FTG Sync (with toggle + last sync date), BobGo Shipping (with toggle + env badge), Firebase Auth, Payment Gateway, AI Services — each card links to its config tab
-- **Settings tiles**: Quick-nav grid to all settings tabs
+- **Integrations grid**: FTG Sync (toggle + last sync date), BobGo Shipping (toggle + env badge), Firebase Auth (Active / JWT missing / Not verified), AI Services — each card's Configure opens its tab
+- **Settings tiles**: Branding, Store Details, CORS & Security, WooCommerce
+- **Quick Tools**: Clear Cache
 - **REST API reference table**: All `belims/v1` endpoints with method badges and auth type badges
 
 Last sync on the Dashboard and Products tab both read from `belims_get_ftg_last_sync_timestamp()` and display in `date_i18n('F j, Y, g:i a')` format.
 
-### Products (FTG Sync) tab
+### FTG Sync tab
 
 **Credentials section** — collapses to a saved summary when email + password + token are all set. "Edit Credentials" expands the form; "Cancel" collapses it back.
 
@@ -71,7 +79,7 @@ Last sync on the Dashboard and Products tab both read from `belims_get_ftg_last_
 - **Tools** group: Inspect Product, Check Catalogue Count, Count Display On Web Active, Export Brand Products, Cleanup Duplicate Attributes
 - **Sync** group: Test Sync (first 10), SKU field + Sync Single Product, SYNC CATALOGUE, SYNC ALL BRANDS + Dry Run toggle
 
-### Shipping (BobGo) tab
+### BobGo Shipping tab
 
 Enable toggle form (field-row layout, auto-saves). Settings section (API token form) collapses to a saved summary when production API token is set. "Edit Settings" / "Cancel" toggle the form.
 
@@ -235,6 +243,20 @@ Hierarchical `media_folder` taxonomy on attachments.
 - Seeded once (option `belims_media_folders_seeded`): Global, Products, Brands, Campaigns.
 - Folder column + dropdown filter in Media Library list view; folder dropdown in grid view / media modal (`assets/js/media-folders.js`, filtered server-side via `ajax_query_attachments_args`).
 - Assign a folder from the attachment edit screen (Folders field).
+- `Belims_Media_Folders::assign_to($attachment_id, $slug)` adds an attachment to a folder without removing existing ones. FTG sync assigns every imported product image to **Products** (v2.6.0).
+
+---
+
+## Image Optimizer (`includes/class-image-optimizer.php`, v2.6.0)
+
+Controlled from **Site Settings → Media**.
+
+| Tool | Behaviour |
+|------|-----------|
+| Bulk Convert & Optimise | PNG/JPEG originals → WebP q80 (Imagick, method 6, stripped); attachment repointed, sub-sizes regenerated. Runs as an Action Scheduler queue (`belims_image_optimizer_batch`, group `belims-media`, 10 per batch) with pause/resume; state in option `belims_image_optimizer_state`. Skips the Woo email header image. Failures flagged with `_belims_webp_failed` (cleared on next Start). Old files are left in place. |
+| Auto-convert new uploads | Option `belims_image_auto_webp`. Converts on `wp_handle_upload` and in FTG sync image import (`maybe_convert_upload()`). |
+| Archive Old Originals | Dry run / move of PNG/JPEG in `uploads/YYYY/MM` that no attachment references, to `private_html/belims-img/archive/` (fallback `wp-content/belims-image/archive/`). |
+| Products Folder | Adds product/variation featured images, gallery images and images uploaded to products to the Products folder. Last run in option `belims_products_folder_last_run`. |
 
 ---
 
@@ -248,6 +270,7 @@ Do not override files owned by other plugins (e.g. `uafrica-shipping`).
 
 ## Known Constraints
 
+- **Firebase verification (open)**: `BELIMS_FIREBASE_API_KEY` is not defined on production and `belims_firebase_api_key` is empty, so `Belims_Firebase_Phone_Auth::verify_firebase_token()` skips server-side verification and trusts the client-supplied phone number. Fix: define the key in `wp-config.php` and fail closed when it is missing. Firebase Auth tab shows this warning until resolved.
 - **BobGo API keys**: The current BobGo plan does not allow API key creation. Direct API calls (`class-bobgo-order-handler.php`) are disabled. Order sync relies on the BobGo ↔ WooCommerce channel integration.
 - **CORS**: Only one origin is allowed at a time. The ACF `headless_frontend_url` option overrides all other CORS settings.
 - **FTG last sync format**: Two code paths write different formats to `belims_ftg_last_sync`. Always use `belims_get_ftg_last_sync_timestamp()` to read it.

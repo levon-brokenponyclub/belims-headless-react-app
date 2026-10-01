@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-10-01 — Global Site Settings 2.7.0: dashboard + navigation refactor
+
+### 1. Navigation (sidebar) — each feature listed once
+- Settings: Branding · **Store Details** (renamed from Ecommerce) · CORS & Security · WooCommerce (last two restored to the sidebar).
+- Integrations: **FTG Sync** (was "Products") · **BobGo Shipping** (was "Shipping") · **Firebase Auth** (new) · **AI Services** (added to sidebar).
+- Tools: **Media Management** (was "Media"). Payment Gateways and PayFast Testing removed from sidebar and dashboard (tabs kept in DOM).
+
+### 2. Dashboard
+- Integrations row: FTG Sync, BobGo Shipping, Firebase Auth, AI Services (Payment Gateway card removed). Firebase card now opens its own tab; badge reads "Not verified" when the server API key is missing.
+- Settings row: Branding, Store Details, CORS & Security, WooCommerce only (integrations no longer duplicated).
+- Quick Tools: Clear Cache only (FTG Sync + Check Assa Abloy Count removed, with their dashboard-only JS). Unused PayFast dashboard variables removed.
+
+### 3. Firebase Auth tab (new, read-only)
+- Shows API key / JWT secret status and endpoints; warns when server-side token verification is off.
+- ⚠ Open security issue: `BELIMS_FIREBASE_API_KEY` is not set on production, so phone sign-in trusts the client-supplied phone number. Fix deferred by request; documented in plugin README → Known Constraints.
+
+### 4. Store Details
+- Google Maps API Key masked after save (`AIzaSyDn••••••••`) with an Edit button.
+
+### 5. Docs
+- Plugin README navigation table + constraints; `userguide.md` rewritten for the new structure (Branding and Store Details fields taken from the live screens).
+
+---
+
+## 2026-10-01 — Global Site Settings 2.6.0: Media tab (image optimiser + Products folder)
+
+### 1. includes/class-image-optimizer.php — new
+- Bulk PNG/JPEG → WebP conversion (same logic as the one-off WP-CLI run) as an Action Scheduler background queue; Start / Pause / Resume, progress + log.
+- Auto-convert new uploads toggle (Media Library uploads + FTG sync image imports).
+- Archive Old Originals: dry run / move unreferenced PNG/JPEG out of uploads.
+- Assign Product Images → Products folder (featured, gallery, uploaded-to-product); re-runnable.
+
+### 2. Site Settings → Media tab
+- `includes/admin-media-tab.php` + `assets/js/media-tools.js`; nav item under Tools.
+
+### 3. FTG sync
+- Imported product images are added to Media → Folders → Products; converted to WebP when auto-convert is on.
+
+### 4. Media Folders
+- `Belims_Media_Folders::assign_to()` helper (adds folder, keeps existing ones).
+
+---
+
 ## 2026-10-01 — Global Site Settings 2.5.0: FTG sync eligibility + Media Folders
 
 ### 1. FTG sync — only pull complete products

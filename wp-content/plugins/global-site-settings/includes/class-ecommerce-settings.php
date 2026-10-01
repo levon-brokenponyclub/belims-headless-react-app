@@ -1001,8 +1001,8 @@ class Ecommerce_Policies_Admin {
         
         ?>
         <div class="bpc-card-header">
-                <h2 class="bpc-card-title">Ecommerce Settings</h2>
-                <p class="bpc-card-description">Manage ecommerce policies displayed on product pages. These will appear in the accordion sections on single product pages.</p>
+                <h2 class="bpc-card-title">Store Details</h2>
+                <p class="bpc-card-description">Store locations, opening hours and the policies shown in the accordion sections on single product pages.</p>
             </div>
             
             <form method="post" action="">
@@ -1016,7 +1016,13 @@ class Ecommerce_Policies_Admin {
                     <p class="description" style="margin-bottom: 15px;">Add store locations used for pickup and store information on product pages. Use daily hours or add a custom note (e.g. Closed).</p>
                     <div style="margin: 12px 0 18px;">
                         <label style="display: block; font-weight: 600; margin-bottom: 6px;">Google Maps API Key</label>
-                        <input type="text" name="ecommerce_google_maps_api_key" value="<?php echo esc_attr($maps_api_key); ?>" class="regular-text" style="width: 100%;" />
+                        <?php if ($maps_api_key !== '') : ?>
+                            <div id="maps-key-saved" style="display: flex; align-items: center; gap: 12px;">
+                                <span class="ftg-saved-value"><?php echo esc_html(substr($maps_api_key, 0, 8)); ?>••••••••</span>
+                                <button type="button" class="bpc-btn-secondary" onclick="document.getElementById('maps-key-saved').style.display='none';document.getElementById('maps-key-input').style.display='';">Edit</button>
+                            </div>
+                        <?php endif; ?>
+                        <input type="text" id="maps-key-input" name="ecommerce_google_maps_api_key" value="<?php echo esc_attr($maps_api_key); ?>" class="regular-text" style="width: 100%;<?php echo $maps_api_key !== '' ? ' display: none;' : ''; ?>" />
                         <p class="description" style="margin-top: 6px;">Used for address autocomplete in Store Details.</p>
                     </div>
                     <style>

@@ -68,6 +68,29 @@ class Belims_Media_Folders {
         update_option('belims_media_folders_seeded', self::SEED_VERSION);
     }
 
+    /**
+     * Adds an attachment to a folder (by slug), keeping any folders it is already in.
+     * Creates top-level folder if missing.
+     *
+     * @return bool True when newly assigned, false when already in the folder or on failure.
+     */
+    public static function assign_to($attachment_id, $slug) {
+        $term = get_term_by('slug', $slug, self::TAXONOMY);
+        if (!$term) {
+            $created = wp_insert_term(ucfirst($slug), self::TAXONOMY, array('slug' => $slug));
+            if (is_wp_error($created)) {
+                return false;
+            }
+            $term = get_term($created['term_id'], self::TAXONOMY);
+        }
+
+        if (has_term($term->term_id, self::TAXONOMY, $attachment_id)) {
+            return false;
+        }
+
+        return !is_wp_error(wp_set_object_terms($attachment_id, array((int) $term->term_id), self::TAXONOMY, true));
+    }
+
     /** Folder dropdown on Media Library list view. */
     public function render_list_filter($post_type) {
         if ($post_type !== 'attachment') {

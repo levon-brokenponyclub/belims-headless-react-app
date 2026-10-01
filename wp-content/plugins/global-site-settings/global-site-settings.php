@@ -3,7 +3,7 @@
  * Plugin Name: Global Site Settings
  * Plugin URI: https://belims.co.za
  * Description: Unified plugin for Belims site settings, ACF field groups, REST API endpoints, and third-party integrations (WooCommerce, FTG, BobGo, AI).
- * Version: 2.5.0
+ * Version: 2.7.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: global-site-settings
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('GLOBAL_SITE_SETTINGS_VERSION', '2.5.0');
+define('GLOBAL_SITE_SETTINGS_VERSION', '2.7.0');
 define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-09-10 19:56:35');
 define('GLOBAL_SITE_SETTINGS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GLOBAL_SITE_SETTINGS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -98,6 +98,7 @@ function global_site_settings_init() {
         'includes/class-ecommerce-settings.php', // Ecommerce policies (Returns, Warranty, Shipping)
         'includes/class-bundled-products.php', // Bundled Products for WooCommerce
         'includes/class-media-folders.php', // Media Library folders (media_folder taxonomy)
+        'includes/class-image-optimizer.php', // WebP conversion queue, auto-convert, archive, Products folder
         // FTG Sync integration
         'includes/ftg-sync/class-ftg-api.php',
         'includes/ftg-sync/class-ftg-sync-endpoint.php',
@@ -695,6 +696,18 @@ function global_site_settings_enqueue_admin_assets($hook) {
         'bobgo_nonce' => wp_create_nonce('bobgo_nonce'),
         'ftg_nonce' => wp_create_nonce('clear_ftg_creds'),
     ));
+
+    wp_enqueue_script(
+        'belims-media-tools',
+        GLOBAL_SITE_SETTINGS_PLUGIN_URL . 'assets/js/media-tools.js',
+        array('jquery'),
+        GLOBAL_SITE_SETTINGS_VERSION,
+        true
+    );
+    wp_localize_script('belims-media-tools', 'belimsMediaTools', array(
+        'ajaxurl' => admin_url('admin-ajax.php'),
+        'nonce'   => wp_create_nonce('belims_media_tools'),
+    ));
 }
 add_action('admin_enqueue_scripts', 'global_site_settings_enqueue_admin_assets');
 
@@ -793,20 +806,32 @@ function global_site_settings_main_page() {
                     Branding
                 </a>
                 <a class="bpc-nav-item" data-tab="ecommerce">
-                    Ecommerce
+                    Store Details
+                </a>
+                <a class="bpc-nav-item" data-tab="cors-security">
+                    CORS &amp; Security
+                </a>
+                <a class="bpc-nav-item" data-tab="woocommerce">
+                    WooCommerce
                 </a>
 
                 <div class="bpc-nav-group-title">Integrations</div>
                 <a class="bpc-nav-item" data-tab="ftg-sync">
-                    Products
+                    FTG Sync
                 </a>
                 <a class="bpc-nav-item" data-tab="bobgo-shipping">
-                    Shipping
+                    BobGo Shipping
+                </a>
+                <a class="bpc-nav-item" data-tab="firebase-auth">
+                    Firebase Auth
+                </a>
+                <a class="bpc-nav-item" data-tab="ai-services">
+                    AI Services
                 </a>
 
                 <div class="bpc-nav-group-title">Tools</div>
-                <a class="bpc-nav-item" data-tab="payfast-testing">
-                    PayFast Testing
+                <a class="bpc-nav-item" data-tab="media">
+                    Media Management
                 </a>
             </nav>
 
@@ -824,8 +849,6 @@ function global_site_settings_main_page() {
                     // Gather additional status data for dashboard
                     $firebase_configured  = defined('BELIMS_FIREBASE_API_KEY') && BELIMS_FIREBASE_API_KEY !== '';
                     $jwt_configured       = defined('JWT_AUTH_SECRET_KEY') && JWT_AUTH_SECRET_KEY !== '';
-                    $payfast_merchant_id  = get_option('payfast_merchant_id', '');
-                    $payfast_configured   = !empty($payfast_merchant_id);
                     $gemini_key           = function_exists('get_field') ? get_field('gemini_api_key', 'option') : '';
                     $ai_configured        = !empty($gemini_key);
                     $bobgo_token          = get_option('bobgo_api_token', '');
@@ -1088,32 +1111,14 @@ function global_site_settings_main_page() {
                                 <?php elseif ($firebase_configured): ?>
                                     <span class="bpc-pill warn">JWT missing</span>
                                 <?php else: ?>
-                                    <span class="bpc-pill error">Not configured</span>
+                                    <span class="bpc-pill error">Not verified</span>
                                 <?php endif; ?>
                             </div>
                             <p class="bpc-integration-meta">
                                 Phone OTP sign-in via Firebase<br>
                                 <?php echo $jwt_configured ? '✓ JWT secret set' : '<span style="color:#92400e;">JWT_AUTH_SECRET_KEY not set</span>'; ?>
                             </p>
-                            <a class="bpc-integration-link" href="https://console.firebase.google.com" target="_blank">
-                                Firebase Console ↗
-                            </a>
-                        </div>
-
-                        <!-- Payment Gateway -->
-                        <div class="bpc-integration-card">
-                            <div class="bpc-integration-card-head">
-                                <h4>💳 Payment Gateway</h4>
-                                <?php if ($payfast_configured): ?>
-                                    <span class="bpc-pill ok">PayFast</span>
-                                <?php else: ?>
-                                    <span class="bpc-pill warn">Not set</span>
-                                <?php endif; ?>
-                            </div>
-                            <p class="bpc-integration-meta">
-                                <?php echo $payfast_configured ? 'Merchant ID: ' . esc_html(substr($payfast_merchant_id, 0, 4)) . '****' : 'PayFast not configured'; ?>
-                            </p>
-                            <a class="bpc-integration-link" onclick="jQuery('.bpc-nav-item[data-tab=\'payment-gateways\']').click()">
+                            <a class="bpc-integration-link" onclick="jQuery('.bpc-nav-item[data-tab=\'firebase-auth\']').click()">
                                 Configure →
                             </a>
                         </div>
@@ -1143,15 +1148,10 @@ function global_site_settings_main_page() {
                     <div class="bpc-settings-grid">
                         <?php
                         $settings_tiles = [
-                            ['tab' => 'branding',         'icon' => '🎨', 'label' => 'Branding',          'desc' => 'Logo, colors, frontend URL and environment'],
-                            ['tab' => 'ecommerce',        'icon' => '🛒', 'label' => 'Ecommerce',         'desc' => 'Returns, warranty and shipping policies'],
-                            ['tab' => 'cors-security',    'icon' => '🔒', 'label' => 'CORS & Security',   'desc' => 'Allowed origins and REST API security'],
-                            ['tab' => 'woocommerce',      'icon' => '🏪', 'label' => 'WooCommerce',       'desc' => 'WooCommerce API and product description import'],
-                            ['tab' => 'ftg-sync',         'icon' => '🔄', 'label' => 'FTG Sync',          'desc' => 'Find The Gap product catalogue sync'],
-                            ['tab' => 'bobgo-shipping',   'icon' => '🚚', 'label' => 'BobGo Shipping',    'desc' => 'Shipping rates, tracking and sandbox mode'],
-                            ['tab' => 'payment-gateways', 'icon' => '💳', 'label' => 'Payment Gateways',  'desc' => 'PayFast credentials and checkout config'],
-                            ['tab' => 'ai-services',      'icon' => '🤖', 'label' => 'AI Services',       'desc' => 'Gemini AI key for product descriptions'],
-                            ['tab' => 'payfast-testing',  'icon' => '🧪', 'label' => 'PayFast Testing',   'desc' => 'Test payment flows in sandbox mode'],
+                            ['tab' => 'branding',      'icon' => '🎨', 'label' => 'Branding',        'desc' => 'Admin dashboard colours'],
+                            ['tab' => 'ecommerce',     'icon' => '🏬', 'label' => 'Store Details',   'desc' => 'Store locations, hours and product page policies'],
+                            ['tab' => 'cors-security', 'icon' => '🔒', 'label' => 'CORS & Security', 'desc' => 'Allowed origins and REST API security'],
+                            ['tab' => 'woocommerce',   'icon' => '🏪', 'label' => 'WooCommerce',     'desc' => 'WooCommerce API and product description import'],
                         ];
                         foreach ($settings_tiles as $tile): ?>
                             <a class="bpc-settings-tile" onclick="jQuery('.bpc-nav-item[data-tab=\'<?php echo esc_js($tile['tab']); ?>\']').click(); return false;" href="#">
@@ -1225,17 +1225,10 @@ function global_site_settings_main_page() {
                     <!-- Quick tools -->
                     <div class="bpc-dash-section-title">Quick Tools</div>
                     <div class="bpc-quick-tools">
-                        <button class="bpc-btn-primary" onclick="jQuery('.bpc-nav-item[data-tab=\'ftg-sync\']').click()">
-                            FTG Sync
-                        </button>
-                        <button type="button" id="ftg-brand-count" class="bpc-btn-secondary">
-                            Check Assa Abloy Count
-                        </button>
                         <button type="button" id="belims-clear-cache" class="bpc-btn-secondary">
                             Clear Cache
                         </button>
                     </div>
-                    <div id="ftg-brand-count-status" style="margin-bottom:16px;"></div>
 
                     <script>
                     jQuery(document).ready(function($) {
@@ -1250,132 +1243,6 @@ function global_site_settings_main_page() {
 
                     <script>
                     jQuery(document).ready(function($) {
-                        var latestBrandCountResult = null;
-
-                        function getQuickActionBrand() {
-                            var selected = ($('#ftg-brand-filter').val() || '').trim();
-                            if (selected === '__custom__') {
-                                return ($('#ftg-custom-brand').val() || '').trim();
-                            }
-                            return selected || 'Assa Abloy';
-                        }
-
-                        function escapeHtml(value) {
-                            return String(value || '')
-                                .replace(/&/g, '&amp;')
-                                .replace(/</g, '&lt;')
-                                .replace(/>/g, '&gt;')
-                                .replace(/"/g, '&quot;')
-                                .replace(/'/g, '&#039;');
-                        }
-
-                        function toCsvRow(cells) {
-                            return cells.map(function(cell) {
-                                var value = String(cell == null ? '' : cell);
-                                return '"' + value.replace(/"/g, '""') + '"';
-                            }).join(',');
-                        }
-
-                        function buildBrandCountCsv(data, brand) {
-                            var rows = [];
-                            rows.push(toCsvRow(['Brand', brand]));
-                            rows.push(toCsvRow(['Total Unique Products', data.total_unique || 0]));
-                            rows.push(toCsvRow(['Pages Fetched', data.pages_fetched || 0]));
-                            rows.push(toCsvRow(['API URL', data.api_url || '']));
-                            rows.push(toCsvRow(['API URL Template', data.api_url_template || '']));
-                            rows.push('');
-                            rows.push(toCsvRow(['SKU', 'Name', 'Brand', 'FTG One ID']));
-
-                            var products = Array.isArray(data.products) ? data.products : [];
-                            products.forEach(function(product) {
-                                rows.push(toCsvRow([
-                                    product.sku || '',
-                                    product.name || '',
-                                    product.brand || '',
-                                    product.ftg_one_id || ''
-                                ]));
-                            });
-
-                            return rows.join('\n');
-                        }
-
-                        function downloadBrandCountCsv(data, brand) {
-                            var csv = buildBrandCountCsv(data, brand);
-                            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                            var url = window.URL.createObjectURL(blob);
-                            var safeBrand = (brand || 'brand').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
-                            var datePart = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-                            var filename = 'ftg-brand-count-' + (safeBrand || 'brand') + '-' + datePart + '.csv';
-
-                            var link = document.createElement('a');
-                            link.href = url;
-                            link.download = filename;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            window.URL.revokeObjectURL(url);
-                        }
-
-                        function updateQuickActionBrandButton() {
-                            var brand = getQuickActionBrand();
-                            $('#ftg-brand-count').text('Check ' + brand + ' Count');
-                        }
-
-                        $(document).on('change input', '#ftg-brand-filter, #ftg-custom-brand', function() {
-                            updateQuickActionBrandButton();
-                        });
-
-                        updateQuickActionBrandButton();
-
-                        $('#ftg-brand-count').on('click', function() {
-                            var brand = getQuickActionBrand();
-                            var btn = $(this);
-                            var status = $('#ftg-brand-count-status');
-                            latestBrandCountResult = null;
-                            btn.prop('disabled', true).text('Checking...');
-                            status.text('Fetching ' + brand + ' total from FTG...');
-                            fetch('<?php echo rest_url('belims/v1/ftg/brand-count'); ?>?brand=' + encodeURIComponent(brand))
-                                .then(function(r) { return r.json(); })
-                                .then(function(data) {
-                                    btn.prop('disabled', false);
-                                    updateQuickActionBrandButton();
-                                    if (data && data.success) {
-                                        latestBrandCountResult = data;
-                                        var firstProductText = '';
-                                        if (data.first_product && data.first_product.sku) {
-                                            var firstName = data.first_product.name || 'Unnamed Product';
-                                            firstProductText = '<br/>Product: <strong>' + escapeHtml(firstName) + '</strong> - <code>' + escapeHtml(data.first_product.sku) + '</code>';
-                                        }
-                                        var apiUrlText = data.api_url ? '<br/>API URL: <code>' + escapeHtml(data.api_url) + '</code>' : '';
-                                        var returnedCount = Array.isArray(data.products) ? data.products.length : 0;
-                                        var downloadButton = '<br/><button type="button" id="ftg-brand-count-download" class="button button-secondary" style="margin-top:8px;">Download Returned Products</button>';
-                                        status.html(
-                                            escapeHtml(brand) + ' products available in FTG: <strong>' + (data.total_unique || 0) + '</strong> (pages fetched: ' + (data.pages_fetched || 0) + ', returned: ' + returnedCount + ')' +
-                                            firstProductText +
-                                            apiUrlText +
-                                            downloadButton
-                                        );
-                                    } else {
-                                        status.text('Unable to fetch count: ' + (data && data.message ? data.message : 'Unknown error'));
-                                    }
-                                })
-                                .catch(function(err) {
-                                    btn.prop('disabled', false);
-                                    updateQuickActionBrandButton();
-                                    status.text('Request failed: ' + err);
-                                });
-                        });
-
-                        $(document).on('click', '#ftg-brand-count-download', function() {
-                            var brand = getQuickActionBrand();
-                            if (!latestBrandCountResult || !latestBrandCountResult.success) {
-                                $('#ftg-brand-count-status').text('No brand-count results available to download yet.');
-                                return;
-                            }
-
-                            downloadBrandCountCsv(latestBrandCountResult, brand);
-                        });
-
                         $('#belims-clear-cache').on('click', function() {
                             var cacheBuster = Math.floor(Math.random() * 1000000000);
                             var url = 'https://cms.belims.co.za/wp-admin/index.php?no-cache=' + cacheBuster;
@@ -3448,6 +3315,47 @@ function global_site_settings_main_page() {
             </div>
 
             <!-- AI Services Tab -->
+            <!-- Firebase Auth Tab -->
+            <?php
+            $fb_key_set  = (defined('BELIMS_FIREBASE_API_KEY') && BELIMS_FIREBASE_API_KEY !== '') || get_option('belims_firebase_api_key', '') !== '';
+            $fb_jwt_set  = defined('JWT_AUTH_SECRET_KEY') && JWT_AUTH_SECRET_KEY !== '';
+            ?>
+            <div id="tab-firebase-auth" class="bpc-tab-content">
+                <div class="bpc-card">
+                    <div class="bpc-card-header">
+                        <h2 class="bpc-card-title">Firebase Auth</h2>
+                        <p class="bpc-card-description">Phone OTP and Google sign-in on the storefront. Firebase verifies the user in the browser; the CMS exchanges the Firebase ID token for a WordPress JWT.</p>
+                    </div>
+
+                    <?php if (!$fb_key_set): ?>
+                        <div class="bpc-callout bpc-callout--warning">
+                            <strong>Server-side token verification is off.</strong> <code>BELIMS_FIREBASE_API_KEY</code> is not set, so <code>/auth/firebase-phone</code> accepts the phone number sent by the browser without verifying it with Firebase. Add the Firebase web API key to <code>wp-config.php</code>.
+                        </div>
+                    <?php endif; ?>
+
+                    <table class="bpc-modern-table">
+                        <tbody>
+                            <tr>
+                                <td>Firebase API key (<code>BELIMS_FIREBASE_API_KEY</code>)</td>
+                                <td><?php echo $fb_key_set ? '<span class="bpc-pill ok">Set</span>' : '<span class="bpc-pill error">Missing</span>'; ?></td>
+                            </tr>
+                            <tr>
+                                <td>JWT secret (<code>JWT_AUTH_SECRET_KEY</code>)</td>
+                                <td><?php echo $fb_jwt_set ? '<span class="bpc-pill ok">Set</span>' : '<span class="bpc-pill error">Missing</span>'; ?></td>
+                            </tr>
+                            <tr>
+                                <td>Endpoints</td>
+                                <td><code>POST /auth/firebase-phone</code> · <code>POST /auth/firebase-google</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="bpc-actions" style="margin-top: 20px;">
+                        <a class="bpc-btn-secondary" href="https://console.firebase.google.com" target="_blank" rel="noopener">Firebase Console ↗</a>
+                    </div>
+                </div>
+            </div>
+
             <div id="tab-ai-services" class="bpc-tab-content">
                 <div class="bpc-card">
                     <div class="bpc-card-header">
@@ -3500,6 +3408,9 @@ function global_site_settings_main_page() {
                     ?>
                 </div>
             </div>
+
+            <!-- Media Tab -->
+            <?php require GLOBAL_SITE_SETTINGS_PLUGIN_DIR . 'includes/admin-media-tab.php'; ?>
 
             <!-- PayFast Testing Tab -->
             <div id="tab-payfast-testing" class="bpc-tab-content">
