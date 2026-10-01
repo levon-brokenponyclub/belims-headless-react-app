@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-01 — Global Site Settings 2.7.2: phone sign-in account matching
+
+### class-firebase-phone-auth.php
+- `find_user_by_phone()`: matches `billing_phone` ignoring spaces, dashes, brackets and "+", and accepts the local SA format (`+27821234567` ⇄ `0821234567`); oldest account wins when a number is shared. Falls back to the account a previous phone sign-in created (`phone_<digits>`) so an edited billing phone no longer causes `existing_user_login` lockouts.
+- Account lookup/creation failures are logged (`error_log`) and return a generic message instead of raw WordPress errors.
+- Verified on production (read-only): all 8 stored billing phones (3 formats) resolve to an account; unknown numbers resolve to none. 5 of 8 numbers are shared by several accounts — the oldest is used.
+
+---
+
 ## 2026-10-01 — Global Site Settings 2.7.1: Firebase sign-in security fix
 
 ### Account-takeover vulnerability closed (production)

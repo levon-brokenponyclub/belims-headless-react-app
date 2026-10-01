@@ -71,8 +71,9 @@ class Belims_Firebase_Phone_Auth {
         }
 
         if ( is_wp_error( $user ) ) {
+            error_log( '[Belims Firebase Phone Auth] Account lookup/creation failed for ' . $canonical_phone . ': ' . $user->get_error_code() . ' — ' . $user->get_error_message() );
             return new WP_REST_Response(
-                [ 'message' => $user->get_error_message() ],
+                [ 'message' => "We couldn't sign you in. Please try again or contact us." ],
                 500
             );
         }
@@ -135,34 +136,45 @@ class Belims_Firebase_Phone_Auth {
     }
 
     /**
-     * Find an existing WP user by phone number.
-     * Checks billing_phone (WooCommerce) and user_phone (custom meta).
+     * Find an existing WP user for a Firebase-verified E.164 phone number.
+     *
+     * 1. billing_phone match, ignoring spaces/dashes/brackets/"+" and accepting the
+     *    local SA format (e.g. +27821234567 ⇄ 0821234567). Oldest account wins.
+     * 2. The account a previous phone sign-in created (login "phone_<digits>"), in
+     *    case its billing_phone was edited since.
      */
     private static function find_user_by_phone( string $phone ): ?WP_User {
-        // Normalise: strip spaces and dashes for comparison
-        $normalised = preg_replace( '/[\s\-]/', '', $phone );
+        global $wpdb;
 
-        // Check billing_phone (WooCommerce standard)
-        $users = get_users( [
-            'meta_key'   => 'billing_phone',
-            'meta_value' => $normalised,
-            'number'     => 1,
-            'fields'     => 'all',
-        ] );
-
-        if ( ! empty( $users ) ) {
-            return $users[0];
+        $digits = preg_replace( '/\D/', '', $phone );
+        if ( $digits === '' ) {
+            return null;
         }
 
-        // Also check the raw phone string in case it was stored with formatting
-        $users = get_users( [
-            'meta_key'   => 'billing_phone',
-            'meta_value' => $phone,
-            'number'     => 1,
-            'fields'     => 'all',
-        ] );
+        $candidates = [ $digits ];
+        if ( strpos( $digits, '27' ) === 0 ) {
+            $candidates[] = '0' . substr( $digits, 2 );
+        }
 
-        return ! empty( $users ) ? $users[0] : null;
+        $placeholders = implode( ',', array_fill( 0, count( $candidates ), '%s' ) );
+        $user_id      = $wpdb->get_var( $wpdb->prepare(
+            "SELECT user_id FROM {$wpdb->usermeta}
+             WHERE meta_key = 'billing_phone'
+               AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(meta_value, ' ', ''), '-', ''), '+', ''), '(', ''), ')', '') IN ($placeholders)
+             ORDER BY user_id ASC
+             LIMIT 1",
+            $candidates
+        ) );
+
+        if ( $user_id ) {
+            $user = get_user_by( 'id', (int) $user_id );
+            if ( $user ) {
+                return $user;
+            }
+        }
+
+        $user = get_user_by( 'login', 'phone_' . $digits );
+        return $user ?: null;
     }
 
     /**
