@@ -75,7 +75,7 @@ git push origin main:vercel
 ### CMS-triggered builds
 
 - Saving **Site Settings → Homepage** in the CMS fires the deploy hook(s) for the storefront(s) picked under *Saving rebuilds* (Preview → `main` hook "CMS Homepage (preview)", Production → `vercel` hook "CMS Homepage", or Both). Until launch it is set to **Preview**, so homepage content rebuilds `belims.vercel.app`.
-- **At launch:** switch the option back to the `vercel` hook ("CMS Homepage") so content edits rebuild production, and set the CMS frontend URL (ACF option `headless_frontend_url`, currently `https://belims.vercel.app`) to `https://www.belims.co.za` — it drives the Homepage live-version check, the PayFast return URL and the CORS origin.
+- **At launch:** set *Saving rebuilds* to **Production** (or **Both**), and set the CMS default frontend URL (ACF option `headless_frontend_url`, currently `https://belims.vercel.app`) to `https://www.belims.co.za` — the PayFast return fallback and default CORS origin. Orders already return to the storefront they were placed on, and www, preview and localhost are all allowed by CORS.
 
 ### CMS plugin deploys
 
