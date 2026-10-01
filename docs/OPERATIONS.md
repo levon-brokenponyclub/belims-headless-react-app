@@ -62,7 +62,7 @@ Purge after urgent content changes: Cloudflare → Caching → Purge by URL (e.g
   ```
   then `php -l` the files on the server. Check server copies match git before overwriting (no drift).
 - Every plugin change bumps the version in `global-site-settings.php` (header + `GLOBAL_SITE_SETTINGS_VERSION`) and gets a [CHANGELOG](../CHANGELOG.md) entry.
-- **GitHub Actions workflow** [`.github/workflows/deploy-cloudways.yml`](../.github/workflows/deploy-cloudways.yml) (SFTP mirror of `global-site-settings`, `uafrica-shipping` and `wp-config.php` to `/public_html/`) is **disabled** — manual `workflow_dispatch` only since 2026-10-01, because `main` is now the preview branch. It never ran successfully (GitHub account locked for billing). Do not re-enable it without removing the `wp-config.php` step. Former setup notes: [archive/github/DEPLOYMENT.md](archive/github/DEPLOYMENT.md).
+- **Who deploys:** the agent deploys files to the CMS on Cloudways (`deploy.sh` or a targeted SSH upload via the SSH Vault). **Before deploying any files to Cloudways it asks the user and waits for explicit approval**, listing the files, the target path and the backup it will take. There is no CI/automatic deploy to Cloudways.
 
 ## Local development
 

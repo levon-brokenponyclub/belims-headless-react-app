@@ -29,8 +29,9 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 - Cloudflare **Bot Fight Mode** turned off — on the Free plan WAF skip rules cannot bypass it, and it was challenging Vercel → CMS API calls.
 - Remaining blocker: Cloudways Imunify360 SplashScreen still challenges some `/wp-json/` requests; no per-path toggle in the Cloudways UI — escalated to support.
 
-### GitHub Actions
-- `.github/workflows/deploy-cloudways.yml` disabled (push trigger → `workflow_dispatch` only). It would have SFTP'd plugins **and `wp-config.php`** into the production CMS on every push to `main` (now the preview branch). It never ran — the GitHub account is locked for billing.
+### Cloudways deploys
+- Removed the GitHub Actions Cloudways SFTP workflow and its archived setup notes. It would have uploaded plugins **and `wp-config.php`** into the production CMS on every push to `main` (now the preview branch); it never ran (GitHub account locked for billing).
+- Deploy policy: the agent deploys files to the CMS on Cloudways (`deploy.sh` or targeted SSH upload) and **asks the user for explicit approval before every deploy**. Recorded in `AGENTS.md`, `README.md` and `docs/OPERATIONS.md`.
 
 ### Documentation
 - Root `README.md` deployment section rewritten for Vercel (Netlify guide removed).

@@ -294,7 +294,7 @@ Controlled from **Site Settings → Media**.
 
 ## Deployment
 
-Plugin files are owned by app user `uhkkwupuum`, group `www-data` (group-writable). The SSH master user (`master_ggrkakuzjf`, in `www-data`) can deploy over SSH/SCP to `applications/uhkkwupuum/public_html/wp-content/plugins/global-site-settings/` (verified 2026-10-01); Cloudways File Manager also works. Use `../deploy.sh` (full plugin) or a targeted upload of changed files — see [docs/OPERATIONS.md → CMS plugin deploys](../../../docs/OPERATIONS.md#cms-plugin-deploys). The GitHub Actions SFTP workflow is disabled.
+Plugin files are owned by app user `uhkkwupuum`, group `www-data` (group-writable). The SSH master user (`master_ggrkakuzjf`, in `www-data`) can deploy over SSH/SCP to `applications/uhkkwupuum/public_html/wp-content/plugins/global-site-settings/` (verified 2026-10-01); Cloudways File Manager also works. Use `../deploy.sh` (full plugin) or a targeted upload of changed files — see [docs/OPERATIONS.md → CMS plugin deploys](../../../docs/OPERATIONS.md#cms-plugin-deploys). The agent deploys these files to Cloudways **only after the user explicitly approves** each deploy (files + target listed).
 
 Do not override files owned by other plugins (e.g. `uafrica-shipping`).
 

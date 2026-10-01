@@ -81,7 +81,7 @@ git push origin main:vercel
 
 - `wp-content/plugins/deploy.sh` bumps the deploy timestamp, commits and pushes the **current branch** (work on `main`), then uploads `global-site-settings` to the server. Targeted uploads and checks: [OPERATIONS → CMS plugin deploys](docs/OPERATIONS.md#cms-plugin-deploys).
 - ⚠ There is a single CMS (`cms.belims.co.za`) behind both Preview and Production — plugin and WordPress content changes reach both immediately. "Preview first" applies to frontend code only.
-- The GitHub Actions SFTP workflow (`.github/workflows/deploy-cloudways.yml`) is **disabled** (manual trigger only).
+- **Agent deploys files to the CMS on Cloudways** (`deploy.sh` or a targeted SSH upload) — and **asks the user for explicit approval before deploying any files to Cloudways**, every time, naming the files and the target.
 
 ---
 
