@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
             acf_form(array(
                 'post_id'      => 'options',
                 'fields'       => array('field_belims_homepage_sections'),
-                'return'       => admin_url('admin.php?page=belims-site-settings&updated=true#tab-homepage'),
+                'return'       => admin_url('admin.php?page=belims-site-settings#tab-homepage'),
                 'submit_value' => 'Save Homepage',
             ));
         } else {

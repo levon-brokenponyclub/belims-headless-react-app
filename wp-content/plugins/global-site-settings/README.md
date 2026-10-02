@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.9.1  
+**Version:** 2.9.3  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -17,7 +17,7 @@ global-site-settings/
 ├── global-site-settings.php          # Bootstrap, CORS headers, AJAX handlers, admin menus
 ├── assets/
 │   ├── css/admin.css                 # All BPC admin UI styles (variables, layout, components)
-│   ├── js/admin.js                   # Admin tab switching and shared JS
+│   ├── js/admin.js                   # Tab switching, WP submenu sync, bpcToast, save forms (dirty check + Saving…)
 │   ├── js/media-folders.js           # Media Library grid folder filter
 │   ├── js/media-tools.js             # Site Settings → Media tab controls
 │   └── js/homepage-tools.js          # Site Settings → Homepage publishing controls
@@ -46,11 +46,19 @@ global-site-settings/
 
 Single-page tabbed interface at **WP Admin → Site Settings**.
 
-### Sidebar navigation
+**Page header (2.10.0)** — `header.bpc-page-header` above the tab bar on every page: title, version tag (`.bpc-version-tag`), environment badge (2.10.3: the hosting environment from `belims_environment()` → `WP_ENVIRONMENT_TYPE` — Production / Staging / Development / Local) with a warning notice outside production when PayFast is live, BobGo is enabled on Production or a Production deploy hook is saved, description, and **View Storefront ↗** (`get_frontend_url()`). Followed by `<hr class="wp-header-end">` so WP admin notices land below it.
+
+**Sections (2.10.0)** — Overview and FTG Sync use WP core postboxes: `.postbox` → `.postbox-header` (`<h2>` title + optional status `.badge`) → `.inside` (`.inside.is-flush` for full-width tables). Inside a postbox, `.field` renders as a row (label 220px | control) with a separator and `.store-fields` stacks rows; below 782px rows stack. Styles in `sitebridge-ui.css`. Other tabs still use `.sb-panel` / `.panel`.
+
+### Navigation
+
+Two levels (2.9.4). The WP admin submenu (`global_site_settings_admin_menus()`) lists only the four groups — **Overview · Settings · Integrations · Tools** — each linking to its group's first tab (`#tab-dashboard`, `#tab-branding`, `#tab-ftg-sync`, `#tab-media`). The first item reuses the parent slug, so it replaces WP's duplicate "Site Settings" entry. A group's pages are the horizontal sub-tabs in `.nav-tab-wrapper.bpc-section-tabs`: one `.bpc-section-tab-group[data-section-group]` per group, only the active group's row is shown.
+
+`admin.js` switches tabs in place for sub-tab clicks, Site Settings menu links (intercepted, no reload) and `hashchange`/`popstate`. A tab's group is read from the sub-tab markup (`tabGroup()`), which drives both the visible sub-tab row and the submenu `current` highlight — add a tab by adding its `<a data-tab>` to the right group row; no JS list to update. Initial tab: URL hash → tab of the last save (flash) → Dashboard. No `localStorage` tab memory.
 
 | Group | Label | Tab ID | Purpose |
 |-------|-------|--------|---------|
-| Overview | Dashboard | `tab-dashboard` | System status, integrations, settings shortcuts, REST API reference, Clear Cache |
+| Overview | Dashboard | `tab-dashboard` | System status, integrations, settings shortcuts, REST API reference |
 | Settings | Branding | `tab-branding` | WP admin dashboard colours |
 | Settings | Store Details | `tab-ecommerce` | Store locations + hours, Google Maps key (masked), product page policies, Ask an Expert block |
 | Settings | Homepage | `tab-homepage` | Homepage sections (Hero), rebuild target (Preview/Production/Both), deploy hook per target, publish + live-version status |
@@ -64,26 +72,83 @@ Single-page tabbed interface at **WP Admin → Site Settings**.
 
 Each feature appears once: integrations only in the Integrations row/menu, settings only in the Settings row/menu. Payment Gateways and PayFast Testing tabs remain in the DOM but are removed from the sidebar and dashboard (v2.7.0).
 
+### Save feedback (2.9.2)
+
+- **Toasts:** `window.bpcToast(message, type)` (`assets/js/admin.js`, styles in `admin.css` → "Toasts") — one bottom-right `aria-live="polite"` stack; types `success` / `info` (4 s), `warning` (6 s), `error` (8 s), each with a close button. AJAX tools (FTG tools + sync, media tools, homepage publishing, `admin.js` actions) report short success/error/warning messages with it; reports (sync tables, progress bars, brand lists, cleanup/import summaries) stay inline.
+- **Flash after POST saves:** `belims_settings_flash($type, $message, $tab)` stores one message per user in the transient `belims_settings_flash_<user_id>` (5 min). `belims_settings_print_flash()` (`admin_footer`, this page only) hands it to `admin.js` as `window.bpcSettingsFlash` and deletes it; admin.js shows the toast and reopens `tab`. Set by: dashboard FTG/BobGo toggles, BobGo enable, Store Details, product CSV import, BobGo environment (`load-options.php`), and every ACF form via `acf/save_post` (label from the posted tab). Failures: `belims_settings_verify_post()` (capability + nonce, flashes an error instead of `check_admin_referer()`'s die page) and the ACF nonce/capability check in `global_site_settings_acf_form_head()`.
+- **Tab after save:** `admin.js` adds a hidden `bpc_tab` input (the form's tab id) to every form on submit.
+- **Saving state:** on submit, submit buttons show **Saving…** and are disabled (after the browser has built the POST, so the button name is still sent) with a spinner (ACF forms use ACF's own). ACF `validation_begin` / `validation_failure` lock / restore the form; validation failure shows an error toast.
+- **Unsaved changes:** ACF's page-wide `acf.unload` prompt is disabled on this page. Each form is snapshotted (serialised fields + file inputs, TinyMCE synced) after window `load`; `beforeunload` warns only if a form differs from its snapshot. A form is marked clean on submit (restored if the submit is cancelled, e.g. ACF validation). Tab switches never warn.
+
 ### Dashboard tab
 
 - **System strip**: WordPress version, WooCommerce version, PHP version, CORS origin, Frontend URL
-- **Integrations grid**: FTG Sync (toggle + last sync date), BobGo Shipping (toggle + env badge), Firebase Auth (Active / JWT missing / Not verified), AI Services — each card's Configure opens its tab
-- **Settings tiles**: Branding, Store Details, CORS & Security, WooCommerce
-- **Quick Tools**: Clear Cache
-- **REST API reference table**: All `belims/v1` endpoints with method badges and auth type badges
+- **Integrations** postbox (status: *N of 4 active*): one card per entry of `belims_integration_statuses()` — name, status badge (`belims_integration_badge()`), description (FTG: last sync when connected) and **Configure** (`#tab-<id>`). No toggles since 2.10.5 — integrations are switched on/off in their own tabs (the card toggles saved on click, which re-enabled BobGo on staging).
+- **Settings shortcuts** postbox: Branding, Store Details, Homepage, CORS & Security, WooCommerce
+- **REST API endpoints** postbox (status: endpoint count): `belims/v1` endpoints with method and auth badges
+- The dashboard's own header and the "Clear Frontend Cache" quick tool were removed in 2.10.0 (the button only opened `wp-admin` with a query string — no cache was cleared).
+
+`$integrations_active` comes from `belims_integration_statuses()` (2.10.4), the same helper the WordPress Dashboard panel uses.
+
+### WordPress Dashboard panel (2.10.4, `includes/class-dashboard-widgets.php`)
+
+Full-width Site Settings panel at the top of **WP Admin → Dashboard**, for `manage_options` users. It replaces WordPress's Welcome panel (`load-index.php` → `remove_action('welcome_panel', 'wp_welcome_panel')` + `render_site_settings_panel()`), the only full-width slot above the widget columns; users can hide it via Screen Options → Welcome. Replaced the narrow "⚙️ Belims Site Settings" widget, whose checks (`bobgo_api_key`, `payment_api_key`, WooCommerce consumer keys) didn't match the real integrations.
+
+- **Status strip (4):** Environment (`belims_environment()`, green dot in production, amber otherwise) · Products (published `product` count) · Last FTG sync · **Run Diagnostics** (disabled, "Coming soon" — not wired yet).
+- **Integrations** (`badge` *N of 4 active*): one row per entry of `belims_integration_statuses()` — label, description and a status badge from `belims_integration_badge($tab, $integration, $settings_url)` — states that need attention render as an amber badge linking to the tab.
+- **Quick links:** placeholder array `$quick_links` (tab id → label) rendered as a two-column shortcut list linking to Site Settings tabs, plus **Open Site Settings**.
+- Styles: `sitebridge-ui.css` is enqueued on `index.php`; the panel is wrapped in `.sitebridge-ui` and uses the prototype classes `status-strip`, `dashboard-grid`, `panel`, `item-list`, `shortcut-grid` (arrow class `shortcut-arrow` — WP core styles a bare `.arrow:after`). `#welcome-panel:has(> .belims-dashboard-panel)` removes WP's dark Welcome styling. Below 900px the strip is 2×2; below 782px the columns stack.
+
+`belims_integration_statuses()` labels (2.10.5): FTG — **Connected** (enabled + token + last connection OK) / **Not connected** (action); BobGo — **Enabled · Production|Sandbox** / **Disabled**; Firebase — **Configured** / **Setup** (action); AI Services — **Configured** / **Setup** (action). `active` = the good state; drives *N of 4 active* on both screens.
 
 Last sync on the Dashboard and Products tab both read from `belims_get_ftg_last_sync_timestamp()` and display in `date_i18n('F j, Y, g:i a')` format.
 
+### Settings Card (2.10.5)
+
+Reusable on/off card with a deferred save — `belims_settings_card($card)` (PHP) + the SETTINGS CARD block in `admin.js`:
+
+- Card = title, description, toggle + label; footer = help text + **Save**. Save is disabled until the toggle differs from `data-saved`; nothing is stored on toggle.
+- Save → optional confirm when switching off (`confirm_off` → `data-confirm-off-*` → `window.bpcConfirm()`), then AJAX `belims_save_setting`; success → toast with the server message, `data-saved` updated, Save disabled again, `settings-card:saved` triggered with the new value; failure → error toast, Save stays enabled.
+- `$card` keys: `id`, `setting`, `title`, `description`, `label`, `checked`, `help`, optional `confirm_off` = [title, text, confirm label]. New settings must be added to the whitelist in `belims_save_setting`.
+- `window.bpcConfirm(title, description, confirmLabel)` → `Promise<boolean>` uses the page-level `<dialog id="bpc-alert-dialog" role="alertdialog">` (Cancel / Escape → false). The FTG tools' `ftgConfirmed()` uses it too.
+- Styles: `.settings-card`, `.settings-card-body`, `.settings-card-footer` in `sitebridge-ui.css`.
+
 ### FTG Sync tab
 
-**Credentials section** — collapses to a saved summary when email + password + token are all set. "Edit Credentials" expands the form; "Cancel" collapses it back.
+Four `.panel`s matching `Prototype/index.html` (2.9.5; prototype classes are styled in `sitebridge-ui.css`). Element IDs are what the tab's two inline scripts bind to; keep them when restyling.
 
-**Product Sync section** (visible when enabled + token set):
-- Brand toolbar: dropdown (populated from FTG API) + Search Available Brands + optional Custom Brand input
-- **Auto-Sync Schedule** group: frequency selector (Disabled / Hourly / Twice Daily / Daily / Weekly), Save button, Run Now button, next scheduled run display
-- **Connection** group: Test Connection, Disconnect FTG
-- **Tools** group: Inspect Product, Check Catalogue Count, Count Display On Web Active, Export Brand Products, Cleanup Duplicate Attributes
-- **Sync** group: Test Sync (first 10), SKU field + Sync Single Product, SYNC CATALOGUE, SYNC ALL BRANDS + Dry Run toggle
+**Section layout (2.9.9)** — a left-column menu (**Connection · Auto Sync · Tools · Activity Log**) shows one panel at a time. Reusable for the other Integrations tabs:
+
+```html
+<div class="section-layout">
+  <nav class="section-nav" aria-label="…">
+    <button type="button" data-section="connection" aria-current="true">Connection</button>
+    <button type="button" data-section="tools">Tools</button>
+  </nav>
+  <div class="section-content">
+    <div data-section-pane="connection">…</div>
+    <div data-section-pane="tools" hidden>…</div>
+  </div>
+</div>
+```
+
+`admin.js` (SECTION LAYOUT) handles clicks, sets `aria-current` and the panes' `hidden`, opens the `aria-current` item (else the first visible) on load, and exposes `window.bpcShowSection(layout, name)`. No URL change. Layout CSS (`.section-layout`, `.section-nav`) is in `sitebridge-ui.css`: 200px menu column, single column with a horizontal menu below 782px. On FTG, menu items with `data-requires="enabled"` are hidden while FTG is off, and turning it off returns to Connection.
+
+0. **FTG integration** Settings Card (2.10.5, `#ftg-enabled-card`, setting `ftg_enabled`) above Connection status — see *Settings Card* below. Saving **off** first opens the alert dialog ("Disable FTG connection?"); on `settings-card:saved` the FTG script runs `ftgApplyEnabled()` (credentials, `#ftg-enabled-panels`, menu items, badge) and, when on, fires `ftg:tools-visible`. Credentials are kept when off.
+1. **Connection status** (2.9.6, 2.9.7) — badge `#ftg-status-badge`: **Connected** (credentials saved + last connection OK) or **Not connected** (also while FTG is off); `data-on-class` / `data-on-label` hold the enabled state. Last catalogue sync. States:
+   - **On, nothing stored** → form: email, password (+ Show), read-only token + **Get Token**, **Save Credentials**. Save is disabled until email + password are filled and Get Token succeeded for them (`ftgTokenVerified`); editing email/password clears the token. Get Token (`POST /ftg/login`) **stores nothing**; on success the form sets hidden `ftg_token_verified=1`, and **Save Credentials** — the only step that saves — submits over AJAX (`belims_save_ftg_credentials`, 2.9.8), stores email/password/token and records `belims_ftg_connection_status` as OK. No reload: a toast confirms or reports the error, and on success the grid, badge (Connected), stored values (`data-stored`) and saved view update in place; `window.bpcMarkFormClean()` (admin.js) resets the unsaved-changes snapshot, as do the toggle saves.
+   - **On, stored** → `.credential-grid` with masked values (email, `BELIMS_FTG_PASSWORD_MASK`, token first 8 + `••••••••`), **Edit Credentials** + **Test Connection** (Test only exists in this view).
+   - **Edit** → the form pre-filled from stored values (`data-stored`): email, password shown as `BELIMS_FTG_PASSWORD_MASK` (never the real password; Show disabled until a new one is typed; focusing selects the mask), stored token. Save is enabled for unchanged values; changing email/password clears the token and requires Get Token again. Posting the mask keeps the stored password (Save handler and `/ftg/login`, which uses the stored password for the mask only when the email matches). **Cancel** and **Disconnect FTG** (`clear_ftg_credentials`, behind the same alert dialog).
+The saved view, Cancel / Disconnect and panels 2–4 are always rendered and toggled with `hidden` (2.9.8), so a first save or enabling FTG needs no reload. Panels 2–4 sit in `#ftg-enabled-panels`, hidden while FTG is off; Sync tools (`#ftg-sync-tools`) is hidden — with `#ftg-token-notice` shown — until credentials are saved. Brands are fetched only when Sync tools is visible (on load, or on the `ftg:tools-visible` event after Save / enable).
+
+2. **Automatic synchronization** (enabled) — schedule select (Disabled / Hourly / Twice Daily / Daily / Weekly), next-run line, **Save Schedule**, **Run Now**.
+3. **Tools** (enabled + credentials saved; container `#ftg-sync-tools`) — four postboxes split by effect (2.10.1):
+   - **Brand & product** — Brand select (populated from the FTG API), Custom brand (for "Other"), Product SKU (used by Inspect Product and Sync Single Product).
+   - **Look up** (`badge info` *Read only*) — Search Available Brands, Check Catalogue Count, Count Display On Web Active, Inspect Product (reads the SKU field; was a `prompt()`), Export Brand Products (CSV).
+   - **Sync to WooCommerce** (`badge warn` *Changes products*) — rows: Selected brand → Sync first 10 (test), **Sync Catalogue** (primary); Single product → Sync Single Product; All brands → Dry run + Sync All Brands. VAT note.
+   - **Maintenance** (`badge warn` *Caution*) — Cleanup Duplicate Attributes (`button-danger`).
+   - Reports render inside the box whose button ran them (2.10.2): each of Look up / Sync to WooCommerce / Maintenance ends with a `.ftg-tool-result` area, and handlers resolve it with `$(this).closest('.postbox').find('.ftg-tool-result')`; Sync Single Product uses `#ftg-sync-single-result` in its row. Every writing action, Cleanup and Run Now go through the alert dialog via `window.ftgConfirmed(el, title, description, label)` — first click opens the dialog, confirm replays the click — instead of `confirm()`. Buttons restore their plain labels after running.
+4. **Activity log** (enabled) — `#ftg-log` placeholder; not yet written to.
 
 ### BobGo Shipping tab
 
@@ -120,7 +185,7 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/payfast/verify-payment/:order_id` · `/payfast/payment-status/:order_id` | Order key (`?key=`) | Payment status checks |
 | `POST` | `/payfast/itn` | PayFast (signature + server validation) | PayFast ITN — the only path that marks an order paid |
 | `POST` | `/payfast/test/mark-paid/:order_id` | `manage_options` | Testing only |
-| `POST` | `/ftg/login` | Admin | Exchange FTG email+password for collection token |
+| `POST` | `/ftg/login` | Admin | Exchange FTG email+password for collection token. Stores nothing (2.9.7); password `BELIMS_FTG_PASSWORD_MASK` = use the stored password (same email only). Logs no credentials or tokens |
 | `GET` | `/ftg/brands` · `/ftg/instances` · `/ftg/products/:token` · `/ftg/product/:sku` · `/ftg/sync/status` · `/ftg/display-on-web-count` | Admin | FTG catalogue reads |
 | `GET` | `/ftg/brand-count` | Public | Count products for a brand |
 | `POST` | `/ftg/sync` · `/ftg/sync/product` · `/ftg/cleanup-attributes` | Admin | FTG sync operations |
@@ -230,7 +295,10 @@ View logs: **WooCommerce → Status → Logs → select `belims-bobgo`**.
 | `test_bobgo_connection` | Tests BobGo Bearer token auth via `GET /webhooks` |
 | `belims_check_order_sync` | Returns shipping items and BobGo meta for a given WC order ID |
 | `belims_trigger_order_sync` | Patches `method_id` on legacy orders and manually triggers `create_bobgo_order()` |
-| `clear_ftg_credentials` | Clears saved FTG API credentials |
+| `clear_ftg_credentials` | Clears saved FTG API credentials, auth token and `belims_ftg_connection_status`; turns FTG off |
+| `belims_save_setting` | Settings Card save (2.10.5): `setting` + `value` (0/1); only whitelisted ACF option fields (`ftg_enabled`) — nonce `belims_save_setting` (`bpcAdminData.settings_nonce`); returns `{value, message}` for the toast |
+| `belims_save_ftg_credentials` | FTG tab Save Credentials (form `ftg_nonce`): validates email + token, keeps the stored password when `BELIMS_FTG_PASSWORD_MASK` is posted, marks the connection OK when `ftg_token_verified`; returns `{message, email, token, token_prefix, connected}` or `{message}` with 400/403 |
+| `belims_save_ftg_connection_status` | Records `{ok, time, message}` in `belims_ftg_connection_status` after Test Connection / Get Token |
 | `export_woocommerce_products` | Exports products as CSV/JSON |
 | `belims_sync_single_product` | Triggers FTG sync for a single product |
 | `belims_save_ftg_cron_frequency` | Saves `belims_ftg_cron_frequency` and reschedules `belims_ftg_auto_sync` |

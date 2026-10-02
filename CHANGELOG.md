@@ -15,6 +15,286 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 
 ---
 
+## 2026-10-02 — Global Site Settings 2.10.5: Settings Card toggle (deferred save), simpler status labels, no toggles on Overview cards
+
+Why: The user wants toggles to follow a Settings Card pattern (reference: Vercel "Data Preferences") — state held locally until **Save**, Save disabled until something changes. The Overview cards' FTG / BobGo toggles saved on click (most likely how BobGo got re-enabled on staging) and the status labels had too many variants.
+
+### Global Site Settings 2.10.5
+- **Settings Card component:** `belims_settings_card()` (PHP) + SETTINGS CARD block in `admin.js` + `.settings-card*` CSS. Toggle + footer Save (disabled until the toggle differs from the saved value); Save → optional confirm-off dialog → AJAX `belims_save_setting` (whitelist; `manage_options` + nonce) → toast with the server message → `settings-card:saved` event. Failure → error toast, Save stays enabled.
+- **FTG Sync → Connection:** new **FTG integration** Settings Card (replaces the instant-save toggle row; `belims_save_ftg_enabled` removed). Saving off still asks "Disable FTG connection?".
+- **Alert dialog is now generic:** page-level `#bpc-alert-dialog` + `window.bpcConfirm()` in `admin.js` (was FTG-only `#ftg-alert-dialog` / `ftgConfirm()`); the FTG tool confirmations use it.
+- **Status labels** (`belims_integration_statuses()`, new `belims_integration_badge()`): FTG Connected / Not connected; BobGo Enabled · Production|Sandbox / Disabled; Firebase Configured / Setup; AI Services Configured / Setup. Attention states are amber badges linking to the tab (replaces the Configure button on the Dashboard panel). FTG tab badge uses the same two labels.
+- **Overview:** integration cards rebuilt from the shared statuses — **toggles removed** with their POST handlers (`save_ftg_enabled_dashboard`, `save_bobgo_enabled_dashboard`) and script; cards keep badge, description and **Configure**. Unused Overview variables removed.
+- Docs: plugin README (*Settings Card*, status labels, AJAX table) and USERGUIDE (*Status labels*, turning FTG on/off).
+
+### Verified
+- `php -l` on `global-site-settings.php` and `includes/class-dashboard-widgets.php`; `node --check assets/js/admin.js`; FTG inline scripts pass `node --check`; Overview and FTG tab `<div>`s balanced.
+- Browser (local, built-in pane): Overview cards have no toggles and show the new labels (3 of 4 active — FTG off locally); FTG Settings Card — Save disabled initially, enabled on change, disabled on revert; Enable + Save → toast "FTG integration enabled.", badge Connected, credentials + 4 menu items shown; Disable + Save → "Disable FTG connection?" dialog → toast "FTG integration disabled.", everything hidden again. Local FTG left off, as found.
+- Not deployed.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.10.4: full-width Site Settings panel on the WordPress Dashboard
+
+Why: The "⚙️ Belims Site Settings" Dashboard widget was narrow, unstyled and showed statuses from old fields (`bobgo_api_key`, `payment_api_key`, WooCommerce consumer keys) that didn't match the real integrations. The user wanted it in the plugin's style, full width, using the Overview layout (`Desktop/dash.html`).
+
+### Global Site Settings 2.10.4
+- **Panel replaces the widget:** rendered in WordPress's Welcome panel slot (the only full-width area on the Dashboard) for `manage_options` users; WordPress's own Welcome content is removed. Hideable via Screen Options → Welcome.
+- **Row 1 — 4 stat blocks:** Environment (from `WP_ENVIRONMENT_TYPE`), Products (published count), Last FTG sync, Run Diagnostics (disabled, "Coming soon").
+- **Row 2 — two columns:** Integrations (FTG Sync, BobGo Shipping, Firebase Auth, AI Services — badge when fine, **Configure** link when setup is needed; header *N of 4 active*) and Quick links (placeholder list of six Site Settings tabs + Open Site Settings).
+- **Shared helper `belims_integration_statuses()`** now drives both this panel and the Overview tab's *N of 4 active* count, so they can't disagree.
+- **Styles:** `sitebridge-ui.css` loaded on the Dashboard; prototype classes `status-strip`, `dashboard-grid`, `item-list`, `shortcut-grid` added (scoped to `.sitebridge-ui`, responsive at 900px / 782px); WP's dark Welcome styling neutralised for this panel only. Removed the old `.bpc-settings-summary*` CSS and `render_settings_summary_widget()`.
+- **Fixed:** `Belims_Dashboard_Widgets` was instantiated twice (at the bottom of its own file and in the plugin loader), so every hook in the class was registered twice — the new panel rendered twice. Removed the self-instantiation; the loader is the only one.
+- Docs: plugin README (WordPress Dashboard panel) and USERGUIDE (WordPress Dashboard).
+
+### Verified
+- `php -l` on `global-site-settings.php` and `includes/class-dashboard-widgets.php`; no references to the removed widget left.
+- Browser-checked locally: panel renders once after the fix; quick-link arrow renamed to `shortcut-arrow` (WP core styles a bare `.arrow:after`, which drew a stray box); at 375px the strip is 2×2, columns stack, no horizontal scroll.
+
+### Deployed — staging only (2026-10-02, app `xnmtexmyyf`)
+- Backup `~/backups/xnmtexmyyf-gss-2.10.3-20261002-163307.tgz`; server diff = the 2.10.4 changes only (`dashboard-widgets.css` matched git). Uploaded `global-site-settings.php`, `includes/class-dashboard-widgets.php`, `assets/css/sitebridge-ui.css`, `assets/css/dashboard-widgets.css`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.4 active, env `staging`, one `load-index.php` callback (no duplicate); `wp-login.php` 200, `/wp-admin/` 302, products API 200.
+- Found on staging: `options_bobgo_enabled` is back to `1` with `bobgo_environment` = `production` (set to `0` at 14:39) — not changed; awaiting the user.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.10.3: environment detection — staging/local never point at production
+
+Why: The new staging CMS was cloned from production, so its settings (and the header badge, read from the `belims_frontend_environment` option) said "Production". The user asked that staging never point at `belims.co.za`. A switch stored in the database would be cloned/pushed with it, so the environment comes from `wp-config.php` instead.
+
+### Global Site Settings 2.10.3
+- **`belims_environment()` / `belims_is_production()`** read `wp_get_environment_type()` (`WP_ENVIRONMENT_TYPE` in wp-config; unset = production). Constants `BELIMS_PRODUCTION_STOREFRONT_HOSTS` (`www.belims.co.za`, `belims.co.za`) and `BELIMS_PREVIEW_STOREFRONT`.
+- **Guards outside production:** `get_frontend_url()` / `get_cors_origin()` replace a production storefront URL with the preview storefront (`belims_guard_storefront_url()`); `get_cors_origins()` drops production origins, so CORS and PayFast returns can't target the live site; the homepage **Production** deploy hook can't be saved and is skipped when publishing ("Skipped — production deploys only run from the production CMS").
+- **Header badge** shows the hosting environment (Production green; Staging / Development / Local amber) instead of the frontend option; outside production a warning lists PayFast live mode, BobGo enabled on Production, or a saved Production deploy hook. Dashboard widget adds a **CMS Environment** row.
+- Docs: `docs/OPERATIONS.md` → new *Staging CMS* section; plugin README / USERGUIDE.
+
+### Verified
+- `php -l` on `global-site-settings.php`, `includes/class-homepage.php`, `includes/class-dashboard-widgets.php`; guard unit-checked for production / staging / local (production keeps `www.belims.co.za`; staging and local map it to `https://belims.vercel.app`, leave preview and localhost unchanged).
+
+### Deployed — staging only (2026-10-02, app `xnmtexmyyf`)
+- Backup `~/backups/xnmtexmyyf-gss-2.10.2-20261002-153623.tgz`; server copies matched the 2.10.2 deploy / git `ba0e3322` (diff = the 2.10.3 changes only). Uploaded `global-site-settings.php`, `includes/class-homepage.php`, `includes/class-dashboard-widgets.php`, `assets/css/sitebridge-ui.css`, `README.md`, `USERGUIDE.md`; `php -l` OK; plugins load, GSS 2.10.3 active.
+- Staging `wp-config.php`: `WP_ENVIRONMENT_TYPE` = `staging` via `wp config set` (backup `~/backups/xnmtexmyyf-wp-config-20261002-153752.php`, `php -l` OK).
+- Verified on staging: environment `staging`, frontend URL and CORS default `https://belims.vercel.app`, CORS origins `belims.vercel.app` + `localhost:3000` only (no `www.belims.co.za`); `wp-login.php` 200, Site Settings 302 → login, products API 200.
+- **Production (`cms.belims.co.za`) unchanged — GSS 2.9.1, no `WP_ENVIRONMENT_TYPE` (= production).**
+
+---
+
+## 2026-10-02 — Global Site Settings 2.10.2: FTG tool results show in the box that ran them
+
+Why: Results from every Tools button appeared in one area below all four boxes, away from the button that produced them.
+
+### Global Site Settings 2.10.2
+- **Look up**, **Sync to WooCommerce** and **Maintenance** each end with a `.ftg-tool-result` area; the nine handlers that wrote to the shared `#ftg-sync-status` now resolve the area of their own box (`$(this).closest('.postbox').find('.ftg-tool-result')`). The shared area is removed. Sync Single Product keeps its result in its own row.
+- CSS: 12px gap above a result area once it has content.
+
+### Verified
+- `php -l global-site-settings.php` passes; both FTG inline scripts pass `node --check`; FTG tab `<div>`s balanced; no `ftg-sync-status` references left.
+
+### Deployed — staging only (2026-10-02, Cloudways app `xnmtexmyyf`, https://wordpress-1482444-6707114.cloudwaysapps.com)
+- **New staging app** cloned from production (`uhkkwupuum`) as a Cloudways *staging* app.
+- **Staging safety (WP options, approved):** `belims_ftg_cron_frequency` → `disabled` and the `belims_ftg_auto_sync` event deleted; `options_bobgo_enabled` → 0; `belims_vercel_deploy_hook_preview` / `_production` cleared; `wp-content/mu-plugins/staging-block-mail.php` added (overrides `wp_mail()` to block all email — staging only, not in git). uAfrica and the AI product descriptions plugin removed on staging by the user. Previous values: `~/backups/xnmtexmyyf-staging-safety-20261002-143902.txt`.
+- **GSS 2.9.1 → 2.10.2:** backup `~/backups/xnmtexmyyf-gss-2.9.1-20261002-145403.tgz`; 11 plugin files uploaded (`README.md`, `USERGUIDE.md`, `assets/css/admin.css`, `assets/css/sitebridge-ui.css`, `assets/js/admin.js`, `assets/js/homepage-tools.js`, `assets/js/media-tools.js`, `global-site-settings.php`, `includes/admin-homepage-tab.php`, `includes/class-ecommerce-settings.php`, `includes/ftg-sync/class-ftg-sync-endpoint.php`). Server copies matched git `ba0e3322` except three reviewed differences: the clone's domain search-replace in the old Clear Cache JS line, an older README (2.8.0), and USERGUIDE never deployed.
+- **Checks on staging:** `php -l` on the 4 PHP files OK; `wp plugin list` → active 2.10.2; plugins load (`wp eval`); `wp-login.php` 200, Site Settings 302 → login, `/wp-json/belims/v1/products` 200.
+- **Production (`cms.belims.co.za`) unchanged — still 2.9.1.** Not browser-tested on staging yet.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.10.1: FTG Tools split into read-only vs sync; Enable toggle as a row
+
+Why: All ten FTG tool buttons sat in one row, so nothing told the user which only read data and which change WooCommerce products ("Test Sync" actually imports 10). The Enable toggle sat outside the label | value rows.
+
+### Global Site Settings 2.10.1
+- **Enable integration** is now a row: label in the 220px column, toggle + "Imports FTG products into WooCommerce." in the value column. The credentials grid shares the same columns and spacing (14px rows, 24px gap).
+- **Tools** pane → four postboxes: **Brand & product** (Brand, Custom brand, Product SKU), **Look up** (*Read only*: Search Available Brands, Check Catalogue Count, Count Display On Web Active, Inspect Product, Export Brand Products (CSV)), **Sync to WooCommerce** (*Changes products*: Selected brand → Sync first 10 (test) / **Sync Catalogue**; Single product → Sync Single Product; All brands → Dry run + Sync All Brands), **Maintenance** (*Caution*: Cleanup Duplicate Attributes). Results stay in one area below. The "Ready / Needs credentials" badge is removed (the notice already covers missing credentials).
+- **Confirmations:** Sync first 10, Sync Catalogue, Sync All Brands (dry-run wording when ticked), Cleanup and Auto Sync's Run Now use the alert dialog (`window.ftgConfirmed()`) instead of `confirm()`.
+- **Inspect Product** reads the Product SKU field (was a `prompt()` pre-filled with `RCKT1213`).
+- **Labels:** buttons restore plain labels after running (were "✅ Test Sync", "🔄 SYNC CATALOGUE", "▶ Run Now", "Save" …); "Test Sync (first 10)" renamed **Sync first 10 (test)**.
+- **CSS:** `.badge.warn`; `.field-label` rows in postboxes; section menu buttons no longer show a focus box on mouse click (outline only for keyboard focus).
+
+### Verified
+- `php -l global-site-settings.php` and `node --check assets/js/admin.js` pass; both FTG inline scripts pass `node --check`; FTG tab `<div>`s balanced (7 postboxes, 7 `.inside`); every button bound; no `confirm()` / `prompt()` or emoji labels left in the FTG scripts.
+- Not yet browser-tested locally or deployed to Cloudways.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.10.0: plugin header on every page, postbox sections on Overview + FTG Sync
+
+Why: The user wants the plugin header on all Site Settings pages with the tab bar below it, and Overview / Integrations sections styled like WP core postboxes (header with title + status, rows of label | control) — reference: the user's mock-up of the FTG tab.
+
+### Global Site Settings 2.10.0
+- **Page header** (`header.bpc-page-header`, above the tab bar on every page): "Belims Hardware — Global Site Settings", version tag, environment badge (Production / Development from `belims_frontend_environment`), description, **View Storefront ↗** (`get_frontend_url()`); then `<hr class="wp-header-end">` for WP notices.
+- **Postbox sections** (WP core `.postbox` / `.postbox-header` / `.inside`), header = `<h2>` title + status badge:
+  - **FTG Sync:** Connection status (connection badge), Automatic synchronization (schedule — updates on Save Schedule), Sync tools (Ready / Needs credentials — updates on Save Credentials; Dry run moved from the title into the actions row), Activity log.
+  - **Overview:** Integrations (*N of 4 active*), Settings shortcuts, REST API endpoints (endpoint count; table full-width via `.inside.is-flush`).
+- **Overview cleanup:** removed the dashboard's own header (now the page header) and the **Clear Frontend Cache** quick tool — it only opened `cms.belims.co.za/wp-admin/index.php?no-cache=…` in a new tab and cleared nothing. A real cache purge (Breeze / Cloudflare / Vercel) is a separate task. Endpoint list moved into the Overview variables.
+- **CSS (`sitebridge-ui.css`):** page header + version tag; postbox header (grey bar, 48px), `.inside` spacing, `.field` rows (220px label | control, separators), `.credential-grid` aligned to the same column, single column below 782px. Removed unused `.bpc-dash-header`, `.bpc-dash-section-title`, `.bpc-quick-tools` rules.
+- Other Settings / Integrations / Tools tabs are unchanged (still `.sb-panel` / `.panel`).
+
+### Verified
+- `php -l global-site-settings.php` and `node --check assets/js/admin.js` pass; Overview and FTG inline scripts pass `node --check`; both tabs' `<div>`s balanced, each postbox has one `.inside`; header renders before the tab bar.
+- Not yet browser-tested locally or deployed to Cloudways.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.9.9: left-column section menu for Integrations tabs (FTG Sync)
+
+Why: The user wants a left-column menu inside the Integrations tabs (guide: the Bob Go plugin's two-column page), starting with FTG Sync: Connection, Auto Sync, Tools, Activity Log.
+
+### Global Site Settings 2.9.9
+- **Reusable section layout:** `.section-layout` → `nav.section-nav` (`<button data-section>`, active = `aria-current="true"`) + `.section-content` with `[data-section-pane]` panes. `admin.js` (new SECTION LAYOUT block) shows one pane at a time, no reload or URL change; opens the current/first visible item on load; exposes `window.bpcShowSection(layout, name)`.
+- **FTG Sync:** heading + intro above; menu **Connection** (default) · **Auto Sync** · **Tools** (Sync tools or the "save credentials first" notice) · **Activity Log**. Auto Sync / Tools / Activity Log (`data-requires="enabled"`) are hidden while FTG is off; turning it off returns to Connection.
+- **CSS (layout only, `sitebridge-ui.css`):** 200px menu column + content column; menu items as plain text buttons with a left-border + bold active state and a focus outline; below 782px a single column with a horizontal, scrollable menu. No shadows or decoration.
+- **Noted for follow-up** (`docs/ROADMAP.md`): 2.9.8 Save Credentials — no toast and a reload prompt reported locally.
+
+### Verified
+- `php -l global-site-settings.php` and `node --check assets/js/admin.js` pass; both FTG inline scripts pass `node --check`; FTG tab `<div>`/`<nav>` balanced and each pane sits at the right nesting level.
+- Not yet browser-tested locally or deployed to Cloudways.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.9.8: FTG Save Credentials over AJAX with toast feedback
+
+Why: The user wants Save Credentials to confirm success or failure with a toast instead of reloading the page.
+
+### Global Site Settings 2.9.8
+- **New AJAX action `belims_save_ftg_credentials`** (`manage_options` + the form's `ftg_nonce`): validates the email and token, keeps the stored password when `BELIMS_FTG_PASSWORD_MASK` is posted (and requires one if none is stored), marks the connection OK when the form reports a successful Get Token, and returns JSON (`message`, `email`, `token`, `token_prefix`, `connected`) or an error `message` (400/403 — invalid email, no token, no password, expired session, no permission). It no longer touches `ftg_enabled` (the toggle saves itself). The old POST handler and its flash message are removed.
+- **Form:** submit is intercepted; Save shows "Saving…". Success → toast, grid email/token prefix, badge (Connected), stored edit values and the saved view update in place; failure → error toast, form stays open with input intact.
+- **Always rendered, toggled with `hidden`:** the saved view, Cancel / Disconnect, and the Sync tools panel + its script (with a "Save FTG credentials above before syncing" notice while none are saved), so a first save needs no reload. Test Connection still only shows in the saved view.
+- **Brands fetch gated:** the Sync tools script now loads on every Site Settings page, so `GET /ftg/brands` (up to 2 min uncached) runs only when Sync tools is visible — on load, or on the `ftg:tools-visible` event after Save / enabling FTG.
+- **`admin.js`:** new `window.bpcMarkFormClean(form)` resets the unsaved-changes snapshot; called after the AJAX save and after the toggle saves (previously the toggle made the form look dirty, so leaving the page prompted "unsaved changes").
+
+### Verified
+- `php -l global-site-settings.php` and `node --check assets/js/admin.js` pass; both FTG inline scripts pass `node --check`; FTG tab `<div>`s balanced, no PHP conditionals left in the tab markup; every button bound.
+- Not yet browser-tested locally or deployed to Cloudways.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.9.7: FTG saved grid + pre-filled edit (masked password); Get Token stores nothing; credential logging removed
+
+Why: The user wants the production FTG show/edit behaviour back — a masked summary grid when saved, and an edit form filled with the stored values — and Save Credentials to be the only step that saves. Production achieves the pre-fill by echoing the real password into the HTML (`value="<?php echo esc_attr($ftg_password); ?>"`, removed in 2.9.3); 2.9.7 matches the look with a mask instead. Separately, `/ftg/login` wrote the plaintext FTG password, raw FTG responses and tokens to the PHP error log.
+
+### Global Site Settings 2.9.7
+- **Saved view:** `.credential-grid` — Email, Password (mask), Token (first 8 + `••••••••`) — with **Edit Credentials** and **Test Connection** (Test only appears here).
+- **Edit form pre-filled:** stored email and token; the password field holds `BELIMS_FTG_PASSWORD_MASK` (new constant), never the stored password. Show is disabled while the mask is in place; focusing the field selects the mask so typing replaces it. Edit always reopens with the stored values. Save is enabled for unchanged values; changing email/password clears the token and requires Get Token again.
+- **Save handler:** keeps the stored password when the mask (or nothing) is posted; passwords are now `wp_unslash`ed before storing (previously a `'` or `\` would be saved escaped); marks the connection OK only when the form reports a successful Get Token (hidden `ftg_token_verified`).
+- **`POST /belims/v1/ftg/login` (`class-ftg-sync-endpoint.php`):** no longer saves email/password/token or switches FTG on — it only returns the token. A masked password uses the stored password when the email matches the stored email (400 otherwise). Removed logging of the request body (plaintext password), raw FTG responses, bearer token and collection token; only short failure messages remain.
+- **Get Token (JS):** no longer records the connection status; Save does.
+
+### Verified
+- `php -l` on `global-site-settings.php` and `class-ftg-sync-endpoint.php` passes; both FTG inline scripts pass `node --check`; FTG tab `<div>` / `if/endif` balanced; every button bound; the stored password is not echoed anywhere in the tab.
+- Not yet browser-tested locally or deployed to Cloudways.
+- **Follow-up:** production (2.9.1) has been logging the FTG password on every Get Token — check/rotate the Cloudways PHP error logs and consider changing the FTG password. Other FTG code still logs tokens (`get_instances` `print_r`, sync start logs the collection token, `class-ftg-api.php` logs FTG response bodies incl. the bearer token).
+
+---
+
+## 2026-10-02 — Global Site Settings 2.9.6: FTG connection states, disable confirmation dialog
+
+Why: The FTG toggle sat inside the credentials form, so once credentials were stored there was no visible Save and turning it off was never persisted — the badge kept saying Connected. Show/hide used jQuery `.show()`/`.hide()` on elements rendered with the `hidden` attribute, so toggling on after a disabled page load (and Edit) could leave sections hidden. The user specified the connection states and an alert dialog for disabling (reference: Tailgrids Alert Dialog).
+
+### Global Site Settings 2.9.6
+- **Toggle:** saves immediately via new AJAX action `belims_save_ftg_enabled` (`manage_options` + nonce `belims_ftg_enabled`; sets `ftg_enabled`, credentials kept). Turning it **off** opens a native `<dialog role="alertdialog">` — "Disable FTG connection?" with **Cancel** (also Escape; reverts the toggle) / **Disable connection**. Badge shows **Disabled** when off. Overview card intentionally not updated live (reflects the saved state on reload).
+- **Schedule / Sync tools / Activity log** panels are always rendered inside `#ftg-enabled-panels` and shown/hidden with the toggle (previously only rendered when enabled at page load).
+- **No stored credentials:** email, password, read-only token + **Get Token**, **Save Credentials**. Save is disabled until email + password are filled and Get Token succeeded for them; editing email/password clears the token. Get Token records the connection as OK (`belims_save_ftg_connection_status`), and the Save handler no longer resets the status, so the badge reads **Connected** after Save.
+- **Stored credentials:** only **Edit Connection** + **Test Connection** (credential summary grid removed).
+- **Edit:** form with empty password/token (same Save rule), **Cancel**, and **Disconnect FTG** — moved here from the stored view, now confirmed through the same dialog ("Remove FTG credentials?") instead of `confirm()`. `clear_ftg_credentials` also deletes `belims_ftg_connection_status`.
+- **Removed:** the edit-form Test Connection button (`#ftg-test-connection-inline`) — Get Token now validates credentials; the stored token is no longer echoed into the form; Disconnect handler moved from the sync script into the connection script.
+- Show/hide uses the `hidden` property throughout the connection panel.
+
+### Verified
+- `php -l global-site-settings.php` passes; both FTG inline scripts pass `node --check` (PHP echoes stubbed); FTG tab `<div>`, `<dialog>` and `if/endif` balanced; every button ID has exactly one handler.
+- Not yet browser-tested locally or deployed to Cloudways.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.9.5: FTG Sync tab rebuilt to the prototype layout; plugin restored from pre-split copy
+
+Why: An uncommitted refactor (09:56) split the tabs into `includes/admin-*-tab.php` but dropped every tab's inline `<script>`, leaving FTG, CORS, WooCommerce, BobGo and Dashboard buttons inert. The user restored the 07:56 working copy (2.9.3); the split version is kept at `~/Desktop/gss-backup-2.9.4` (outside the repo). The FTG tab is then laid out as the prototype's four panels.
+
+### Global Site Settings 2.9.5
+- **Plugin folder:** replaced with the restored 2.9.3 copy; 2.9.4 (four-group submenu, `admin.js` `tabGroup()`, README/USERGUIDE navigation text) re-applied on top. Not carried over from the split copy: its edits to `admin-homepage-tab.php`, `admin-media-tab.php`, `class-ecommerce-policies.php`, `admin.css`, `sitebridge-ui.css`, and an `admin.js` "Clear Edge Cache" handler that showed a success toast without clearing anything.
+- **FTG sync script fixed:** the restore contained a truncated duplicate of the sync `<script>` (cut off mid-function, followed by the full copy), which made the whole block a JS syntax error — every sync/tool button was dead. Removed the duplicate; kept the full copy (2.9.2 toast version).
+- **FTG tab layout** (`Prototype/index.html` → FTG Sync), layout only: **Connection status** (badge, last sync, Enable toggle, `.credential-grid` summary, Edit / Test / Disconnect, credentials form), **Automatic synchronization** (schedule, next run, Save Schedule, Run Now), **Sync tools** (Dry run in title, Brand + SKU + Custom brand fields, all sync/tool buttons in one `.actions` row, Cleanup as `button-danger`, VAT note), **Activity log** (placeholder). Prototype class names; `sb-*`, `ftg-toolbar`, `ftg-action-group*`, `ftg-product-sync` markup, inline styles and emojis removed. No CSS added. All element IDs the scripts bind to are unchanged.
+- **Removed duplicates:** the second Test Connection (`#ftg-test-connection`, did not save status) and its handler; the unbound `#ftg-disconnect-btn`. Test Connection and Disconnect now live only in Connection status.
+- **Fixed:** password **Show** button had no handler (added); last-sync line always said "Today, HH:MM" (now the full date); orphan `</div>` left from the earlier removal of the `bpc-card` wrapper.
+
+### Verified
+- `php -l global-site-settings.php` and `node --check assets/js/admin.js` pass; both FTG inline scripts pass `node --check` (PHP echoes stubbed); FTG tab `<div>` and `if/endif` balanced; every button ID in the tab is bound by a handler.
+- Not yet browser-tested locally or deployed to Cloudways. Prototype classes are unstyled in the plugin, so the tab renders in plain WP admin styling until the styling pass.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.9.4: Site Settings submenu reduced to four groups
+
+Why: The WP admin submenu listed every page plus three non-clickable group headings (14 entries), duplicating the in-page horizontal sub-tabs. The prototype navigation is two-level: groups in the sidebar, pages in the tab bar.
+
+### Global Site Settings 2.9.4
+- **`global_site_settings_admin_menus()`:** submenu is now **Overview · Settings · Integrations · Tools**, linking to each group's first tab (`#tab-dashboard`, `#tab-branding`, `#tab-ftg-sync`, `#tab-media`). Removed the `#bpc-menu-<group>` heading items, the `bpc-menu-heading` class loop and the `admin_footer` script that stripped their `href`.
+- **`assets/js/admin.js`:** new `tabGroup()` reads a tab's group from its `.bpc-section-tab-group[data-section-group]` row; it drives the visible sub-tab row and highlights the submenu item for the active **group** (was per tab). Replaced the hardcoded tab→group arrays.
+- **Docs:** plugin README (Navigation) and USERGUIDE (intro) updated.
+
+### Verified
+- `php -l global-site-settings.php` and `node --check assets/js/admin.js` pass.
+- Not yet browser-tested locally or deployed to Cloudways.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.9.3: SiteBridge design-system CSS + FTG Integration tab UX
+
+Why: The in-page tab UIs mixed `button`/`button-primary`/`bpc-btn-primary`/`bpc-btn-secondary`, had 150+ inline styles, and the FTG tab leaked the saved password back into the HTML. The user's prototype (`Prototype/index.html`) defines the target: minimal WordPress-core look, consistent controls, status badges, panel/field patterns.
+
+### Global Site Settings 2.9.3
+- **Shared design system:** new `assets/css/sitebridge-ui.css` scoped to `.sitebridge-ui` (added to `#bpc-admin-root`). Tokens, panels, buttons (`.button`, `.button-primary`, `.button-small`, `.button-danger` — mapped to the prototype's palette), toggle (`.sb-toggle`), fields, status badges (`.sb-badge-good|warn|error|off`), summary grid (`.sb-summary`), log, actions. Enqueued after `global-site-settings-admin`.
+- **FTG Integration tab rebuilt** to the agreed integration pattern:
+  1. Title + description + Enable toggle (always visible, badge shows connection state).
+  2. Enabled → credential fields reveal: email, password, token with Get Token helper, then **Save Settings + Test Connection**.
+  3. Successful save → fields collapse into a read-only summary (email, masked password/token), **Edit Connection + Test Connection** replace Save.
+  4. Edit Connection reopens the form with Save + Test + Cancel.
+- **No more plaintext password in HTML:** the password `<input>` renders empty; a placeholder shows that one is saved, and the save handler keeps the stored password when the field is blank.
+- **Connection status is persistent:** new WP option `belims_ftg_connection_status` `{ok, time, message}` written by AJAX action `belims_save_ftg_connection_status` after each test. Badge in the toggle row reads *Connected · checked <relative time>* / *Credentials saved · not tested* / *Not connected*. Status cleared on credential change.
+- **Test Connection** calls `GET /belims/v1/ftg/instances` with the current nonce and reports via a `sb-badge` plus a toast; identical shared handler runs from the summary view and the edit form.
+
+### Verified
+- `php -l` on `global-site-settings.php` passes.
+- Not yet browser-tested or deployed.
+
+---
+
+## 2026-10-02 — Global Site Settings 2.9.2: save feedback (toasts, Saving…, per-form unsaved check), Dashboard landing, WP admin submenu
+
+Why: ACF's page-wide "Leave site? Changes you made may not be saved." prompt fired after saving any form (any ACF change armed it for the whole page), save results were inline notices in random places (or nothing), and Site Settings reopened the last tab from `localStorage`.
+
+### Global Site Settings 2.9.2
+- **Toasts:** one reusable `window.bpcToast(message, type)` (`assets/js/admin.js`, styles in `assets/css/admin.css`): bottom-right stack, `aria-live="polite"`, success/info 4 s, warning 6 s, error 8 s, close button, border (no box-shadow). Replaces the old `BPCAdmin.showNotification()` (removed).
+- **Flash after POST saves:** `belims_settings_flash()` → per-user transient `belims_settings_flash_<user_id>` `{type, message, tab}`, printed once by `belims_settings_print_flash()` (`admin_footer`) as `window.bpcSettingsFlash`. Set on success and failure by: dashboard FTG/BobGo toggles, FTG credentials, BobGo enable, Store Details (`class-ecommerce-settings.php`), product CSV import, BobGo environment (`load-options.php`), and all ACF forms (`acf/save_post` → "Branding settings / CORS settings / AI settings / Homepage saved."). `belims_settings_verify_post()` (capability + nonce) replaces `check_admin_referer()` in those handlers, so a failed check flashes an error instead of WordPress's "link expired" page. ACF posts now also require `manage_options` + a valid ACF nonce before `acf_form_head()` runs. Inline success notices for these saves removed; the CSV import keeps its inline counts. Homepage form return URL drops `&updated=true` (it made every ACF form show "Post updated").
+- **Saving state:** submit buttons show a spinner + "Saving…" and are disabled (after the POST is built, so button names still post); ACF `validation_failure` restores them and shows an error toast. Every form posts a hidden `bpc_tab` so the page reopens the saved tab.
+- **Unsaved changes:** `acf.unload` disabled on this page; each form is snapshotted after `load` (TinyMCE synced) and `beforeunload` warns only if a form differs from its snapshot. Cleared on submit. Tab switches never warn.
+- **Landing tab:** URL hash → saved tab (flash) → Dashboard. `localStorage` `bpccms_active_tab` removed. `hashchange`/`popstate` switch tabs.
+- **WP admin submenu:** Site Settings → Dashboard · SETTINGS (Branding, Store Details, Homepage, CORS & Security, WooCommerce) · INTEGRATIONS (FTG Sync, BobGo Shipping, Firebase Auth, AI Services) · TOOLS (Media Management). Items link to `admin.php?page=belims-site-settings#tab-<id>`; on the page admin.js switches tabs in place and keeps the submenu `current` highlight in sync. Group headings are non-clickable labels (`bpc-menu-heading`, styled on `admin_head`, `href` removed on `admin_footer`).
+- **AJAX tools → toasts:** FTG tools/sync/token/cron (inline scripts in `global-site-settings.php`), media tools (`media-tools.js`, replaces `alert()`), homepage publishing (`homepage-tools.js`). Reports (brand tables, counts, inspect/sync details, cleanup and per-brand lists, progress bars, archive/assign results) stay inline. New success toasts for the previously silent auto-sync schedule save and auto-convert toggle.
+- Ctrl/Cmd+S submits the active tab's form (was the first form on the page) and no longer shows a fake "Settings saved!".
+
+### Verified
+- `php -l` on `global-site-settings.php`, `includes/admin-homepage-tab.php`, `includes/class-ecommerce-settings.php`; `node --check` on `assets/js/admin.js`, `media-tools.js`, `homepage-tools.js` and on all 11 inline `<script>` blocks of `global-site-settings.php` (PHP tags stubbed).
+- Not yet browser-tested or deployed.
+
+---
+
+## 2026-10-02 — SiteBridge 2.9.2: Site Settings UI aligns to the WordPress-core prototype
+
+### SiteBridge 2.9.2
+- `assets/css/admin.css`: the Site Settings Overview rendered the prototype's unprefixed classes (`.shell`, `.sidebar`, `.status-strip`, `.dashboard-grid`, `.panel`, `.shortcut`, `.api-table`) while every rule targeted the older `bpc-` names, so the whole pane was unstyled. Prototype class names are now additional selectors on the existing `bpc-` rules (scoped under `.shell`) — one source of truth, no duplicated blocks. Added the WP admin shell normalisation (`#wpcontent` padding, `#wpbody-content` bottom padding, `.wrap` centred 1280px column) and `.nav-tab` / `.nav-tab-wrapper` declarations so the prototype tab bar wins regardless of stylesheet order. Extended the 900/782/640px breakpoints.
+- `sitebridge.php`: `.wrap` and `.shell` were never closed — `</main>` closed while both were open, so `.shell` swallowed `#wpfooter` into the 210px sidebar column. Closing tags added. The inline FTG `<style>` referenced undefined `--bpc-*` / `--belims-*` variables (13 + 10 refs); remapped to `--wp-border`, `--wp-red`, `--wp-blue`, `--wp-text`, `--wp-muted`.
+- `sitebridge.php`: `sitebridge-admin-ui` and `sitebridge-admin` now version off `filemtime()` via new `sitebridge_asset_version()`, so a browser never serves a stale CSS/JS copy after an edit.
+- `assets/js/admin.js`: `renderGroup()` collected **every** `.bpc-nav-item`, so opening Settings/Integrations relocated the Overview shortcut buttons and the dashboard "Configure" buttons out of their pane and into the tab bar. `$navItems` is now scoped to `#bpc-tab-registry`, and clicks are delegated to `main#main-content [data-tab]` so in-content shortcuts navigate without being moved.
+
+### Verified
+- `php -l sitebridge.php`, `node --check assets/js/admin.js`.
+- Markup balance check on the renderer: zero unclosed/mismatched `div`/`section`/`main`/`aside`/`nav`/`ul`/`li`/`table`/`form` (previously 2 unclosed).
+- Every class named in the prototype Overview now has a matching selector in `admin.css`.
+
+Not deployed — local nginx docroot only.
+
+---
+
 ## 2026-10-01 — Global Site Settings 2.9.1: storefront shows only sellable products; FTG sync trashes/restores
 
 Rule: the storefront never shows a product that is **out of stock (no backorders)**, has **no price**, or has **no category**.

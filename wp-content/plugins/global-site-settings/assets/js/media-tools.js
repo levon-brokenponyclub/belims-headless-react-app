@@ -45,7 +45,7 @@ jQuery(function ($) {
     if (running) pollTimer = setTimeout(refresh, 4000);
   };
 
-  const fail = (err) => window.alert(err.message || err);
+  const fail = (err) => window.bpcToast(err.message || err, "error");
   const refresh = () => request("status").then(render).catch(fail);
 
   $tab.on("click", "[data-media-action]", function () {
@@ -79,7 +79,13 @@ jQuery(function ($) {
   });
 
   $("#belims-auto-webp").on("change", function () {
-    request("toggle_auto", { enabled: this.checked ? 1 : 0 }).then(render).catch(fail);
+    const enabled = this.checked;
+    request("toggle_auto", { enabled: enabled ? 1 : 0 })
+      .then((stats) => {
+        render(stats);
+        window.bpcToast(enabled ? "Auto-convert enabled." : "Auto-convert disabled.", "success");
+      })
+      .catch(fail);
   });
 
   refresh();

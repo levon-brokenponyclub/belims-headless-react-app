@@ -169,7 +169,9 @@ class Belims_Homepage {
 
         foreach (self::selected_targets() as $target) {
             $hook = (string) get_option(self::hook_option($target), '');
-            if ($hook === '') {
+            if ($target === 'production' && !belims_is_production()) {
+                $result = 'Skipped — production deploys only run from the production CMS';
+            } elseif ($hook === '') {
                 $result = 'No deploy hook configured';
             } else {
                 $response = wp_remote_post($hook, array('timeout' => 15));
@@ -256,6 +258,9 @@ class Belims_Homepage {
         $target = sanitize_key($_POST['target'] ?? '');
         if (!isset(self::TARGETS[$target])) {
             wp_send_json_error(array('message' => 'Unknown target.'));
+        }
+        if ($target === 'production' && !belims_is_production()) {
+            wp_send_json_error(array('message' => 'The Production deploy hook can only be set on the production CMS.'));
         }
         $hook = esc_url_raw(trim(wp_unslash($_POST['hook'] ?? '')));
         if ($hook !== '' && strpos($hook, self::HOOK_PREFIX) !== 0) {

@@ -48,12 +48,14 @@ jQuery(function ($) {
   };
 
   const message = (text) => $el("message").text(text);
-  const refresh = () => request("status").then(render).catch((e) => message(e.message));
+  const fail = (e) => window.bpcToast(e.message, "error");
+  const saved = (text) => (s) => { render(s); window.bpcToast(text, "success"); };
+  const refresh = () => request("status").then(render).catch(fail);
 
   $card.on("change", 'input[name="belims-hp-target"]', function () {
     request("save_target", { choice: $(this).val() })
-      .then((s) => { render(s); message("Rebuild target saved."); })
-      .catch((e) => message(e.message));
+      .then(saved("Rebuild target saved."))
+      .catch(fail);
   });
 
   $card.on("click", "[data-hp-action]", function () {
@@ -71,17 +73,21 @@ jQuery(function ($) {
 
     if (action === "save-hook") {
       request("save_hook", { target, hook: $(`#belims-deploy-hook-${target}`).val() })
-        .then((s) => { render(s); message("Deploy hook saved."); })
-        .catch((e) => message(e.message))
+        .then(saved("Deploy hook saved."))
+        .catch(fail)
         .always(done);
     }
 
     if (action === "publish") {
       message("Starting storefront build…");
       request("publish")
-        .then((s) => { render(s); message(s.last_deploy?.result || ""); })
-        .catch((e) => message(e.message))
-        .always(done);
+        .then((s) => {
+          render(s);
+          const started = Object.values(s.last_deploy?.targets || {}).every((r) => r === "Build started");
+          window.bpcToast(s.last_deploy?.result || "Publish requested.", started ? "success" : "warning");
+        })
+        .catch(fail)
+        .always(() => { message(""); done(); });
     }
   });
 

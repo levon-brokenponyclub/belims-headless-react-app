@@ -23,59 +23,350 @@
   }
 
   // =============================================================================
-  // TAB NAVIGATION (from admin-tabs.js)
+  // TOASTS — window.bpcToast(message, type); type: success | error | warning | info
+  // =============================================================================
+
+  const TOAST_TIMEOUTS = { success: 4000, info: 4000, warning: 6000, error: 8000 };
+
+  function toastRegion() {
+    let $region = $("#bpc-toasts");
+    if (!$region.length) {
+      $region = $('<div id="bpc-toasts" class="bpc-toasts" aria-live="polite"></div>').appendTo(document.body);
+    }
+    return $region;
+  }
+
+  window.bpcToast = function (message, type = "info") {
+    const variant = TOAST_TIMEOUTS[type] ? type : "info";
+    const $toast = $(`<div class="bpc-toast bpc-toast--${variant}"></div>`)
+      .append($('<span class="bpc-toast__message"></span>').text(String(message)))
+      .append('<button type="button" class="bpc-toast__close" aria-label="Dismiss">&times;</button>');
+    const close = () => $toast.remove();
+
+    $toast.find(".bpc-toast__close").on("click", close);
+    toastRegion().append($toast);
+    setTimeout(close, TOAST_TIMEOUTS[variant]);
+  };
+
+  // =============================================================================
+  // TAB NAVIGATION — horizontal group tabs + WP admin group submenu (#tab-<id> links)
   // =============================================================================
 
   $(document).ready(function () {
-    const $navItems = $(".bpc-nav-item");
+    const $sectionTabs = $(".bpc-section-tabs [data-tab]");
     const $tabs = $(".bpc-tab-content");
+    const $submenuLinks = $(
+      '#toplevel_page_belims-site-settings a[href*="page=belims-site-settings"]',
+    );
+    const flash = window.bpcSettingsFlash;
 
-    // Function to switch tabs
-    function switchTab(tabId) {
-      if (!tabId) return;
+    toastRegion();
 
-      // Update Navigation
-      $navItems.removeClass("active");
-      $(`.bpc-nav-item[data-tab="${tabId}"]`).addClass("active");
+    // Tab a Site Settings menu link points to ("dashboard" when it has no #tab- hash).
+    const linkTab = (link) =>
+      (link.hash || "").replace("#tab-", "") || "dashboard";
+    const tabExists = (tabId) => !!tabId && $(`#tab-${tabId}`).length > 0;
+    // Group a tab belongs to, read from the horizontal tab bar markup.
+    const tabGroup = (tabId) =>
+      $(`.bpc-section-tabs [data-tab="${tabId}"]`)
+        .closest(".bpc-section-tab-group")
+        .data("section-group");
+
+    function switchTab(tabId, updateUrl = true) {
+      if (!tabExists(tabId)) return;
+
+      // Horizontal tabs: show only the active group's row and mark the active tab.
+      $sectionTabs.removeClass("nav-tab-active").attr("aria-current", "false");
+      $(`.bpc-section-tabs [data-tab="${tabId}"]`)
+        .addClass("nav-tab-active")
+        .attr("aria-current", "page");
+      const sectionGroup = tabGroup(tabId);
+      $(".bpc-section-tab-group").prop("hidden", true);
+      $(`.bpc-section-tab-group[data-section-group="${sectionGroup}"]`).prop("hidden", false);
+
+      // WP submenu lists groups only: highlight the item for the active tab's group.
+      const $items = $submenuLinks.filter((i, link) => link.closest(".wp-submenu"));
+      $items.removeClass("current").removeAttr("aria-current").parent().removeClass("current");
+      $items
+        .filter((i, link) => tabGroup(linkTab(link)) === sectionGroup)
+        .addClass("current")
+        .attr("aria-current", "page")
+        .parent()
+        .addClass("current");
 
       // Update Content
       $tabs.removeClass("active");
       $(`#tab-${tabId}`).addClass("active");
 
-      // Store in localStorage
-      localStorage.setItem("bpccms_active_tab", tabId);
-
       // Update URL hash without scroll
-      if (history.pushState) {
-        history.pushState(null, null, "#tab-" + tabId);
-      } else {
-        location.hash = "#tab-" + tabId;
+      if (updateUrl) {
+        history.pushState(null, "", "#tab-" + tabId);
       }
     }
 
     // Click handler
-    $navItems.on("click", function (e) {
-      const tabId = $(this).data("tab");
-      if (tabId) {
-        switchTab(tabId);
-      }
+    $sectionTabs.on("click", function (e) {
+      e.preventDefault();
+      switchTab($(this).data("tab"));
     });
 
-    // Initial tab check (Hash > localStorage > Default)
-    const hash = window.location.hash.replace("#tab-", "");
-    const storedTab = localStorage.getItem("bpccms_active_tab");
-    const defaultTab = "dashboard";
+    // WP menu links to this page switch tabs in place (no reload, no unsaved-changes prompt).
+    $submenuLinks.on("click", function (e) {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      switchTab(linkTab(this));
+    });
 
-    if (hash && $(`.bpc-nav-item[data-tab="${hash}"]`).length) {
+    // Back/forward and plain #tab- links.
+    $(window).on("hashchange popstate", function () {
+      switchTab(window.location.hash.replace("#tab-", "") || "dashboard", false);
+    });
+
+    // Initial tab: hash > tab of the save just made > Dashboard
+    const hash = window.location.hash.replace("#tab-", "");
+    if (tabExists(hash)) {
       switchTab(hash);
-    } else if (
-      storedTab &&
-      $(`.bpc-nav-item[data-tab="${storedTab}"]`).length
-    ) {
-      switchTab(storedTab);
+    } else if (flash && tabExists(flash.tab)) {
+      switchTab(flash.tab);
     } else {
-      switchTab(defaultTab);
+      switchTab("dashboard");
     }
+
+    if (flash && flash.message) {
+      window.bpcToast(flash.message, flash.type);
+    }
+  });
+
+  // =============================================================================
+  // ALERT DIALOG — window.bpcConfirm(title, description, confirmLabel) → Promise<boolean>
+  // Uses <dialog id="bpc-alert-dialog" role="alertdialog">; Cancel / Escape resolve false.
+  // =============================================================================
+
+  window.bpcConfirm = function (title, description, confirmLabel) {
+    const dialog = document.getElementById("bpc-alert-dialog");
+    const $dialog = $(dialog);
+    $("#bpc-alert-title").text(title);
+    $("#bpc-alert-desc").text(description);
+    $dialog.find('[data-alert="confirm"]').text(confirmLabel);
+    return new Promise(function (resolve) {
+      function close(result) {
+        $dialog.off(".bpcAlert");
+        dialog.close();
+        resolve(result);
+      }
+      $dialog.on("click.bpcAlert", "[data-alert]", function () {
+        close(this.getAttribute("data-alert") === "confirm");
+      });
+      $dialog.on("cancel.bpcAlert", function (e) {
+        e.preventDefault();
+        close(false);
+      });
+      dialog.showModal();
+    });
+  };
+
+  // =============================================================================
+  // SETTINGS CARD — toggle with deferred Save (belims_settings_card() in PHP).
+  // Save is enabled only while the toggle differs from data-saved; on success the card
+  // triggers "settings-card:saved" with the new value.
+  // =============================================================================
+
+  $(document).ready(function () {
+    $(document).on("change", "[data-settings-card] [data-settings-toggle]", function () {
+      const $card = $(this).closest("[data-settings-card]");
+      $card.find("[data-settings-save]").prop("disabled", (this.checked ? "1" : "0") === $card.attr("data-saved"));
+    });
+
+    $(document).on("click", "[data-settings-card] [data-settings-save]", function () {
+      const $button = $(this);
+      const $card = $button.closest("[data-settings-card]");
+      const on = $card.find("[data-settings-toggle]").is(":checked");
+      const confirmTitle = $card.attr("data-confirm-off-title");
+      const proceed = !on && confirmTitle
+        ? window.bpcConfirm(confirmTitle, $card.attr("data-confirm-off-text"), $card.attr("data-confirm-off-label"))
+        : Promise.resolve(true);
+
+      proceed.then(function (confirmed) {
+        if (!confirmed) return;
+        const fail = function (message) {
+          $button.text("Save").prop("disabled", false);
+          window.bpcToast(message || "Not saved. Try again.", "error");
+        };
+        $button.prop("disabled", true).text("Saving…");
+        $.post(bpcAdminData.ajaxurl, {
+          action: "belims_save_setting",
+          nonce: bpcAdminData.settings_nonce,
+          setting: $card.attr("data-setting"),
+          value: on ? 1 : 0,
+        })
+          .done(function (response) {
+            if (!response || !response.success) {
+              fail(response && response.data && response.data.message);
+              return;
+            }
+            $card.attr("data-saved", on ? "1" : "0");
+            $button.text("Save").prop("disabled", true);
+            window.bpcToast(response.data.message || "Saved.", "success");
+            $card.trigger("settings-card:saved", [on]);
+          })
+          .fail(function (xhr) {
+            fail(xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message);
+          });
+      });
+    });
+  });
+
+  // =============================================================================
+  // SECTION LAYOUT — left-column section menu inside a tab, one section shown at a time.
+  // Markup: .section-layout > nav.section-nav [data-section] + [data-section-pane] panes.
+  // =============================================================================
+
+  $(document).ready(function () {
+    function showSection($layout, name) {
+      $layout
+        .find("[data-section]")
+        .attr("aria-current", "false")
+        .filter(`[data-section="${name}"]`)
+        .attr("aria-current", "true");
+      $layout.find("[data-section-pane]").each(function () {
+        this.hidden = this.getAttribute("data-section-pane") !== name;
+      });
+    }
+
+    window.bpcShowSection = (layout, name) => showSection($(layout), name);
+
+    $(document).on("click", ".section-layout [data-section]", function () {
+      showSection($(this).closest(".section-layout"), this.getAttribute("data-section"));
+    });
+
+    $(".section-layout").each(function () {
+      const $layout = $(this);
+      const $current = $layout.find('[data-section][aria-current="true"]').first();
+      const $first = $layout.find("[data-section]").not("[hidden]").first();
+      showSection($layout, ($current.length ? $current : $first).attr("data-section"));
+    });
+  });
+
+  // =============================================================================
+  // SAVE FORMS — per-form unsaved-changes check + "Saving…" state
+  // =============================================================================
+
+  $(document).ready(function () {
+    const $root = $("#bpc-admin-root");
+    if (!$root.length) return;
+
+    // ACF warns page-wide once any ACF field changes; the per-form check below replaces it.
+    if (window.acf && acf.unload) acf.unload.disable();
+
+    const SAVING_LABEL = "Saving…";
+    const snapshots = new WeakMap();
+
+    const syncEditors = () => {
+      if (window.tinymce) window.tinymce.triggerSave();
+    };
+    const formState = (form) =>
+      $(form).find(":input").not('[name="bpc_tab"], [name="_acf_changed"]').serialize() +
+      "|" +
+      $(form)
+        .find('input[type="file"]')
+        .map((i, input) => input.value)
+        .get()
+        .join("|");
+    const markClean = (form) => snapshots.set(form, formState(form));
+    const isDirty = (form) =>
+      snapshots.has(form) && snapshots.get(form) !== formState(form);
+    const inRoot = ($form) => $form && $.contains($root[0], $form[0]);
+    // For forms saved over AJAX: the page stays, so take a new snapshot of the saved state.
+    window.bpcMarkFormClean = (form) => form && markClean(form);
+
+    function setSaving(form) {
+      const $buttons = $(form).find('[type="submit"]');
+      $(form).attr("aria-busy", "true");
+      $buttons
+        .each(function () {
+          const $button = $(this);
+          const isInput = $button.is("input");
+          if ($button.data("bpcLabel") === undefined) {
+            $button.data("bpcLabel", isInput ? $button.val() : $button.html());
+          }
+          isInput ? $button.val(SAVING_LABEL) : $button.text(SAVING_LABEL);
+        })
+        .prop("disabled", true);
+      if ($buttons.length && !$(form).find(".acf-spinner, .bpc-saving-spinner").length) {
+        $buttons.last().after('<span class="bpc-saving-spinner" aria-hidden="true"></span>');
+      }
+    }
+
+    function restoreSaving(form) {
+      $(form).removeAttr("aria-busy").find(".bpc-saving-spinner").remove();
+      $(form)
+        .find('[type="submit"]')
+        .each(function () {
+          const $button = $(this);
+          const label = $button.data("bpcLabel");
+          if (label === undefined) return;
+          $button.is("input") ? $button.val(label) : $button.html(label);
+          $button.removeData("bpcLabel");
+        })
+        .prop("disabled", false);
+    }
+
+    // Snapshot every form once the page (ACF fields, colour pickers, editors) has initialised.
+    const snapshotAll = () => {
+      syncEditors();
+      $root.find("form").each((i, form) => markClean(form));
+    };
+    if (document.readyState === "complete") {
+      setTimeout(snapshotAll, 0);
+    } else {
+      $(window).on("load", () => setTimeout(snapshotAll, 0));
+    }
+
+    $root.on("submit", "form", function (e) {
+      const form = this;
+      const tab = ($(form).closest(".bpc-tab-content").attr("id") || "").replace(/^tab-/, "");
+      if (tab && !$(form).find('input[name="bpc_tab"]').length) {
+        $('<input type="hidden" name="bpc_tab">').val(tab).appendTo(form);
+      }
+
+      // Clean before navigation starts; restored below if a handler (e.g. ACF validation) cancels the submit.
+      const previous = snapshots.get(form);
+      syncEditors();
+      markClean(form);
+
+      // Deferred: disabled buttons are left out of the POST, so only lock after the browser has built it.
+      setTimeout(() => {
+        if (!e.isDefaultPrevented()) {
+          setSaving(form);
+        } else if (previous === undefined) {
+          snapshots.delete(form);
+        } else {
+          snapshots.set(form, previous);
+        }
+      }, 0);
+    });
+
+    if (window.acf && acf.addAction) {
+      acf.addAction("validation_begin", ($form) => inRoot($form) && setSaving($form[0]));
+      acf.addAction("validation_success", ($form) => inRoot($form) && markClean($form[0]));
+      acf.addAction("validation_failure", ($form) => {
+        if (!inRoot($form)) return;
+        restoreSaving($form[0]);
+        window.bpcToast("Not saved — fix the highlighted fields and try again.", "error");
+      });
+    }
+
+    // Page restored from the back/forward cache after a submit: unlock the forms.
+    $(window).on("pageshow", (e) => {
+      if (e.originalEvent.persisted) $root.find("form").each((i, form) => restoreSaving(form));
+    });
+
+    window.addEventListener("beforeunload", (e) => {
+      syncEditors();
+      if (!$root.find("form").toArray().some(isDirty)) return;
+      e.preventDefault();
+      e.returnValue = "";
+    });
   });
 
   // =============================================================================
@@ -118,7 +409,6 @@
       this.setupPostTypeManagement();
       this.setupAPITesting();
       this.setupFormValidation();
-      this.setupNotifications();
       this.setupKeyboardShortcuts();
       this.loadDashboardStats();
       this.setupDeploymentManagement();
@@ -154,7 +444,7 @@
 
       if (typeof bpcCMSAdmin === "undefined") {
         console.error("bpcCMSAdmin not available for connection test");
-        BPCAdmin.showNotification(
+        window.bpcToast(
           "❌ Admin configuration not available",
           "error",
         );
@@ -163,13 +453,13 @@
 
       if (!bpcCMSAdmin.ajaxurl) {
         console.error("bpcCMSAdmin.ajaxurl is missing");
-        BPCAdmin.showNotification("❌ AJAX URL not configured", "error");
+        window.bpcToast("❌ AJAX URL not configured", "error");
         return;
       }
 
       if (!bpcCMSAdmin.nonce) {
         console.error("bpcCMSAdmin.nonce is missing");
-        BPCAdmin.showNotification("❌ Security nonce not configured", "error");
+        window.bpcToast("❌ Security nonce not configured", "error");
         return;
       }
 
@@ -460,7 +750,7 @@
      */
     createProductionBuild: function () {
       if (typeof bpcCMSAdmin === "undefined") {
-        BPCAdmin.showNotification(
+        window.bpcToast(
           "❌ Admin configuration not available",
           "error",
         );
@@ -489,7 +779,7 @@
         return;
       }
 
-      BPCAdmin.showNotification("🚀 Starting production build...", "info");
+      window.bpcToast("🚀 Starting production build...", "info");
 
       // Make AJAX request
       $.ajax({
@@ -550,7 +840,7 @@
               "<br>📋 Check the DEPLOYMENT.md file for deployment instructions." +
               "<br>🚀 Your production files are ready for deployment!",
           );
-        BPCAdmin.showNotification(
+        window.bpcToast(
           "✅ Production build completed successfully!",
           "success",
         );
@@ -563,7 +853,7 @@
               (response.message || "Unknown error occurred") +
               "<br>🔧 Please check the server logs for more details.",
           );
-        BPCAdmin.showNotification("❌ Production build failed", "error");
+        window.bpcToast("❌ Production build failed", "error");
       }
 
       // Insert result after the deployment actions
@@ -812,7 +1102,7 @@
                     response.data +
                     "</span>",
                 );
-                BPCAdmin.showNotification(
+                window.bpcToast(
                   "BobGo connection successful",
                   "success",
                 );
@@ -822,7 +1112,7 @@
                     response.data +
                     "</span>",
                 );
-                BPCAdmin.showNotification(
+                window.bpcToast(
                   "BobGo connection failed: " + response.data,
                   "error",
                 );
@@ -832,7 +1122,7 @@
               $status.html(
                 '<span style="color: #d63638;">❌ Request failed</span>',
               );
-              BPCAdmin.showNotification(
+              window.bpcToast(
                 "Connection test failed: " + error,
                 "error",
               );
@@ -895,7 +1185,7 @@
           $btn.hasClass("button-primary") &&
           $btn.text().includes("Add New")
         ) {
-          BPCAdmin.showNotification("Opening new post editor...", "info");
+          window.bpcToast("Opening new post editor...", "info");
         }
       });
     },
@@ -1042,7 +1332,7 @@
         message += " - Some endpoints may need attention";
       }
 
-      BPCAdmin.showNotification(message, type);
+      window.bpcToast(message, type);
     },
 
     /**
@@ -1096,82 +1386,6 @@
     },
 
     /**
-     * Setup notifications system
-     */
-    setupNotifications: function () {
-      // Create notification container if it doesn't exist
-      if (!$("#bpc-notifications").length) {
-        $("body").append(
-          '<div id="bpc-notifications" style="position: fixed; top: 32px; right: 20px; z-index: 999999;"></div>',
-        );
-      }
-    },
-
-    /**
-     * Show notification
-     */
-    showNotification: function (message, type = "info", duration = 4000) {
-      const types = {
-        success: { bg: "#00a32a", icon: "✓" },
-        error: { bg: "#dc3232", icon: "✗" },
-        warning: { bg: "#ffb900", icon: "⚠" },
-        info: { bg: "#ff4625", icon: "ℹ" },
-      };
-
-      const config = types[type] || types.info;
-      const id = "notification-" + Date.now();
-
-      const $notification = $(`
-                <div id="${id}" class="bpc-notification" style="
-                    background: ${config.bg};
-                    color: white;
-                    padding: 12px 20px;
-                    margin-bottom: 10px;
-                    border-radius: 4px;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-                    opacity: 0;
-                    transform: translateX(300px);
-                    transition: all 0.3s ease;
-                    cursor: pointer;
-                    font-size: 14px;
-                    font-weight: 500;
-                    max-width: 350px;
-                ">
-                    <span style="margin-right: 8px;">${config.icon}</span>
-                    ${message}
-                </div>
-            `);
-
-      $("#bpc-notifications").append($notification);
-
-      // Animate in
-      setTimeout(() => {
-        $notification.css({
-          opacity: "1",
-          transform: "translateX(0)",
-        });
-      }, 10);
-
-      // Auto remove
-      setTimeout(() => {
-        $notification.css({
-          opacity: "0",
-          transform: "translateX(300px)",
-        });
-        setTimeout(() => $notification.remove(), 300);
-      }, duration);
-
-      // Click to dismiss
-      $notification.on("click", function () {
-        $(this).css({
-          opacity: "0",
-          transform: "translateX(300px)",
-        });
-        setTimeout(() => $(this).remove(), 300);
-      });
-    },
-
-    /**
      * Setup keyboard shortcuts
      */
     setupKeyboardShortcuts: function () {
@@ -1179,11 +1393,12 @@
         // Ctrl/Cmd + S to save settings
         if ((e.ctrlKey || e.metaKey) && e.key === "s") {
           e.preventDefault();
-          const $form = $("form").first();
-          if ($form.length) {
-            $form.find('[type="submit"]').click();
-            BPCAdmin.showNotification("Settings saved! (Ctrl+S)", "success");
-          }
+          $(".bpc-tab-content.active form")
+            .has('[type="submit"]')
+            .first()
+            .find('[type="submit"]')
+            .first()
+            .click();
         }
 
         // Ctrl/Cmd + K for quick navigation
@@ -1371,10 +1586,9 @@
         "staging";
 
       $button.text("🔄 Testing...").prop("disabled", true);
-      BPCAdmin.showNotification(
+      window.bpcToast(
         `Testing connection to ${environment} environment...`,
         "info",
-        2000,
       );
 
       $.ajax({
@@ -1388,13 +1602,13 @@
         },
         success: function (response) {
           if (response.success) {
-            BPCAdmin.showNotification(
+            window.bpcToast(
               `✅ Connection to ${response.environment} successful!`,
               "success",
             );
             BPCAdmin.log("Deployment connection test successful", response);
           } else {
-            BPCAdmin.showNotification(
+            window.bpcToast(
               `❌ Connection failed: ${response.message}`,
               "error",
             );
@@ -1402,7 +1616,7 @@
           }
         },
         error: function (xhr, status, error) {
-          BPCAdmin.showNotification(`❌ Test failed: ${error}`, "error");
+          window.bpcToast(`❌ Test failed: ${error}`, "error");
           BPCAdmin.log("Deployment test error", { xhr, status, error });
         },
         complete: function () {
@@ -1430,7 +1644,7 @@
       }
 
       $button.text("🚀 Deploying...").prop("disabled", true);
-      BPCAdmin.showNotification(
+      window.bpcToast(
         `Starting deployment to ${environment}...`,
         "info",
       );
@@ -1447,14 +1661,14 @@
         },
         success: function (response) {
           if (response.success) {
-            BPCAdmin.showNotification(
+            window.bpcToast(
               `🎉 Deployment to ${response.environment} completed!`,
               "success",
             );
             BPCAdmin.showDeploymentConfig(response.deployment_config);
             BPCAdmin.log("Deployment successful", response);
           } else {
-            BPCAdmin.showNotification(
+            window.bpcToast(
               `❌ Deployment failed: ${response.message}`,
               "error",
             );
@@ -1462,7 +1676,7 @@
           }
         },
         error: function (xhr, status, error) {
-          BPCAdmin.showNotification(`❌ Deployment error: ${error}`, "error");
+          window.bpcToast(`❌ Deployment error: ${error}`, "error");
           BPCAdmin.log("Deployment error", { xhr, status, error });
         },
         complete: function () {
@@ -1508,17 +1722,16 @@
       const originalText = $button.text();
 
       $button.text("⚙️ Generating...").prop("disabled", true);
-      BPCAdmin.showNotification(
+      window.bpcToast(
         "Generating deployment configuration...",
         "info",
-        2000,
       );
 
       $.ajax({
         url: BPCAdmin.getRestRoot() + "wp/v2/deployment/config",
         method: "GET",
         success: function (response) {
-          BPCAdmin.showNotification(
+          window.bpcToast(
             "✅ Configuration generated successfully!",
             "success",
           );
@@ -1526,7 +1739,7 @@
           BPCAdmin.log("Config generated", response);
         },
         error: function (xhr, status, error) {
-          BPCAdmin.showNotification(
+          window.bpcToast(
             `❌ Config generation failed: ${error}`,
             "error",
           );
@@ -1631,7 +1844,7 @@
         const textarea = $("#bpc-deployment-config textarea")[0];
         textarea.select();
         document.execCommand("copy");
-        BPCAdmin.showNotification(
+        window.bpcToast(
           "📋 Configuration copied to clipboard!",
           "success",
         );
@@ -1642,10 +1855,9 @@
      * Handle environment change
      */
     onEnvironmentChange: function (environment) {
-      BPCAdmin.showNotification(
+      window.bpcToast(
         `Switched to ${environment} environment`,
         "info",
-        2000,
       );
       BPCAdmin.log("Environment changed", { environment });
 
@@ -2113,4 +2325,22 @@ var bpcCMSAdmin = bpcCMSAdmin || {
     // Clear localStorage when disabled
     localStorage.setItem("bpccms_suppress_console", "false");
   }
+
+// Restore Default Branding Colors
+jQuery(document).on('click', '#belims-reset-branding-colors', function() {
+    if (!confirm('Reset all admin colours to WordPress defaults?')) return;
+    var btn = jQuery(this);
+    btn.prop('disabled', true).text('Resetting…');
+    jQuery.post(bpcAdminData.ajaxurl, {
+        action: 'belims_reset_branding_colors',
+        nonce: bpcAdminData.reset_branding_nonce
+    }).done(function() {
+        bpcToast('Admin colours reset to defaults.', 'success');
+        setTimeout(function() { location.reload(); }, 1200);
+    }).fail(function() {
+        bpcToast('Reset failed.', 'error');
+    }).always(function() {
+        btn.prop('disabled', false).text('Restore Default Colors');
+    });
+});
 })();

@@ -115,92 +115,68 @@ class Belims_FTG_Sync_Endpoint {
     }
     
     /**
-     * Login to FTG and get collection token
+     * Sign in to FTG and return the collection token. Stores nothing — the Site Settings
+     * Save Credentials form is the only place FTG credentials are saved.
+     * When the password is the edit-form mask, the stored password is used (same email only),
+     * so the real password never has to be sent to the browser.
      */
     public function ftg_login($request) {
-        $params = $request->get_json_params();
-        $email = sanitize_email($params['email'] ?? '');
-        $password = $params['password'] ?? '';
-        
-        error_log('=== FTG Login Request ===');
-        error_log('Email: ' . $email);
-        error_log('Password provided: ' . (!empty($password) ? 'Yes' : 'No'));
-        
-        if (empty($email) || empty($password)) {
-            error_log('ERROR: Missing credentials');
+        $params   = $request->get_json_params();
+        $email    = sanitize_email($params['email'] ?? '');
+        $password = (string) ($params['password'] ?? '');
+
+        if ($password === BELIMS_FTG_PASSWORD_MASK) {
+            if (strcasecmp($email, (string) get_field('ftg_email', 'option')) !== 0) {
+                return new WP_Error('password_required', 'Enter the FTG password for this email.', array('status' => 400));
+            }
+            $password = (string) get_field('ftg_password', 'option');
+        }
+
+        if (empty($email) || $password === '') {
             return new WP_Error('missing_credentials', 'Email and password are required', array('status' => 400));
         }
-        
-        // Call FTG login API directly
-        $api_url = 'https://gateway.ftgone.co.za/v2/login';
-        $request_body = array('email' => $email, 'password' => $password);
-        
-        error_log('API URL: ' . $api_url);
-        error_log('Request body: ' . json_encode($request_body));
-        
-        $response = wp_remote_post($api_url, array(
-            'body'        => json_encode($request_body),
-            'headers'     => array('Content-Type' => 'application/json'),
-            'timeout'     => 15,
+
+        $response = wp_remote_post('https://gateway.ftgone.co.za/v2/login', array(
+            'body'    => wp_json_encode(array('email' => $email, 'password' => $password)),
+            'headers' => array('Content-Type' => 'application/json'),
+            'timeout' => 15,
         ));
-        
+
         if (is_wp_error($response)) {
-            error_log('WP_Error: ' . $response->get_error_message());
+            error_log('FTG login: connection error — ' . $response->get_error_message());
             return new WP_Error('connection_error', 'Connection error: ' . $response->get_error_message(), array('status' => 500));
         }
-        
+
         $status_code = wp_remote_retrieve_response_code($response);
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-        
-        error_log('Response status: ' . $status_code);
-        error_log('Response body: ' . $body);
-        
-        // Check if login succeeded and we got a bearer token
-        if ($status_code === 200 && !empty($data['succeeded']) && !empty($data['response'])) {
-            $bearer_token = $data['response'];
-            error_log('SUCCESS: Bearer token received: ' . substr($bearer_token, 0, 50) . '...');
-            
-            // Now get the collection token using the bearer token
-            $collection_url = 'https://gateway.ftgone.co.za/v2/instances';
-            $collection_response = wp_remote_get($collection_url, array(
-                'headers' => array('Authorization' => 'Bearer ' . $bearer_token),
-                'timeout' => 15,
-            ));
-            
-            if (is_wp_error($collection_response)) {
-                error_log('Collection token error: ' . $collection_response->get_error_message());
-                return new WP_Error('collection_error', 'Failed to get collection token', array('status' => 500));
-            }
-            
-            $collection_body = wp_remote_retrieve_body($collection_response);
-            $collection_data = json_decode($collection_body, true);
-            error_log('Collection response: ' . $collection_body);
-            
-            if (!empty($collection_data['succeeded']) && !empty($collection_data['response'][0]['collectionToken'])) {
-                $collection_token = $collection_data['response'][0]['collectionToken'];
-                error_log('SUCCESS: Collection token received: ' . $collection_token);
-                
-                // Save credentials and tokens in ACF options
-                update_field('ftg_email', $email, 'option');
-                update_field('ftg_password', $password, 'option');
-                update_field('ftg_collection_token', sanitize_text_field($collection_token), 'option');
-                update_field('ftg_enabled', 1, 'option');
-                
-                return rest_ensure_response(array(
-                    'success' => true,
-                    'collection_token' => $collection_token,
-                    'message' => 'Token fetched and saved successfully!'
-                ));
-            } else {
-                error_log('ERROR: Failed to get collection token from response');
-                return new WP_Error('collection_failed', 'Failed to retrieve collection token', array('status' => 500));
-            }
-        } else {
+        $data        = json_decode(wp_remote_retrieve_body($response), true);
+
+        if ($status_code !== 200 || empty($data['succeeded']) || empty($data['response'])) {
+            error_log('FTG login: rejected (HTTP ' . $status_code . ')');
             $message = $data['message'] ?? $data['error'] ?? 'Invalid email or password';
-            error_log('ERROR: ' . $message);
             return new WP_Error('login_failed', $message, array('status' => 401));
         }
+
+        $collection_response = wp_remote_get('https://gateway.ftgone.co.za/v2/instances', array(
+            'headers' => array('Authorization' => 'Bearer ' . $data['response']),
+            'timeout' => 15,
+        ));
+
+        if (is_wp_error($collection_response)) {
+            error_log('FTG login: instances request failed — ' . $collection_response->get_error_message());
+            return new WP_Error('collection_error', 'Failed to get collection token', array('status' => 500));
+        }
+
+        $collection_data = json_decode(wp_remote_retrieve_body($collection_response), true);
+        if (empty($collection_data['succeeded']) || empty($collection_data['response'][0]['collectionToken'])) {
+            error_log('FTG login: no collection token in instances response');
+            return new WP_Error('collection_failed', 'Failed to retrieve collection token', array('status' => 500));
+        }
+
+        return rest_ensure_response(array(
+            'success'          => true,
+            'collection_token' => sanitize_text_field($collection_data['response'][0]['collectionToken']),
+            'message'          => 'Token retrieved.',
+        ));
     }
     
     /**

@@ -41,6 +41,10 @@ _Last reviewed: 2026-10-01_
 - [ ] `belims-ai-product-descriptions` uses `gemini-2.0-flash-exp` (experimental model) — move to a current Gemini model.
 - [ ] Exclude `frontend/backups/` from `tsconfig` (pre-existing TS errors).
 - [ ] Review long-standing uncommitted local changes (`frontend/components/MobileNav.css`, WordPress core files, `wp-config.php`) — never commit `wp-config.php`.
+- [ ] **GSS — User Guide inside the plugin dashboard.** Show the plugin's `USERGUIDE.md` (how the plugin works, section by section) in Site Settings, e.g. a Help tab or per-section help. Keep `USERGUIDE.md` the single source so the in-dashboard guide and the file never drift.
+- [ ] **GSS FTG Tools — consider splitting Look up and Sync** into separate FTG Sync menu items (e.g. Connection · Auto Sync · Look up · Sync · Activity Log). Today (2.10.2) they are separate boxes in one **Tools** section; splitting means the shared Brand / SKU inputs need a home both can use.
+- [ ] **GSS FTG Tools — Brand dropdown scope is unclear.** The Brand (and Product SKU) inputs sit in the top **Brand & product** box, and it isn't obvious they apply to the Look up and Sync buttons below. Options: label it ("Applies to Look up and Sync below"), repeat the selected brand in the Look up / Sync box headers, or move the inputs into each box.
+- [ ] **GSS 2.9.8 FTG Save Credentials (follow-up):** on Save no toast appears and the page "wants to reload" (reported 2026-10-02, local). The saved view did switch in place, so the AJAX success path likely ran. Check: whether `bpcToast` fires/renders (console, toast region), whether the "reload" is the browser's leave-page prompt (`bpcMarkFormClean` snapshot in `admin.js`) or the password manager's save-login prompt reacting to the form `submit`, and the Network tab response of `admin-ajax.php?action=belims_save_ftg_credentials`.
 
 ## CMS image pipeline
 

@@ -1,0 +1,482 @@
+/**
+ * SiteBridge admin UI — design system.
+ * Lifted from Prototype/index.html; the only shared stylesheet for all tabs.
+ * Everything here is scoped to .sitebridge-ui so it never bleeds into WP core.
+ */
+
+.sitebridge-ui {
+    --wp-bg: #f0f0f1;
+    --wp-white: #fff;
+    --wp-text: #1d2327;
+    --wp-muted: #646970;
+    --wp-border: #c3c4c7;
+    --wp-blue: #2271b1;
+    --wp-blue-dark: #135e96;
+    --wp-green: #00a32a;
+    --wp-green-bg: #edfaef;
+    --wp-red: #d63638;
+    --wp-surface: #f6f7f7;
+    --radius-base: 3px;
+    --radius-sm: 2px;
+    --border-width-thin: 1px;
+    --component-height-md: 32px;
+    --component-height-sm: 27px;
+    --shadow-focus: 0 0 0 1px var(--wp-blue);
+    color: var(--wp-text);
+    font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.sitebridge-ui *, .sitebridge-ui *::before, .sitebridge-ui *::after { box-sizing: border-box; }
+.sitebridge-ui h1 { color: var(--wp-text); font-size: 23px; font-weight: 400; line-height: 1.3; margin: 0 0 8px; }
+.sitebridge-ui p { margin: 0 0 12px; }
+.sitebridge-ui a { color: var(--wp-blue); }
+.sitebridge-ui code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; }
+.sitebridge-ui .muted, .sitebridge-ui .description, .sitebridge-ui .intro { color: var(--wp-muted); }
+
+/* Shared layout aliases used by the existing tabs. */
+.sitebridge-ui .bpc-admin-content { min-width: 0; padding: 32px 40px 48px; background: var(--wp-bg); }
+.sitebridge-ui .bpc-tab-content { display: none; width: 100%; min-width: 0; }
+.sitebridge-ui .bpc-tab-content.active { display: block; }
+
+/* Panels and form primitives share one border, radius, spacing and focus treatment. */
+.sitebridge-ui .panel, .sitebridge-ui .bpc-card, .sitebridge-ui .bpc-panel, .sitebridge-ui .sb-panel { background: var(--wp-white); border: var(--border-width-thin) solid #dcdcde; border-radius: var(--radius-base); padding: 17px 19px; margin: 0 0 16px; }
+.sitebridge-ui .panel-title, .sitebridge-ui .bpc-card-header, .sitebridge-ui .sb-panel-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
+/* Page header — shown above the tab bar on every Site Settings page. */
+.sitebridge-ui .bpc-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin: 12px 0 16px; }
+.sitebridge-ui .bpc-page-header h1 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 6px; padding: 0; font-size: 23px; font-weight: 400; line-height: 1.3; color: var(--wp-text); }
+.sitebridge-ui .bpc-page-header .description { margin: 0; }
+.sitebridge-ui .bpc-version-tag { padding: 2px 8px; border-radius: 3px; background: #dcdcde; color: #50575e; font-size: 12px; font-weight: 600; line-height: 1.6; }
+.sitebridge-ui .bpc-page-header-actions { display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
+
+/* Postbox sections (WP core .postbox / .postbox-header / .inside): grey header with title + status, rows of label | control. */
+.sitebridge-ui .postbox { min-width: 0; margin: 0 0 16px; }
+.sitebridge-ui .postbox-header { gap: 12px; min-height: 48px; padding: 0 16px; background: #f6f7f7; }
+.sitebridge-ui .postbox-header h2 { margin: 0; padding: 12px 0; font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--wp-text); }
+.sitebridge-ui .postbox .inside { margin: 0; padding: 4px 16px 16px; font-size: 13px; }
+.sitebridge-ui .postbox .inside.is-flush { padding: 0; }
+.sitebridge-ui .ftg-tool-result:not(:empty) { margin-top: 12px; }
+.sitebridge-ui .postbox .inside > .muted:first-child, .sitebridge-ui .postbox .inside > .bpc-integrations-grid, .sitebridge-ui .postbox .inside > .bpc-settings-grid { margin-top: 12px; }
+.sitebridge-ui .postbox .store-fields { display: block; }
+.sitebridge-ui .postbox .field { grid-template-columns: 220px minmax(0, 1fr); gap: 6px 24px; align-items: start; max-width: none; padding: 14px 0; border-bottom: 1px solid #f0f0f1; }
+.sitebridge-ui .postbox .field > label, .sitebridge-ui .postbox .field > .field-label { grid-column: 1; padding-top: 6px; }
+.sitebridge-ui .postbox .field > :not(label):not(.field-label) { grid-column: 2; }
+.sitebridge-ui .postbox .field > .actions { padding-top: 0; }
+.sitebridge-ui .postbox .credential-grid { grid-template-columns: 220px minmax(0, 1fr); column-gap: 24px; max-width: none; }
+.sitebridge-ui .postbox .credential-grid > div { padding: 14px 0; }
+@media (max-width: 782px) {
+    .sitebridge-ui .bpc-page-header { flex-direction: column; }
+    .sitebridge-ui .postbox .field, .sitebridge-ui .postbox .credential-grid { grid-template-columns: minmax(0, 1fr); }
+    .sitebridge-ui .postbox .field > :not(label):not(.field-label) { grid-column: 1; }
+}
+
+/* Settings Card — toggle with deferred Save (belims_settings_card()). */
+.sitebridge-ui .settings-card { margin: 0 0 16px; background: #fff; border: 1px solid #dcdcde; border-radius: var(--radius-base); }
+.sitebridge-ui .settings-card-body { padding: 18px 20px; }
+.sitebridge-ui .settings-card-body h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: var(--wp-text); }
+.sitebridge-ui .settings-card-body .description { margin: 0 0 14px; }
+.sitebridge-ui .settings-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px; border-top: 1px solid #f0f0f1; background: #f6f7f7; border-radius: 0 0 var(--radius-base) var(--radius-base); }
+.sitebridge-ui .settings-card-footer .description { margin: 0; }
+.sitebridge-ui a.badge { text-decoration: none; }
+.sitebridge-ui a.badge:hover, .sitebridge-ui a.badge:focus { text-decoration: underline; }
+
+/* Overview layout (prototype): status strip, two-column grid, item list, shortcut grid. */
+.sitebridge-ui .status-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #fff; border: 1px solid #dcdcde; margin-bottom: 18px; }
+.sitebridge-ui .status-cell { padding: 13px 16px; border-right: 1px solid #dcdcde; }
+.sitebridge-ui .status-cell:last-child { border-right: 0; }
+.sitebridge-ui .status-label { display: block; margin-bottom: 4px; color: var(--wp-muted); font-size: 11px; }
+.sitebridge-ui .status-value { font-weight: 600; }
+.sitebridge-ui .status-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--wp-green); }
+.sitebridge-ui .status-dot.warn { background: #dba617; }
+.sitebridge-ui .status-dot.off { background: #8c8f94; }
+.sitebridge-ui .dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.sitebridge-ui .item-list { list-style: none; margin: 0; padding: 0; }
+.sitebridge-ui .item-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 9px 0; border-top: 1px solid #f0f0f1; }
+.sitebridge-ui .item-list li:first-child { border-top: 0; }
+.sitebridge-ui .shortcut-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; }
+.sitebridge-ui .shortcut { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-top: 1px solid #f0f0f1; color: var(--wp-blue); text-decoration: none; }
+.sitebridge-ui .shortcut:nth-child(-n+2) { border-top: 0; }
+.sitebridge-ui .shortcut-arrow { color: #8c8f94; }
+@media (max-width: 900px) {
+    .sitebridge-ui .status-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sitebridge-ui .status-cell:nth-child(2) { border-right: 0; }
+    .sitebridge-ui .status-cell:nth-child(-n+2) { border-bottom: 1px solid #dcdcde; }
+}
+@media (max-width: 782px) {
+    .sitebridge-ui .dashboard-grid, .sitebridge-ui .shortcut-grid { grid-template-columns: minmax(0, 1fr); }
+    .sitebridge-ui .shortcut:nth-child(2) { border-top: 1px solid #f0f0f1; }
+}
+
+/* WordPress Dashboard: the Site Settings panel sits in the Welcome panel slot — drop WP's dark welcome styling. */
+#welcome-panel:has(> .belims-dashboard-panel) { background: transparent; border: 0; box-shadow: none; padding: 0; margin: 16px 0 0; overflow: visible; }
+#welcome-panel:has(> .belims-dashboard-panel) .welcome-panel-close { top: -28px; right: 0; padding: 0; color: #50575e; }
+#welcome-panel:has(> .belims-dashboard-panel) .welcome-panel-close::before { color: #50575e; }
+
+/* Section layout — left-column section menu inside a tab (layout only). */
+.sitebridge-ui .section-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 20px; align-items: start; }
+.sitebridge-ui .section-nav { display: flex; flex-direction: column; }
+.sitebridge-ui .section-nav button { appearance: none; background: none; border: 0; border-left: 3px solid transparent; padding: 8px 12px; text-align: left; font: inherit; color: var(--wp-blue); cursor: pointer; }
+.sitebridge-ui .section-nav button[aria-current="true"] { border-left-color: var(--wp-blue); color: var(--wp-text); font-weight: 600; }
+.sitebridge-ui .section-nav button:focus { outline: none; box-shadow: none; }
+.sitebridge-ui .section-nav button:focus-visible { outline: 2px solid var(--wp-blue); outline-offset: -2px; }
+.sitebridge-ui .section-nav button[hidden] { display: none; }
+@media (max-width: 782px) {
+    .sitebridge-ui .section-layout { grid-template-columns: minmax(0, 1fr); }
+    .sitebridge-ui .section-nav { flex-direction: row; overflow-x: auto; }
+    .sitebridge-ui .section-nav button { border-left: 0; border-bottom: 3px solid transparent; white-space: nowrap; }
+    .sitebridge-ui .section-nav button[aria-current="true"] { border-bottom-color: var(--wp-blue); }
+}
+.sitebridge-ui .bpc-card-title, .sitebridge-ui .bpc-card-header h2, .sitebridge-ui .panel-title h2, .sitebridge-ui .panel-title h3 { margin: 0; color: var(--wp-text); }
+.sitebridge-ui .bpc-card-description { color: var(--wp-muted); margin: 0 0 16px; }
+.sitebridge-ui .field, .sitebridge-ui .sb-field { display: grid; gap: 5px; max-width: 640px; }
+.sitebridge-ui .field label, .sitebridge-ui .field-label, .sitebridge-ui .ftg-field-label label { font-weight: 600; }
+.sitebridge-ui .wp-input, .sitebridge-ui .wp-select, .sitebridge-ui .wp-textarea, .sitebridge-ui input[type="text"], .sitebridge-ui input[type="email"], .sitebridge-ui input[type="password"], .sitebridge-ui input[type="url"], .sitebridge-ui select, .sitebridge-ui textarea { min-height: var(--component-height-md); max-width: 100%; border: 1px solid #8c8f94; border-radius: var(--radius-base); background: #fff; color: var(--wp-text); padding: 6px 8px; font: inherit; }
+.sitebridge-ui .wp-input:focus, .sitebridge-ui .wp-select:focus, .sitebridge-ui .wp-textarea:focus, .sitebridge-ui input:focus, .sitebridge-ui select:focus, .sitebridge-ui textarea:focus { border-color: var(--wp-blue); box-shadow: var(--shadow-focus); outline: 0; }
+.sitebridge-ui .regular-text { width: min(100%, 440px); }
+
+/* All button variants use the same height, radius, focus and disabled logic. */
+.sitebridge-ui .button, .sitebridge-ui .bpc-btn-primary, .sitebridge-ui .bpc-btn-secondary, .sitebridge-ui .bpc-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--component-height-md); padding: 4px 11px; border: 1px solid var(--wp-blue); border-radius: var(--radius-base); background: var(--wp-surface); color: var(--wp-blue); font: inherit; line-height: 1.5; text-decoration: none; cursor: pointer; }
+.sitebridge-ui .button:hover, .sitebridge-ui .bpc-btn-secondary:hover { background: #eaf3f8; border-color: var(--wp-blue-dark); color: var(--wp-blue-dark); }
+.sitebridge-ui .button:focus-visible, .sitebridge-ui .bpc-btn-primary:focus-visible, .sitebridge-ui .bpc-btn-secondary:focus-visible, .sitebridge-ui .bpc-btn-danger:focus-visible { outline: 2px solid var(--wp-blue); outline-offset: 2px; }
+.sitebridge-ui .button:disabled, .sitebridge-ui button:disabled { opacity: .55; cursor: not-allowed; }
+.sitebridge-ui .button-primary, .sitebridge-ui .bpc-btn-primary { background: var(--wp-blue); border-color: var(--wp-blue); color: #fff; }
+.sitebridge-ui .button-primary:hover, .sitebridge-ui .bpc-btn-primary:hover { background: var(--wp-blue-dark); border-color: var(--wp-blue-dark); color: #fff; }
+.sitebridge-ui .button-danger, .sitebridge-ui .bpc-btn-danger { background: #fff; border-color: var(--wp-red); color: var(--wp-red); }
+.sitebridge-ui .button-danger:hover, .sitebridge-ui .bpc-btn-danger:hover { background: #fcf0f1; border-color: #a0292a; color: #a0292a; }
+.sitebridge-ui .button-small { min-height: var(--component-height-sm); padding: 2px 8px; font-size: 12px; }
+.sitebridge-ui .bpc-actions, .sitebridge-ui .actions, .sitebridge-ui .sb-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 7px; }
+
+/* Tabs, status and data primitives. */
+.sitebridge-ui .bpc-section-tabs { display: flex; width: 100%; min-width: 0; margin: 0 0 24px; border-bottom: 1px solid var(--wp-border); overflow-x: auto; }
+.sitebridge-ui .bpc-section-tab-group { display: flex; flex: 0 0 100%; width: 100%; min-width: 100%; }
+.sitebridge-ui .bpc-section-tab-group[hidden] { display: none !important; }
+.sitebridge-ui .nav-tab { min-height: 36px; margin: 0 0 -1px; padding: 7px 12px 8px; border: 1px solid transparent; border-bottom: 0; border-radius: var(--radius-base) var(--radius-base) 0 0; background: transparent; color: var(--wp-blue); font-weight: 500; white-space: nowrap; cursor: pointer; }
+.sitebridge-ui .nav-tab:hover { background: #eaf3f8; }
+.sitebridge-ui .nav-tab-active, .sitebridge-ui .nav-tab[aria-current="page"] { border-color: var(--wp-border); background: var(--wp-bg); color: var(--wp-text); }
+.sitebridge-ui .badge, .sitebridge-ui .bpc-pill, .sitebridge-ui .sb-badge { display: inline-flex; align-items: center; min-height: 22px; padding: 2px 7px; border-radius: var(--radius-sm); background: #f0f0f1; color: #50575e; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.sitebridge-ui .badge.good, .sitebridge-ui .bpc-pill.ok, .sitebridge-ui .sb-badge-good { background: var(--wp-green-bg); color: #116329; }
+.sitebridge-ui .badge.info, .sitebridge-ui .bpc-callout--info { background: #eaf3f8; color: var(--wp-blue-dark); }
+.sitebridge-ui .badge.warn { background: #fcf9e8; color: #8a6116; }
+.sitebridge-ui .bpc-pill.error, .sitebridge-ui .sb-badge-error, .sitebridge-ui .bpc-callout--warning { background: #fcf0f1; color: #a0292a; }
+.sitebridge-ui .notice { border-left: 4px solid var(--wp-green); background: var(--wp-green-bg); padding: 10px 12px; margin: 0 0 16px; }
+.sitebridge-ui table { width: 100%; border-collapse: collapse; }
+.sitebridge-ui th, .sitebridge-ui td { padding: 9px 10px; border-bottom: 1px solid #f0f0f1; text-align: left; vertical-align: top; }
+.sitebridge-ui .toggle, .sitebridge-ui .sb-toggle, .sitebridge-ui .bpc-switch input { appearance: none; position: relative; width: 38px; height: 22px; margin: 0; border: 1px solid #8c8f94; border-radius: 999px; background: #fff; cursor: pointer; vertical-align: middle; }
+.sitebridge-ui .toggle::before, .sitebridge-ui .sb-toggle::before, .sitebridge-ui .bpc-switch input::before { content: ""; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; border-radius: 50%; background: #646970; transition: transform .15s, background .15s; }
+.sitebridge-ui .toggle:checked, .sitebridge-ui .sb-toggle:checked, .sitebridge-ui .bpc-switch input:checked { background: var(--wp-blue); border-color: var(--wp-blue); }
+.sitebridge-ui .toggle:checked::before, .sitebridge-ui .sb-toggle:checked::before, .sitebridge-ui .bpc-switch input:checked::before { transform: translateX(16px); background: #fff; }
+.sitebridge-ui .toggle-line, .sitebridge-ui .inline-check { display: inline-flex; align-items: center; gap: 8px; }
+.sitebridge-ui .bpc-switch { display: inline-flex; }
+.sitebridge-ui .ftg-field-row { display: grid; grid-template-columns: minmax(170px, 220px) minmax(0, 1fr); gap: 16px; align-items: start; margin: 0 0 14px; }
+.sitebridge-ui .ftg-field-desc, .sitebridge-ui .ftg-cron-status, .sitebridge-ui .ftg-last-sync { color: var(--wp-muted); font-size: 12px; margin: 3px 0 0; }
+.sitebridge-ui .ftg-toolbar, .sitebridge-ui .ftg-action-group-body { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.sitebridge-ui .ftg-toolbar-group, .sitebridge-ui .ftg-action-group { margin: 0 0 16px; }
+.sitebridge-ui .ftg-toolbar-label, .sitebridge-ui .ftg-action-group-header { display: block; margin-bottom: 5px; color: var(--wp-text); font-weight: 600; }
+.sitebridge-ui .ftg-action-group { padding: 14px; border: 1px solid #dcdcde; border-radius: var(--radius-base); background: var(--wp-white); }
+.sitebridge-ui .ftg-progress-bar { height: 16px; overflow: hidden; border-radius: 999px; background: #dcdcde; }
+.sitebridge-ui .ftg-progress-fill { height: 100%; background: var(--wp-blue); color: #fff; font-size: 11px; line-height: 16px; text-align: center; transition: width .2s ease; }
+.sitebridge-ui .ftg-progress-text { color: var(--wp-muted); font-size: 12px; }
+.sitebridge-ui .status-log, .sitebridge-ui .ftg-sync-details { background: #1d2327; color: #e2e4e7; padding: 12px 14px; overflow: auto; }
+.sitebridge-ui .status-log { max-height: 220px; font: 11px/1.7 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.sitebridge-ui .log-line { display: block; }
+.sitebridge-ui .credential-grid { display: grid; grid-template-columns: 180px minmax(0, 1fr); max-width: 740px; }
+.sitebridge-ui .credential-grid > div { padding: 10px 8px; border-bottom: 1px solid #f0f0f1; overflow-wrap: anywhere; }
+.sitebridge-ui .credential-grid .key { color: #50575e; font-weight: 600; }
+.sitebridge-ui .credential-grid .value { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.sitebridge-ui .bpc-submit-bar { display: flex; align-items: center; gap: 8px; margin-top: 16px; padding-top: 15px; border-top: 1px solid #dcdcde; }
+.sitebridge-ui .bpc-modern-table { margin: 0 0 16px; }
+.sitebridge-ui .bpc-callout { padding: 12px 14px; margin: 0 0 16px; border-left: 4px solid var(--wp-blue); border-radius: var(--radius-base); }
+
+@media (max-width: 760px) {
+    .sitebridge-ui .bpc-admin-content { padding: 24px 18px 40px; }
+    .sitebridge-ui .ftg-field-row, .sitebridge-ui .credential-grid { grid-template-columns: 1fr; }
+}
+
+/* -------- Headings & intro -------- */
+.sitebridge-ui h2 { font-size: 18px; font-weight: 600; line-height: 1.4; margin: 0 0 12px; }
+.sitebridge-ui h3 { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+.sitebridge-ui .sb-intro { color: var(--wp-muted); margin: 0 0 18px; max-width: 850px; }
+
+/* -------- Panels / cards -------- */
+.sitebridge-ui .sb-panel {
+    background: var(--wp-white);
+    border: 1px solid #dcdcde;
+    border-radius: 2px;
+    padding: 17px 19px;
+    margin: 0 0 16px;
+}
+.sitebridge-ui .sb-panel-title {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 11px;
+}
+.sitebridge-ui .sb-panel-title h3,
+.sitebridge-ui .sb-panel-title h2 { margin: 0; }
+
+/* -------- Field rows -------- */
+.sitebridge-ui .sb-field { display: grid; gap: 5px; max-width: 640px; }
+.sitebridge-ui .sb-field + .sb-field { margin-top: 14px; }
+.sitebridge-ui .sb-field label,
+.sitebridge-ui .sb-field .sb-field-label { font-weight: 600; }
+.sitebridge-ui .sb-help {
+    color: var(--wp-muted); font-size: 12px;
+    margin: 3px 0 0; max-width: 680px;
+}
+
+.sitebridge-ui .sb-input,
+.sitebridge-ui .sb-select {
+    border: 1px solid #8c8f94;
+    border-radius: 2px;
+    background: #fff;
+    color: var(--wp-text);
+    padding: 6px 8px;
+    min-height: 32px;
+    width: min(100%, 440px);
+    transition: border-color .12s, box-shadow .12s;
+}
+.sitebridge-ui .sb-input:focus,
+.sitebridge-ui .sb-select:focus {
+    border-color: var(--wp-blue);
+    box-shadow: 0 0 0 1px var(--wp-blue);
+    outline: 0;
+}
+.sitebridge-ui .sb-input-row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+
+/* -------- Buttons (WP core style; no shadow, consistent across tabs) -------- */
+.sitebridge-ui .button {
+    border: 1px solid var(--wp-blue);
+    border-radius: 3px;
+    background: var(--wp-surface);
+    color: var(--wp-blue);
+    min-height: 32px;
+    padding: 4px 11px;
+    line-height: 1.5;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    cursor: pointer;
+}
+.sitebridge-ui .button:hover {
+    background: #f0f0f1;
+    color: var(--wp-blue-dark);
+    border-color: var(--wp-blue-dark);
+}
+.sitebridge-ui .button[disabled],
+.sitebridge-ui .button:disabled { opacity: .55; cursor: not-allowed; }
+.sitebridge-ui .button-primary {
+    background: var(--wp-blue);
+    border-color: var(--wp-blue);
+    color: #fff;
+}
+.sitebridge-ui .button-primary:hover {
+    background: var(--wp-blue-dark);
+    border-color: var(--wp-blue-dark);
+    color: #fff;
+}
+.sitebridge-ui .button-small { min-height: 27px; padding: 2px 8px; font-size: 12px; }
+.sitebridge-ui .button-danger {
+    color: #b32d2e; border-color: #b32d2e; background: #fff;
+}
+.sitebridge-ui .button-danger:hover {
+    color: #8a2424; border-color: #8a2424; background: #fcf0f1;
+}
+
+/* -------- Action row -------- */
+.sitebridge-ui .sb-actions {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 7px;
+}
+
+/* -------- Toggle -------- */
+.sitebridge-ui .sb-toggle {
+    appearance: none;
+    position: relative;
+    width: 38px; height: 22px;
+    border: 1px solid #8c8f94;
+    border-radius: 12px;
+    background: #fff;
+    margin: 0;
+    vertical-align: middle;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    flex: 0 0 auto;
+}
+.sitebridge-ui .sb-toggle:before {
+    content: "";
+    position: absolute;
+    width: 14px; height: 14px;
+    left: 3px; top: 3px;
+    border-radius: 50%;
+    background: #646970;
+    transition: transform .15s, background .15s;
+}
+.sitebridge-ui .sb-toggle:checked { background: var(--wp-blue); border-color: var(--wp-blue); }
+.sitebridge-ui .sb-toggle:checked:before { transform: translateX(16px); background: #fff; }
+.sitebridge-ui .sb-toggle-line {
+    display: flex; align-items: center; gap: 10px;
+}
+.sitebridge-ui .sb-toggle-line label { font-weight: 600; cursor: pointer; margin: 0; }
+
+/* -------- Badges / status -------- */
+.sitebridge-ui .sb-badge {
+    display: inline-flex; align-items: center;
+    border-radius: 2px; padding: 2px 7px;
+    background: #f0f0f1; color: #50575e;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.sitebridge-ui .sb-badge-good { background: #edfaef; color: #116329; }
+.sitebridge-ui .sb-badge-warn { background: #fef7e4; color: #8a6a0a; }
+.sitebridge-ui .sb-badge-error { background: #fcf0f1; color: #a0292a; }
+.sitebridge-ui .sb-badge-off { background: #f0f0f1; color: #50575e; }
+
+/* -------- Summary (read-only after save) -------- */
+.sitebridge-ui .sb-summary {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    max-width: 740px;
+}
+.sitebridge-ui .sb-summary > div {
+    padding: 10px 8px;
+    border-bottom: 1px solid #f0f0f1;
+    overflow-wrap: anywhere;
+}
+.sitebridge-ui .sb-summary .sb-sum-key {
+    color: #50575e;
+    font-weight: 600;
+}
+.sitebridge-ui .sb-summary .sb-sum-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* -------- Log -------- */
+.sitebridge-ui .sb-log {
+    background: #1d2327;
+    color: #e2e4e7;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    padding: 12px 14px;
+    max-height: 220px;
+    overflow: auto;
+}
+.sitebridge-ui .sb-log-line { display: block; }
+.sitebridge-ui .sb-log-time { color: #a7aaad; }
+
+/* -------- Form divider -------- */
+.sitebridge-ui .sb-divider { height: 1px; background: #dcdcde; margin: 17px 0; }
+
+/* -------- Hidden utility (keeps WP's own classes untouched) -------- */
+.sitebridge-ui [hidden] { display: none !important; }
+
+/* -------- Dashboard -------- */
+.sitebridge-ui .bpc-env-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    border: 1px solid; white-space: nowrap;
+}
+.sitebridge-ui .bpc-env-badge.development, .sitebridge-ui .bpc-env-badge.staging, .sitebridge-ui .bpc-env-badge.local { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.sitebridge-ui .bpc-env-badge.production  { background: #edfaef; color: #116329; border-color: #a7f3d0; }
+
+.sitebridge-ui .bpc-status-strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 28px;
+}
+.sitebridge-ui .bpc-status-chip {
+    background: var(--wp-white); border: 1px solid var(--wp-border); border-radius: 4px;
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 4px;
+}
+.sitebridge-ui .bpc-status-chip-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--wp-muted);
+}
+.sitebridge-ui .bpc-status-chip-value { font-size: 14px; font-weight: 600; color: var(--wp-text); }
+.sitebridge-ui .bpc-status-chip-value a { color: inherit; text-decoration: none; }
+.sitebridge-ui .bpc-status-chip-value a:hover { text-decoration: underline; }
+
+.sitebridge-ui .bpc-integrations-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px; margin-bottom: 4px;
+}
+.sitebridge-ui .bpc-integration-card {
+    background: var(--wp-white); border: 1px solid var(--wp-border); border-radius: 2px;
+    padding: 18px 20px; transition: border-color .15s;
+}
+.sitebridge-ui .bpc-integration-card:hover { border-color: var(--wp-blue); }
+.sitebridge-ui .bpc-integration-card-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-bottom: 8px;
+}
+.sitebridge-ui .bpc-integration-card-head h4 { margin: 0; font-size: 14px; font-weight: 600; color: var(--wp-text); }
+.sitebridge-ui .bpc-integration-meta { font-size: 12px; color: var(--wp-muted); margin-bottom: 12px; min-height: 16px; }
+
+.sitebridge-ui .bpc-settings-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+.sitebridge-ui .bpc-settings-tile {
+    background: var(--wp-white); border: 1px solid var(--wp-border); border-radius: 2px;
+    padding: 16px 40px 16px 18px; cursor: pointer;
+    transition: border-color .15s; text-decoration: none; display: block; position: relative;
+}
+.sitebridge-ui .bpc-settings-tile:hover { border-color: var(--wp-blue); text-decoration: none; }
+.sitebridge-ui .bpc-settings-tile::after {
+    content: '→'; position: absolute; right: 16px; top: 50%;
+    transform: translateY(-50%); font-size: 14px; color: var(--wp-muted); opacity: 0;
+    transition: opacity .15s, right .15s;
+}
+.sitebridge-ui .bpc-settings-tile:hover::after { opacity: 1; right: 12px; }
+.sitebridge-ui .bpc-settings-tile-icon { font-size: 22px; margin-bottom: 8px; display: block; }
+.sitebridge-ui .bpc-settings-tile-label { font-size: 13px; font-weight: 600; color: var(--wp-text); margin-bottom: 4px; }
+.sitebridge-ui .bpc-settings-tile-desc { font-size: 12px; color: var(--wp-muted); line-height: 1.4; }
+
+.sitebridge-ui .bpc-api-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sitebridge-ui .bpc-api-table thead th {
+    text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em; color: var(--wp-muted);
+    border-bottom: 1px solid var(--wp-border); background: var(--wp-surface);
+}
+.sitebridge-ui .bpc-api-table tbody td {
+    padding: 9px 12px; border-bottom: 1px solid var(--wp-border); vertical-align: middle;
+}
+.sitebridge-ui .bpc-api-table tbody tr:last-child td { border-bottom: none; }
+.sitebridge-ui .bpc-api-table tbody tr:hover td { background: var(--wp-surface); }
+
+.sitebridge-ui .bpc-method-badge {
+    display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 11px;
+    font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .03em;
+}
+.sitebridge-ui .bpc-method-badge.get    { background: #dbeafe; color: #1e40af; }
+.sitebridge-ui .bpc-method-badge.post   { background: #dcfce7; color: #166534; }
+.sitebridge-ui .bpc-method-badge.put    { background: #fef9c3; color: #854d0e; }
+.sitebridge-ui .bpc-method-badge.delete { background: #fee2e2; color: #991b1b; }
+.sitebridge-ui .bpc-api-url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--wp-text); }
+
+.sitebridge-ui .bpc-auth-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+.sitebridge-ui .bpc-auth-badge--public { background: #dcfce7; color: #166534; }
+.sitebridge-ui .bpc-auth-badge--jwt    { background: #dbeafe; color: #1e40af; }
+.sitebridge-ui .bpc-auth-badge--admin  { background: #ede9fe; color: #7c3aed; }
+
+.sitebridge-ui .bpc-pill {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px;
+    border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid;
+}
+.sitebridge-ui .bpc-pill.ok    { background: #edfaef; color: #116329; border-color: #a7f3d0; }
+.sitebridge-ui .bpc-pill.warn  { background: #fef7e4; color: #8a6a0a; border-color: #fde68a; }
+.sitebridge-ui .bpc-pill.error { background: #fcf0f1; color: #a0292a; border-color: #fecdd3; }
+
+/* -------- Responsive -------- */
+@media (max-width: 640px) {
+    .sitebridge-ui .sb-summary { grid-template-columns: 1fr; }
+    .sitebridge-ui .sb-summary > div { padding: 7px 4px; }
+}
+
+/* -------- Reduce motion -------- */
+@media (prefers-reduced-motion: reduce) {
+    .sitebridge-ui *,
+    .sitebridge-ui *::before,
+    .sitebridge-ui *::after {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+    }
+}

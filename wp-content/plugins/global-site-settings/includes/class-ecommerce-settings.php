@@ -913,8 +913,7 @@ class Ecommerce_Policies_Admin {
         }
         
         // Save settings if form submitted
-        if (isset($_POST['ecommerce_policies_submit'])) {
-            check_admin_referer('ecommerce_policies_nonce');
+        if (isset($_POST['ecommerce_policies_submit']) && belims_settings_verify_post('ecommerce_policies_nonce', '_wpnonce', 'ecommerce')) {
             
             update_option('ecommerce_return_policy', wp_kses_post($_POST['return_policy']));
             update_option('ecommerce_change_of_mind', wp_kses_post($_POST['change_of_mind']));
@@ -931,7 +930,7 @@ class Ecommerce_Policies_Admin {
             update_option('ecommerce_expert_email', sanitize_email($_POST['expert_email']));
             update_option('ecommerce_expert_phone', sanitize_text_field($_POST['expert_phone']));
             
-            echo '<div class="notice notice-success is-dismissible"><p>Policies saved successfully!</p></div>';
+            belims_settings_flash('success', 'Store details saved.', 'ecommerce');
         }
         
         // Get current values

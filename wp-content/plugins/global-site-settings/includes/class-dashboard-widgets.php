@@ -20,6 +20,7 @@ class Belims_Dashboard_Widgets {
 
 	public function __construct() {
 		add_action('wp_dashboard_setup',      array($this, 'register_widgets'));
+		add_action('load-index.php',          array($this, 'replace_welcome_panel'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 		add_action('admin_init',            array($this, 'schedule_daily_speed_test'));
 		add_action('bpc_daily_speed_test',  array($this, 'run_daily_speed_test'));
@@ -60,101 +61,89 @@ class Belims_Dashboard_Widgets {
 				array($this, 'widget_controls')
 			);
 		}
-
-		// Site Settings Summary — quick access to the full settings page
-		if (current_user_can('manage_options')) {
-			wp_add_dashboard_widget(
-				'belims_site_settings_widget',
-				'⚙️ Belims Site Settings',
-				array($this, 'render_settings_summary_widget')
-			);
-		}
 	}
 
-	public function render_settings_summary_widget() {
+	/**
+	 * Full-width Site Settings panel at the top of the WordPress Dashboard. Uses the Welcome panel slot
+	 * (the only full-width area above the widget columns); users can hide it via Screen Options → Welcome.
+	 */
+	public function replace_welcome_panel() {
 		if (!current_user_can('manage_options')) {
 			return;
 		}
+		remove_action('welcome_panel', 'wp_welcome_panel');
+		add_action('welcome_panel', array($this, 'render_site_settings_panel'));
+	}
 
-		$acf_url = function_exists('get_field') ? get_field('headless_frontend_url', 'option') : '';
-		$cors_origin = get_cors_origin();
-		$environment = get_option('belims_frontend_environment', 'production');
-
-		$woo_key = function_exists('get_field') ? get_field('woo_consumer_key', 'option') : '';
-		$woo_secret = function_exists('get_field') ? get_field('woo_consumer_secret', 'option') : '';
-		$gemini_key = function_exists('get_field') ? get_field('gemini_api_key', 'option') : '';
-		$bobgo_key = function_exists('get_field') ? get_field('bobgo_api_key', 'option') : '';
-		$payment_key = function_exists('get_field') ? get_field('payment_api_key', 'option') : '';
-
+	public function render_site_settings_panel() {
 		$settings_url = admin_url('admin.php?page=belims-site-settings');
-
+		$environment  = belims_environment();
+		$env_labels   = array('production' => 'Production', 'staging' => 'Staging', 'development' => 'Development', 'local' => 'Local');
+		$counts       = class_exists('WooCommerce') ? wp_count_posts('product') : null;
+		$products     = $counts ? (int) $counts->publish : null;
+		$last_sync    = function_exists('belims_get_ftg_last_sync_timestamp') ? belims_get_ftg_last_sync_timestamp() : 0;
+		$integrations = belims_integration_statuses();
+		$active       = count(array_filter($integrations, function ($integration) {
+			return $integration['active'];
+		}));
+		// Placeholder set — edit freely; each opens a Site Settings tab.
+		$quick_links  = array(
+			'branding'      => 'Branding',
+			'ecommerce'     => 'Store Details',
+			'homepage'      => 'Homepage publishing',
+			'cors-security' => 'CORS &amp; Security',
+			'woocommerce'   => 'WooCommerce',
+			'media'         => 'Media Management',
+		);
 		?>
-		<div class="bpc-settings-summary">
-			<p class="bpc-settings-summary-intro">
-				Quick status of the integrations configured in Global Site Settings.
-			</p>
+		<div class="belims-dashboard-panel sitebridge-ui">
+			<div class="status-strip" aria-label="Site status">
+				<div class="status-cell">
+					<span class="status-label">Environment</span>
+					<span class="status-value"><i class="status-dot <?php echo $environment === 'production' ? '' : 'warn'; ?>" aria-hidden="true"></i><?php echo esc_html($env_labels[$environment] ?? ucfirst($environment)); ?></span>
+				</div>
+				<div class="status-cell">
+					<span class="status-label">Products</span>
+					<span class="status-value"><?php echo $products === null ? 'WooCommerce inactive' : esc_html(number_format_i18n($products)) . ' published'; ?></span>
+				</div>
+				<div class="status-cell">
+					<span class="status-label">Last FTG sync</span>
+					<span class="status-value"><?php echo esc_html($last_sync > 0 ? date_i18n('j M Y, H:i', $last_sync) : 'Never'); ?></span>
+				</div>
+				<div class="status-cell">
+					<span class="status-label">Diagnostics</span>
+					<span class="status-value"><button type="button" class="button button-small" disabled>Run Diagnostics</button> <small class="muted">Coming soon</small></span>
+				</div>
+			</div>
 
-			<table class="bpc-settings-summary-table">
-				<tbody>
-					<tr>
-						<td><strong>CORS Origin</strong></td>
-						<td>
-							<code><?php echo esc_html($cors_origin); ?></code>
-							<?php if ($acf_url) : ?>
-								<span class="bpc-settings-summary-note"> (from ACF)</span>
-							<?php endif; ?>
-						</td>
-					</tr>
-					<tr>
-						<td><strong>Frontend Environment</strong></td>
-						<td><?php echo esc_html(ucfirst($environment)); ?></td>
-					</tr>
-					<tr>
-						<td><strong>WooCommerce API</strong></td>
-						<td>
-							<?php if (!empty($woo_key) && !empty($woo_secret)) : ?>
-								<span class="bpc-settings-summary-status bpc-settings-summary-status--success">Configured</span>
-							<?php else : ?>
-								<span class="bpc-settings-summary-status bpc-settings-summary-status--warning">Not configured</span>
-							<?php endif; ?>
-						</td>
-					</tr>
-					<tr>
-						<td><strong>AI / Gemini API</strong></td>
-						<td>
-							<?php if (!empty($gemini_key)) : ?>
-								<span class="bpc-settings-summary-status bpc-settings-summary-status--success">Configured</span>
-							<?php else : ?>
-								<span class="bpc-settings-summary-status bpc-settings-summary-status--warning">Not configured</span>
-							<?php endif; ?>
-						</td>
-					</tr>
-					<tr>
-						<td><strong>BobGo API</strong></td>
-						<td>
-							<?php if (!empty($bobgo_key)) : ?>
-								<span class="bpc-settings-summary-status bpc-settings-summary-status--success">Configured</span>
-							<?php else : ?>
-								<span class="bpc-settings-summary-status bpc-settings-summary-status--warning">Not configured</span>
-							<?php endif; ?>
-						</td>
-					</tr>
-					<tr>
-						<td><strong>Payment API</strong></td>
-						<td>
-							<?php if (!empty($payment_key)) : ?>
-								<span class="bpc-settings-summary-status bpc-settings-summary-status--success">Configured</span>
-							<?php else : ?>
-								<span class="bpc-settings-summary-status bpc-settings-summary-status--warning">Not configured</span>
-							<?php endif; ?>
-						</td>
-					</tr>
-				</tbody>
-			</table>
+			<div class="dashboard-grid">
+				<section class="panel">
+					<div class="panel-title">
+						<h2>Integrations</h2>
+						<span class="badge <?php echo $active === count($integrations) ? 'good' : 'info'; ?>"><?php echo esc_html($active . ' of ' . count($integrations) . ' active'); ?></span>
+					</div>
+					<ul class="item-list">
+						<?php foreach ($integrations as $tab => $integration) : ?>
+							<li>
+								<span><strong><?php echo esc_html($integration['label']); ?></strong><br><small class="muted"><?php echo esc_html($integration['description']); ?></small></span>
+								<?php echo belims_integration_badge($tab, $integration, $settings_url); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in the helper ?>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				</section>
 
-			<a href="<?php echo esc_url($settings_url); ?>" class="button button-primary bpc-settings-summary-button">
-				Configure Settings <span aria-hidden="true">&rarr;</span>
-			</a>
+				<section class="panel">
+					<div class="panel-title">
+						<h2>Quick links</h2>
+						<a class="button button-small" href="<?php echo esc_url($settings_url); ?>">Open Site Settings</a>
+					</div>
+					<div class="shortcut-grid">
+						<?php foreach ($quick_links as $tab => $label) : ?>
+							<a class="shortcut" href="<?php echo esc_url($settings_url . '#tab-' . $tab); ?>"><?php echo $label; // phpcs:ignore WordPress.Security.EscapeOutput -- fixed labels above ?> <span class="shortcut-arrow" aria-hidden="true">›</span></a>
+						<?php endforeach; ?>
+					</div>
+				</section>
+			</div>
 		</div>
 		<?php
 	}
@@ -196,7 +185,8 @@ class Belims_Dashboard_Widgets {
 		$js_file  = GLOBAL_SITE_SETTINGS_PLUGIN_URL . 'assets/js/dashboard-widgets.js';
 		$css_file = GLOBAL_SITE_SETTINGS_PLUGIN_URL . 'assets/css/dashboard-widgets.css';
 
-		wp_enqueue_style('bpc-dashboard-widgets', $css_file, array(), GLOBAL_SITE_SETTINGS_VERSION);
+		wp_enqueue_style('global-site-settings-ds', GLOBAL_SITE_SETTINGS_PLUGIN_URL . 'assets/css/sitebridge-ui.css', array(), GLOBAL_SITE_SETTINGS_VERSION);
+		wp_enqueue_style('bpc-dashboard-widgets', $css_file, array('global-site-settings-ds'), GLOBAL_SITE_SETTINGS_VERSION);
 		wp_enqueue_script('bpc-dashboard-widgets', $js_file, array('jquery'), GLOBAL_SITE_SETTINGS_VERSION, true);
 
 		wp_localize_script('bpc-dashboard-widgets', 'bpcDashboardData', array(
@@ -739,5 +729,3 @@ class Belims_Dashboard_Widgets {
 	}
 }
 
-// Initialize
-new Belims_Dashboard_Widgets();

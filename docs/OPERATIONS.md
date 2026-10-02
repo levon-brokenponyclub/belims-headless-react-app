@@ -18,6 +18,8 @@ Hosting, deploys, caching and infrastructure quirks. Start at the root [README](
 
 There is **one CMS** behind both preview and production.
 
+**Staging CMS (2026-10-02):** Cloudways *staging* app `xnmtexmyyf` (cloned from `uhkkwupuum`), https://wordpress-1482444-6707114.cloudwaysapps.com, path `~/applications/xnmtexmyyf/public_html`. No storefront reads from it. For testing plugin releases before production — see [Staging CMS](#staging-cms).
+
 ## Vercel
 
 - **Project:** `belims`, framework Vite, root directory `frontend`, Node 24, production branch `vercel`. Git: `levon-brokenponyclub/belims-headless-react-app`.
@@ -52,6 +54,12 @@ Purge after urgent content changes: Cloudflare → Caching → Purge by URL (e.g
 - **Breeze / Varnish:** `/wp-json` excluded from page caching (Cloudways default). Breeze "Never cache" URLs must be absolute (`https://…/wp-json/`).
 - **wp-config.php constants:** `BELIMS_FIREBASE_API_KEY` (required for Firebase sign-in).
 - **Frontend URL:** ACF option `headless_frontend_url` = `https://belims.vercel.app` → `get_frontend_url()` / `get_cors_origin()`. It is the **default** storefront: the CORS fallback and the PayFast return for orders with no saved storefront. CORS allows every origin in `get_cors_origins()` (www, preview, `localhost:3000`, filter `belims_cors_origins`); each order saves the storefront it came from (`_belims_frontend_origin`) and PayFast returns the customer there. Switch the default to `https://www.belims.co.za` at launch.
+
+### Staging CMS
+
+- **Environment:** staging's `wp-config.php` sets `define('WP_ENVIRONMENT_TYPE', 'staging');` (production leaves it unset = `production`; local has `local`). It lives in wp-config, not the database, so clones and pushes never carry it. GSS 2.10.3+ reads it via `belims_environment()`: the Site Settings header badge shows the environment, and outside production the plugin never uses a production storefront URL (`www.belims.co.za` → preview), drops production origins from CORS / PayFast returns, refuses to save or run the **Production** homepage deploy hook, and warns if PayFast is live or BobGo is enabled with Production.
+- **Safety settings (applied 2026-10-02):** FTG cron off, BobGo off, uAfrica + AI product descriptions plugins removed, deploy hooks cleared, `wp-content/mu-plugins/staging-block-mail.php` blocks all email (staging only — never commit or deploy it), search engines discouraged, PayFast in test mode.
+- **Never push the staging database to production.** Release plugins to production by file (targeted deploy below) or Cloudways "push files only".
 
 ### CMS plugin deploys
 
