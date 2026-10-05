@@ -66,7 +66,8 @@ class Belims_Orders_Endpoint {
             return new WP_Error('unauthorized', 'You must be logged in to view orders', array('status' => 401));
         }
 
-        $statuses     = array('processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed');
+        // shipped / partially-shipped: Bob Go's custom fulfilment statuses (2.10.12)
+        $statuses     = array('processing', 'on-hold', 'shipped', 'partially-shipped', 'completed', 'cancelled', 'refunded', 'failed');
         $user         = wp_get_current_user();
         $user_email   = $user->user_email;
 
@@ -144,7 +145,7 @@ class Belims_Orders_Endpoint {
                     'address2' => $order->get_shipping_address_2(),
                     'suburb' => $order->get_meta('_shipping_suburb') ?: $order->get_shipping_city(),
                     'city' => $order->get_shipping_city(),
-                    'province' => $order->get_shipping_state(),
+                    'province' => self::state_name($order->get_shipping_state()),
                     'postalCode' => $order->get_shipping_postcode(),
                     'country' => $order->get_shipping_country(),
                 ),
@@ -153,7 +154,7 @@ class Belims_Orders_Endpoint {
                     'address2' => $order->get_billing_address_2(),
                     'suburb' => $order->get_meta('_billing_suburb') ?: $order->get_billing_city(),
                     'city' => $order->get_billing_city(),
-                    'province' => $order->get_billing_state(),
+                    'province' => self::state_name($order->get_billing_state()),
                     'postalCode' => $order->get_billing_postcode(),
                     'country' => $order->get_billing_country(),
                 ),
@@ -191,6 +192,7 @@ class Belims_Orders_Endpoint {
             // Bob Go reads the delivery suburb (local_area) from _shipping_suburb / _billing_suburb
             // meta, so the suburb is stored there and the city stays the city (2.10.10).
             $suburb = sanitize_text_field($customer['suburb'] ?? '');
+            $state = self::state_code(sanitize_text_field($customer['province'] ?? ''));
             $city = sanitize_text_field(!empty($customer['city']) ? $customer['city'] : $suburb);
             $order->set_billing_first_name(sanitize_text_field($customer['firstName']));
             $order->set_billing_last_name(sanitize_text_field($customer['lastName']));
@@ -199,7 +201,7 @@ class Belims_Orders_Endpoint {
             $order->set_billing_address_1(sanitize_text_field($customer['address']));
             $order->set_billing_address_2(sanitize_text_field($customer['address2'] ?? ''));
             $order->set_billing_city($city);
-            $order->set_billing_state(sanitize_text_field($customer['province']));
+            $order->set_billing_state($state);
             $order->set_billing_postcode(sanitize_text_field($customer['postalCode']));
             $order->set_billing_country('ZA');
 
@@ -209,7 +211,7 @@ class Belims_Orders_Endpoint {
             $order->set_shipping_address_1(sanitize_text_field($customer['address']));
             $order->set_shipping_address_2(sanitize_text_field($customer['address2'] ?? ''));
             $order->set_shipping_city($city);
-            $order->set_shipping_state(sanitize_text_field($customer['province']));
+            $order->set_shipping_state($state);
             $order->set_shipping_postcode(sanitize_text_field($customer['postalCode']));
             $order->set_shipping_country('ZA');
             if ($suburb !== '') {
@@ -324,7 +326,7 @@ class Belims_Orders_Endpoint {
                 'last_name' => $order->get_shipping_last_name(),
                 'street' => $order->get_shipping_address_1(),
                 'city' => $order->get_shipping_city(),
-                'province' => $order->get_shipping_state(),
+                'province' => self::state_name($order->get_shipping_state()),
                 'postalCode' => $order->get_shipping_postcode(),
                 'country' => $order->get_shipping_country(),
             ),
@@ -333,7 +335,7 @@ class Belims_Orders_Endpoint {
                 'last_name' => $order->get_billing_last_name(),
                 'street' => $order->get_billing_address_1(),
                 'city' => $order->get_billing_city(),
-                'province' => $order->get_billing_state(),
+                'province' => self::state_name($order->get_billing_state()),
                 'postalCode' => $order->get_billing_postcode(),
                 'country' => $order->get_billing_country(),
                 'phone' => $order->get_billing_phone(),
@@ -388,5 +390,31 @@ class Belims_Orders_Endpoint {
         );
         $env = \BobGo_Shipping\app\SettingsPage::get_current_env();
         return isset($hosts[$env]) ? 'https://' . $hosts[$env] . '/' . rawurlencode($reference) : esc_url_raw($fallback);
+    }
+
+    /**
+     * WooCommerce stores the ZA state code (KZN); the storefront sends the province name
+     * ("KwaZulu-Natal"). Unknown values pass through unchanged (2.10.12; shared with
+     * User_Endpoint since 2.10.13).
+     */
+    public static function state_code($province) {
+        $states = WC()->countries->get_states('ZA');
+        if ($province === '' || !is_array($states) || isset($states[strtoupper($province)])) {
+            return is_array($states) && isset($states[strtoupper($province)]) ? strtoupper($province) : $province;
+        }
+        foreach ($states as $code => $name) {
+            if (strcasecmp(html_entity_decode($name), $province) === 0) {
+                return $code;
+            }
+        }
+        return $province;
+    }
+
+    /**
+     * Province name for the storefront (KZN → KwaZulu-Natal).
+     */
+    public static function state_name($code) {
+        $states = WC()->countries->get_states('ZA');
+        return is_array($states) && isset($states[$code]) ? html_entity_decode($states[$code]) : $code;
     }
 }

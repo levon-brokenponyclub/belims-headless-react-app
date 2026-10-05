@@ -15,6 +15,50 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 
 ---
 
+## 2026-10-05 — Global Site Settings 2.10.13: suburb on saved account addresses
+
+Why: the account add/edit address form (`/delivery-details/add-address?context=account`) had no Suburb field, so saved addresses never carried one — and Bob Go needs the suburb (`local_area`), which checkout then had to re-ask. Province was also saved as a name in `billing_state` / `shipping_state` (WooCommerce expects `KZN`).
+
+### Global Site Settings 2.10.13
+- `includes/class-user-endpoint.php`: `PUT /users/me` saves `billing_suburb` / `shipping_suburb` user meta (the WooCommerce / Bob Go suburb key) and stores `*_state` as the ZA code; `GET /users/me` returns `billing.suburb` / `shipping.suburb` and the state as the name.
+- `includes/class-orders-endpoint.php`: `state_code()` / `state_name()` are public static, shared with `User_Endpoint`.
+- README (`/users/me`), version 2.10.13.
+
+### frontend
+- `types.ts`: `ShippingAddress.suburb`. `services/authService.ts`: `UserData` billing/shipping `suburb`; save/clear address send `*_suburb`. `services/shippingAddress.ts`: address lookup maps `suburb` (suburb / neighbourhood).
+- `components/DeliveryDetailsAddAddress.tsx`: required **Suburb** input (between Street and City), pre-filled from the lookup or the saved address.
+- `components/Checkout.tsx`: checkout pre-fills Suburb from the saved profile address and from a chosen saved address.
+- `docs/FEATURES.md` (Account area).
+
+### Verified
+- `php -l`; `npm run build` OK.
+
+### Deployed — staging (2026-10-05)
+- Backup `~/backups/xnmtexmyyf-gss-2.10.12-20261005-213519.tgz`; server files matched the deployed 2.10.12; uploaded `includes/class-user-endpoint.php`, `includes/class-orders-endpoint.php`, `global-site-settings.php`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.13 active. `GET /users/me` (user #20) returns `address_1, suburb, city, state, postcode, country` for billing and shipping.
+
+---
+
+## 2026-10-05 — Global Site Settings 2.10.12: shipped orders in My Account, orders linked to the signed-in customer, province codes
+
+Why: preview test order #5576 (Pieter Harris, staging user #20) didn't appear under My Account → Orders. `GET /orders` only listed `processing, on-hold, completed, cancelled, refunded, failed`, so it vanished once Bob Go set its custom **Shipped** status. It was also a *Guest* order (`customer_id` 0) because `createOrder()` sent no JWT. And Durban North was saved as **Eastern Cape**: checkout sends the province name (`KwaZulu-Natal`), the CMS stored the name in WooCommerce's state field (expects `KZN`), Bob Go couldn't match it and its webhook wrote the address back with `state = EC` ("Delivery address updated from Bob Go").
+
+### Global Site Settings 2.10.12
+- `includes/class-orders-endpoint.php`: `/orders` statuses include `shipped`, `partially-shipped`; `POST /orders` converts the province name to the WooCommerce ZA state code (`WC()->countries->get_states('ZA')`; codes pass through); order responses return the province name (`KZN` → `KwaZulu-Natal`).
+- README (`/orders` rows), version 2.10.12.
+
+### frontend
+- `services/wooCommerceService.ts`: `createOrder()` sends the JWT when signed in (order linked to the customer); if the CMS rejects the token (401/403, e.g. expired) it retries once without it so checkout never blocks.
+
+### Verified
+- `php -l`; `npm run build` OK.
+
+### Deployed — staging (2026-10-05) + data fix (approved)
+- Backup `~/backups/xnmtexmyyf-gss-2.10.11-20261005-212901.tgz`; files matched `ee84d601`; `php -l` OK; GSS 2.10.12 active.
+- Data fix (backup `~/backups/xnmtexmyyf-orders-5573-5576-20261005-192940.json`): #5576 → customer #20, state EC → KZN; #5573 state KwaZulu-Natal → KZN. Saving re-synced #5576 with Bob Go Sandbox (now *completed* there and in WooCommerce).
+- User #20 `/orders` now lists #5576 first (KwaZulu-Natal, 1 tracking entry).
+
+---
+
 ## 2026-10-05 — Global Site Settings 2.10.11: shipment tracking in My Account; `/track` follows the Bob Go plugin environment
 
 Why: test order #5576 synced to Bob Go Sandbox and Bob Go wrote the shipment back (courier, tracking `UASSNTHC`, `https://track.dev.bobgo.co.za/UASSNTHC`, status → Shipped), but customers had no way to see it: the Bob Go **Order shipped** email was off (`shipped_email_enabled` empty), My Account's **Track** link passed the *order number* to `/track` (which expects a Bob Go tracking reference), and `/orders` returned no shipment data. `/track` also picked the API host from GSS's own `bobgo_environment`, not the Bob Go plugin.

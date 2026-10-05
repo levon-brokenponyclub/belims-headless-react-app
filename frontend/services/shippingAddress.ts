@@ -224,6 +224,7 @@ export const mapNominatimAddress = (data: any): ShippingAddress | null => {
 
   const draft: ShippingAddress = {
     street,
+    suburb: address.suburb || address.neighbourhood || address.neighborhood || "",
     city,
     province,
     postalCode,

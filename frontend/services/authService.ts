@@ -17,6 +17,7 @@ export interface UserData {
   roles: string[];
   billing: {
     address_1: string;
+    suburb?: string;
     city: string;
     state: string;
     postcode: string;
@@ -24,6 +25,7 @@ export interface UserData {
   };
   shipping?: {
     address_1: string;
+    suburb?: string;
     city: string;
     state: string;
     postcode: string;
@@ -290,6 +292,7 @@ export const saveBillingAddress = async (
 
   const payload = {
     billing_address_1: address.street || address.label || "",
+    billing_suburb: address.suburb || "",
     billing_city: address.city || "",
     billing_state: address.province || "",
     billing_postcode: address.postalCode || "",
@@ -338,6 +341,7 @@ export const saveShippingAddress = async (
 
   const payload = {
     shipping_address_1: address.street || address.label || "",
+    shipping_suburb: address.suburb || "",
     shipping_city: address.city || "",
     shipping_state: address.province || "",
     shipping_postcode: address.postalCode || "",
@@ -379,6 +383,7 @@ export const clearBillingAddress = async (): Promise<{ success: boolean; message
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({
       billing_address_1: "",
+      billing_suburb: "",
       billing_city: "",
       billing_state: "",
       billing_postcode: "",
@@ -401,6 +406,7 @@ export const clearShippingAddress = async (): Promise<{ success: boolean; messag
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({
       shipping_address_1: "",
+      shipping_suburb: "",
       shipping_city: "",
       shipping_state: "",
       shipping_postcode: "",

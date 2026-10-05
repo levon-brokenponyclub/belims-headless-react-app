@@ -98,6 +98,7 @@ const toSavedAddress = (
   const city = raw?.city?.trim() || "";
   const address: ShippingAddress = {
     street: line1,
+    suburb: raw?.suburb || "",
     city,
     province: raw?.state || "",
     postalCode: raw?.postcode || "",
@@ -271,6 +272,7 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
       const base: ShippingAddress =
         prev ?? {
           street: "",
+          suburb: "",
           city: "",
           province: "",
           postalCode: "",
@@ -287,6 +289,7 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
     if (!selectedAddress) return false;
     return Boolean(
       selectedAddress.street.trim() &&
+        (selectedAddress.suburb || "").trim() &&
         selectedAddress.city.trim() &&
         selectedAddress.province.trim(),
     );
@@ -607,6 +610,23 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
                     className="w-full h-12 pl-10 pr-4 rounded-lg border border-border bg-white text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-text"
                   />
                 </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="manual-suburb"
+                  className="block text-sm font-bold text-text mb-2"
+                >
+                  Suburb
+                </label>
+                <input
+                  id="manual-suburb"
+                  type="text"
+                  value={selectedAddress?.suburb || ""}
+                  onChange={(e) => patchAddress({ suburb: e.target.value })}
+                  placeholder="Suburb"
+                  autoComplete="address-level3"
+                  className="w-full h-12 px-4 rounded-lg border border-border bg-white text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-text"
+                />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>

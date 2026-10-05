@@ -48,6 +48,8 @@ export interface Product {
 
 export interface ShippingAddress {
   street: string;
+  /** Delivery suburb — Bob Go local_area (user meta *_suburb) */
+  suburb?: string;
   city: string;
   province: string;
   postalCode: string;

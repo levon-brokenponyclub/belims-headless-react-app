@@ -450,6 +450,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
           if (source.address_1 || source.city || source.postcode) {
           addressToUse = {
             street: source.address_1 || "",
+            suburb: source.suburb || "",
             city: source.city || "",
             province: source.state || "",
             postalCode: source.postcode || "",
@@ -459,6 +460,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
             setCustomer((prev) => ({
               ...prev,
               address: addressToUse!.street,
+              suburb: addressToUse!.suburb || prev.suburb,
               city: addressToUse!.city,
               province: addressToUse!.province,
               postalCode: addressToUse!.postalCode,
@@ -470,7 +472,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
             const options: Array<{ label: string; address: ShippingAddress }> = [];
             const toAddr = (src: typeof billing, label: string): ShippingAddress | null => {
               if (!src?.address_1 && !src?.city) return null;
-              return { street: src.address_1 || "", city: src.city || "", province: src.state || "", postalCode: src.postcode || "", country: "ZA" };
+              return { street: src.address_1 || "", suburb: src.suburb || "", city: src.city || "", province: src.state || "", postalCode: src.postcode || "", country: "ZA" };
             };
             const ba = toAddr(billing, "Billing");
             const sa = toAddr(shipping, "Shipping");
@@ -823,6 +825,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
         ...(source?.address_1
           ? {
               address: source.address_1 || "",
+              suburb: source.suburb || "",
               city: source.city || "",
               province: source.state || "",
               postalCode: source.postcode || "",
@@ -1873,6 +1876,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                       onClick={() => setCustomer((prev) => ({
                                         ...prev,
                                         address: saved.address.street,
+                                        suburb: saved.address.suburb || prev.suburb,
                                         city: saved.address.city,
                                         province: saved.address.province,
                                         postalCode: saved.address.postalCode,
@@ -1911,6 +1915,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                           setCustomer((prev) => ({
                                             ...prev,
                                             address: saved.address.street,
+                                            suburb: saved.address.suburb || prev.suburb,
                                             city: saved.address.city,
                                             province: saved.address.province,
                                             postalCode: saved.address.postalCode,

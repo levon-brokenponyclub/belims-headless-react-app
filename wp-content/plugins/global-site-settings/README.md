@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.10.11  
+**Version:** 2.10.13  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -171,13 +171,13 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/ecommerce-policies` | Public | Policies, `store_locations`, `expert_contact` (`class-ecommerce-settings.php`; `Cache-Control: public, s-maxage=300` since 2.8.1) |
 | `GET` | `/coupons?code=` | Public | Validate a coupon |
 | `GET` | `/ai/config` | Public | AI feature config |
-| `POST` | `/orders` | Public | Create WooCommerce order from headless checkout; saves an allowed `frontend_origin` as `_belims_frontend_origin` |
-| `GET` | `/orders` | Logged in | Customer order history; each order has `tracking: [{courier, tracking_number, tracking_url, status, estimated_delivery}]` from Bob Go's `_bobgo_shipments` meta (2.10.11, also on `/orders/:id`) |
+| `POST` | `/orders` | Public (send the JWT when signed in so the order is linked to the customer) | Create WooCommerce order from headless checkout; saves an allowed `frontend_origin` as `_belims_frontend_origin`; province name → WooCommerce ZA state code (`KwaZulu-Natal` → `KZN`, 2.10.12) |
+| `GET` | `/orders` | Logged in | Customer order history (statuses incl. Bob Go's `shipped` / `partially-shipped` since 2.10.12; `province` returned as the name); each order has `tracking: [{courier, tracking_number, tracking_url, status, estimated_delivery}]` from Bob Go's `_bobgo_shipments` meta (2.10.11, also on `/orders/:id`) |
 | `GET` | `/orders/:id?key=` | Order key, owning customer or shop manager | Single order details (404 otherwise) — `Belims_Orders_Endpoint::can_access_order()` |
 | `POST` | `/shipping/calculate` | Public | BobGo shipping rates for an address |
 | `POST` | `/track` | Public | Track a shipment by Bob Go tracking reference (`trackingRef`). API host from the Bob Go plugin's environment (`SettingsPage::get_base_url()` — Sandbox on staging), legacy GSS `bobgo_environment` only as fallback; on 404 with `channel=` it retries by reference alone (2.10.11) |
 | `POST` | `/users/register` · `/users/login` · `/users/logout` · `/users/check-email` | Public | Account auth |
-| `GET` / `PUT` | `/users/me` | Logged in | Current user profile |
+| `GET` / `PUT` | `/users/me` | Logged in | Current user profile. Addresses: `billing_*` / `shipping_*` = `address_1`, `suburb` (user meta `billing_suburb` / `shipping_suburb` — the WooCommerce / Bob Go suburb key, 2.10.13), `city`, `state` (stored as the ZA code `KZN`, returned as the name), `postcode`, `country` |
 | `GET` | `/users` | Admin / shop manager | List users |
 | `POST` | `/auth/firebase-phone` · `/auth/firebase-google` | Public (Firebase token verified server-side) | Firebase sign-in |
 | `GET` | `/payfast/config` | Public | Public PayFast fields only (`merchantId`, URLs, `testMode`) |

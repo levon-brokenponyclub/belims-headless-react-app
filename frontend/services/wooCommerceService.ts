@@ -394,13 +394,22 @@ export const fetchProductFilters = async (): Promise<ProductFiltersData> => {
  */
 export const createOrder = async (orderData: any) => {
   try {
-    const response = await fetch(`${BASE_URL}/orders`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(orderData),
-    });
+    const send = (withAuth: boolean) =>
+      fetch(`${BASE_URL}/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Signed-in customers: the CMS links the order to their account
+          ...(withAuth ? getAuthHeaders() : {}),
+        },
+        body: JSON.stringify(orderData),
+      });
+    const hasAuth = Object.keys(getAuthHeaders()).length > 0;
+    let response = await send(hasAuth);
+    // An expired token is rejected by the JWT plugin — never block checkout, place it as a guest order
+    if (hasAuth && (response.status === 401 || response.status === 403)) {
+      response = await send(false);
+    }
 
     if (!response.ok) throw new Error("Failed to create order");
     return await response.json();

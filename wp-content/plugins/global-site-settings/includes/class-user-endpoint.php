@@ -274,18 +274,19 @@ class User_Endpoint {
             update_user_meta($user_id, 'billing_phone', sanitize_text_field($request->get_param('phone')));
         }
 
-        // Update billing/shipping addresses
-        $billing_fields = ['billing_address_1', 'billing_city', 'billing_state', 'billing_postcode', 'billing_country'];
-        foreach ($billing_fields as $field) {
-            if ($request->has_param($field)) {
-                update_user_meta($user_id, $field, sanitize_text_field($request->get_param($field)));
-            }
-        }
-
-        $shipping_fields = ['shipping_address_1', 'shipping_city', 'shipping_state', 'shipping_postcode', 'shipping_country'];
-        foreach ($shipping_fields as $field) {
-            if ($request->has_param($field)) {
-                update_user_meta($user_id, $field, sanitize_text_field($request->get_param($field)));
+        // Update billing/shipping addresses. *_suburb uses the WooCommerce / Bob Go suburb
+        // meta key; *_state is stored as the ZA state code (KZN) — 2.10.13.
+        foreach (array('billing', 'shipping') as $group) {
+            foreach (array('address_1', 'suburb', 'city', 'state', 'postcode', 'country') as $part) {
+                $field = $group . '_' . $part;
+                if (!$request->has_param($field)) {
+                    continue;
+                }
+                $value = sanitize_text_field($request->get_param($field));
+                if ($part === 'state' && class_exists('Belims_Orders_Endpoint')) {
+                    $value = Belims_Orders_Endpoint::state_code($value);
+                }
+                update_user_meta($user_id, $field, $value);
             }
         }
 
@@ -364,15 +365,17 @@ class User_Endpoint {
             'roles' => $user->roles,
             'billing' => [
                 'address_1' => get_user_meta($user->ID, 'billing_address_1', true),
+                'suburb' => get_user_meta($user->ID, 'billing_suburb', true),
                 'city' => get_user_meta($user->ID, 'billing_city', true),
-                'state' => get_user_meta($user->ID, 'billing_state', true),
+                'state' => class_exists('Belims_Orders_Endpoint') ? Belims_Orders_Endpoint::state_name(get_user_meta($user->ID, 'billing_state', true)) : get_user_meta($user->ID, 'billing_state', true),
                 'postcode' => get_user_meta($user->ID, 'billing_postcode', true),
                 'country' => get_user_meta($user->ID, 'billing_country', true),
             ],
             'shipping' => [
                 'address_1' => get_user_meta($user->ID, 'shipping_address_1', true),
+                'suburb' => get_user_meta($user->ID, 'shipping_suburb', true),
                 'city' => get_user_meta($user->ID, 'shipping_city', true),
-                'state' => get_user_meta($user->ID, 'shipping_state', true),
+                'state' => class_exists('Belims_Orders_Endpoint') ? Belims_Orders_Endpoint::state_name(get_user_meta($user->ID, 'shipping_state', true)) : get_user_meta($user->ID, 'shipping_state', true),
                 'postcode' => get_user_meta($user->ID, 'shipping_postcode', true),
                 'country' => get_user_meta($user->ID, 'shipping_country', true),
             ],
