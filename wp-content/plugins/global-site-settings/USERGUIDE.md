@@ -1,6 +1,6 @@
 # Global Site Settings — User Guide
 
-**Plugin version:** 2.10.6 · **For:** Belims Hardware store administrators
+**Plugin version:** 2.10.8 · **For:** Belims Hardware store administrators
 
 > Technical overview for developers: [README.md](README.md) · Project docs: [root README](../../../README.md)
 

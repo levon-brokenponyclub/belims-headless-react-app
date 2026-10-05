@@ -216,7 +216,7 @@ const ArchivePage = ({
   isAuthenticated,
   isTradeApproved,
 }) => {
-  const { categorySlug } = useParams();
+  const { categorySlug, brandSlug } = useParams();
   const [searchParams] = useSearchParams();
 
   const categoryParam = searchParams.get("category") || undefined;
@@ -225,7 +225,16 @@ const ArchivePage = ({
     ? decodeURIComponent(categorySlug).replace(/-/g, " ")
     : categoryParam;
 
-  const brand = searchParams.get("brand") || undefined;
+  // /brands/:brandSlug (brand archive) or legacy /shop?brand=
+  const brandParam = brandSlug ? decodeURIComponent(brandSlug) : searchParams.get("brand") || undefined;
+  const brand = useMemo(() => {
+    if (!brandParam) return undefined;
+    const key = brandParam.toLowerCase();
+    const match = products.find(
+      (p) => p.brand_slug === key || p.brand?.toLowerCase() === key,
+    );
+    return match?.brand || brandParam.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }, [brandParam, products]);
   const searchQuery = searchParams.get("search") || undefined;
 
   return (
@@ -1360,6 +1369,20 @@ function MainApp(props) {
             />
             <Route
               path="/shop"
+              element={
+                <ArchivePage
+                  products={props.products}
+                  isLoadingProducts={props.isLoadingProducts}
+                  addToCart={props.addToCart}
+                  onBuyNow={props.handleBuyNow}
+                  onCompare={props.addToCompare}
+                  isAuthenticated={isAuthenticated}
+                  isTradeApproved={isTradeApproved}
+                />
+              }
+            />
+            <Route
+              path="/brands/:brandSlug"
               element={
                 <ArchivePage
                   products={props.products}

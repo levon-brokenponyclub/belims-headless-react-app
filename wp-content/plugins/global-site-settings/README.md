@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.10.6  
+**Version:** 2.10.8  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -162,9 +162,9 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/products` | Public | Product listing (`view=listing\|detail`, `fields`, `featured`, `category`, `search`, `page`, `per_page`). Only sellable products (2.9.1): in stock, `_price` > 0, a category other than Uncategorized — `Belims_Products_Endpoint::is_sellable()`. Sends `Cache-Control: public, s-maxage=300` + ETag |
+| `GET` | `/products` | Public | Product listing (`view=listing\|detail`, `fields`, `featured`, `category`, `search`, `page`, `per_page`, `brand` = `product_brand` slug). Listing fields include `brand` + `brand_slug` (2.10.8 — search Brands, `/brands/:slug`, sidebar Brand filter). Only sellable products (2.9.1): in stock, `_price` > 0, a category other than Uncategorized — `Belims_Products_Endpoint::is_sellable()`. Sends `Cache-Control: public, s-maxage=300` + ETag |
 | `GET` | `/products/home` | Public | Homepage rail set (newest, best-stocked, deals, on sale, featured, Hand Tools), in stock, de-duplicated, listing fields. `Cache-Control: public, s-maxage=300` |
-| `GET` | `/products/:id` | Public | Single product |
+| `GET` | `/products/:id` | Public | Single product (`view=detail` default) — includes `stock` (quantity) and `stock_status` like listings (2.10.7; the product page's pickup/delivery tiles need `stock > 0`) |
 | `GET` | `/products/filters` | Public | Archive filter options (registered in `ftg-sync/class-ftg-sync-endpoint.php`) |
 | `GET` | `/categories` | Public | Category tree (cached, ETag) |
 | `GET` | `/homepage` | Public | Homepage sections (baked into the storefront at build time) |

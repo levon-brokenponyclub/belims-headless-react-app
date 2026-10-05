@@ -15,6 +15,62 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 
 ---
 
+## 2026-10-05 — Brands in search + brand archive pages (`/brands/:slug`) — GSS 2.10.8
+
+Why: search had no way to find a brand, and brand links went nowhere — the homepage `BrandStrip` already linked to `/brands/{slug}` (no route), the search dropdown's Brands block never rendered, and `/shop?brand=` and the sidebar Brand filter showed nothing, all because listing products carried no `brand`.
+
+### Global Site Settings 2.10.8
+- `includes/class-products-endpoint.php`: listing DTO (and default listing fields) adds `brand` and `brand_slug` from `product_brand`; detail DTO adds `brand_slug`. Version 2.10.8 (README / USERGUIDE headers); README endpoint row.
+
+### frontend
+- `services/wooCommerceService.ts`: `DEFAULT_LISTING_FIELDS` + `brand`, `brand_slug`; `types.ts` `Product.brand_slug`.
+- `components/SearchResults.tsx`: right column **Brands** — brands whose name matches the query, then brands of matched products (max 8), with logo (`BRAND_LOGOS`, now exported from `BrandStrip.tsx`) or initials, and product count; click → `onBrandSelect(slug)`.
+- `components/Header.tsx`: loads brands once via `fetchProductFilters()`; both `SearchResults` instances get `brands` + `handleBrandSelect` → `/brands/:slug` (clears the search).
+- `App.tsx`: route `/brands/:brandSlug` → `ArchivePage` (brand name resolved from loaded products; `/shop?brand=` still works). `components/Archive.tsx`: brand filter matches `brand_slug` or name.
+- Sidebar Brand filter (already above Range) now appears on `/shop` / category pages with counts.
+- Docs: `docs/ARCHITECTURE.md` routes, `docs/FEATURES.md` search + brand archive.
+
+### Verified (local — dev server with `VITE_CMS_URL=http://localhost:10092`)
+- `php -l`; `npm run build` OK.
+- Search "bostik" → Brands "Bostik · 8" (initials — no logo file); "dulux" → Dulux logo loads, click → `/brands/dulux`, "Dulux Products", 44 products. `/brands/bostik` → 8 Bostik products. `/shop` sidebar: Brand card above Range (Alcolin 26, Assa Abloy 29, Bostik 8, Dulux 44, FAST 580, HARD 320, …); ticking Bostik → 8 products.
+- Fixed after review: dropdown brand counts now count the loaded (sellable) products, so they match the brand page (Dulux 44, not the term count 49; brands with none are hidden) — `Header.tsx` `searchBrands`. Archive header now reads "Showing {n} Results" for the filtered set (was "Showing 1-N of {whole catalogue}" on every filtered page — pre-existing) — `Archive.tsx`. Re-checked: `/brands/dulux` "Showing 44 Results", dropdown "Dulux · 44".
+
+---
+
+## 2026-10-05 — Global Site Settings 2.10.7: product detail includes stock (pickup no longer "unavailable")
+
+Why: every product page showed "Pickup unavailable — check another store". The page re-fetches the product from `/products/:id?view=detail`, which sent only `in_stock` / `maxStock` — no `stock` — so `FulfillmentBlock` passed `available: undefined` to the pickup (and delivery) tiles (`FulfillmentTiles.tsx` shows pickup only when `available > 0`). Products were in stock (all 1,382 published have quantity > 0). Pre-existing, not caused by 2.10.5/2.10.6.
+
+### Global Site Settings 2.10.7
+- `includes/class-products-endpoint.php`: detail DTO adds `stock` (`get_stock_quantity()`) and `stock_status`, matching the listing DTO.
+- README endpoint table; version 2.10.7 (README / USERGUIDE headers).
+- Note: pickup availability uses total stock — stock isn't tracked per store.
+
+### Verified
+- `php -l`; local `GET /products/6199?view=detail` → `stock: 5`, `stock_status: instock`.
+
+### Deployed — staging + production (2026-10-05)
+- Staging `xnmtexmyyf`: backup `~/backups/xnmtexmyyf-gss-2.10.6-20261005-140427.tgz`; production `uhkkwupuum`: backup `~/backups/uhkkwupuum-gss-2.10.6-20261005-140503.tgz`. Both: 4 server files matched git `16fc5115`; uploaded `includes/class-products-endpoint.php`, `global-site-settings.php`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.7 active.
+- `/products/5418?view=detail` → `stock: 2`, `stock_status: instock` (staging, production direct and via `belims.vercel.app/api`). Login 200, admin 302, products API 200.
+
+---
+
+## 2026-10-05 — Production WP-Cron: Cloudways server cron, `DISABLE_WP_CRON`, stale cron entry removed
+
+Why: the Bob Go plugin's health panel warned that WP-Cron events were past due. The CMS gets little direct traffic (the storefront is on Vercel and many API calls are served from cache), so traffic-driven WP-Cron fell behind; the weekly FTG auto-sync and Bob Go / Action Scheduler jobs depend on it.
+
+### Cloudways / wp-config (production `uhkkwupuum`)
+- **Cron Job Manager** (added by the user): every 5 minutes, Wget `https://cms.belims.co.za/wp-cron.php?doing_wp_cron`. First run seen 11:45:01 UTC (`Wget/1.21.3`, 200).
+- `wp-config.php`: `DISABLE_WP_CRON` `false` → `true` (changed by the user; `php -l` OK). Not in git.
+- Loopback to `wp-cron.php` checked beforehand: HTTP 200 (not blocked).
+
+### WP option `cron` (approved)
+- After the switch, Bob Go still reported `external_behind`, overdue by ~254 days: the `cron` option held an **empty** timestamp bucket from 2026-01-24 (`1769289791`). WordPress ignores empty buckets, but Bob Go's `Health::earliest_due_cron_event()` takes `min()` of all timestamps, so it raised a permanent false warning.
+- Backup `~/backups/uhkkwupuum-cron-20261005-115025.json`; removed only empty buckets via `_set_cron_array()` (25 → 24 buckets, all 27 events kept). Bob Go `cron_state` now `ok` / `external`.
+- Docs: [OPERATIONS → Cloudways](docs/OPERATIONS.md#cloudways--cms).
+
+---
+
 ## 2026-10-05 — Global Site Settings 2.10.6 + checkout: real Bob Go shipping rates, no placeholder prices
 
 Why: `POST /belims/v1/shipping/calculate` returned 500 ("BobGo (uAfrica) shipping plugin is not available") on every call since 2026-09-25 — the delivery-rates step at checkout failed on the storefront. On production the **Bob Go Smart Shipping** plugin (`bobgo-shipping` 4.0.58, installed 2026-09-25) replaced the legacy `uafrica-shipping` plugin (now inactive), and the endpoint only looked for `\uAfrica_Shipping\app\Shipping`. Access logs: 200s up to 25 Sep, 500s from 25 Sep onward (not caused by the 2.10.5 release).

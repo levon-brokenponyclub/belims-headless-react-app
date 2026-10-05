@@ -12,7 +12,8 @@ What the storefront and CMS do today, and where each feature lives. Start at the
 | Product cards | `ProductCard`, `NexvoProductCard` | Responsive Cloudflare images, wishlist toggle, deal badge, quick view. |
 | Shop / category archive | `Archive` (`/shop`, `/shop/:categorySlug`) | Desktop sidebar + mobile filter drawer (categories, price, availability, offers, brand, range, colour), active filter chips, sort, grid/list. Filter options from `GET /belims/v1/products/filters`. |
 | Product page | `SingleProduct` | Gallery, buy box, fulfilment tiles, accordions, "Frequently bought with". |
-| Search | `SearchModal`, `SearchResults` | |
+| Search | `SearchModal`, `SearchResults` | Header dropdown: matching products (left); Suggestions, Departments and **Brands** (right). Brands = `product_brand` terms whose name matches the query plus brands of the matched products, with logo (`BRAND_LOGOS` in `BrandStrip.tsx`, initials otherwise) and term count; click → `/brands/:slug`. Brand list from `GET /belims/v1/products/filters`. |
+| Brand archive | `Archive` (`/brands/:brandSlug`) | All products of one brand; reached from search Brands, the homepage `BrandStrip` and `/shop?brand=`. |
 | Mega menu & mobile nav | `MegaMenu`, `MobileNav`, `MobileNavPanel`, `MobileBottomNav` | |
 | Quick view | `QuickView` | Multi-image gallery, badges, stock warning, add to cart / buy now. |
 | Comparison | `ComparisonModal` | Up to 4 products. |

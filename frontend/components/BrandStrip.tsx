@@ -55,7 +55,7 @@ const FALLBACK_BRANDS: Brand[] = [
 
 // Self-hosted logos (public/brands/), keyed by CMS brand slug. Brands without
 // an entry render a text badge — no speculative third-party requests.
-const BRAND_LOGOS: Record<string, string> = {
+export const BRAND_LOGOS: Record<string, string> = {
   "assa-abloy": "/brands/assa-abloy.svg",
   dulux: "/brands/dulux.svg",
   yale: "/brands/yale.svg",

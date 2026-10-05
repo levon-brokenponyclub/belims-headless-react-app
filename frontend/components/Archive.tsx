@@ -368,7 +368,9 @@ export const Archive: React.FC<ArchiveProps> = ({
     // 2. Filter by Brand (Prop)
     if (brand) {
       filtered = filtered.filter(
-        (p) => p.brand && p.brand.toLowerCase() === brand.toLowerCase(),
+        (p) =>
+          p.brand_slug === brand.toLowerCase().replace(/\s+/g, "-") ||
+          (p.brand && p.brand.toLowerCase() === brand.toLowerCase()),
       );
     }
 
@@ -475,7 +477,9 @@ export const Archive: React.FC<ArchiveProps> = ({
 
     if (brand) {
       filtered = filtered.filter(
-        (p) => p.brand && p.brand.toLowerCase() === brand.toLowerCase(),
+        (p) =>
+          p.brand_slug === brand.toLowerCase().replace(/\s+/g, "-") ||
+          (p.brand && p.brand.toLowerCase() === brand.toLowerCase()),
       );
     }
 
@@ -1451,7 +1455,8 @@ export const Archive: React.FC<ArchiveProps> = ({
                 {title}
               </h1>
               <p className="text-xs sm:text-sm text-[#637381] mt-0.5">
-                Showing 1-{filteredProducts.length} of {products.length} Results
+                Showing {filteredProducts.length}{" "}
+                {filteredProducts.length === 1 ? "Result" : "Results"}
               </p>
             </div>
           </div>

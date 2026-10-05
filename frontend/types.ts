@@ -19,6 +19,7 @@ export interface Product {
   description?: string;
   colors?: string[];
   brand?: string;
+  brand_slug?: string;
   sku?: string;
   features?: string[];
   specifications?: { label: string; value: string }[];

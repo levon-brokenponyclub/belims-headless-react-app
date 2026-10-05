@@ -41,7 +41,8 @@ import { DeliveryDetailsPopover, SavedAddressOption } from "./DeliveryDetailsPop
 const DELIVERY_POPOVER_DISMISSED_KEY = "belims_delivery_popover_dismissed";
 import { MegaMenu } from "./MegaMenu";
 import { MobileNav } from "./MobileNav";
-import { SearchResults } from "./SearchResults";
+import { SearchResults, SearchBrand } from "./SearchResults";
+import { fetchProductFilters } from "../services/wooCommerceService";
 import {
   buildAddressLabel,
   readStoredAddress,
@@ -587,6 +588,37 @@ export const Header: React.FC<HeaderProps> = ({
     }
   }, [searchQuery, flatCategoryList, products]);
 
+  const [brandTerms, setBrandTerms] = useState<SearchBrand[]>([]);
+  useEffect(() => {
+    let isMounted = true;
+    fetchProductFilters().then((data) => {
+      if (!isMounted) return;
+      setBrandTerms(
+        (data.brand || []).map((b) => ({ name: b.name, slug: b.slug, count: b.count })),
+      );
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+  // Count only storefront (sellable) products so the number matches the brand page
+  const searchBrands = useMemo(() => {
+    if (products.length === 0) return brandTerms;
+    const counts: Record<string, number> = {};
+    products.forEach((p) => {
+      if (p.brand_slug) counts[p.brand_slug] = (counts[p.brand_slug] || 0) + 1;
+    });
+    return brandTerms
+      .map((b) => ({ ...b, count: counts[b.slug] || 0 }))
+      .filter((b) => b.count > 0);
+  }, [brandTerms, products]);
+
+  const handleBrandSelect = (brandSlug: string) => {
+    navigate(`/brands/${encodeURIComponent(brandSlug)}`);
+    setSearchQuery("");
+    setSearchResults(null);
+  };
+
   const handleProductSelect = (product: Product) => {
     navigate(buildProductUrl(product));
     setSearchQuery(""); // Clear search
@@ -876,6 +908,8 @@ export const Header: React.FC<HeaderProps> = ({
                 searchQuery={searchQuery}
                 onViewAllResults={() => handleSearchSubmit()}
                 onCategorySelect={handleCategorySelect}
+                brands={searchBrands}
+                onBrandSelect={handleBrandSelect}
                 onProductSelect={handleProductSelect}
                 addToCart={() => {}}
                 onBuyNow={() => {}}
@@ -1076,6 +1110,8 @@ export const Header: React.FC<HeaderProps> = ({
               searchQuery={searchQuery}
               onViewAllResults={() => handleSearchSubmit()}
               onCategorySelect={handleCategorySelect}
+              brands={searchBrands}
+              onBrandSelect={handleBrandSelect}
               onProductSelect={handleProductSelect}
               addToCart={() => {}}
               onBuyNow={() => {}}

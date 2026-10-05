@@ -2,6 +2,13 @@ import React, { useMemo } from "react";
 import { Search } from "lucide-react";
 import { Product, CategoryNode } from "../types";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
+import { BRAND_LOGOS } from "./BrandStrip";
+
+export interface SearchBrand {
+  name: string;
+  slug: string;
+  count: number;
+}
 
 interface SearchResultsProps {
   searchResults: {
@@ -15,7 +22,9 @@ interface SearchResultsProps {
   searchQuery: string;
   onViewAllResults: () => void;
   onCategorySelect: (categoryLabel: string) => void;
-  onBrandSelect?: (brand: string) => void;
+  /** All storefront brands (product_brand terms) — matched against the query */
+  brands?: SearchBrand[];
+  onBrandSelect?: (brandSlug: string) => void;
   onProductSelect: (product: Product) => void;
   addToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
@@ -29,6 +38,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
   searchQuery,
   onViewAllResults,
   onCategorySelect,
+  brands: allBrands = [],
   onBrandSelect,
   onProductSelect,
   addToCart,
@@ -68,14 +78,23 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
     return Array.from(deptSet).slice(0, 10);
   }, [searchResults.categories]);
 
-  // Extract unique brands from matched products
+  // Brands whose name matches the query, then brands of the matched products
   const brands = useMemo(() => {
-    const brandSet = new Set<string>();
+    const query = searchQuery.trim().toLowerCase();
+    const bySlug = new Map(allBrands.map((b) => [b.slug, b]));
+    const picked = new Map<string, SearchBrand>();
+    if (query) {
+      allBrands
+        .filter((b) => b.name.toLowerCase().includes(query))
+        .forEach((b) => picked.set(b.slug, b));
+    }
     searchResults.products.forEach((product) => {
-      if (product.brand) brandSet.add(product.brand);
+      const slug = product.brand_slug;
+      if (!slug || picked.has(slug)) return;
+      picked.set(slug, bySlug.get(slug) ?? { name: product.brand || slug, slug, count: 0 });
     });
-    return Array.from(brandSet).slice(0, 10);
-  }, [searchResults.products]);
+    return Array.from(picked.values()).slice(0, 8);
+  }, [allBrands, searchQuery, searchResults.products]);
 
   return (
     <div
@@ -204,16 +223,31 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
                 Brands
               </h4>
               <div className="space-y-2">
-                {brands.map((brand) => (
-                  <button
-                    key={brand}
-                    type="button"
-                    onClick={() => onBrandSelect?.(brand)}
-                    className="block w-full text-left text-sm text-gray-700 hover:text-belims-accent transition-colors"
-                  >
-                    {brand}
-                  </button>
-                ))}
+                {brands.map((brand) => {
+                  const logo = BRAND_LOGOS[brand.slug];
+                  return (
+                    <button
+                      key={brand.slug}
+                      type="button"
+                      onClick={() => onBrandSelect?.(brand.slug)}
+                      className="flex items-center gap-3 w-full text-left text-sm text-gray-700 hover:text-belims-accent transition-colors"
+                    >
+                      <span className="flex h-8 w-14 flex-shrink-0 items-center justify-center rounded border border-gray-200 bg-white">
+                        {logo ? (
+                          <img src={logo} alt="" className="max-h-6 max-w-12 object-contain" />
+                        ) : (
+                          <span className="text-xs font-semibold text-gray-500">
+                            {brand.name.slice(0, 2).toUpperCase()}
+                          </span>
+                        )}
+                      </span>
+                      <span className="truncate">{brand.name}</span>
+                      {brand.count > 0 && (
+                        <span className="ml-auto text-xs text-gray-400">{brand.count}</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

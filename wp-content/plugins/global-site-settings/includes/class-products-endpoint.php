@@ -23,7 +23,8 @@ class Belims_Products_Endpoint {
         'stock',
         'stock_status',
         'maxStock',
-        
+        'brand',
+        'brand_slug',
         'isFeatured',
         'deals',
         'best_deal_consumer',
@@ -312,7 +313,8 @@ class Belims_Products_Endpoint {
 
         // Get brand from product_brand taxonomy
         $brand_terms = wp_get_post_terms($product->get_id(), 'product_brand');
-        $brand = !empty($brand_terms) ? $brand_terms[0]->name : '';
+        $brand = !empty($brand_terms) && !is_wp_error($brand_terms) ? $brand_terms[0]->name : '';
+        $brand_slug = !empty($brand_terms) && !is_wp_error($brand_terms) ? $brand_terms[0]->slug : '';
 
         $normalized_deals = $this->get_normalized_deals($product);
         $best_consumer_deal = $this->resolve_best_deal($normalized_deals, 'consumer');
@@ -350,7 +352,8 @@ class Belims_Products_Endpoint {
             'stock' => intval($product->get_stock_quantity()),
             'stock_status' => $product->is_in_stock() ? 'instock' : 'outofstock',
             'maxStock' => 100,
-            
+            'brand' => $brand,
+            'brand_slug' => $brand_slug,
             'isFeatured' => $this->is_product_featured($product),
             'deals' => $normalized_deals,
             'best_deal_consumer' => $best_consumer_deal,
@@ -417,7 +420,8 @@ class Belims_Products_Endpoint {
             'acf' => $acf_data,
             'deals' => $normalized_deals,
             'best_deal_consumer' => $best_consumer_deal,
-            
+            'stock' => intval($product->get_stock_quantity()),
+            'stock_status' => $product->is_in_stock() ? 'instock' : 'outofstock',
             'maxStock' => 100, // UI reference
             'weight' => $weight,
             'description' => apply_filters('the_content', $product->get_description()),
@@ -426,6 +430,7 @@ class Belims_Products_Endpoint {
             'isFeatured' => $is_featured,
             'sku' => $product->get_sku(),
             'brand' => $brand ?: '',
+            'brand_slug' => $brand_slug,
             'features' => $features,
             'specifications' => $specifications,
             'tags' => $this->get_product_tags($product),
