@@ -9,6 +9,108 @@ if (!defined('ABSPATH')) {
 
 class Belims_Products_Endpoint {
 
+    /**
+     * Server-side response cache (2.10.9). Responses are stored in transients (Redis on
+     * Cloudways) keyed by route + result-shaping params; any product change bumps the
+     * version so every entry goes stale at once. A stale entry is rebuilt by one request
+     * (lock) while the others get the previous copy — no rebuild stampede.
+     */
+    const CACHE_VERSION_OPTION = 'belims_products_cache_version';
+    const CACHE_TTL = 43200; // 12 h — entries are invalidated by version, TTL only reclaims space
+    const CACHE_PARAMS = array('view', 'fields', 'page', 'per_page', 'featured', 'category', 'brand', 'search');
+    const CACHE_META_KEYS = array(
+        '_price', '_regular_price', '_sale_price', '_stock', '_stock_status', '_thumbnail_id',
+        '_product_image_gallery', 'deals', '_consumer_deal_type', '_trade_deal_type', 'range', 'range_label', 'range_slug',
+    );
+
+    private static $cache_dirty = false;
+
+    public static function register_cache_hooks() {
+        $bump = array(__CLASS__, 'bump_cache_version');
+        $hooks = array(
+            'woocommerce_new_product', 'woocommerce_update_product', 'woocommerce_delete_product', 'woocommerce_trash_product',
+            'woocommerce_product_set_stock', 'woocommerce_variation_set_stock',
+            'woocommerce_product_set_stock_status', 'woocommerce_variation_set_stock_status',
+            'woocommerce_scheduled_sales', 'edited_product_cat', 'delete_product_cat', 'edited_product_brand', 'delete_product_brand',
+        );
+        foreach ($hooks as $hook) {
+            add_action($hook, $bump);
+        }
+        $if_product = function ($post_id) {
+            if (get_post_type($post_id) === 'product') {
+                self::bump_cache_version();
+            }
+        };
+        add_action('untrashed_post', $if_product);
+        add_action('set_object_terms', $if_product);
+        add_action('acf/save_post', function ($post_id) use ($if_product) {
+            if (is_numeric($post_id)) {
+                $if_product((int) $post_id);
+            }
+        }, 20);
+        $if_product_meta = function ($meta_id, $post_id, $meta_key) use ($if_product) {
+            if (in_array($meta_key, self::CACHE_META_KEYS, true)) {
+                $if_product($post_id);
+            }
+        };
+        add_action('added_post_meta', $if_product_meta, 10, 3);
+        add_action('updated_post_meta', $if_product_meta, 10, 3);
+        add_action('deleted_post_meta', $if_product_meta, 10, 3);
+    }
+
+    /**
+     * Invalidate all cached product responses. Bumps immediately on the first change in a
+     * request and again at shutdown, so a long request (FTG sync) can't leave a response
+     * rebuilt mid-way marked as current.
+     */
+    public static function bump_cache_version() {
+        if (!self::$cache_dirty) {
+            self::$cache_dirty = true;
+            update_option(self::CACHE_VERSION_OPTION, (string) microtime(true), false);
+            add_action('shutdown', function () {
+                update_option(self::CACHE_VERSION_OPTION, (string) microtime(true), false);
+            });
+        }
+    }
+
+    /**
+     * Serve from cache, or build via $build() => array($payload, $headers) and store it.
+     */
+    private function cached_response($request, $route, callable $build) {
+        $version = (string) get_option(self::CACHE_VERSION_OPTION, '0');
+        $parts = array('route' => $route);
+        foreach (self::CACHE_PARAMS as $param) {
+            $value = $request->get_param($param);
+            if ($value !== null && $value !== '') {
+                $parts[$param] = is_array($value) ? implode(',', $value) : (string) $value;
+            }
+        }
+        if (isset($parts['fields'])) {
+            $fields = (array) $this->parse_fields_param($parts['fields']);
+            sort($fields);
+            $parts['fields'] = implode(',', $fields);
+        }
+        ksort($parts);
+        $key = 'belims_p_' . md5(wp_json_encode($parts));
+
+        $entry = get_transient($key);
+        $has_entry = is_array($entry) && isset($entry['v'], $entry['payload']);
+        if ($has_entry && $entry['v'] === $version) {
+            return $this->build_cached_response($request, $entry['payload'], (array) $entry['headers'], 'HIT');
+        }
+        $locked = wp_cache_add($key, 1, 'belims_products_lock', 60);
+        if ($has_entry && !$locked) {
+            return $this->build_cached_response($request, $entry['payload'], (array) $entry['headers'], 'STALE');
+        }
+
+        list($payload, $headers) = $build();
+        set_transient($key, array('v' => $version, 'payload' => $payload, 'headers' => $headers), self::CACHE_TTL);
+        if ($locked) {
+            wp_cache_delete($key, 'belims_products_lock');
+        }
+        return $this->build_cached_response($request, $payload, $headers, 'MISS');
+    }
+
     private $default_listing_fields = array(
         'id',
         'name',
@@ -62,6 +164,12 @@ class Belims_Products_Endpoint {
      * own sorting/filtering over this set, as they did over the full catalogue.
      */
     public function get_home_products($request) {
+        return $this->cached_response($request, 'home', function () use ($request) {
+            return array($this->build_home_products($request), array());
+        });
+    }
+
+    private function build_home_products($request) {
         $fields = $this->parse_fields_param($request->get_param('fields'));
         $in_stock = array('key' => '_stock_status', 'value' => 'instock');
         $base = array(
@@ -104,7 +212,7 @@ class Belims_Products_Endpoint {
             }
         }
 
-        return $this->build_cached_response($request, $products);
+        return $products;
     }
 
     /**
@@ -121,6 +229,15 @@ class Belims_Products_Endpoint {
      * Get all products
      */
     public function get_products($request) {
+        return $this->cached_response($request, 'products', function () use ($request) {
+            return $this->build_products($request);
+        });
+    }
+
+    /**
+     * @return array array($products, $headers)
+     */
+    private function build_products($request) {
         $params = $request->get_params();
         $view = !empty($params['view']) && $params['view'] === 'detail' ? 'detail' : 'listing';
         $fields = $this->parse_fields_param(isset($params['fields']) ? $params['fields'] : null);
@@ -206,7 +323,7 @@ class Belims_Products_Endpoint {
             $headers['X-Per-Page'] = (string) $per_page;
         }
 
-        return $this->build_cached_response($request, $products, $headers);
+        return array($products, $headers);
     }
 
     /**
@@ -223,10 +340,9 @@ class Belims_Products_Endpoint {
             return new WP_Error('product_not_found', 'Product not found', array('status' => 404));
         }
 
-        return $this->build_cached_response(
-            $request,
-            $this->format_product($product, $view, $fields)
-        );
+        return $this->cached_response($request, 'product/' . (int) $id, function () use ($product, $view, $fields) {
+            return array($this->format_product($product, $view, $fields), array());
+        });
     }
 
     /**
@@ -471,7 +587,7 @@ class Belims_Products_Endpoint {
         return $filtered;
     }
 
-    private function build_cached_response($request, $payload, $extra_headers = array()) {
+    private function build_cached_response($request, $payload, $extra_headers = array(), $cache_status = '') {
         $etag = '"' . md5(wp_json_encode($payload)) . '"';
         $if_none_match = trim((string) $request->get_header('if-none-match'));
 
@@ -480,6 +596,9 @@ class Belims_Products_Endpoint {
             'ETag' => $etag,
             'Vary' => 'Accept-Encoding',
         ), $extra_headers);
+        if ($cache_status !== '') {
+            $headers['X-Belims-Cache'] = $cache_status;
+        }
 
         if (!empty($if_none_match)) {
             $incoming_tags = array_map('trim', explode(',', $if_none_match));
@@ -789,3 +908,5 @@ class Belims_Products_Endpoint {
         return array_slice($candidates, 0, 4);
     }
 }
+
+Belims_Products_Endpoint::register_cache_hooks();

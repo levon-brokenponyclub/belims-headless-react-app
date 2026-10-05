@@ -85,8 +85,18 @@ export const Archive: React.FC<ArchiveProps> = ({
     Product[] | null
   >(null);
   const [isSearchScopedLoading, setIsSearchScopedLoading] = useState(false);
+  const [brandScopedProducts, setBrandScopedProducts] = useState<
+    Product[] | null
+  >(null);
+  const [isBrandScopedLoading, setIsBrandScopedLoading] = useState(false);
+  const scopedProducts =
+    searchScopedProducts || categoryScopedProducts || brandScopedProducts;
+  // A scoped list (search / category / brand) doesn't wait for the full catalogue
   const showSkeletons =
-    isLoadingProducts || isCategoryScopedLoading || isSearchScopedLoading;
+    isCategoryScopedLoading ||
+    isSearchScopedLoading ||
+    isBrandScopedLoading ||
+    (!scopedProducts && isLoadingProducts);
   const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
 
   // Accordion open/close states
@@ -237,6 +247,41 @@ export const Archive: React.FC<ArchiveProps> = ({
   }, [searchQuery]);
 
   useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    if (!brand) {
+      setBrandScopedProducts(null);
+      setIsBrandScopedLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setIsBrandScopedLoading(true);
+    const brandSlug = brand.toLowerCase().replace(/\s+/g, "-");
+    fetchProducts(undefined, undefined, { brand: brandSlug, signal: controller.signal })
+      .then((items) => {
+        if (!isMounted) return;
+        const validItems = items.filter(isProductPurchasable);
+        setBrandScopedProducts(validItems.length > 0 ? validItems : null);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setBrandScopedProducts(null);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsBrandScopedLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [brand]);
+
+  useEffect(() => {
     setSelectedRanges(range ? [range] : []);
   }, [range]);
 
@@ -317,12 +362,7 @@ export const Archive: React.FC<ArchiveProps> = ({
 
   // Filter Logic
   const filteredProducts = useMemo(() => {
-    let sourceProducts = products;
-    if (searchScopedProducts) {
-      sourceProducts = searchScopedProducts;
-    } else if (categoryScopedProducts) {
-      sourceProducts = categoryScopedProducts;
-    }
+    const sourceProducts = scopedProducts || products;
 
     let filtered = [...sourceProducts];
     const activeCategoryTree = categoryTree.length
@@ -456,8 +496,7 @@ export const Archive: React.FC<ArchiveProps> = ({
     return filtered;
   }, [
     products,
-    categoryScopedProducts,
-    searchScopedProducts,
+    scopedProducts,
     brand,
     searchQuery,
     priceRange,
@@ -471,8 +510,7 @@ export const Archive: React.FC<ArchiveProps> = ({
   ]);
 
   const categoryCountsSourceProducts = useMemo(() => {
-    const sourceProducts =
-      searchScopedProducts || categoryScopedProducts || products;
+    const sourceProducts = scopedProducts || products;
     let filtered = [...sourceProducts];
 
     if (brand) {
@@ -538,8 +576,7 @@ export const Archive: React.FC<ArchiveProps> = ({
     return filtered;
   }, [
     products,
-    categoryScopedProducts,
-    searchScopedProducts,
+    scopedProducts,
     brand,
     searchQuery,
     priceRange,

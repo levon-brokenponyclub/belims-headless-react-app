@@ -176,6 +176,8 @@ export const cachedGetJson = async <T>(
 };
 
 type FetchProductsOptions = {
+  /** product_brand slug — brand archive fetches only that brand */
+  brand?: string;
   page?: number;
   perPage?: number;
   fields?: string[];
@@ -247,6 +249,10 @@ export const fetchProducts = async (
 
     if (search) {
       params.append("search", search);
+    }
+
+    if (options.brand) {
+      params.append("brand", options.brand);
     }
 
     const url = params.toString() ? `${endpoint}?${params}` : endpoint;

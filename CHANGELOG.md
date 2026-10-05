@@ -15,6 +15,25 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 
 ---
 
+## 2026-10-05 — Global Site Settings 2.10.9: server-side product response cache; brand pages fetch only their brand
+
+Why: on 2026-10-05 a local storefront pointed at staging repeatedly requested the full catalogue (dev-mode double effects + retries + several tabs). Each uncached `/products` listing costs 7–10 s CPU (staging and production measured the same: 8.2 s / 9.9 s cold), the server has 2 vCPUs, and abandoned requests kept running — 12–20 concurrent copies saturated staging's PHP pool (load ~22, CPU 100 %, staging 3 GB of 3.82 GB RAM) and slowed production to ~8–10 s per request. Production is normally shielded only by Cloudflare's edge cache; staging (default Cloudways URL) and the Vite proxy have none. Mitigation at the time: stopped the local dev server and killed the stuck staging `SELECT`s (17 + 15, approved) — production back to 1.2 s by 14:27 UTC.
+
+### Global Site Settings 2.10.9
+- `includes/class-products-endpoint.php`: `cached_response()` caches the finished `/products`, `/products/home` and `/products/:id` responses in transients (Redis on Cloudways), keyed by route + result-shaping params (`cb` and other params ignored). Version option `belims_products_cache_version` bumped by product/stock/term/ACF/meta/scheduled-sale changes (immediately and at shutdown); stale entries rebuilt by one request under a `wp_cache_add` lock while others get the previous copy; `X-Belims-Cache: HIT|MISS|STALE`.
+- README: *Product response cache* section; version 2.10.9 (README / USERGUIDE headers).
+
+### frontend
+- `services/wooCommerceService.ts`: `fetchProducts(..., { brand })` → `GET /products?brand=<slug>`.
+- `components/Archive.tsx`: brand pages fetch brand-scoped products (like category/search); skeletons follow the scoped list when there is one instead of always waiting for the full catalogue (category pages benefit too).
+
+### Verified (local)
+- `php -l`; `npm run build` OK.
+- Full listing MISS 2.3 s → HIT 0.08 s; same with `cb=123` and reordered `fields` → HIT; `/products/home` MISS 15.4 s → HIT 0.08 s; brand listing and product detail MISS → HIT (~0.06 s).
+- `/brands/bostik` (dev server → local CMS, one tab): 8 products shown 0.66 s after navigation via the brand-scoped request.
+
+---
+
 ## 2026-10-05 — Brands in search + brand archive pages (`/brands/:slug`) — GSS 2.10.8
 
 Why: search had no way to find a brand, and brand links went nowhere — the homepage `BrandStrip` already linked to `/brands/{slug}` (no route), the search dropdown's Brands block never rendered, and `/shop?brand=` and the sidebar Brand filter showed nothing, all because listing products carried no `brand`.

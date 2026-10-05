@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.10.8  
+**Version:** 2.10.9  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -189,6 +189,17 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/ftg/brands` · `/ftg/instances` · `/ftg/products/:token` · `/ftg/product/:sku` · `/ftg/sync/status` · `/ftg/display-on-web-count` | Admin | FTG catalogue reads |
 | `GET` | `/ftg/brand-count` | Public | Count products for a brand |
 | `POST` | `/ftg/sync` · `/ftg/sync/product` · `/ftg/cleanup-attributes` | Admin | FTG sync operations |
+
+### Product response cache (2.10.9)
+
+`/products`, `/products/home` and `/products/:id` cache their finished response server-side (`Belims_Products_Endpoint::cached_response()`), in transients — Redis via Object Cache Pro on Cloudways, the options table locally.
+
+- **Key:** route + `view`, `fields` (sorted), `page`, `per_page`, `featured`, `category`, `brand`, `search`. Other params (e.g. `cb`) are ignored, so they can't force a rebuild.
+- **Invalidation:** option `belims_products_cache_version`; any product change bumps it (first change in a request and again at shutdown), so every entry goes stale at once. Hooks: product new/update/delete/trash/untrash, stock + stock status, `set_object_terms` on products, `product_cat` / `product_brand` edit/delete, `acf/save_post` on products, `woocommerce_scheduled_sales`, and product meta `_price`, `_regular_price`, `_sale_price`, `_stock`, `_stock_status`, `_thumbnail_id`, `_product_image_gallery`, `deals`, `_consumer_deal_type`, `_trade_deal_type`, `range*`. TTL 12 h only reclaims space.
+- **Stampede guard:** a stale entry is rebuilt by one request (`wp_cache_add` lock, group `belims_products_lock`, 60 s — atomic with Redis); concurrent requests get the previous copy.
+- **Header:** `X-Belims-Cache: HIT | MISS | STALE`.
+- **Clear manually:** `wp eval 'Belims_Products_Endpoint::bump_cache_version();'`.
+- Why: an uncached full listing costs 7–10 s CPU on the 2-vCPU server; on 2026-10-05 repeated uncached requests from a local storefront against staging saturated the server and slowed production.
 
 PayFast's browser return is handled outside the REST API (`includes/payfast/class-payfast-return-handler.php`, `template_redirect`). `includes/class-ecommerce-policies.php` registers a duplicate `/ecommerce-policies` route but is **not loaded**.
 
