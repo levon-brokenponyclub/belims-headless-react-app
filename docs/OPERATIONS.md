@@ -16,16 +16,16 @@ Hosting, deploys, caching and infrastructure quirks. Start at the root [README](
 | Edge | Vercel only | Cloudflare (zone `belims.co.za`, Free plan) → Vercel | Cloudflare → Cloudways |
 | Access | Public (Vercel Authentication **off**) | Public; shows Coming Soon until launch | WP admin |
 
-There is **one CMS** behind both preview and production.
+Production (`www.belims.co.za`) reads the production CMS; the preview (`belims.vercel.app`) reads the **staging CMS** since 2026-10-05 (host-based rewrite below).
 
-**Staging CMS (2026-10-02):** Cloudways *staging* app `xnmtexmyyf` (cloned from `uhkkwupuum`), https://wordpress-1482444-6707114.cloudwaysapps.com, path `~/applications/xnmtexmyyf/public_html`. No storefront reads from it. For testing plugin releases before production — see [Staging CMS](#staging-cms).
+**Staging CMS (2026-10-02):** Cloudways *staging* app `xnmtexmyyf` (cloned from `uhkkwupuum`), https://wordpress-1482444-6707114.cloudwaysapps.com, path `~/applications/xnmtexmyyf/public_html`. The preview `belims.vercel.app` reads from it (Bob Go Sandbox, PayFast test mode) — test orders go there. For testing plugin releases before production — see [Staging CMS](#staging-cms).
 
 ## Vercel
 
 - **Project:** `belims`, framework Vite, root directory `frontend`, Node 24, production branch `vercel`. Git: `levon-brokenponyclub/belims-headless-react-app`.
 - **Domains:** `www.belims.co.za` + `belims.co.za` (production); `belims.vercel.app` assigned to branch `main` (preview).
 - **Config:** [`frontend/vercel.json`](../frontend/vercel.json)
-  - Rewrites: `/api/:path*` → `https://cms.belims.co.za/wp-json/:path*`; everything else → `/app.html` (the homepage is `index.html` with the hero preload).
+  - Rewrites: `/api/:path*` → **staging** `https://wordpress-1482444-6707114.cloudwaysapps.com/wp-json/:path*` when the host is `belims.vercel.app` (`has: host`), otherwise → `https://cms.belims.co.za/wp-json/:path*` — so releasing `main` to `vercel` never points www at staging. Everything else → `/app.html` (the homepage is `index.html` with the hero preload).
   - Headers: `/assets/*` `max-age=31536000, immutable`; `/images/*`, `/brands/*`, `/favicon.svg` 7 days + `stale-while-revalidate`. HTML stays `max-age=0`.
 - **Env vars:** see [ARCHITECTURE → Environment variables](ARCHITECTURE.md#environment-variables-frontend). `VITE_*` values are build-time.
 - **Deploy hooks:** "CMS Homepage (preview)" → `main` (CMS option `belims_vercel_deploy_hook_preview`); "CMS Homepage" → `vercel` (`belims_vercel_deploy_hook_production`). Which one a Homepage save triggers is chosen in Site Settings → Homepage → *Saving rebuilds* (`belims_homepage_deploy_target`: preview / production / both).

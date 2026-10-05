@@ -4,6 +4,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
+      "has": [{ "type": "host", "value": "belims.vercel.app" }],
+      "destination": "https://wordpress-1482444-6707114.cloudwaysapps.com/wp-json/:path*"
+    },
+    {
+      "source": "/api/:path*",
       "destination": "https://cms.belims.co.za/wp-json/:path*"
     },
     {

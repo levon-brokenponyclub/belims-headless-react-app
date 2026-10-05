@@ -10,6 +10,7 @@ How the Belims storefront is put together. Start at the root [README](../README.
 Browser ──► www.belims.co.za (Cloudflare proxy) ──► Vercel (static Vite build, `frontend/`)
                                    │
                                    └─ /api/*  ── Vercel rewrite ──► cms.belims.co.za/wp-json/*
+                                      (preview belims.vercel.app → staging CMS wordpress-1482444-6707114.cloudwaysapps.com)
                                                                      (Cloudflare → Cloudways: WordPress + WooCommerce
                                                                       + Global Site Settings plugin)
 Product/media images ──► cms.belims.co.za/cdn-cgi/image/… (Cloudflare Image Transformations, AVIF/WebP)
@@ -33,7 +34,7 @@ Product/media images ──► cms.belims.co.za/cdn-cgi/image/… (Cloudflare Im
 | [`frontend/src/features/chatbot/`](../frontend/src/features/chatbot) | Chatbot module (currently not mounted) |
 | [`frontend/build/homepagePlugin.ts`](../frontend/build/homepagePlugin.ts) | Vite plugin that bakes CMS homepage content into the build |
 | [`frontend/api/google-reviews.ts`](../frontend/api/google-reviews.ts) | Vercel serverless function (Google Places reviews) |
-| [`frontend/vercel.json`](../frontend/vercel.json) | `/api/*` rewrite, SPA fallback (`/app.html`), cache headers |
+| [`frontend/vercel.json`](../frontend/vercel.json) | `/api/*` rewrite (host `belims.vercel.app` → staging CMS, else production CMS), SPA fallback (`/app.html`), cache headers |
 | [`frontend/vite.config.ts`](../frontend/vite.config.ts) | Dev server (port 3000, `/api` proxy), plugins, dev mocks |
 | [`frontend/public/`](../frontend/public) | Static assets (`images/`, `brands/` logos, favicon) |
 | [`wp-content/plugins/global-site-settings/`](../wp-content/plugins/global-site-settings) | Custom CMS plugin (REST API, admin dashboard, integrations) |

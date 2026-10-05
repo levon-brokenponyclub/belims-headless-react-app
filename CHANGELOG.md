@@ -15,6 +15,17 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 
 ---
 
+## 2026-10-05 — Preview (`belims.vercel.app`) reads the staging CMS
+
+Why: test orders from the preview must use Bob Go **Sandbox** and PayFast test mode without touching the production CMS. Staging already has both (Bob Go Smart Shipping on Sandbox, channel = staging domain; PayFast test mode; CORS allows `https://belims.vercel.app`; `headless_frontend_url` = `https://belims.vercel.app`).
+
+### frontend/vercel.json
+- `/api/:path*` → staging `https://wordpress-1482444-6707114.cloudwaysapps.com/wp-json/:path*` when the request host is `belims.vercel.app` (`has: [{ type: host }]`); otherwise production `https://cms.belims.co.za/wp-json/:path*`. The file is shared by `main` (preview) and `vercel` (production), so the host condition keeps www on production after every release.
+- Preview homepage hero is still baked at build time from the production CMS.
+- Docs: OPERATIONS (Vercel rewrites, staging CMS), ARCHITECTURE diagram + config table.
+
+---
+
 ## 2026-10-05 — Global Site Settings 2.10.9: server-side product response cache; brand pages fetch only their brand
 
 Why: on 2026-10-05 a local storefront pointed at staging repeatedly requested the full catalogue (dev-mode double effects + retries + several tabs). Each uncached `/products` listing costs 7–10 s CPU (staging and production measured the same: 8.2 s / 9.9 s cold), the server has 2 vCPUs, and abandoned requests kept running — 12–20 concurrent copies saturated staging's PHP pool (load ~22, CPU 100 %, staging 3 GB of 3.82 GB RAM) and slowed production to ~8–10 s per request. Production is normally shielded only by Cloudflare's edge cache; staging (default Cloudways URL) and the Vite proxy have none. Mitigation at the time: stopped the local dev server and killed the stuck staging `SELECT`s (17 + 15, approved) — production back to 1.2 s by 14:27 UTC.
