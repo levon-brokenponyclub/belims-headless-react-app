@@ -15,6 +15,51 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 
 ---
 
+## 2026-10-05 — Global Site Settings 2.10.11: shipment tracking in My Account; `/track` follows the Bob Go plugin environment
+
+Why: test order #5576 synced to Bob Go Sandbox and Bob Go wrote the shipment back (courier, tracking `UASSNTHC`, `https://track.dev.bobgo.co.za/UASSNTHC`, status → Shipped), but customers had no way to see it: the Bob Go **Order shipped** email was off (`shipped_email_enabled` empty), My Account's **Track** link passed the *order number* to `/track` (which expects a Bob Go tracking reference), and `/orders` returned no shipment data. `/track` also picked the API host from GSS's own `bobgo_environment`, not the Bob Go plugin.
+
+### Bob Go plugin (staging, by the user)
+- Bob Go → Notifications: **Order shipped** email enabled (`shipped_email_enabled=1`; custom order statuses already on). WooCommerce sends it when Bob Go moves an order to Shipped, with courier, tracking number and a Track button. Staging blocks all email (`staging-block-mail.php`), so on staging only the attempt is logged.
+
+### Global Site Settings 2.10.11
+- `includes/class-orders-endpoint.php`: `tracking` array on `GET /orders` and `/orders/:id` from `_bobgo_shipments` (courier, tracking_number, tracking_url, status, estimated_delivery).
+- `includes/bobgo-shipping/class-bobgo-tracking-endpoint.php`: API host = Bob Go plugin's `SettingsPage::get_base_url()`; GSS `bobgo_environment` only as fallback. On a 404 with `channel=` it retries by `tracking_reference` alone — Bob Go Sandbox doesn't file shipments under the staging domain (`channel=…` → "not found"; reference alone → Collected, Sandbox Couriers). References are public on Bob Go's tracking pages.
+- `tracking_url` in `/orders` is built per Bob Go plugin environment: `track.bobgo.co.za` (prod), `track.sandbox.bobgo.co.za` (stage), `track.dev.bobgo.co.za` (dev). The plugin itself writes `track.dev…` for every non-production environment (`Webhook::build_tracking_url()`), which is wrong for Sandbox — production links are unaffected; worth reporting to Bob Go. The plugin's shipped email on staging still uses its own `track.dev` link.
+- README (`/orders`, `/track`), version 2.10.11.
+
+### frontend
+- `types.ts`: `Order.tracking` (`OrderTracking`), statuses `shipped` / `partially-shipped`.
+- `components/AccountPage.tsx`: **Track** only when a tracking number exists (links with the tracking number); order details **Shipment** block (courier · number · status, *Track here*, *Track shipment ↗*); indigo status pill for shipped.
+- `docs/FEATURES.md` (Account area).
+
+### Verified
+- `php -l`; `npm run build` OK.
+
+### Deployed — staging (2026-10-05)
+- Backups `~/backups/xnmtexmyyf-gss-2.10.10-20261005-211127.tgz` and `…-gss-2.10.11a-20261005-211721.tgz` (redeploy with the `/track` retry + tracking URL fix); files matched the previously deployed copies; `php -l` OK; GSS 2.10.11 active.
+- `GET /orders/5576` → status `shipped`, `tracking: [{courier: Sandbox Couriers, tracking_number: UASSNTHC, tracking_url: https://track.sandbox.bobgo.co.za/UASSNTHC, status: collected}]`. `POST /track {trackingRef: UASSNTHC}` via `belims.vercel.app` → `status: Collected`, `eta: 2026-10-09 17:00`, events.
+- Follow-up: `normalize_tracking_response()` leaves event `label`/`status` empty for Bob Go's step format (data is in `raw`).
+
+---
+
+## 2026-10-05 — Global Site Settings 2.10.10: headless orders send Bob Go the suburb and the selected service
+
+Why: the first preview test order (#5573, staging → Bob Go Sandbox order 16977) synced to Bob Go but showed "The address is missing the following fields: Suburb". Checkout collects a required Suburb, but `POST /orders` wrote it into the City field (`city = suburb ?: city`) and never saved `_shipping_suburb` / `_billing_suburb`, which Bob Go reads as `local_area`. The selected rate's `service_code` and `method_id` were also dropped, so Bob Go didn't know which service the customer chose (it reads order meta `bobgo_service_code`).
+
+### Global Site Settings 2.10.10
+- `includes/class-orders-endpoint.php`: City = checkout city (suburb only as fallback); suburb saved as `_billing_suburb` + `_shipping_suburb`; shipping line gets method id `bobgo_shipping` and the order gets `bobgo_service_code` when the selected rate's code starts with `bobgo_`. Order responses read `suburb` from the meta (fallback: city, for older orders).
+- README (BobGo order sync), version 2.10.10. Roadmap item "Headless orders don't tell BobGo the chosen shipping service" closed.
+
+### Verified
+- `php -l`.
+
+### Deployed — staging (2026-10-05)
+- Backup `~/backups/xnmtexmyyf-gss-2.10.9-20261005-204907.tgz`; 4 server files matched git `3ab2d34a` (2.10.9); uploaded `includes/class-orders-endpoint.php`, `global-site-settings.php`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.10 active; `wp-login.php` 200, `/wp-admin/` 302.
+- Next: a new preview test order should reach Bob Go Sandbox with the suburb and the selected service.
+
+---
+
 ## 2026-10-05 — Preview (`belims.vercel.app`) reads the staging CMS
 
 Why: test orders from the preview must use Bob Go **Sandbox** and PayFast test mode without touching the production CMS. Staging already has both (Bob Go Smart Shipping on Sandbox, channel = staging domain; PayFast test mode; CORS allows `https://belims.vercel.app`; `headless_frontend_url` = `https://belims.vercel.app`).

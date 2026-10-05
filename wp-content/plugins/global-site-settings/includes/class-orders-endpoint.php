@@ -142,7 +142,7 @@ class Belims_Orders_Endpoint {
                 'shipping_address' => array(
                     'street' => $order->get_shipping_address_1(),
                     'address2' => $order->get_shipping_address_2(),
-                    'suburb' => $order->get_shipping_city(),
+                    'suburb' => $order->get_meta('_shipping_suburb') ?: $order->get_shipping_city(),
                     'city' => $order->get_shipping_city(),
                     'province' => $order->get_shipping_state(),
                     'postalCode' => $order->get_shipping_postcode(),
@@ -151,7 +151,7 @@ class Belims_Orders_Endpoint {
                 'billing_address' => array(
                     'street' => $order->get_billing_address_1(),
                     'address2' => $order->get_billing_address_2(),
-                    'suburb' => $order->get_billing_city(),
+                    'suburb' => $order->get_meta('_billing_suburb') ?: $order->get_billing_city(),
                     'city' => $order->get_billing_city(),
                     'province' => $order->get_billing_state(),
                     'postalCode' => $order->get_billing_postcode(),
@@ -159,6 +159,7 @@ class Belims_Orders_Endpoint {
                 ),
                 'payment_method' => $order->get_payment_method_title(),
                 'shipping_lines' => $shipping_lines,
+                'tracking' => $this->get_tracking($order),
             );
         }
 
@@ -187,13 +188,17 @@ class Belims_Orders_Endpoint {
 
             // Add customer details
             $customer = $params['customer'];
+            // Bob Go reads the delivery suburb (local_area) from _shipping_suburb / _billing_suburb
+            // meta, so the suburb is stored there and the city stays the city (2.10.10).
+            $suburb = sanitize_text_field($customer['suburb'] ?? '');
+            $city = sanitize_text_field(!empty($customer['city']) ? $customer['city'] : $suburb);
             $order->set_billing_first_name(sanitize_text_field($customer['firstName']));
             $order->set_billing_last_name(sanitize_text_field($customer['lastName']));
             $order->set_billing_email(sanitize_email($customer['email']));
             $order->set_billing_phone(sanitize_text_field($customer['phone']));
             $order->set_billing_address_1(sanitize_text_field($customer['address']));
             $order->set_billing_address_2(sanitize_text_field($customer['address2'] ?? ''));
-            $order->set_billing_city(sanitize_text_field($customer['suburb'] ?: $customer['city']));
+            $order->set_billing_city($city);
             $order->set_billing_state(sanitize_text_field($customer['province']));
             $order->set_billing_postcode(sanitize_text_field($customer['postalCode']));
             $order->set_billing_country('ZA');
@@ -203,10 +208,14 @@ class Belims_Orders_Endpoint {
             $order->set_shipping_last_name(sanitize_text_field($customer['lastName']));
             $order->set_shipping_address_1(sanitize_text_field($customer['address']));
             $order->set_shipping_address_2(sanitize_text_field($customer['address2'] ?? ''));
-            $order->set_shipping_city(sanitize_text_field($customer['suburb'] ?: $customer['city']));
+            $order->set_shipping_city($city);
             $order->set_shipping_state(sanitize_text_field($customer['province']));
             $order->set_shipping_postcode(sanitize_text_field($customer['postalCode']));
             $order->set_shipping_country('ZA');
+            if ($suburb !== '') {
+                $order->update_meta_data('_billing_suburb', $suburb);
+                $order->update_meta_data('_shipping_suburb', $suburb);
+            }
 
             // Add products
             foreach ($params['items'] as $item) {
@@ -225,6 +234,12 @@ class Belims_Orders_Endpoint {
                 $shipping_item = new WC_Order_Item_Shipping();
                 $shipping_item->set_method_title($shipping['service_name']);
                 $shipping_item->set_total($shipping['total_price']);
+                // Bob Go reads the selected service from order meta bobgo_service_code
+                $service_code = sanitize_text_field($shipping['service_code'] ?? '');
+                if (strpos($service_code, 'bobgo_') === 0) {
+                    $shipping_item->set_method_id('bobgo_shipping');
+                    $order->update_meta_data('bobgo_service_code', $service_code);
+                }
                 $order->add_item($shipping_item);
             }
 
@@ -326,8 +341,52 @@ class Belims_Orders_Endpoint {
             ),
             'payment_method' => $order->get_payment_method_title(),
             'shipping_lines' => $shipping_lines,
+            'tracking' => $this->get_tracking($order),
             'shipping_total' => $order->get_shipping_total(),
             'total_tax' => $order->get_total_tax(),
         ));
+    }
+
+    /**
+     * Shipments Bob Go wrote back to the order (webhook → _bobgo_shipments): the safe
+     * fields the storefront shows in My Account (2.10.11).
+     */
+    private function get_tracking($order) {
+        $shipments = $order->get_meta('_bobgo_shipments');
+        if (is_string($shipments)) {
+            $shipments = json_decode($shipments, true);
+        }
+        $tracking = array();
+        foreach ((array) $shipments as $shipment) {
+            if (!is_array($shipment) || empty($shipment['tracking_number'])) {
+                continue;
+            }
+            $tracking[] = array(
+                'courier' => (string) ($shipment['courier'] ?? ''),
+                'tracking_number' => (string) $shipment['tracking_number'],
+                'tracking_url' => $this->tracking_page_url((string) $shipment['tracking_number'], (string) ($shipment['tracking_url'] ?? '')),
+                'status' => (string) ($shipment['status'] ?? ''),
+                'estimated_delivery' => (string) ($shipment['estimated_delivery'] ?? ''),
+            );
+        }
+        return $tracking;
+    }
+
+    /**
+     * Public Bob Go tracking page for the plugin's environment. The Bob Go plugin builds
+     * track.dev.bobgo.co.za for every non-production environment, but Sandbox shipments
+     * live on track.sandbox.bobgo.co.za.
+     */
+    private function tracking_page_url($reference, $fallback) {
+        if (!class_exists('\\BobGo_Shipping\\app\\SettingsPage') || !method_exists('\\BobGo_Shipping\\app\\SettingsPage', 'get_current_env')) {
+            return esc_url_raw($fallback);
+        }
+        $hosts = array(
+            'prod' => 'track.bobgo.co.za',
+            'stage' => 'track.sandbox.bobgo.co.za',
+            'dev' => 'track.dev.bobgo.co.za',
+        );
+        $env = \BobGo_Shipping\app\SettingsPage::get_current_env();
+        return isset($hosts[$env]) ? 'https://' . $hosts[$env] . '/' . rawurlencode($reference) : esc_url_raw($fallback);
     }
 }

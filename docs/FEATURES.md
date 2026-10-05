@@ -51,7 +51,7 @@ What the storefront and CMS do today, and where each feature lives. Start at the
 | --- | --- | --- |
 | Sign in / register | `AuthPage`, `AuthModal`, `services/authService.ts` | Email + password, mobile number required on register. Endpoints: `/belims/v1/users/register`, `/users/login`, `/users/logout`, `/users/me`, `/users/check-email`. |
 | Firebase phone & Google | `services/firebaseService.ts` → `/belims/v1/auth/firebase-phone`, `/auth/firebase-google` | Token verified server-side (`BELIMS_FIREBASE_API_KEY` in `wp-config.php`); fails closed without it. |
-| Account area | `AccountPage` (`/account/:tab`) | Dashboard, orders (`/belims/v1/orders`), addresses, payment, details, wishlist. |
+| Account area | `AccountPage` (`/account/:tab`) | Dashboard, orders (`/belims/v1/orders`), addresses, payment, details, wishlist. Orders show a **Shipment** block (courier · tracking number · status, *Track here* → `/track-order?order-number=<tracking number>`, *Track shipment ↗* → Bob Go tracking page) once Bob Go has shipped them; the **Track** link only appears when there is a tracking number. Customers also get Bob Go's **Order shipped** email (Bob Go → Notifications). |
 | Wishlist | `WishlistPage`, `services/wishlistService.ts` | |
 | Welcome / cookies | `WelcomeDrawer`, `CookieConsent` | |
 

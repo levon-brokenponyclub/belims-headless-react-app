@@ -51,13 +51,16 @@ class BobGo_Tracking_Endpoint {
 			);
 		}
 
-		// Determine environment (sandbox vs production) from BobGo settings.
-		$env = get_option( 'bobgo_environment', get_option( 'options_bobgo_environment', 'production' ) );
-		$env = $env === 'sandbox' ? 'sandbox' : 'production';
-
-		$host = ( 'sandbox' === $env )
-			? 'https://api.sandbox.bobgo.co.za'
-			: 'https://api.bobgo.co.za';
+		// Bob Go API host: the Bob Go plugin's own environment (Advanced tab) when active,
+		// else the legacy GSS setting (2.10.11).
+		if ( class_exists( '\\BobGo_Shipping\\app\\SettingsPage' ) && method_exists( '\\BobGo_Shipping\\app\\SettingsPage', 'get_base_url' ) ) {
+			$host = untrailingslashit( \BobGo_Shipping\app\SettingsPage::get_base_url() );
+		} else {
+			$env  = get_option( 'bobgo_environment', get_option( 'options_bobgo_environment', 'production' ) );
+			$host = ( 'sandbox' === $env )
+				? 'https://api.sandbox.bobgo.co.za'
+				: 'https://api.bobgo.co.za';
+		}
 
 		// Determine the channel/domain, mirroring the Bob Go plugin's Admin logic
 		// (legacy uAfrica as fallback), otherwise fall back to the site's domain.
@@ -79,15 +82,19 @@ class BobGo_Tracking_Endpoint {
 
 		$url = $host . '/tracking?channel=' . rawurlencode( (string) $domain ) . '&tracking_reference=' . rawurlencode( $tracking_ref );
 
-		$response = wp_remote_get(
-			$url,
-			array(
-				'timeout' => 30,
-				'headers' => array(
-					'Accept' => 'application/json',
-				),
-			)
+		$args     = array(
+			'timeout' => 30,
+			'headers' => array(
+				'Accept' => 'application/json',
+			),
 		);
+		$response = wp_remote_get( $url, $args );
+
+		// Bob Go doesn't always file shipments under this site's channel identifier (e.g. Sandbox
+		// orders), so retry by tracking reference alone — references are public on track.bobgo.co.za.
+		if ( ! is_wp_error( $response ) && 404 === (int) wp_remote_retrieve_response_code( $response ) ) {
+			$response = wp_remote_get( $host . '/tracking?tracking_reference=' . rawurlencode( $tracking_ref ), $args );
+		}
 
 		if ( is_wp_error( $response ) ) {
 			return new \WP_REST_Response(

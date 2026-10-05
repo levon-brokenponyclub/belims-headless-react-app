@@ -250,6 +250,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
       case "processing":
       case "on-hold":
         return "bg-blue-50 text-blue-700 border-blue-100";
+      case "shipped":
+      case "partially-shipped":
+        return "bg-indigo-50 text-indigo-700 border-indigo-100";
       case "pending":
         return "bg-yellow-50 text-yellow-700 border-yellow-100";
       case "cancelled":
@@ -478,12 +481,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
                     >
                       {getStatusLabel(order.status)}
                     </div>
-                    <Link
-                      to={`/track-order?order-number=${order.order_number}`}
-                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide whitespace-nowrap"
-                    >
-                      Track
-                    </Link>
+                    {order.tracking?.[0] && (
+                      <Link
+                        to={`/track-order?order-number=${encodeURIComponent(order.tracking[0].tracking_number)}`}
+                        className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide whitespace-nowrap"
+                      >
+                        Track
+                      </Link>
+                    )}
                     <ChevronRight
                       size={20}
                       className="text-gray-300 group-hover:text-belims-blue transition-colors"
@@ -528,12 +533,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
               <span className={`px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
                 {getStatusLabel(order.status)}
               </span>
-              <Link
-                to={`/track-order?order-number=${order.order_number}`}
-                className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
-              >
-                Track
-              </Link>
+              {order.tracking?.[0] && (
+                <Link
+                  to={`/track-order?order-number=${encodeURIComponent(order.tracking[0].tracking_number)}`}
+                  className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                >
+                  Track
+                </Link>
+              )}
             </div>
           </div>
 
@@ -575,6 +582,50 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
             </div>
           </div>
         </div>
+
+        {/* Shipment tracking (Bob Go) */}
+        {order.tracking && order.tracking.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              {order.tracking.length > 1 ? "Shipments" : "Shipment"}
+            </p>
+            {order.tracking.map((shipment) => (
+              <div key={shipment.tracking_number} className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Truck size={20} className="text-belims-blue shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {shipment.courier || "Courier"} · {shipment.tracking_number}
+                    </p>
+                    {shipment.status && (
+                      <p className="text-xs text-gray-500 capitalize">
+                        {shipment.status.replace(/-/g, " ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Link
+                    to={`/track-order?order-number=${encodeURIComponent(shipment.tracking_number)}`}
+                    className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                  >
+                    Track here
+                  </Link>
+                  {shipment.tracking_url && (
+                    <a
+                      href={shipment.tracking_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-belims-blue text-xs font-bold hover:underline uppercase tracking-wide"
+                    >
+                      Track shipment ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Delivery + Payment */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

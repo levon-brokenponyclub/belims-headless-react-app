@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.10.9  
+**Version:** 2.10.11  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -172,10 +172,10 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/coupons?code=` | Public | Validate a coupon |
 | `GET` | `/ai/config` | Public | AI feature config |
 | `POST` | `/orders` | Public | Create WooCommerce order from headless checkout; saves an allowed `frontend_origin` as `_belims_frontend_origin` |
-| `GET` | `/orders` | Logged in | Customer order history |
+| `GET` | `/orders` | Logged in | Customer order history; each order has `tracking: [{courier, tracking_number, tracking_url, status, estimated_delivery}]` from Bob Go's `_bobgo_shipments` meta (2.10.11, also on `/orders/:id`) |
 | `GET` | `/orders/:id?key=` | Order key, owning customer or shop manager | Single order details (404 otherwise) — `Belims_Orders_Endpoint::can_access_order()` |
 | `POST` | `/shipping/calculate` | Public | BobGo shipping rates for an address |
-| `POST` | `/track` | Public | Track a shipment |
+| `POST` | `/track` | Public | Track a shipment by Bob Go tracking reference (`trackingRef`). API host from the Bob Go plugin's environment (`SettingsPage::get_base_url()` — Sandbox on staging), legacy GSS `bobgo_environment` only as fallback; on 404 with `channel=` it retries by reference alone (2.10.11) |
 | `POST` | `/users/register` · `/users/login` · `/users/logout` · `/users/check-email` | Public | Account auth |
 | `GET` / `PUT` | `/users/me` | Logged in | Current user profile |
 | `GET` | `/users` | Admin / shop manager | List users |
@@ -272,7 +272,7 @@ BobGo shipping uses **two separate integration paths**:
 The official **Bob Go Smart Shipping** WooCommerce plugin (`bobgo-shipping`, class `BobGo_Shipping\app\Shipping`) handles rate retrieval; it replaced the legacy uAfrica plugin (`uafrica-shipping`, now inactive) on 2026-09-25. The headless app POSTs a delivery address plus the cart `items` (`[{id, quantity}]` — Bob Go returns no rates for an empty package) to `/belims/v1/shipping/calculate`, which builds a WC package from them and instantiates the Bob Go shipping method and calls `get_rates_for_package()` (falls back to the uAfrica class if Bob Go isn't active; `service_code` comes from rate meta `bobgo_service_code`, else `uafrica_service_code`). The tracking endpoint uses `BobGo_Shipping\app\Admin::get_api_domain()` the same way. No BobGo API token is required in GSS (the Bob Go plugin holds its own connection). The storefront never shows placeholder rates outside localhost — with no live rates, checkout can't continue.
 
 #### 2. Order sync
-BobGo connects to WooCommerce as a sales channel and pulls paid orders via the WooCommerce REST API / webhook system. Orders appear in the BobGo dashboard automatically once payment is confirmed (status → `processing`). The service-code order meta (`bobgo_service_code`, formerly `uafrica_service_code`) tells BobGo which shipping service the customer selected — **note:** headless orders (`POST /orders`) currently save the shipping line without it (see ROADMAP).
+BobGo connects to WooCommerce as a sales channel and pulls paid orders via the WooCommerce REST API / webhook system. Orders appear in the BobGo dashboard automatically once payment is confirmed (status → `processing`). The service-code order meta (`bobgo_service_code`, formerly `uafrica_service_code`) tells BobGo which shipping service the customer selected, and `_shipping_suburb` / `_billing_suburb` meta give the delivery suburb (`local_area`). Since 2.10.10 `POST /orders` saves both from checkout: the selected rate's `service_code` (when it starts with `bobgo_`) as `bobgo_service_code` plus shipping method id `bobgo_shipping`, and the checkout Suburb as the suburb meta — the City field keeps the city (it used to receive the suburb).
 
 **No direct BobGo API key is required** for either path. The current BobGo plan does not support API key creation.
 

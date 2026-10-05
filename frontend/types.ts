@@ -216,6 +216,8 @@ export interface Order {
     | "pending"
     | "processing"
     | "on-hold"
+    | "partially-shipped"
+    | "shipped"
     | "completed"
     | "cancelled"
     | "refunded"
@@ -227,6 +229,16 @@ export interface Order {
   billing_address: ShippingAddress;
   payment_method: string;
   shipping_lines: ShippingLine[];
+  /** Shipments Bob Go wrote back to the order (GSS 2.10.11) */
+  tracking?: OrderTracking[];
+}
+
+export interface OrderTracking {
+  courier: string;
+  tracking_number: string;
+  tracking_url: string;
+  status: string;
+  estimated_delivery: string;
 }
 
 export interface OrderLineItem {
