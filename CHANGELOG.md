@@ -35,6 +35,11 @@ Why: search had no way to find a brand, and brand links went nowhere — the hom
 - Search "bostik" → Brands "Bostik · 8" (initials — no logo file); "dulux" → Dulux logo loads, click → `/brands/dulux`, "Dulux Products", 44 products. `/brands/bostik` → 8 Bostik products. `/shop` sidebar: Brand card above Range (Alcolin 26, Assa Abloy 29, Bostik 8, Dulux 44, FAST 580, HARD 320, …); ticking Bostik → 8 products.
 - Fixed after review: dropdown brand counts now count the loaded (sellable) products, so they match the brand page (Dulux 44, not the term count 49; brands with none are hidden) — `Header.tsx` `searchBrands`. Archive header now reads "Showing {n} Results" for the filtered set (was "Showing 1-N of {whole catalogue}" on every filtered page — pre-existing) — `Archive.tsx`. Re-checked: `/brands/dulux` "Showing 44 Results", dropdown "Dulux · 44".
 
+### Deployed — GSS 2.10.8 to staging + production (2026-10-05, from `49e05c6d`)
+- Staging backup `~/backups/xnmtexmyyf-gss-2.10.7-20261005-144645.tgz`; production backup `~/backups/uhkkwupuum-gss-2.10.7-20261005-144726.tgz`. Both: 4 server files matched the deployed 2.10.7 files; uploaded `includes/class-products-endpoint.php`, `global-site-settings.php`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.8 active.
+- Listing returns `brand` / `brand_slug` (staging; production direct and via `belims.vercel.app/api`); detail `stock` + `brand_slug`; login 200, admin 302, products API 200.
+- Frontend (search Brands, `/brands/:slug`, counts) ships with the next `main` → `vercel` release.
+
 ---
 
 ## 2026-10-05 — Global Site Settings 2.10.7: product detail includes stock (pickup no longer "unavailable")
