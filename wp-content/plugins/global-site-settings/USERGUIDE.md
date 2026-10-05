@@ -1,6 +1,6 @@
 # Global Site Settings — User Guide
 
-**Plugin version:** 2.10.5 · **For:** Belims Hardware store administrators
+**Plugin version:** 2.10.6 · **For:** Belims Hardware store administrators
 
 > Technical overview for developers: [README.md](README.md) · Project docs: [root README](../../../README.md)
 
@@ -161,7 +161,7 @@ Anything missing one of these is never imported and is listed as **skipped** wit
 ## BobGo Shipping
 
 1. Switch **Enable Shipping** on and click **Save Settings**.
-2. Shipping rates at checkout come from the BobGo/uAfrica WooCommerce plugin automatically.
+2. Shipping rates at checkout come from the **Bob Go Smart Shipping** WooCommerce plugin automatically — it must be active under **Plugins**. If it can't return rates for an address, the storefront shows no delivery options and the customer can't pay for delivery (they're asked to contact you) — no estimated prices are charged.
 3. Paid orders (status *Processing*) appear in the BobGo dashboard automatically.
 
 Logs: **WooCommerce → Status → Logs → `belims-bobgo`**.

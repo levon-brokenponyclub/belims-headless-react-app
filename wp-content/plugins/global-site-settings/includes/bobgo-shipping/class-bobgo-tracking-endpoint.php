@@ -59,11 +59,14 @@ class BobGo_Tracking_Endpoint {
 			? 'https://api.sandbox.bobgo.co.za'
 			: 'https://api.bobgo.co.za';
 
-		// Determine the channel/domain, mirroring uAfrica_Shipping Admin logic
-		// when available, otherwise fall back to the site's domain.
+		// Determine the channel/domain, mirroring the Bob Go plugin's Admin logic
+		// (legacy uAfrica as fallback), otherwise fall back to the site's domain.
 		$domain = null;
-		if ( class_exists( '\\uAfrica_Shipping\\app\\Admin' ) ) {
-			$domain = \uAfrica_Shipping\app\Admin::get_api_domain();
+		foreach ( array( '\\BobGo_Shipping\\app\\Admin', '\\uAfrica_Shipping\\app\\Admin' ) as $admin_class ) {
+			if ( class_exists( $admin_class ) ) {
+				$domain = $admin_class::get_api_domain();
+				break;
+			}
 		}
 		if ( empty( $domain ) ) {
 			$home_url = home_url();

@@ -3,7 +3,8 @@
  * BobGo Shipping Rates REST API Endpoint
  * 
  * This endpoint provides shipping rates for the headless React frontend
- * by leveraging the uAfrica/BobGo WooCommerce plugin's rate calculation.
+ * by leveraging the Bob Go Smart Shipping WooCommerce plugin's rate calculation
+ * (legacy uAfrica plugin supported as a fallback).
  * 
  * Endpoint: POST /wp-json/belims/v1/shipping/calculate
  * 
@@ -26,7 +27,7 @@ class BobGo_Rates_Endpoint {
 	}
 
 	/**
-	 * Calculate shipping rates using WooCommerce and uAfrica plugin
+	 * Calculate shipping rates using WooCommerce and the Bob Go shipping method
 	 * 
 	 * @param \WP_REST_Request $request
 	 * @return \WP_REST_Response
@@ -58,16 +59,23 @@ class BobGo_Rates_Endpoint {
 			// Build shipping package
 			$package = $this->build_shipping_package( $params );
 
-			// Ensure the official BobGo/uAfrica shipping method is available.
-			if ( ! class_exists( '\\uAfrica_Shipping\\app\\Shipping' ) ) {
+			// Bob Go Smart Shipping (bobgo-shipping) replaced the legacy uAfrica plugin.
+			$method_class = null;
+			foreach ( array( '\\BobGo_Shipping\\app\\Shipping', '\\uAfrica_Shipping\\app\\Shipping' ) as $candidate ) {
+				if ( class_exists( $candidate ) ) {
+					$method_class = $candidate;
+					break;
+				}
+			}
+			if ( null === $method_class ) {
 				return new \WP_REST_Response( array(
 					'success' => false,
-					'error'   => 'BobGo (uAfrica) shipping plugin is not available',
+					'error'   => 'Bob Go shipping plugin is not active',
 				), 500 );
 			}
 
-			// Instantiate the BobGo/uAfrica shipping method directly.
-			$bobgo_method = new \uAfrica_Shipping\app\Shipping();
+			// Instantiate the Bob Go shipping method directly.
+			$bobgo_method = new $method_class();
 
 			// Ask the method for rates for this package. This internally calls
 			// calculate_shipping() and returns WC_Shipping_Rate objects without
@@ -82,7 +90,7 @@ class BobGo_Rates_Endpoint {
 						'id'                => $rate->get_id(),
 						'label'             => $rate->get_label(),
 						'cost'              => (float) $rate->get_cost(),
-						'service_code'      => $meta['uafrica_service_code'] ?? null,
+						'service_code'      => $meta['bobgo_service_code'] ?? $meta['uafrica_service_code'] ?? null,
 						'description'       => $meta['method_description'] ?? null,
 						'min_delivery_date'  => $meta['min_delivery_date'] ?? null,
 						'max_delivery_date'  => $meta['max_delivery_date'] ?? null,
@@ -118,8 +126,15 @@ class BobGo_Rates_Endpoint {
 			$cart = \WC()->cart;
 		}
 
-		$contents        = $this->get_cart_contents();
-		$contents_cost   = $cart ? $cart->get_cart_contents_total() : 0;
+		// Headless requests have no WC session cart — build contents from the posted items.
+		// Bob Go only quotes when the package has products.
+		$contents = $this->get_items_contents( $params['items'] ?? array() );
+		if ( ! empty( $contents ) ) {
+			$contents_cost = array_sum( wp_list_pluck( $contents, 'line_total' ) );
+		} else {
+			$contents      = $this->get_cart_contents();
+			$contents_cost = $cart ? $cart->get_cart_contents_total() : 0;
+		}
 		$applied_coupons = $cart ? $cart->get_applied_coupons() : array();
 
 		// Build package array in WooCommerce format
@@ -131,7 +146,7 @@ class BobGo_Rates_Endpoint {
 				'ID' => \get_current_user_id(),
 			),
 			'destination'     => array(
-				'country'   => $destination['country'] ?? '',
+				'country'   => $this->normalize_country( $destination['country'] ?? '' ),
 				'state'     => $destination['state'] ?? $destination['province'] ?? '',
 				'postcode'  => $destination['postcode'] ?? '',
 				'city'      => $destination['city'] ?? '',
@@ -151,6 +166,52 @@ class BobGo_Rates_Endpoint {
 		}
 
 		return $package;
+	}
+
+	/**
+	 * Build WooCommerce cart-style contents from posted items.
+	 *
+	 * @param mixed $items [{ id, quantity }] — id is the WooCommerce product (or variation) ID.
+	 * @return array Cart items keyed like WC()->cart->get_cart()
+	 */
+	private function get_items_contents( $items ) {
+		$contents = array();
+		if ( ! is_array( $items ) ) {
+			return $contents;
+		}
+		foreach ( $items as $item ) {
+			$product_id = absint( $item['id'] ?? 0 );
+			$quantity   = max( 1, absint( $item['quantity'] ?? 1 ) );
+			$product    = $product_id ? \wc_get_product( $product_id ) : null;
+			if ( ! $product || ! $product->needs_shipping() ) {
+				continue;
+			}
+			$line_total = (float) $product->get_price() * $quantity;
+			$key        = 'belims_' . $product_id;
+			$contents[ $key ] = array(
+				'key'               => $key,
+				'product_id'        => $product->get_parent_id() ?: $product_id,
+				'variation_id'      => $product->get_parent_id() ? $product_id : 0,
+				'quantity'          => $quantity,
+				'data'              => $product,
+				'line_total'        => $line_total,
+				'line_tax'          => 0,
+				'line_subtotal'     => $line_total,
+				'line_subtotal_tax' => 0,
+			);
+		}
+		return $contents;
+	}
+
+	/**
+	 * WooCommerce expects ISO country codes; the storefront sometimes sends "South Africa".
+	 */
+	private function normalize_country( $country ) {
+		$country = trim( (string) $country );
+		if ( '' === $country || 0 === strcasecmp( $country, 'South Africa' ) ) {
+			return 'ZA';
+		}
+		return strtoupper( $country );
 	}
 
 	/**

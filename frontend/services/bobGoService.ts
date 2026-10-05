@@ -62,7 +62,11 @@ export const getShippingRates = async (
       },
       body: JSON.stringify({
         destination: {
-          country: params.destination_address.country || "ZA",
+          country:
+            !params.destination_address.country ||
+            params.destination_address.country === "South Africa"
+              ? "ZA"
+              : params.destination_address.country,
           state: params.destination_address.province || "",
           city: params.destination_address.city,
           postcode: params.destination_address.postal_code,
@@ -143,8 +147,11 @@ function isLocalhost(): boolean {
 }
 
 /**
- * Get fallback shipping options for local development testing
+ * Placeholder shipping options — local development only. Elsewhere this returns
+ * none, so checkout stays blocked until real Bob Go rates load (never charge
+ * placeholder prices).
  */
 export const getFallbackShipping = (): ShippingRate[] => {
+  if (!isLocalhost()) return [];
   return [DEV_STANDARD_SHIPPING, DEV_NEXT_DAY_SHIPPING, DEV_SAME_DAY_SHIPPING];
 };

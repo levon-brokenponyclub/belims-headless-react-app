@@ -31,7 +31,7 @@ function render_bobgo_shipping_settings_tab() {
                     <br><br>
                     <strong>How it works:</strong>
                     <br>• Headless app POSTs delivery address to <code>/wp-json/belims/v1/shipping/calculate</code>
-                    <br>• Server-side proxy calls the BobGo/uAfrica shipping method
+                    <br>• Server-side proxy calls the Bob Go Smart Shipping method
                     <br>• WooCommerce uses the configured BobGo plugin to get live rates
                     <br>• Rates are returned to the headless app
                 </p>
@@ -41,7 +41,7 @@ function render_bobgo_shipping_settings_tab() {
                 <div>
                     <h4 style="margin-top: 0;">Configuration</h4>
                     <p style="margin-bottom: 10px; color: #64748b;">
-                        All checkout shipping rates are powered by the official BobGo/uAfrica WooCommerce plugin.
+                        All checkout shipping rates are powered by the official Bob Go Smart Shipping WooCommerce plugin.
                         Use the links below to configure shipping methods and view documentation.
                     </p>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px;">
@@ -58,7 +58,7 @@ function render_bobgo_shipping_settings_tab() {
                     <h4 style="margin: 0;">Headless BobGo Environment</h4>
                     <p style="margin: 0; font-size: 13px; color: #64748b;">
                         Controls how the Global Site Settings plugin talks to BobGo for order/shipment automation
-                        (the checkout shipping rates still use the official BobGo/uAfrica WooCommerce plugin).
+                        (the checkout shipping rates still use the official Bob Go Smart Shipping WooCommerce plugin).
                     </p>
 
                     <?php

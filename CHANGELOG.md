@@ -15,6 +15,38 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 
 ---
 
+## 2026-10-05 — Global Site Settings 2.10.6 + checkout: real Bob Go shipping rates, no placeholder prices
+
+Why: `POST /belims/v1/shipping/calculate` returned 500 ("BobGo (uAfrica) shipping plugin is not available") on every call since 2026-09-25 — the delivery-rates step at checkout failed on the storefront. On production the **Bob Go Smart Shipping** plugin (`bobgo-shipping` 4.0.58, installed 2026-09-25) replaced the legacy `uafrica-shipping` plugin (now inactive), and the endpoint only looked for `\uAfrica_Shipping\app\Shipping`. Access logs: 200s up to 25 Sep, 500s from 25 Sep onward (not caused by the 2.10.5 release).
+
+### Global Site Settings 2.10.6
+- `includes/bobgo-shipping/class-bobgo-rates-endpoint.php`: use `\BobGo_Shipping\app\Shipping`, falling back to the uAfrica class; `service_code` from rate meta `bobgo_service_code` (Bob Go) or `uafrica_service_code` (legacy); error message "Bob Go shipping plugin is not active".
+- Same file: the package is now built from the posted `items` (`[{id, quantity}]` → WC cart-style contents via `wc_get_product`, `contents_cost` from current prices) — Bob Go only quotes when the package has products (production dry run: 0 rates empty, 3 rates with one product). Country "South Africa" is normalised to `ZA`.
+- `includes/bobgo-shipping/class-bobgo-tracking-endpoint.php`: channel domain from `\BobGo_Shipping\app\Admin::get_api_domain()` (uAfrica fallback) — the uAfrica call was silently skipped, so tracking used the bare site host.
+- `includes/bobgo-shipping/admin-bobgo-settings-page.php`, loader comment: plugin name updated.
+- README / USERGUIDE: Bob Go Smart Shipping replaces uAfrica; version 2.10.6.
+
+### frontend (checkout)
+- **Risk found:** when rates failed or came back empty, `Checkout.tsx` / `SingleProduct.tsx` silently used hard-coded placeholder rates (R75 / R125 / R150, `dev_*` codes) — so checkouts since 2026-09-25 were charged placeholder shipping (real Bob Go quote for one product: R105 / R125 / R180).
+- `services/bobGoService.ts`: `getFallbackShipping()` returns placeholders **only on localhost**; elsewhere `[]`, so no rate can be selected and the existing `!selectedShipping` guards block Continue / Pay (decision 2026-10-05: block checkout, no fallback price). Country "South Africa" → `ZA`.
+- `components/Checkout.tsx`: the three `getShippingRates()` calls send the cart items (`shippingItems` = `{id, quantity}`); empty-state text asks the customer to contact us if no options appear.
+- `components/SingleProduct.tsx`: rate-error message no longer claims estimated options are shown.
+
+### Verified
+- `php -l` on the changed PHP files; `npm run build` OK.
+- Local CMS: endpoint returns 200 (`rates: []` — no connected Bob Go key locally). Staging/production have `bobgo-shipping` 4.0.58 active and connected.
+
+### Deployed — staging only (2026-10-05, app `xnmtexmyyf`)
+- Backup `~/backups/xnmtexmyyf-gss-2.10.5-20261005-132214.tgz`; the 6 server files matched git `c5e8055d`. Uploaded `includes/bobgo-shipping/class-bobgo-rates-endpoint.php`, `class-bobgo-tracking-endpoint.php`, `admin-bobgo-settings-page.php`, `global-site-settings.php`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.6 active.
+- `POST /shipping/calculate` with one product (country "South Africa") → 200, 3 rates: Standard R105, Next Day R125, Same Day R180 (`bobgo_*` service codes, delivery dates). Without items → 200 `rates: []`. `wp-login.php` 200, `/wp-admin/` 302, products API 200. No WP options changed (staging GSS BobGo stays Disabled).
+
+### Deployed — production (2026-10-05, app `uhkkwupuum`)
+- Backup `~/backups/uhkkwupuum-gss-2.10.5-20261005-132641.tgz`; the 6 server files matched git `4f99a44d`. Same 6 files uploaded; `php -l` OK; GSS 2.10.6 active, env `production`.
+- `POST belims.vercel.app/api/belims/v1/shipping/calculate` with one product → 200, 3 live Bob Go rates (R105 / R125 / R180). `wp-login.php` 200, `/wp-admin/` 302, products API 200 direct and via Vercel. Unchanged: FTG on, BobGo on (production), PayFast test mode.
+- Storefront checkout still sends no items until the frontend change above is released (`main` → `vercel`).
+
+---
+
 ## 2026-10-02 — Global Site Settings 2.10.5: Settings Card toggle (deferred save), simpler status labels, no toggles on Overview cards
 
 Why: The user wants toggles to follow a Settings Card pattern (reference: Vercel "Data Preferences") — state held locally until **Save**, Save disabled until something changes. The Overview cards' FTG / BobGo toggles saved on click (most likely how BobGo got re-enabled on staging) and the status labels had too many variants.

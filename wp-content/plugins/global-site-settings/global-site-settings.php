@@ -3,7 +3,7 @@
  * Plugin Name: Global Site Settings
  * Plugin URI: https://belims.co.za
  * Description: Unified plugin for Belims site settings, ACF field groups, REST API endpoints, and third-party integrations (WooCommerce, FTG, BobGo, AI).
- * Version: 2.10.5
+ * Version: 2.10.6
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: global-site-settings
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('GLOBAL_SITE_SETTINGS_VERSION', '2.10.5');
+define('GLOBAL_SITE_SETTINGS_VERSION', '2.10.6');
 // Stand-in shown in the FTG edit form instead of the stored password; posting it keeps the stored one.
 define('BELIMS_FTG_PASSWORD_MASK', '••••••••••••');
 define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-10-01 19:29:07');
@@ -238,7 +238,7 @@ function global_site_settings_init() {
         'includes/ftg-sync/class-ftg-api.php',
         'includes/ftg-sync/class-ftg-sync-endpoint.php',
         // BobGo Shipping integration
-        'includes/bobgo-shipping/init.php', // Clean REST endpoint leveraging uAfrica/BobGo plugin
+        'includes/bobgo-shipping/init.php', // Clean REST endpoint leveraging the Bob Go Smart Shipping plugin
         'includes/bobgo-shipping/class-bobgo-api.php',
         // class-bobgo-order-handler.php disabled — BobGo receives orders via its WC webhook
         // subscription (uafrica_service_code meta → WC webhook → BobGo). Direct API requires

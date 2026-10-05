@@ -766,7 +766,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         }));
         setDeliveryRates(fallbackRates);
         setDeliveryRatesError(
-          "Unable to fetch live rates. Showing estimated delivery options.",
+          "Live delivery rates are unavailable right now.",
         );
       } finally {
         if (requestId !== latestDeliveryRequestRef.current) {

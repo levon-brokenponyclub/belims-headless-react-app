@@ -387,6 +387,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
   const [locatingAddress, setLocatingAddress] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
 
+  // Bob Go only quotes when the parcel contents are known
+  const shippingItems = cartItems.map((item) => ({ id: item.id, quantity: item.quantity }));
+
   // Totals
   const subtotal = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
@@ -494,6 +497,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
               postal_code: addressToUse.postalCode || "",
               country: addressToUse.country || "South Africa",
             },
+            items: shippingItems,
           });
 
           let finalRates = rates;
@@ -685,6 +689,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
             postal_code: customer.postalCode,
             country: "ZA",
           },
+          items: shippingItems,
         });
 
         let finalRates = rates;
@@ -906,6 +911,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
           postal_code: customer.postalCode,
           country: "ZA",
         },
+        items: shippingItems,
       });
       let finalRates = (rates && rates.length > 0) ? rates : getFallbackShipping();
       const classifiedRates = finalRates.map((rate: any) => ({
@@ -2175,7 +2181,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           </div>
                         ) : (
                           <p className="rounded-lg border border-neutral-200 py-8 text-center text-sm text-neutral-500">
-                            No shipping options available. Enter your address above to calculate rates.
+                            No delivery options available yet. Enter your address above — if none appear, please contact us to complete your order.
                           </p>
                         )}
                       </section>

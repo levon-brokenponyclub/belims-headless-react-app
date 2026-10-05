@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.10.5  
+**Version:** 2.10.6  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -258,10 +258,10 @@ The cron is unscheduled on plugin deactivation.
 BobGo shipping uses **two separate integration paths**:
 
 #### 1. Rates at checkout
-The official **uAfrica WooCommerce plugin** (`uafrica-shipping`) handles rate retrieval. The headless app POSTs a delivery address to `/belims/v1/shipping/calculate`, which calls the WooCommerce shipping calculator internally. No BobGo API token is required.
+The official **Bob Go Smart Shipping** WooCommerce plugin (`bobgo-shipping`, class `BobGo_Shipping\app\Shipping`) handles rate retrieval; it replaced the legacy uAfrica plugin (`uafrica-shipping`, now inactive) on 2026-09-25. The headless app POSTs a delivery address plus the cart `items` (`[{id, quantity}]` — Bob Go returns no rates for an empty package) to `/belims/v1/shipping/calculate`, which builds a WC package from them and instantiates the Bob Go shipping method and calls `get_rates_for_package()` (falls back to the uAfrica class if Bob Go isn't active; `service_code` comes from rate meta `bobgo_service_code`, else `uafrica_service_code`). The tracking endpoint uses `BobGo_Shipping\app\Admin::get_api_domain()` the same way. No BobGo API token is required in GSS (the Bob Go plugin holds its own connection). The storefront never shows placeholder rates outside localhost — with no live rates, checkout can't continue.
 
 #### 2. Order sync
-BobGo connects to WooCommerce as a sales channel and pulls paid orders via the WooCommerce REST API / webhook system. Orders appear in the BobGo dashboard automatically once payment is confirmed (status → `processing`). The `uafrica_service_code` order meta tells BobGo which shipping service the customer selected.
+BobGo connects to WooCommerce as a sales channel and pulls paid orders via the WooCommerce REST API / webhook system. Orders appear in the BobGo dashboard automatically once payment is confirmed (status → `processing`). The service-code order meta (`bobgo_service_code`, formerly `uafrica_service_code`) tells BobGo which shipping service the customer selected — **note:** headless orders (`POST /orders`) currently save the shipping line without it (see ROADMAP).
 
 **No direct BobGo API key is required** for either path. The current BobGo plan does not support API key creation.
 
