@@ -32,6 +32,10 @@ Why: on 2026-10-05 a local storefront pointed at staging repeatedly requested th
 - Full listing MISS 2.3 s → HIT 0.08 s; same with `cb=123` and reordered `fields` → HIT; `/products/home` MISS 15.4 s → HIT 0.08 s; brand listing and product detail MISS → HIT (~0.06 s).
 - `/brands/bostik` (dev server → local CMS, one tab): 8 products shown 0.66 s after navigation via the brand-scoped request.
 
+### Deployed — staging (2026-10-05, from `3ab2d34a`)
+- Backup `~/backups/xnmtexmyyf-gss-2.10.8-20261005-165526.tgz`; 4 server files matched the deployed 2.10.8; uploaded `includes/class-products-endpoint.php`, `global-site-settings.php`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.9 active.
+- Full listing MISS 12.9 s → HIT (`cb` ignored); `Belims_Products_Endpoint::bump_cache_version()` → next full listing MISS (13.6 s server time); brand listing MISS → HIT; `/products/home` cold rebuild ~60 s on staging, then HIT. A HIT still costs staging's WordPress bootstrap + network (~2.4–3.7 s from the office; same as `/categories`).
+
 ---
 
 ## 2026-10-05 — Brands in search + brand archive pages (`/brands/:slug`) — GSS 2.10.8
