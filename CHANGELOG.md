@@ -36,6 +36,11 @@ Why: The user wants toggles to follow a Settings Card pattern (reference: Vercel
 - Backup `~/backups/xnmtexmyyf-gss-2.10.4-20261002-175958.tgz`; server diff reviewed = the 2.10.5 changes only. Uploaded `global-site-settings.php`, `includes/class-dashboard-widgets.php`, `assets/js/admin.js`, `assets/css/sitebridge-ui.css`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.5 active, env `staging`; `belims_save_setting` registered, `belims_save_ftg_enabled` gone; one `load-index.php` callback; `wp-login.php` 200, `/wp-admin/` 302, products API 200.
 - Staging BobGo: switched off by the user (status Disabled) — resolves the 2.10.4 note.
 
+### Deployed — production (2026-10-05, app `uhkkwupuum`)
+- Released 2.9.1 → 2.10.5 from `4f99a44d` (14 files incl. new `assets/css/sitebridge-ui.css`). Backup `~/backups/uhkkwupuum-gss-2.9.1-20261005-124807.tgz`. Pre-check: the 11 code files matched git 2.9.1; server `README.md` was the 2.8.0 copy and `USERGUIDE.md` was missing (docs only, replaced).
+- Uploaded files match git; `php -l` OK on 6 PHP files; GSS 2.10.5 active, env `production`; `belims_save_setting` registered. `wp-login.php` 200, `/wp-admin/` 302, `products/home` 200 JSON direct and via `belims.vercel.app/api`.
+- State unchanged: FTG on (weekly cron), BobGo on (production), PayFast test mode. `belims_ftg_connection_status` not yet set — click **Test Connection** once so the badge shows Connected.
+
 ---
 
 ## 2026-10-02 — Global Site Settings 2.10.4: full-width Site Settings panel on the WordPress Dashboard
