@@ -30,7 +30,11 @@ Why: The user wants toggles to follow a Settings Card pattern (reference: Vercel
 ### Verified
 - `php -l` on `global-site-settings.php` and `includes/class-dashboard-widgets.php`; `node --check assets/js/admin.js`; FTG inline scripts pass `node --check`; Overview and FTG tab `<div>`s balanced.
 - Browser (local, built-in pane): Overview cards have no toggles and show the new labels (3 of 4 active — FTG off locally); FTG Settings Card — Save disabled initially, enabled on change, disabled on revert; Enable + Save → toast "FTG integration enabled.", badge Connected, credentials + 4 menu items shown; Disable + Save → "Disable FTG connection?" dialog → toast "FTG integration disabled.", everything hidden again. Local FTG left off, as found.
-- Not deployed.
+- Committed locally as `c5e8055d` (GSS 2.9.4–2.10.5, not pushed).
+
+### Deployed — staging only (2026-10-02, app `xnmtexmyyf`)
+- Backup `~/backups/xnmtexmyyf-gss-2.10.4-20261002-175958.tgz`; server diff reviewed = the 2.10.5 changes only. Uploaded `global-site-settings.php`, `includes/class-dashboard-widgets.php`, `assets/js/admin.js`, `assets/css/sitebridge-ui.css`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.5 active, env `staging`; `belims_save_setting` registered, `belims_save_ftg_enabled` gone; one `load-index.php` callback; `wp-login.php` 200, `/wp-admin/` 302, products API 200.
+- Staging BobGo: switched off by the user (status Disabled) — resolves the 2.10.4 note.
 
 ---
 

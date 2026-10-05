@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.9.3  
+**Version:** 2.10.5  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 

@@ -11,6 +11,7 @@ _Last reviewed: 2026-10-01_
 - [ ] **Rotate the Cloudways master SSH password.** It was committed to `README.md` in `63b6388e` (2026-02-20) and the GitHub repo is **public**. Removing it from the file does not remove it from history. After rotating, update the SSH Vault entry. (Server #1482444 → Master Credentials.)
 - [ ] **Rotate the PayFast merchant passphrase** (PayFast dashboard + WooCommerce PayFast settings) — routine rotation after the 2.9.0 payment changes.
 - [ ] **Imunify360 SplashScreen on `/wp-json/`** — get Cloudways support (root) to whitelist `cms.belims.co.za` / exclude `/wp-json/` from WebShield. Until then some uncached API calls return HTML and products fail to load. See [OPERATIONS → Cloudways](OPERATIONS.md#cloudways--cms).
+  - **2026-10-02 (user):** Imunify anti-bot protection is **disabled**, and no Vercel IP addresses appear under the blocked IP addresses. If `/api/*` still fails, look at origin speed/timeouts rather than Imunify.
 
 ## Launch checklist (`www.belims.co.za`)
 
@@ -21,6 +22,15 @@ _Last reviewed: 2026-10-01_
 - [ ] Release `main:vercel` together with or after GSS 2.9.0 — the current production bundle's checkout predates the order-key requirement and fails until released.
 - [ ] Decide preview privacy: re-enable Vercel Authentication for preview deployments if `belims.vercel.app` should not stay public.
 - [ ] Release: `git push origin main:vercel` (see [README → Deployment](../README.md#deployment-vercel)); verify production, Lighthouse and Cloudflare Web Analytics (host = www).
+- [ ] **Cloudflare pre-launch review** (zone `belims.co.za`, Free plan — from the Overview dashboard, 2026-10-02):
+  - Keep **Bot Fight Mode OFF** and **Under Attack Mode OFF** — both challenge Vercel's server-side calls to `cms.belims.co.za/wp-json`, and the Free plan can't exempt paths (see [OPERATIONS → Cloudflare](OPERATIONS.md)).
+  - **Development Mode** must be **OFF** at launch (it bypasses the cache).
+  - **Leaked credentials mitigation** rate-limit rule is already deployed — confirm it doesn't throttle storefront sign-in / checkout calls.
+  - **Bot Preference Sync is ON** (Manage AI bot access) — it prepends Cloudflare's AI-bot rules to `robots.txt`. Check `https://www.belims.co.za/robots.txt` at launch: search crawlers allowed, AI crawlers as decided.
+  - **Percent cached is 46%** (30 days: 711 visitors, 68.5k requests, 285 MB served) — review cache rules / static asset caching to raise the hit ratio after launch.
+  - **Domain Registration shows "Registrar: Unknown"** — confirm the registrar, expiry date and auto-renew (optionally transfer to Cloudflare).
+  - **Billing shows "Processing"** under Active Subscriptions — check what is pending on the account.
+  - Optional: decide on **Client-side security** (off) and Workers (none connected — not needed).
 - [ ] Replace remaining placeholder/demo imagery (`frontend/public/images/development/*` collage tiles).
 - [ ] Official brand logos for FAST, HARD, Ingco, Ruwag (most products), then Alcolin, Bostik, Hillaldam, Lasher, Sika, Union → `frontend/public/brands/{slug}.svg` + `BRAND_LOGOS` in `BrandStrip.tsx`.
 
@@ -41,6 +51,11 @@ _Last reviewed: 2026-10-01_
 - [ ] `belims-ai-product-descriptions` uses `gemini-2.0-flash-exp` (experimental model) — move to a current Gemini model.
 - [ ] Exclude `frontend/backups/` from `tsconfig` (pre-existing TS errors).
 - [ ] Review long-standing uncommitted local changes (`frontend/components/MobileNav.css`, WordPress core files, `wp-config.php`) — never commit `wp-config.php`.
+- [ ] **GSS 2.10.5 — verify the FTG on/off switch on staging (then production after release).** Passed locally 2026-10-02; repeat on https://wordpress-1482444-6707114.cloudwaysapps.com:
+  1. FTG Sync → Connection → **FTG integration** card: Save is disabled at first, enables when the toggle changes, and disables again when it's changed back.
+  2. Enable → Save: toast, badge **Connected**, credentials and all 4 menu items (Connection · Auto Sync · Tools · Activity Log) appear.
+  3. Disable → Save: the "Disable FTG connection?" dialog opens, then a toast, and everything hides again.
+  4. WordPress Dashboard panel: with FTG off, FTG shows an amber **Not connected** link and there are no Configure buttons.
 - [ ] **GSS — User Guide inside the plugin dashboard.** Show the plugin's `USERGUIDE.md` (how the plugin works, section by section) in Site Settings, e.g. a Help tab or per-section help. Keep `USERGUIDE.md` the single source so the in-dashboard guide and the file never drift.
 - [ ] **GSS FTG Tools — consider splitting Look up and Sync** into separate FTG Sync menu items (e.g. Connection · Auto Sync · Look up · Sync · Activity Log). Today (2.10.2) they are separate boxes in one **Tools** section; splitting means the shared Brand / SKU inputs need a home both can use.
 - [ ] **GSS FTG Tools — Brand dropdown scope is unclear.** The Brand (and Product SKU) inputs sit in the top **Brand & product** box, and it isn't obvious they apply to the Look up and Sync buttons below. Options: label it ("Applies to Look up and Sync below"), repeat the selected brand in the Look up / Sync box headers, or move the inputs into each box.
