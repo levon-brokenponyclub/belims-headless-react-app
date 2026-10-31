@@ -2124,7 +2124,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       {relatedProducts.length > 0 && (
         <section className="border-t border-border bg-white py-12" aria-labelledby="pdp-related">
           <div className="container mx-auto px-4">
-            <SectionHeading id="pdp-related" eyebrow="Keep shopping" title={`More in ${leafCategory?.label || product.category}`} titleSize="h2">
+            <SectionHeading id="pdp-related" eyebrow="Keep shopping" title={`More in ${leafCategory?.label || product.category}`}>
               {leafCategory?.to && <ViewAllLink to={leafCategory.to}>View all</ViewAllLink>}
             </SectionHeading>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-5">

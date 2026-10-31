@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ChevronDown,
+  Crosshair,
   Loader2,
   MapPin,
   Search,
@@ -126,11 +127,10 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
   const isEditMode = searchParams.get("mode") === "edit";
 
   const [step, setStep] = useState<Step>("address");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(
     null,
@@ -153,18 +153,6 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
       .then((user) => {
         if (!mounted) return;
         if (!user) return;
-        setIsLoggedIn(true);
-        const rows: SavedAddress[] = [];
-        const billing = toSavedAddress("Billing", user.billing);
-        const shipping = toSavedAddress("Shipping", user.shipping);
-        if (billing) rows.push(billing);
-        if (
-          shipping &&
-          (!billing || shipping.line.toLowerCase() !== billing.line.toLowerCase())
-        ) {
-          rows.push(shipping);
-        }
-        setSavedAddresses(rows);
 
         if (isEditMode && profileType) {
           const source =
@@ -326,9 +314,43 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
     applyAddress(enriched);
   };
 
-  const handleSelectSaved = (id: string) => {
-    const found = savedAddresses.find((a) => a.id === id);
-    if (found) applyAddress(found.address);
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Location isn't available on this device. Search for your address instead.");
+      return;
+    }
+    setIsLocating(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&zoom=18&lat=${coords.latitude}&lon=${coords.longitude}`,
+          );
+          const data = response.ok ? await response.json() : null;
+          const mapped = data ? mapNominatimAddress(data) : null;
+          if (!mapped) {
+            setError("Couldn't find an address for your location. Search for it instead.");
+            return;
+          }
+          const houseNumber = data.address?.house_number || "";
+          const street =
+            houseNumber && !mapped.street.startsWith(houseNumber)
+              ? `${houseNumber} ${mapped.street}`.trim()
+              : mapped.street;
+          applyAddress({ ...mapped, street, label: buildAddressLabel({ ...mapped, street }) });
+        } catch {
+          setError("Couldn't look up your location. Search for your address instead.");
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      () => {
+        setIsLocating(false);
+        setError("Location access was denied. Search for your address instead.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
   };
 
   const handleClearAddress = () => {
@@ -537,55 +559,20 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
               </div>
             )}
 
-            {isLoggedIn && savedAddresses.length > 0 && (
-              <div className="mt-6">
-                <div className="text-xs font-bold uppercase tracking-wide text-text-secondary mb-3">
-                  Saved addresses
-                </div>
-                <div className="flex flex-wrap gap-2 pb-4 border-b border-border">
-                  {savedAddresses.map((addr) => {
-                    const active = Boolean(
-                      selectedAddress &&
-                        selectedAddress.street.trim().toLowerCase() ===
-                          addr.address.street.trim().toLowerCase() &&
-                        selectedAddress.city.trim().toLowerCase() ===
-                          addr.address.city.trim().toLowerCase(),
-                    );
-                    return (
-                      <button
-                        key={addr.id}
-                        type="button"
-                        onClick={() => handleSelectSaved(addr.id)}
-                        className={`inline-flex items-center gap-2 rounded-pill border px-4 py-2 text-sm transition-colors ${
-                          active
-                            ? "bg-belims-blue border-belims-blue text-white"
-                            : "bg-white border-border text-text hover:border-text"
-                        }`}
-                      >
-                        <MapPin size={14} className="flex-shrink-0" />
-                        <span className="font-bold">{addr.source}</span>
-                        <span className={active ? "text-white/70" : "text-text-secondary"}>
-                          · {addr.line}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={handleUseMyLocation}
+                disabled={isLocating}
+                className="inline-flex items-center gap-2 text-sm font-bold text-text hover:opacity-70 disabled:opacity-50"
+              >
+                {isLocating ? <Loader2 size={20} className="animate-spin" /> : <Crosshair size={20} />}
+                Use my location
+              </button>
+            </div>
 
-            {!isLoggedIn && (
-              <p className="mt-6 text-center text-sm text-text">
-                To see your saved addresses{" "}
-                <Link
-                  to="/login"
-                  className="font-bold underline underline-offset-4"
-                >
-                  Sign In
-                </Link>
-              </p>
-            )}
-
+            {selectedAddress && (
+              <>
             {/* Manual edit fields — matches Checkout shipping address inputs */}
             <div className="mt-6 space-y-4">
               <div>
@@ -702,6 +689,8 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
                     : "Confirm address"}
               </button>
             </div>
+              </>
+            )}
           </>
         ) : (
           <>

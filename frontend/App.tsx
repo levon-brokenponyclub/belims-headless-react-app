@@ -352,7 +352,7 @@ const HomePage = ({
         ranges={rangeOptions}
       /> */}
 
-      <CategoryGrid categories={homeCategories.subcategories} />
+      <CategoryGrid categories={homeCategories.departments} />
 
       <ShopByCategory
         products={railProducts}

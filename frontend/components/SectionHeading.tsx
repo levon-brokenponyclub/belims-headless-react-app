@@ -6,7 +6,6 @@ interface SectionHeadingProps {
   eyebrow: string;
   title: string;
   tone?: "default" | "inverse";
-  titleSize?: "responsive" | "h2";
   children?: React.ReactNode;
 }
 
@@ -15,7 +14,6 @@ export const SectionHeading: React.FC<SectionHeadingProps> = ({
   eyebrow,
   title,
   tone = "default",
-  titleSize = "responsive",
   children,
 }) => {
   const inverse = tone === "inverse";
@@ -29,7 +27,7 @@ export const SectionHeading: React.FC<SectionHeadingProps> = ({
         </p>
         <h2
           id={id}
-          className={`mt-1 font-heading ${titleSize === "h2" ? "text-h2" : "text-h2 md:text-display-md"} font-bold uppercase font-condensed after:mt-2.5 after:block after:h-1 after:w-12 after:bg-primary after:content-[''] ${inverse ? "text-white" : "text-text"}`}
+          className={`mt-1 font-heading text-h2 font-bold uppercase font-condensed after:mt-2.5 after:block after:h-1 after:w-12 after:bg-primary after:content-[''] ${inverse ? "text-white" : "text-text"}`}
         >
           {title}
         </h2>

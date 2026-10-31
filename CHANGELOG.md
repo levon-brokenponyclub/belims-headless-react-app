@@ -192,6 +192,27 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-10-31 — Header menu bar (option A) and add-address flow
+
+### frontend/components/Header.tsx
+- Removed the desktop utility bar (pickup, track order, wishlist, store locator, other services). Pickup stays reachable via the address pill and mobile menu.
+- Menu bar restyled to `docs/mockups/header/option-a.html`: **Shop by department** (dark full-height button) · red **Deals** pill with tag icon · Christmas · Black Friday (links are `#` placeholders) ··· Track your order · **Other services** dropdown (Contact, Customer Support, Store locator & leaflets, Wishlist, More services → existing services panel; Contact and Customer Support are `#` placeholders).
+- Live category pills and `subNavPills` removed. Condensing on scroll unchanged (bar collapses, icon-only Departments button moves to the main row).
+
+### frontend/components/DeliveryDetailsAddAddress.tsx
+- Removed "Saved addresses" and the sign-in prompt.
+- Added **Use my location** (browser geolocation + Nominatim reverse lookup).
+- Street/suburb/city/province/postal fields and the Save/Confirm button stay hidden until an address is picked from suggestions or via location (edit mode still prefills).
+- Verified: `npm run build`; type-check shows no new errors; `localhost:4173` menu bar and dropdown render, empty add-address state shows search + Use my location only.
+
+## 2026-10-31 — Home: hero size, section headings, category rail
+
+### frontend/components/HeroBanner.tsx, SectionHeading.tsx, CategoryGrid.tsx, App.tsx
+- Hero: title 52px (desktop; 44px mobile), copy column `max-w-[640px]`.
+- `SectionHeading` is now always `text-h2` (30px); the `md:text-display-md` step and the `titleSize` prop are gone (Shop the range, Shop deals, Tools for every trade, Shop by department, Top categories, What customers say, Shop by brand, plus Recently viewed and the product page's More in…).
+- "Shop by category" pill rail below the hero is now shown on desktop too (it was mobile-only), styled like the home mockup (blue label, 36px pills) and fed with top-level categories instead of second-level ones.
+- Verified: `npm run build`; `localhost:4173` at 1440px: h1 52px / 640px, all section h2 30px, rail lists the top-level categories.
+
 ## 2026-10-31 — Brand logos editable in the CMS, Global Site Settings 2.10.15
 
 ### Global Site Settings 2.10.15

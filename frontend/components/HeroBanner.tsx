@@ -37,11 +37,11 @@ const HeroBanner: React.FC = () => {
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(50,39,131,.92)_0%,rgba(50,39,131,.55)_45%,rgba(0,0,0,0)_80%)]" />
 
       <div className="container relative z-10 mx-auto px-4 py-14">
-        <div className="max-w-[560px] text-white">
+        <div className="max-w-[640px] text-white">
           {hero.eyebrow && (
             <p className="text-eyebrow font-semibold uppercase tracking-[0.08em] text-white/80">{hero.eyebrow}</p>
           )}
-          <h1 className="mb-4 mt-2 font-heading text-[44px] font-black uppercase leading-none tracking-[-0.02em] font-condensed md:text-[72px]">
+          <h1 className="mb-4 mt-2 font-heading text-[44px] font-black uppercase leading-none tracking-[-0.02em] font-condensed md:text-[52px]">
             {hero.title}
           </h1>
           {hero.description && <p className="mb-6 text-lg text-white/90">{hero.description}</p>}

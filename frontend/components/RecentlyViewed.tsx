@@ -40,7 +40,7 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
   return (
     <section className="border-t border-border bg-white py-12" aria-labelledby="recently-viewed">
       <div className="container mx-auto px-4">
-        <SectionHeading id="recently-viewed" eyebrow="Your history" title="Recently viewed" titleSize="h2" />
+        <SectionHeading id="recently-viewed" eyebrow="Your history" title="Recently viewed" />
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-5">
           {displayProducts.slice(0, 5).map((product) => (

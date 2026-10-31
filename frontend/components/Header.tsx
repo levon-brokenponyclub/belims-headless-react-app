@@ -16,6 +16,7 @@ import {
   LogOut,
   AlertCircle,
   CreditCard,
+  Tag,
 } from "lucide-react";
 import {
   Store,
@@ -39,7 +40,6 @@ import { MegaMenu } from "./MegaMenu";
 import { MobileNav } from "./MobileNav";
 import { SearchResults, SearchBrand } from "./SearchResults";
 import { fetchProductFilters } from "../services/wooCommerceService";
-import { buildCategoryCounts } from "../utils/categoryCounts";
 import {
   buildAddressLabel,
   readStoredAddress,
@@ -110,6 +110,8 @@ export const Header: React.FC<HeaderProps> = ({
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isServicesPanelOpen, setIsServicesPanelOpen] = useState(false);
+  const [isOtherServicesOpen, setIsOtherServicesOpen] = useState(false);
+  const otherServicesRef = useRef<HTMLDivElement>(null);
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
   const [isWelcomeDrawerOpen, setIsWelcomeDrawerOpen] = useState(false);
   const openUserPanel = useCallback(() => {
@@ -382,7 +384,6 @@ export const Header: React.FC<HeaderProps> = ({
     openUserPanel,
   ]);
 
-  const pickupLabel = selectedStore?.name || "Select Store";
   const userProfileLabel = currentUser?.shipping
     ? [currentUser.shipping.address_1, currentUser.shipping.city, currentUser.shipping.state, currentUser.shipping.postcode]
         .filter(Boolean)
@@ -696,15 +697,21 @@ export const Header: React.FC<HeaderProps> = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [isMegaMenuOpen]);
 
-  // Top 10 second-level categories by catalogue product count (same source as the mega menu).
-  const subNavPills = useMemo(() => {
-    const counts = buildCategoryCounts(categoryTree, products);
-    return categoryTree
-      .flatMap((dept) => dept.children ?? [])
-      .filter((node) => (counts.get(node.id) || 0) > 0)
-      .sort((a, b) => (counts.get(b.id) || 0) - (counts.get(a.id) || 0))
-      .slice(0, 10);
-  }, [categoryTree, products]);
+  useEffect(() => {
+    if (!isOtherServicesOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!otherServicesRef.current?.contains(e.target as Node)) setIsOtherServicesOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOtherServicesOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isOtherServicesOpen]);
 
   // Full trigger in the sub-nav; icon-only trigger in the main row once condensed.
   const renderDepartmentsTrigger = (withLabel: boolean) => (
@@ -716,14 +723,20 @@ export const Header: React.FC<HeaderProps> = ({
       onClick={() => (isMegaMenuOpen ? closeMegaMenuNow() : openMegaMenu())}
       onMouseEnter={openMegaMenu}
       onMouseLeave={closeMegaMenu}
-      className={`inline-flex h-11 flex-shrink-0 items-center gap-2 rounded-md font-heading text-base font-bold uppercase font-condensed tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-        withLabel ? "px-4" : "w-11 justify-center"
-      } ${isMegaMenuOpen ? "bg-white text-belims-blue" : "bg-primary text-white hover:bg-white hover:text-belims-blue"}`}
+      className={`inline-flex flex-shrink-0 items-center gap-2.5 text-[14px] font-extrabold uppercase tracking-[0.03em] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+        withLabel ? "self-stretch rounded-none px-[18px]" : "h-11 w-11 justify-center rounded-md"
+      } ${
+        isMegaMenuOpen
+          ? "bg-white text-belims-blue"
+          : withLabel
+            ? "bg-black/[0.22] text-white hover:bg-white hover:text-belims-blue"
+            : "bg-primary text-white hover:bg-white hover:text-belims-blue"
+      }`}
     >
       <LayoutGrid size={18} strokeWidth={2} aria-hidden />
       {withLabel && (
         <>
-          Departments
+          Shop by department
           <ChevronDown size={16} className={`transition-transform ${isMegaMenuOpen ? "rotate-180" : ""}`} aria-hidden />
         </>
       )}
@@ -732,33 +745,6 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      {/* ─── Utility bar (scrolls away; header below is sticky) ─── */}
-      <div className="hidden bg-belims-blue text-[13px] text-white/80 md:block">
-        <div className="bg-black/20">
-          <div className="container mx-auto flex min-h-9 items-center justify-between gap-4 px-4">
-            <button
-              type="button"
-              onClick={() => openDeliveryLocationPanel("pickup")}
-              className="inline-flex min-h-9 items-center gap-1.5 hover:text-white"
-            >
-              <MapPin size={15} strokeWidth={1.75} aria-hidden />
-              Pickup from <b className="font-bold text-white">{pickupLabel}</b>
-              <ChevronDown size={14} aria-hidden />
-            </button>
-            <nav aria-label="Utility" className="flex items-center gap-5">
-              <Link to="/track-order" className="hover:text-white hover:underline">Track your order</Link>
-              <Link to="/wishlist" className="hover:text-white hover:underline">Wishlist</Link>
-              <button type="button" onClick={toggleStoreLocator} className="hover:text-white hover:underline">
-                Store locator &amp; leaflets
-              </button>
-              <button type="button" onClick={() => setIsServicesPanelOpen(true)} className="hover:text-white hover:underline">
-                Other services
-              </button>
-            </nav>
-          </div>
-        </div>
-      </div>
-
       {isMegaMenuOpen && (
         <div className="fixed inset-0 z-[1199] hidden bg-black/30 md:block" onClick={closeMegaMenuNow} aria-hidden />
       )}
@@ -1077,27 +1063,112 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
 
-          {/* ─── Sub-nav: Departments + live category pills (collapses when condensed) ─── */}
+          {/* ─── Menu bar: Shop by department · Deals · Christmas · Black Friday ··· Track your order · Other services (collapses when condensed) ─── */}
           <div
-            className={`hidden overflow-hidden border-t border-white/15 transition-[max-height,opacity] duration-200 md:block ${
-              isCondensed ? "max-h-0 opacity-0" : "max-h-16 opacity-100"
+            className={`hidden border-t border-white/15 transition-[max-height,opacity] duration-200 md:block ${
+              isCondensed ? "max-h-0 overflow-hidden opacity-0" : "max-h-14 opacity-100"
             }`}
             inert={isCondensed || undefined}
           >
-            <div className="container mx-auto flex min-h-[60px] items-center gap-3 px-4">
+            <nav aria-label="Main" className="container mx-auto flex min-h-[52px] items-stretch gap-1 px-4">
               {renderDepartmentsTrigger(true)}
-              <nav aria-label="Popular categories" className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-                {subNavPills.map((node) => (
-                  <Link
-                    key={node.id}
-                    to={`/shop/${encodeURIComponent(node.id)}`}
-                    className="inline-flex h-11 flex-shrink-0 items-center whitespace-nowrap border-y-[3px] border-transparent px-3 font-heading text-base font-bold uppercase font-condensed tracking-wide text-white/85 transition-colors hover:border-b-primary hover:text-white"
+              <a
+                href="#"
+                onClick={(e) => e.preventDefault()}
+                className="my-2.5 mx-1.5 inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill bg-primary px-3.5 text-[14px] font-extrabold text-white transition-colors hover:bg-white hover:text-primary"
+              >
+                <Tag size={16} strokeWidth={2} aria-hidden />
+                Deals
+              </a>
+              {["Christmas", "Black Friday"].map((label) => (
+                <a
+                  key={label}
+                  href="#"
+                  onClick={(e) => e.preventDefault()}
+                  className="inline-flex flex-shrink-0 items-center whitespace-nowrap px-3.5 text-[14px] font-semibold text-white transition-colors hover:bg-white/10"
+                >
+                  {label}
+                </a>
+              ))}
+              <span className="flex-1" />
+              <Link
+                to="/track-order"
+                className="inline-flex flex-shrink-0 items-center whitespace-nowrap px-3.5 text-[14px] font-semibold text-white transition-colors hover:bg-white/10"
+              >
+                Track your order
+              </Link>
+              <div
+                ref={otherServicesRef}
+                className="relative flex"
+                onMouseEnter={() => setIsOtherServicesOpen(true)}
+                onMouseLeave={() => setIsOtherServicesOpen(false)}
+              >
+                <button
+                  type="button"
+                  aria-expanded={isOtherServicesOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setIsOtherServicesOpen(true)}
+                  className="inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap px-3.5 text-[14px] font-semibold text-white transition-colors hover:bg-white/10"
+                >
+                  Other services
+                  <ChevronDown size={14} className={`transition-transform ${isOtherServicesOpen ? "rotate-180" : ""}`} aria-hidden />
+                </button>
+                {isOtherServicesOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full z-[1201] min-w-[240px] rounded-md border-2 border-border bg-white py-1 text-text"
                   >
-                    {node.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
+                    {[
+                      { label: "Contact", href: "#" },
+                      { label: "Customer Support", href: "#" },
+                    ].map((item) => (
+                      <a
+                        key={item.label}
+                        href={item.href}
+                        role="menuitem"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setIsOtherServicesOpen(false);
+                        }}
+                        className="block px-4 py-2.5 text-[14px] font-semibold hover:bg-surface-muted"
+                      >
+                        {item.label}
+                      </a>
+                    ))}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsOtherServicesOpen(false);
+                        toggleStoreLocator();
+                      }}
+                      className="block w-full px-4 py-2.5 text-left text-[14px] font-semibold hover:bg-surface-muted"
+                    >
+                      Store locator &amp; leaflets
+                    </button>
+                    <Link
+                      to="/wishlist"
+                      role="menuitem"
+                      onClick={() => setIsOtherServicesOpen(false)}
+                      className="block px-4 py-2.5 text-[14px] font-semibold hover:bg-surface-muted"
+                    >
+                      Wishlist
+                    </Link>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsOtherServicesOpen(false);
+                        setIsServicesPanelOpen(true);
+                      }}
+                      className="block w-full border-t border-border px-4 py-2.5 text-left text-[14px] font-semibold hover:bg-surface-muted"
+                    >
+                      More services
+                    </button>
+                  </div>
+                )}
+              </div>
+            </nav>
           </div>
         </section>
 
