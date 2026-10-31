@@ -813,4 +813,44 @@ acf_add_local_field_group(array(
     'menu_order' => 7,
 ));
 
+// Brand logo (Products → Brands → edit). Exposed as `logo` (URL) on GET /wp/v2/product_brand for the
+// storefront "Shop by brand" strip, which lists only brands that have one.
+acf_add_local_field_group(array(
+    'key' => 'group_belims_brand_logo',
+    'title' => 'Brand Logo',
+    'fields' => array(
+        array(
+            'key' => 'field_belims_brand_logo',
+            'label' => 'Logo',
+            'name' => 'logo',
+            'type' => 'image',
+            'instructions' => 'Shown in the storefront "Shop by brand" strip. Transparent or white-background PNG/WebP, about 300×120. Brands without a logo are hidden from the strip.',
+            'return_format' => 'id',
+            'preview_size' => 'medium',
+            'library' => 'all',
+        ),
+    ),
+    'location' => array(
+        array(
+            array(
+                'param' => 'taxonomy',
+                'operator' => '==',
+                'value' => 'product_brand',
+            ),
+        ),
+    ),
+    'menu_order' => 8,
+));
+
 endif;
+
+add_action('rest_api_init', function () {
+    register_rest_field('product_brand', 'logo', array(
+        'get_callback' => function ($term) {
+            $id  = function_exists('get_field') ? (int) get_field('logo', 'product_brand_' . $term['id']) : 0;
+            $src = $id ? wp_get_attachment_image_url($id, 'medium') : false;
+            return $src ?: '';
+        },
+        'schema' => array('description' => 'Brand logo URL (empty when none)', 'type' => 'string'),
+    ));
+});

@@ -15,6 +15,7 @@ type CmsBrandTerm = {
   name: string;
   slug: string;
   count?: number;
+  logo?: string;
 };
 
 const FALLBACK_BRANDS: Brand[] = [
@@ -56,8 +57,8 @@ const FALLBACK_BRANDS: Brand[] = [
   },
 ];
 
-// Self-hosted logos (public/brands/), keyed by CMS brand slug. Brands without
-// an entry render a text badge — no speculative third-party requests.
+// Bundled logos (public/brands/), keyed by CMS brand slug: the fallback for brands with no logo uploaded
+// in Products → Brands.
 export const BRAND_LOGOS: Record<string, string> = {
   "assa-abloy": "/brands/assa-abloy.svg",
   dulux: "/brands/dulux.svg",
@@ -83,7 +84,7 @@ export function BrandStrip() {
       try {
         const url =
           `${getCmsBaseUrl()}/wp/v2/product_brand` +
-          "?per_page=100&hide_empty=true&_fields=id,name,slug,count";
+          "?per_page=100&hide_empty=true&_fields=id,name,slug,count,logo";
         const response = await fetch(url, { signal: controller.signal });
         if (!response.ok) {
           throw new Error(`Failed to fetch brands (${response.status})`);
@@ -95,9 +96,11 @@ export function BrandStrip() {
           .map((term) => ({
             name: term.name,
             slug: term.slug,
-            logo: BRAND_LOGOS[term.slug],
+            logo: term.logo || BRAND_LOGOS[term.slug],
             url: `/brands/${term.slug}`,
-          }));
+          }))
+          // Brands without a logo (CMS upload or bundled file) stay out of the strip.
+          .filter((brand) => brand.logo);
 
         if (isMounted && mapped.length > 0) {
           setBrands(mapped);

@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.10.14  
+**Version:** 2.10.15  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -167,6 +167,7 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/products/:id` | Public | Single product (`view=detail` default) — includes `stock` (quantity) and `stock_status` like listings (2.10.7; the product page's pickup/delivery tiles need `stock > 0`) |
 | `GET` | `/products/filters` | Public | Archive filter options (registered in `ftg-sync/class-ftg-sync-endpoint.php`) |
 | `GET` | `/categories` | Public | Category tree (cached, ETag) |
+| `GET` | `/wp/v2/product_brand` | Public | WordPress core terms route; the plugin adds a `logo` URL field (ACF image on the brand term, `group_belims_brand_logo`, 2.10.15) for the storefront brand strip |
 | `GET` | `/homepage` | Public | Homepage sections (baked into the storefront at build time) |
 | `GET` | `/ecommerce-policies` | Public | Policies, `store_locations`, `expert_contact` (`class-ecommerce-settings.php`; `Cache-Control: public, s-maxage=300` since 2.8.1) |
 | `GET` | `/coupons?code=` | Public | Validate a coupon |

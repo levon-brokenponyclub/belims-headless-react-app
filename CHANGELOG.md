@@ -192,6 +192,20 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-10-31 — Brand logos editable in the CMS, Global Site Settings 2.10.15
+
+### Global Site Settings 2.10.15
+- `acf-field-groups.php`: **Logo** image field on Products → Brands (`group_belims_brand_logo`) and a `logo` URL field on `GET /wp/v2/product_brand`.
+- README, USERGUIDE, version 2.10.15.
+
+### frontend/components/BrandStrip.tsx
+- Requests `logo` with the brand terms; the strip lists only brands with a CMS logo or a bundled one in `public/brands/` (Assa Abloy, Dulux, Yale); brands with neither are hidden. Falls back to the six bundled brands if the request fails or returns none.
+- Verified: `npm run build`, `php -l`.
+
+### Deployed — staging then production 2.10.14 → 2.10.15 (2026-10-31, approved)
+- Backups `~/backups/xnmtexmyyf-gss-2.10.14-20261031-213553.tgz` and `~/backups/uhkkwupuum-gss-2.10.14-20261031-213611.tgz`; the 4 server files matched git `HEAD` before overwrite; uploaded `global-site-settings.php`, `includes/acf-field-groups.php`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.15 active on both; `/wp/v2/product_brand` returns `logo`.
+- Seeded logos on both CMS (media library + brand term field `logo`): Assa Abloy, Dulux, Yale (PNG renders of the bundled `public/brands/*.svg`; WordPress blocks SVG uploads). Staging attachments 5581–5583, production 5575–5577. The other 10 brands (Alcolin, Bostik, FAST, HARD, Hillaldam, Ingco, Lasher, Ruwag, Sika, Union) have no logo file in the repo yet, so they stay hidden from the strip until uploaded under Products → Brands.
+
 ## 2026-10-31 — Preview build reads staging homepage content
 
 ### frontend/vite.config.ts

@@ -1,6 +1,6 @@
 # Global Site Settings — User Guide
 
-**Plugin version:** 2.10.14 · **For:** Belims Hardware store administrators
+**Plugin version:** 2.10.15 · **For:** Belims Hardware store administrators
 
 > Technical overview for developers: [README.md](README.md) · Project docs: [root README](../../../README.md)
 
@@ -106,6 +106,8 @@ Edit the storefront homepage. Changes go live about **1–2 minutes** after savi
 3. Per card pick a **Category** (the product count is always read live). Optionally set **Title**, **Description**, **Image** (square, 400×400+) and **Button Text**. Blank fields use the category name and a product image from the category.
 4. Leave the section out or the cards empty to show the 2 biggest categories automatically.
 5. Click **Save Homepage**.
+
+**Brand logos** (the "Shop by brand" strip): go to **Products → Brands**, edit a brand and set its **Logo** (transparent or white-background PNG/WebP, about 300×120). The strip lists only brands that have a logo; brands without one are hidden. Logo changes show on the storefront within a few minutes (no rebuild needed).
 
 **Publishing** card:
 - Each storefront shows *Up to date*, *Publishing…*, *Out of date* or *Unreachable*; the one(s) a save rebuilds are marked *(rebuilds on save)*.
