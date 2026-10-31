@@ -192,6 +192,14 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-10-31 — Delivery popover: edit saved addresses
+
+### frontend/components/DeliveryDetailsPopover.tsx, Header.tsx
+- Each saved address card has an **Edit** button → `/delivery-details/add-address?context=account&type=billing|shipping&mode=edit` (a deduped Billing = Shipping card edits Billing).
+- With two distinct saved addresses the **Add new address** button is hidden.
+- `SavedAddressOption` gains `type`; popover gains `onEditAddress`.
+- Verified: `npm run build`. Signed-in states need a login and are not checked locally.
+
 ## 2026-10-31 — Delivery details popover
 
 ### frontend/components/DeliveryDetailsPopover.tsx, Header.tsx

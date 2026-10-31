@@ -430,11 +430,17 @@ export const Header: React.FC<HeaderProps> = ({
       out.push({
         id: `${source.toLowerCase()}-${dedupeKey}`,
         source,
+        type: source === "Billing" ? "billing" : "shipping",
         line,
       });
     }
     return out;
   }, [currentUser]);
+
+  const handleEditSavedAddress = (type: SavedAddressOption["type"]) => {
+    closeDeliveryPopover();
+    navigate(`/delivery-details/add-address?context=account&type=${type}&mode=edit`);
+  };
 
   const handleSelectSavedAddress = (id: string) => {
     const picked = savedAddressOptions.find((a) => a.id === id);
@@ -780,6 +786,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onDismiss={dismissDeliveryPopover}
                 onAddDetails={handleAddDeliveryDetails}
                 onSelectSavedAddress={handleSelectSavedAddress}
+                onEditAddress={handleEditSavedAddress}
               />
             </div>
 
@@ -1043,6 +1050,7 @@ export const Header: React.FC<HeaderProps> = ({
             onDismiss={dismissDeliveryPopover}
             onAddDetails={handleAddDeliveryDetails}
             onSelectSavedAddress={handleSelectSavedAddress}
+                onEditAddress={handleEditSavedAddress}
           />
 
           {/* ─── Coral alert banner ── conditional: no delivery address set ─── */}

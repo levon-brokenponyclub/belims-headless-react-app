@@ -1,12 +1,13 @@
 import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, X } from "lucide-react";
+import { MapPin, Pencil, X } from "lucide-react";
 
 type Variant = "popover" | "sheet";
 
 export interface SavedAddressOption {
   id: string;
   source: "Billing" | "Shipping";
+  type: "billing" | "shipping";
   line: string;
 }
 
@@ -19,6 +20,7 @@ interface DeliveryDetailsPopoverProps {
   onDismiss: () => void;
   onAddDetails: () => void;
   onSelectSavedAddress?: (id: string) => void;
+  onEditAddress?: (type: SavedAddressOption["type"]) => void;
 }
 
 export const DeliveryDetailsPopover: React.FC<DeliveryDetailsPopoverProps> = ({
@@ -30,8 +32,11 @@ export const DeliveryDetailsPopover: React.FC<DeliveryDetailsPopoverProps> = ({
   onDismiss,
   onAddDetails,
   onSelectSavedAddress,
+  onEditAddress,
 }) => {
   const hasSavedAddresses = isLoggedIn && savedAddresses.length > 0;
+  // Billing + Shipping both stored (and different): nothing left to add.
+  const hasMaxAddresses = hasSavedAddresses && savedAddresses.length >= 2;
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -69,11 +74,11 @@ export const DeliveryDetailsPopover: React.FC<DeliveryDetailsPopoverProps> = ({
   const savedList = hasSavedAddresses && (
     <ul className="space-y-2">
       {savedAddresses.map((addr) => (
-        <li key={addr.id}>
+        <li key={addr.id} className="relative">
           <button
             type="button"
             onClick={() => onSelectSavedAddress?.(addr.id)}
-            className="w-full rounded-xl border border-border bg-white px-4 py-3 text-left transition-colors hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-xl border border-border bg-white py-3 pl-4 pr-20 text-left transition-colors hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <div className="flex items-start gap-3">
               <MapPin size={18} className="mt-0.5 flex-shrink-0 text-primary" />
@@ -85,13 +90,22 @@ export const DeliveryDetailsPopover: React.FC<DeliveryDetailsPopoverProps> = ({
               </div>
             </div>
           </button>
+          <button
+            type="button"
+            onClick={() => onEditAddress?.(addr.type)}
+            aria-label={`Edit ${addr.source.toLowerCase()} address`}
+            className="absolute right-3 top-3 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-belims-blue underline-offset-4 hover:text-primary hover:underline"
+          >
+            <Pencil size={13} aria-hidden />
+            Edit
+          </button>
         </li>
       ))}
     </ul>
   );
 
   // Saved addresses: a single "Add new address" button. Otherwise "Do this later" + "Add delivery details".
-  const actions = hasSavedAddresses ? (
+  const actions = hasMaxAddresses ? null : hasSavedAddresses ? (
     <button
       type="button"
       onClick={onAddDetails}
