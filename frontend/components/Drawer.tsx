@@ -9,6 +9,9 @@ interface DrawerProps {
   footer?: React.ReactNode;
   widthClassName?: string;
   ariaLabel?: string;
+  headerClassName?: string;
+  titleClassName?: string;
+  closeButtonClassName?: string;
 }
 
 export const Drawer: React.FC<DrawerProps> = ({
@@ -19,6 +22,9 @@ export const Drawer: React.FC<DrawerProps> = ({
   footer,
   widthClassName = "w-full max-w-sm",
   ariaLabel,
+  headerClassName = "min-h-16 border-b-0 bg-belims-blue px-6 py-5",
+  titleClassName = "font-heading font-condensed text-h4 font-extrabold uppercase text-white",
+  closeButtonClassName = "text-white hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white",
 }) => {
   return (
     <BottomDrawer
@@ -31,21 +37,21 @@ export const Drawer: React.FC<DrawerProps> = ({
       showHandle={false}
     >
       <div className="flex h-full flex-col bg-white">
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h2 className="text-base font-bold text-text">{title}</h2>
+        <div className={`flex shrink-0 items-center justify-between ${headerClassName}`}>
+          <h2 className={titleClassName}>{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close drawer"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface-muted hover:text-text"
+            className={`flex h-11 w-11 items-center justify-center rounded-md transition-colors focus-visible:outline-none ${closeButtonClassName}`}
           >
             <svg
-              width="18"
-              height="18"
+              width="28"
+              height="28"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.5"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden
@@ -58,7 +64,7 @@ export const Drawer: React.FC<DrawerProps> = ({
         <div className="flex-1 overflow-y-auto">{children}</div>
 
         {footer && (
-          <div className="shrink-0 border-t border-gray-100">{footer}</div>
+          <div className="shrink-0 border-t border-border bg-white">{footer}</div>
         )}
       </div>
     </BottomDrawer>

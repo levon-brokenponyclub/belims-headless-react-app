@@ -101,18 +101,25 @@ export const WelcomeDrawer: React.FC<WelcomeDrawerProps> = ({
       onSuccess={(user) => { setCurrentUser(user); setAuthModalOpen(false); }}
       showToast={showToast}
     />
-    <Drawer isOpen={isOpen} onClose={onClose} title="Welcome">
+    <Drawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Welcome"
+      headerClassName="min-h-16 border-b-0 bg-belims-blue px-6 py-5"
+      titleClassName="font-heading font-condensed text-h4 font-extrabold uppercase text-white"
+      closeButtonClassName="text-white hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white"
+    >
       {/* Nav links */}
-      <div className="border-b border-gray-100">
+      <div className="divide-y divide-border border-b border-border">
         {navLinks.map((link) => (
           <button
             key={link.label}
             type="button"
             onClick={() => handleNavClick(link)}
-            className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-surface-muted"
+            className="flex min-h-16 w-full items-center gap-4 px-6 py-4 text-left transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-belims-blue"
           >
-            <span className="text-text-tertiary">{link.icon}</span>
-            <span className="flex-1 text-sm font-semibold text-text">
+            <span className="text-belims-blue">{link.icon}</span>
+            <span className="flex-1 text-base font-semibold text-text">
               {link.label}
             </span>
             <span className="text-text-tertiary">
@@ -123,19 +130,19 @@ export const WelcomeDrawer: React.FC<WelcomeDrawerProps> = ({
       </div>
 
       {/* Contact Support */}
-      <div className="p-5">
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-text-tertiary">
+      <div className="border-t-4 border-belims-blue p-6">
+        <h3 className="mb-4 font-heading font-condensed text-h5 font-extrabold uppercase text-text">
           Contact Support
         </h3>
         <div className="flex flex-col gap-3">
-          <div className="relative flex flex-col gap-2 rounded-xl border border-border bg-surface-muted p-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-belims-blue/10 text-belims-blue">
+          <div className="relative flex flex-col gap-2 rounded-md border border-border bg-white p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-surface-muted text-belims-blue">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" />
               </svg>
             </div>
-            <h4 className="text-sm font-bold text-text">Live Chat</h4>
-            <p className="text-xs text-text-secondary">
+            <h4 className="text-base font-bold text-text">Live Chat</h4>
+            <p className="text-sm text-text-secondary">
               Get instant help from our support team
             </p>
             <button
@@ -147,14 +154,14 @@ export const WelcomeDrawer: React.FC<WelcomeDrawerProps> = ({
             </button>
           </div>
 
-          <div className="relative flex flex-col gap-2 rounded-xl border border-border bg-surface-muted p-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-500">
+          <div className="relative flex flex-col gap-2 rounded-md border border-border bg-white p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-surface-muted text-belims-blue">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
               </svg>
             </div>
-            <h4 className="text-sm font-bold text-text">Email Support</h4>
-            <p className="text-xs text-text-secondary">
+            <h4 className="text-base font-bold text-text">Email Support</h4>
+            <p className="text-sm text-text-secondary">
               Send us a detailed message
             </p>
             <button

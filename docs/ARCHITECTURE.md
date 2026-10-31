@@ -50,7 +50,7 @@ Defined in [`App.tsx`](../frontend/App.tsx):
 
 | Path | Page |
 | --- | --- |
-| `/` | Home (`HomePage` → HeroBanner, ShopByCategory, FeaturedGrid, CollageGrid, DealsSection, CategoryGrid, TradeDeals, PopularCategories, BrandStrip) — or `ComingSoon` when `VITE_COMING_SOON=true` |
+| `/` | Home (`HomePage` → HeroBanner, CategoryGrid, ShopByCategory, DealsSection (+ CategoryFeature), CollageGrid, ShopByDepartment, PopularCategories, BrandStrip) — or `ComingSoon` when `VITE_COMING_SOON=true`. Category-driven sections share one `useHomeCategories` fetch. |
 | `/shop`, `/shop/:categorySlug` | `Archive` (filters, sort, chips, mobile filter drawer) |
 | `/brands/:brandSlug` | `Archive` filtered to one brand (`product_brand` slug, e.g. `/brands/bostik`); title = brand name. `/shop?brand=` still works |
 | `/product/*` | `SingleProduct` (URL = category path + `{slug}-{id}`, see `utils/product.ts`) |

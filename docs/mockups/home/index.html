@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Belims Home — Recommended</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap">
+<link rel="stylesheet" href="mockup.css">
+<link rel="stylesheet" href="../header/header.css">
+<link rel="stylesheet" href="../header/site-header.css">
+<link rel="stylesheet" href="../shop-product/shop.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../theme.css">
+</head>
+<body>
+
+<nav class="mock-bar" aria-label="Mockup pages">
+  <strong>MOCKUP</strong>
+  <a href="index.html" aria-current="page">Recommended</a>
+  <a href="variant-a.html">Variant A</a>
+  <a href="variant-b.html">Variant B</a>
+  <a href="components.html">Components</a>
+  <a href="../header/option-c.html">Header options</a>
+  <a href="../shop-product/archive.html">Archive</a>
+  <a href="../shop-product/product.html">Product</a>
+</nav>
+
+<!-- Header: selected design — option C layout with option B's black styling (../header/site-header.*), real data -->
+<div id="site-header"></div>
+
+<main>
+  <!-- 1. Hero — CMS-driven, primary red CTA (Q-04) -->
+  <section class="hero" aria-label="Featured">
+    <div class="ph dark">Hero image (CMS)</div>
+    <div class="hero-scrim"></div>
+    <div class="container" style="width:100%">
+      <div class="hero-copy">
+        <div class="eyebrow">Spring tool event</div>
+        <h1>Built for the job site</h1>
+        <p>Professional power tools, hand tools and hardware — delivered nationwide.</p>
+        <a class="btn btn-primary" href="#">Shop power tools</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Category pill rail — live API, top-level, count > 0 (Q-05) -->
+  <section class="pill-rail" aria-label="Shop by category">
+    <div class="container pill-row">
+      <span class="pill-label">Shop by category</span>
+      <a class="pill" href="#">Power Tools</a><a class="pill" href="#">Hand Tools</a><a class="pill" href="#">Fasteners &amp; Adhesives</a>
+      <a class="pill" href="#">Safety &amp; Protective Wear</a><a class="pill" href="#">Outdoor, Garden &amp; Patio</a><a class="pill" href="#">Machinery</a>
+      <a class="pill" href="#">Water Tanks &amp; Filtration</a><a class="pill" href="#">Locks &amp; Security</a><a class="pill" href="#">Paint</a>
+    </div>
+  </section>
+
+  <!-- 3. New Arrivals / Best Sellers -->
+  <section class="section" aria-labelledby="s-new">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Just landed</div>
+          <h2 class="title" id="s-new">Shop the range</h2>
+        </div>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true">New arrivals</button>
+          <button class="tab" role="tab" aria-selected="false">Best sellers</button>
+        </div>
+        <div class="head-actions">
+          <a class="view-all" href="#">View all</a>
+          <div class="arrows"><button class="arrow" aria-label="Previous">‹</button><button class="arrow" aria-label="Next">›</button></div>
+        </div>
+      </div>
+      <div class="rail" data-cards="4"></div>
+      <div class="progress"><span></span></div>
+    </div>
+  </section>
+
+  <!-- 4. Shop Deals — consolidated Deals + TradeDeals (Q-02), spotlight = generic CategoryFeature (Q-01) -->
+  <section class="section muted" aria-labelledby="s-deals">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Save more</div>
+          <h2 class="title" id="s-deals">Shop deals</h2>
+        </div>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-note="Fresh discounts every morning.">Daily deals</button>
+          <button class="tab" role="tab" aria-selected="false" data-note="Weekly savings across selected products.">Weekly deals</button>
+          <button class="tab" role="tab" aria-selected="false" data-trade="true" data-note="Approved trade accounts see trade pricing at checkout.">Trade deals</button>
+        </div>
+        <a class="view-all" href="#">View all deals</a>
+      </div>
+      <p class="tab-note" data-tab-note>Fresh discounts every morning.</p>
+      <div class="deals-grid">
+        <a class="spotlight" href="#">
+          <div class="ph dark">Spotlight image</div>
+          <div class="spotlight-copy">
+            <div class="eyebrow" style="color:#fff;opacity:.8">Category spotlight</div>
+            <h3>Hand tools</h3>
+            <p>Dependable hand tools for site and home.</p>
+            <span class="btn btn-on-image">Shop hand tools</span>
+          </div>
+        </a>
+        <div class="rail" data-cards="6" data-sale="true"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Collage — every tile links to its own category -->
+  <section class="section" aria-labelledby="s-collage">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Find your fit</div>
+          <h2 class="title" id="s-collage">Tools for every trade</h2>
+        </div>
+      </div>
+      <div class="collage">
+        <a href="#"><div class="ph dark">Power tools</div><div class="tile-copy"><h3>Power tools</h3><span>Shop now</span></div></a>
+        <a href="#"><div class="ph dark">Tool kits</div><div class="tile-copy"><h3>Tool kits</h3><span>Shop now</span></div></a>
+        <a class="c-tall" href="#"><div class="ph dark">Drills</div><div class="tile-copy"><h3>Drilling power</h3><span>Shop drills</span></div></a>
+        <a class="c-wide" href="#"><div class="ph dark">Cutting tools</div><div class="tile-copy"><h3>Cutting tools</h3><span>Shop now</span></div></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Shop by department — replaces FeaturedGrid (Q-03); live top-level categories with images -->
+  <section class="section muted" aria-labelledby="s-dept">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Browse</div>
+          <h2 class="title" id="s-dept">Shop by department</h2>
+        </div>
+        <a class="view-all" href="#">All departments</a>
+      </div>
+      <div class="dept-grid">
+        <a class="dept" href="#"><div class="ph">Image</div><div><strong>Power Tools</strong><small>412 products</small></div></a>
+        <a class="dept" href="#"><div class="ph">Image</div><div><strong>Hand Tools</strong><small>389 products</small></div></a>
+        <a class="dept" href="#"><div class="ph">Image</div><div><strong>Fasteners</strong><small>1 204 products</small></div></a>
+        <a class="dept" href="#"><div class="ph">Image</div><div><strong>Safety Wear</strong><small>176 products</small></div></a>
+        <a class="dept" href="#"><div class="ph">Image</div><div><strong>Garden &amp; Patio</strong><small>233 products</small></div></a>
+        <a class="dept" href="#"><div class="ph">Image</div><div><strong>Machinery</strong><small>58 products</small></div></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Popular categories — no fake discounts, live category name + count -->
+  <section class="section" aria-labelledby="s-popular">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Most shopped</div>
+          <h2 class="title" id="s-popular">Popular categories</h2>
+        </div>
+      </div>
+      <div class="promo-grid">
+        <a class="promo" href="#">
+          <div><div class="count">412 products</div><h3>Power tools</h3><p>Drills, grinders, saws and more from the brands the trade trusts.</p><span class="btn btn-secondary">Shop now</span></div>
+          <div class="ph">Image</div>
+        </a>
+        <a class="promo" href="#">
+          <div><div class="count">1 204 products</div><h3>Fasteners &amp; adhesives</h3><p>Anchors, nails, tapes and glues for every fixing job.</p><span class="btn btn-secondary">Shop now</span></div>
+          <div class="ph">Image</div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Brands -->
+  <!-- Google reviews — store-level social proof. Placement: after the shopping sections, before brands (see notes in the reply). -->
+  <section class="section" aria-labelledby="s-reviews">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Google reviews</div>
+          <h2 class="title" id="s-reviews">What customers say</h2>
+        </div>
+        <span class="sample-flag">Sample content — live endpoint currently returns 502</span>
+      </div>
+      <div class="reviews-grid">
+        <aside class="rv-summary" aria-label="Google rating summary">
+          <span class="rv-g"><i aria-hidden="true">G</i> Google rating</span>
+          <span class="rv-score">4.x</span>
+          <span class="stars" aria-label="Rating out of 5 (sample)">★★★★★</span>
+          <span class="rv-count">Based on N Google reviews · Belims Umzinto</span>
+          <div class="rv-actions">
+            <a class="btn btn-primary" href="#">Read all reviews</a>
+            <a class="btn btn-secondary" href="#">Write a review</a>
+          </div>
+        </aside>
+        <div class="rv-list">
+          <article class="rv-card"><span class="stars" aria-label="5 out of 5">★★★★★</span>
+            <blockquote>Sample review text. The live section shows the newest Google reviews for the Umzinto store, clamped to five lines with “Read more” on Google.</blockquote>
+            <div class="rv-who"><span class="av" aria-hidden="true">A</span><span><b>Reviewer name</b><small>2 weeks ago · Google</small></span></div></article>
+          <article class="rv-card"><span class="stars" aria-label="5 out of 5">★★★★★</span>
+            <blockquote>Sample review text. Reviews appear as Google returns them (most relevant first) — no filtering by star rating — and the summary shows the full Google score.</blockquote>
+            <div class="rv-who"><span class="av" aria-hidden="true">B</span><span><b>Reviewer name</b><small>1 month ago · Google</small></span></div></article>
+          <article class="rv-card"><span class="stars" aria-label="4 out of 5">★★★★☆</span>
+            <blockquote>Sample review text. Reviewer photos come from Google when available, otherwise an initial.</blockquote>
+            <div class="rv-who"><span class="av" aria-hidden="true">C</span><span><b>Reviewer name</b><small>1 month ago · Google</small></span></div></article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section blue" aria-labelledby="s-brands">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Trusted brands</div>
+          <h2 class="title" id="s-brands">Shop by brand</h2>
+        </div>
+        <div class="arrows"><button class="arrow" aria-label="Previous brands">‹</button><button class="arrow" aria-label="Next brands">›</button></div>
+      </div>
+      <div class="brand-row">
+        <a class="brand" href="#">Bosch</a><a class="brand" href="#">Makita</a><a class="brand" href="#">DeWalt</a>
+        <a class="brand" href="#">Stanley</a><a class="brand" href="#">Einhell</a><a class="brand" href="#">Ryobi</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Footer as built: white, trust row from /belims/v1/ecommerce-policies (TrustStrip) -->
+<div id="site-footer"></div>
+
+<script src="mockup.js"></script>
+<script src="../shop-product/data.js"></script>
+<script src="../shop-product/shop.js"></script>
+<script src="../header/header.js"></script>
+<script src="../header/site-header.js"></script>
+<script>
+renderSiteHeader(document.getElementById("site-header"), { homeHref: "index.html" });
+renderFooter();
+
+// Style directions. Default (no param) = selected: Industrial + brand colours. Others kept for comparison.
+const STYLES = [["", "Selected · Industrial + brand", "industrial brand"], ["baseline", "Baseline", ""], ["industrial", "Industrial (black)", "industrial"], ["workshop", "Workshop", "workshop"], ["hivis", "Hi-vis", "hivis"]];
+const param = new URLSearchParams(location.search).get("style") || "";
+const chosen = STYLES.find(([v]) => v === param) || STYLES[0];
+if (chosen[2]) document.documentElement.dataset.style = chosen[2];
+if (chosen[2].includes("brand")) document.documentElement.dataset.theme = "brand";
+const sw = document.createElement("span");
+sw.className = "style-sw";
+sw.innerHTML = `<span>Style:</span>` + STYLES.map(([v, l]) => `<a href="?${v ? `style=${v}` : ""}" ${v === chosen[0] ? 'aria-current="page"' : ""}>${l}</a>`).join("");
+document.querySelector(".mock-bar").append(sw);
+</script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!doctype html>
+<!--
+  Header option A — "Classic merchant". Evolution of the current 3-tier header (utility / search / department bar),
+  tightened to the home tokens. Mega menu: department rail → subcategory columns (live tree, catalogue counts) → feature tile.
+  Real data: categories + products from ../shop-product/data.js; store + delivery copy from ecommerce-policies.
+  Keeps from the live header: Pickup from / Deliver to, department search scope, Sign in · Sign up, cart total, Store locator & leaflets.
+  Fixes: hardcoded department taglines (now top subcategories), no keyboard support in the menu, mobile menu as a true multi-level drawer.
+  Target components: Header.tsx, MegaMenu.tsx, mobile menu.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Header option A — Belims mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@87.5,700;87.5,800;100,400;100,500;100,600;100,700;100,800&display=swap">
+<link rel="stylesheet" href="../home/mockup.css">
+<link rel="stylesheet" href="header.css">
+<style>
+  .hA { position: relative; z-index: 45; background: #fff; }
+  .hA-util { background: var(--color-surface-muted); border-bottom: 1px solid var(--color-border); font-size: 13px; }
+  .hA-util .container { display: flex; justify-content: space-between; align-items: center; min-height: 40px; gap: 16px; }
+  .hA-util .l, .hA-util .r { display: flex; align-items: center; gap: 20px; }
+  .hA-util .l span, .hA-util .l button { display: inline-flex; align-items: center; gap: 6px; }
+  .hA-util button { border: 0; background: none; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; min-height: 32px; }
+  .hA-util a:hover { text-decoration: underline; }
+  .hA-main .container { display: flex; align-items: center; gap: 24px; min-height: 84px; }
+  .hA-logo { font-weight: 900; font-size: 26px; letter-spacing: -.02em; color: var(--color-belims-blue); }
+  .hA-search { position: relative; flex: 1; display: flex; height: 48px; border: 2px solid var(--color-border-strong); border-radius: var(--radius-md); }
+  .hA-search select { border: 0; border-right: 1px solid var(--color-border); background: var(--color-surface-muted); font: inherit; font-size: 13px; font-weight: 700; padding: 0 10px; max-width: 170px; border-radius: 8px 0 0 8px; }
+  .hA-search input { flex: 1; min-width: 0; border: 0; font: inherit; font-size: 15px; padding: 0 14px; outline: none; }
+  .hA-search .go { width: 56px; border: 0; background: var(--color-primary); color: #fff; cursor: pointer; display: grid; place-items: center; border-radius: 0 6px 6px 0; }
+  .hA-search .go:hover { background: var(--color-secondary); }
+  .hA-nav { background: var(--color-belims-blue); color: #fff; }
+  .hA-nav .container { display: flex; align-items: stretch; min-height: 52px; gap: 4px; }
+  .hA-dept { display: inline-flex; align-items: center; gap: 10px; padding: 0 18px; border: 0; background: rgba(0,0,0,.22); color: #fff; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: .03em; cursor: pointer; }
+  .hA-dept[aria-expanded="true"] { background: #fff; color: var(--color-text); }
+  .hA-nav a { display: inline-flex; align-items: center; padding: 0 14px; font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .hA-nav a:hover { background: rgba(255,255,255,.1); }
+  .hA-nav .deal { margin: 10px 6px; padding: 0 14px; border-radius: var(--radius-pill); background: var(--color-primary); font-weight: 800; gap: 6px; }
+  .hA-nav .deal:hover { background: #fff; color: var(--color-primary); }
+  .hA-nav .spacer { flex: 1; }
+  .hA-mobile-search { padding: 0 16px 12px; }
+  .hA-mobile-search .hA-search select { display: none; }
+
+  .hA-mega .container { display: grid; grid-template-columns: 280px minmax(0, 1fr) 300px; min-height: 440px; }
+  .hA-rail { border-right: 1px solid var(--color-border); padding: 12px 0; }
+  .hA-rail button { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 12px 6px 0; border: 0; background: none; text-align: left; cursor: pointer; font-size: 14px; font-weight: 700; border-left: 3px solid transparent; padding-left: 12px; }
+  .hA-rail button small { display: block; font-weight: 500; font-size: 12px; color: var(--color-text-tertiary); }
+  .hA-rail button[aria-current="true"] { background: var(--color-surface-muted); border-left-color: var(--color-primary); }
+  .hA-rail button .chev { margin-left: auto; opacity: .4; }
+  .hA-cols { padding: 24px 28px; columns: 3 200px; column-gap: 28px; align-content: start; }
+  .hA-col { break-inside: avoid; margin-bottom: 22px; }
+  .hA-col > a { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 14px; padding-bottom: 6px; border-bottom: 1px solid var(--color-border); margin-bottom: 6px; }
+  .hA-col > a span { font-weight: 500; color: var(--color-text-tertiary); font-size: 12px; }
+  .hA-col ul { padding: 0; margin: 0; }
+  .hA-col li { list-style: none; }
+  .hA-col li a { display: block; padding: 4px 0; font-size: 14px; color: var(--color-text-secondary); }
+  .hA-col .more { font-weight: 700; font-size: 13px; text-decoration: underline; color: var(--color-text); }
+  .hA-head { column-span: all; display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; }
+  .hA-head h2 { font-size: 26px; font-weight: 800; text-transform: uppercase; font-stretch: 87.5%; }
+  .hA-head a { font-weight: 800; font-size: 14px; text-decoration: underline; }
+  .hA-feature { border-left: 1px solid var(--color-border); padding: 24px; background: var(--color-surface-muted); display: flex; flex-direction: column; gap: 14px; }
+  .hA-feature .img { aspect-ratio: 4 / 3; background: #fff; border-radius: var(--radius-md); display: grid; place-items: center; padding: 16px; border: 1px solid var(--color-border); }
+  .hA-feature .img img { max-height: 100%; object-fit: contain; }
+  .hA-feature .deal-mini { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: center; background: #fff; border-radius: var(--radius-md); padding: 8px; border: 1px solid var(--color-border); }
+  .hA-feature .deal-mini img { width: 56px; height: 56px; object-fit: contain; }
+  .hA-feature .deal-mini b { color: var(--color-primary); }
+  .hA-feature .deal-mini s { color: var(--color-deal-strike); font-size: 12px; margin-left: 6px; }
+  .hA-feature .label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--color-text-tertiary); }
+  @media (max-width: 1279px) { .hA-mega .container { grid-template-columns: 250px minmax(0, 1fr); } .hA-feature { display: none; } }
+  @media (max-width: 1023px) { .hA-main .container { min-height: 64px; gap: 8px; } .hA-logo { font-size: 22px; margin-right: auto; } }
+</style>
+</head>
+<body>
+<div id="mock-bar"></div>
+<div class="option-intro"><div class="container"><strong>Option A — Classic merchant.</strong><span>Lowest-risk evolution of today's header: same three tiers and content, cleaner hierarchy, department rail mega menu. Hover or click “Shop by department”; arrow keys move through the rail.</span></div></div>
+
+<header class="hA">
+  <div class="hA-util hide-mobile">
+    <div class="container">
+      <div class="l">
+        <span id="a-pickup"></span>
+        <span>${ICON.truck}</span>
+      </div>
+      <div class="r"><a href="#">Track your order</a><a href="#">Store locator &amp; leaflets</a><a href="#">Wishlist</a></div>
+    </div>
+  </div>
+  <div class="hA-main">
+    <div class="container">
+      <button class="icon-btn show-mobile hdr-action" type="button" id="a-burger" aria-label="Open menu"></button>
+      <a class="hA-logo" href="../home/index.html">BELIMS</a>
+      <form class="hA-search hide-mobile" role="search">
+        <label class="sr-only" for="a-scope">Search in</label>
+        <select id="a-scope"></select>
+        <label class="sr-only" for="a-q">Search products and brands</label>
+        <input id="a-q" placeholder="Search products, brands and SKUs" autocomplete="off">
+        <button class="go" type="submit" aria-label="Search"></button>
+        <div class="ta" id="a-ta" hidden></div>
+      </form>
+      <a class="hdr-action hide-mobile" href="#" id="a-account"></a>
+      <a class="hdr-action" href="#" id="a-cart" aria-label="Cart, 0 items, R0.00"></a>
+    </div>
+  </div>
+  <div class="hA-mobile-search show-mobile">
+    <form class="hA-search" role="search" style="width:100%">
+      <label class="sr-only" for="a-qm">Search products and brands</label>
+      <input id="a-qm" placeholder="Search products and brands" autocomplete="off">
+      <button class="go" type="submit" aria-label="Search"></button>
+      <div class="ta" id="a-tam" hidden></div>
+    </form>
+  </div>
+  <nav class="hA-nav hide-mobile" aria-label="Main">
+    <div class="container" id="a-nav"></div>
+  </nav>
+  <div class="mega hA-mega" id="a-mega" hidden>
+    <div class="container">
+      <div class="hA-rail" id="a-rail"></div>
+      <div class="hA-cols" id="a-cols"></div>
+      <aside class="hA-feature" id="a-feature"></aside>
+    </div>
+  </div>
+</header>
+<div class="mega-scrim" id="a-scrim"></div>
+
+<main class="container demo-page">
+  <div class="ph dark">Page content</div>
+  <div class="row"><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div></div>
+  <div class="demo-notes">
+    <h2>Why this option</h2>
+    <ul>
+      <li>Same information as today (pickup store, delivery address, search scope, account, cart total), so it's the smallest change for regular customers.</li>
+      <li>The department rail shows every department at once, so customers can scan the whole range without guessing names.</li>
+      <li>Trade-off: three tiers take ~176px on desktop; the blue bar competes a little with the blue brand band on Home.</li>
+    </ul>
+  </div>
+</main>
+
+<script src="../shop-product/data.js"></script>
+<script src="../shop-product/shop.js"></script>
+<script src="header.js"></script>
+<script>
+renderChromeFor("a");
+document.querySelector(".hA-util .l").innerHTML = `
+  <span>${ICON.pin} Pickup from <b>${esc(STORE?.name || "—")}</b></span>
+  <span>${ICON.truck} Deliver to <button type="button">Enter your address</button></span>`;
+document.getElementById("a-burger").innerHTML = ICON.menu;
+document.querySelectorAll(".go").forEach((b) => (b.innerHTML = ICON.search));
+document.getElementById("a-scope").innerHTML = `<option>All departments</option>` + DEPTS.map((d) => `<option>${esc(d.name)}</option>`).join("");
+document.getElementById("a-account").innerHTML = `${ICON.user}<span><small>Good morning</small><b>Sign in · Sign up</b></span>`;
+document.getElementById("a-cart").innerHTML = `<span class="cart-wrap">${ICON.cart}<span class="cart-count">0</span></span><span class="hide-mobile"><small>Cart</small><b>R0.00</b></span>`;
+
+const quick = ["power-tools", "hand-tools", "drill-accessories", "screws", "paint"].map((s) => CAT.bySlug.get(s)).filter(Boolean);
+document.getElementById("a-nav").innerHTML = `
+  <button class="hA-dept" type="button" id="a-dept">${ICON.menu} Shop by department ${ICON.down}</button>
+  <a class="deal" href="${DEALS_HREF}">${ICON.tag} Deals</a>
+  ${quick.map((c) => `<a href="${catHref(c.slug)}">${esc(c.name)}</a>`).join("")}
+  <span class="spacer"></span>
+  <a href="#">Trade accounts</a><a href="#">Other services</a>`;
+
+// Mega: rail → columns → feature
+let activeDept = DEPTS[0];
+const rail = document.getElementById("a-rail");
+rail.innerHTML = DEPTS.map((d, i) => `<button type="button" data-dept="${i}" aria-current="${i === 0}">
+  <span>${esc(d.name)}<small>${esc(tagline(d))}</small></span><span class="chev">${ICON.right}</span></button>`).join("");
+function showDept(d) {
+  activeDept = d;
+  rail.querySelectorAll("button").forEach((b) => b.setAttribute("aria-current", String(DEPTS[b.dataset.dept] === d)));
+  document.getElementById("a-cols").innerHTML = `
+    <div class="hA-head"><h2>${esc(d.name)}</h2><a href="${catHref(d.slug)}">Shop all ${d.count}</a></div>
+    ${d.kids.map((k) => `<div class="hA-col"><a href="${catHref(k.slug)}">${esc(k.name)} <span>${k.count}</span></a>
+      ${k.kids.length ? `<ul>${k.kids.slice(0, 5).map((g) => `<li><a href="${catHref(g.slug)}">${esc(g.name)}</a></li>`).join("")}</ul>${k.kids.length > 5 ? `<a class="more" href="${catHref(k.slug)}">View all ${k.kids.length}</a>` : ""}` : ""}
+    </div>`).join("")}`;
+  const deals = dealsIn(d.slug);
+  const deal = deals[0] || ALL_DEALS[0];
+  document.getElementById("a-feature").innerHTML = `
+    <span class="label">${esc(d.name)}</span>
+    <a class="img" href="${catHref(d.slug)}" aria-label="Shop all ${esc(d.name)}">${d.img ? `<img src="${esc(d.img)}" alt="">` : ""}</a>
+    <a class="btn btn-primary" href="${catHref(d.slug)}">Shop all ${esc(d.name)}</a>
+    ${deal ? `<span class="label">${deals.length ? "Deal in this department" : "Current deal"}</span>
+      <a class="deal-mini" href="${productHref(deal.id)}">${deal.img ? `<img src="${esc(deal.img)}" alt="">` : "<span></span>"}<span><span style="display:block;font-size:13px;font-weight:700">${esc(deal.name)}</span>
+      ${deal.deal.trade ? `<span style="font-size:12px;color:var(--color-belims-blue);font-weight:700">Trade price · save ${deal.deal.pct}%</span>` : `<b>${money(deal.deal.price)}</b><s>${money(deal.deal.was)}</s>`}</span></a>` : ""}`;
+}
+showDept(DEPTS[0]);
+rail.addEventListener("mouseover", (e) => { const b = e.target.closest("[data-dept]"); if (b) showDept(DEPTS[b.dataset.dept]); });
+rail.addEventListener("focusin", (e) => { const b = e.target.closest("[data-dept]"); if (b) showDept(DEPTS[b.dataset.dept]); });
+rail.addEventListener("click", (e) => { const b = e.target.closest("[data-dept]"); if (b) { showDept(DEPTS[b.dataset.dept]); document.querySelector("#a-cols a")?.focus(); } });
+rail.addEventListener("keydown", (e) => {
+  if (!["ArrowDown", "ArrowUp"].includes(e.key)) return;
+  e.preventDefault();
+  const btns = [...rail.querySelectorAll("button")];
+  const i = btns.indexOf(document.activeElement);
+  btns[(i + (e.key === "ArrowDown" ? 1 : -1) + btns.length) % btns.length].focus();
+});
+const deptBtn = document.getElementById("a-dept");
+initMega(deptBtn, document.getElementById("a-mega"), { scrim: document.getElementById("a-scrim") });
+deptBtn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown") { e.preventDefault(); deptBtn.click(); rail.querySelector("button").focus(); } });
+
+initTypeahead(document.getElementById("a-q"), document.getElementById("a-ta"));
+initTypeahead(document.getElementById("a-qm"), document.getElementById("a-tam"));
+initDrawer(document.getElementById("a-burger"), { title: "Menu", theme: { "--d-head": "var(--color-belims-blue)" } });
+</script>
+</body>
+</html>

@@ -3,6 +3,17 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Product } from "../types";
 import { SkeletonProductCard } from "./Skeleton";
 import { ProductCard } from "./ProductCard";
+import { SectionHeading, ViewAllLink } from "./SectionHeading";
+
+type Collection = "new-arrivals" | "best-sellers";
+
+const COLLECTION_TABS: { key: Collection; label: string }[] = [
+  { key: "new-arrivals", label: "New arrivals" },
+  { key: "best-sellers", label: "Best sellers" },
+];
+
+const ARROW_CLASS =
+  "flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface text-text transition-colors hover:border-border-strong hover:bg-surface-dark hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
 interface ShopByCategoryProps {
   products: Product[];
@@ -23,9 +34,8 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
   isAuthenticated = false,
   isTradeApproved = false,
 }) => {
-  const [activeCollection, setActiveCollection] = useState<
-    "new-arrivals" | "best-sellers"
-  >("new-arrivals");
+  const [activeCollection, setActiveCollection] =
+    useState<Collection>("new-arrivals");
 
   const toNumericId = (id: string) => {
     const value = Number(id);
@@ -136,81 +146,54 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
       : Math.min(100, Math.max(8, ((index + 1) / (maxIndex + 1)) * 100));
 
   return (
-    <section className="w-full py-10 bg-white">
+    <section className="w-full bg-surface py-10 md:py-14" aria-labelledby="home-range-title">
       <div className="container mx-auto px-4">
-        {/* Section Header: Title on Left, Tabs Centered, Nav Arrows on Right */}
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {/* Header Title on Left */}
-          <div className="flex-shrink-0">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-text font-heading">
-              Step into Style
-            </h2>
+        <SectionHeading id="home-range-title" eyebrow="Just landed" title="Shop the range">
+          <div className="flex gap-6 overflow-x-auto no-scrollbar" role="tablist">
+            {COLLECTION_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={activeCollection === tab.key}
+                onClick={() => {
+                  setActiveCollection(tab.key);
+                  setIndex(0);
+                  scrollToIndex(0);
+                }}
+                className={`h-11 shrink-0 whitespace-nowrap border-b-2 text-lg font-semibold transition-colors ${
+                  activeCollection === tab.key
+                    ? "border-primary text-text"
+                    : "border-transparent text-text-tertiary hover:text-text"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-
-          {/* New Arrivals and Best Sellers Tabs Centered */}
-          <div
-            className="flex items-center justify-center gap-6 sm:flex-1"
-            role="tablist"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeCollection === "new-arrivals"}
-              onClick={() => {
-                setActiveCollection("new-arrivals");
-                setIndex(0);
-                scrollToIndex(0);
-              }}
-              className={`text-sm sm:text-base font-semibold transition-colors pb-1 ${
-                activeCollection === "new-arrivals"
-                  ? "text-belims-blue border-b-2 border-belims-blue"
-                  : "text-text-tertiary hover:text-text"
-              }`}
-            >
-              New Arrivals
-            </button>
-            <span className="text-text-tertiary/40">·</span>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeCollection === "best-sellers"}
-              onClick={() => {
-                setActiveCollection("best-sellers");
-                setIndex(0);
-                scrollToIndex(0);
-              }}
-              className={`text-sm sm:text-base font-semibold transition-colors pb-1 ${
-                activeCollection === "best-sellers"
-                  ? "text-belims-blue border-b-2 border-belims-blue"
-                  : "text-text-tertiary hover:text-text"
-              }`}
-            >
-              Best Sellers
-            </button>
+          <div className="flex items-center gap-4">
+            <ViewAllLink to="/shop">View all</ViewAllLink>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={prev}
+                className={ARROW_CLASS}
+                aria-label="Previous products"
+              >
+                <ChevronLeft size={20} strokeWidth={1.75} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={next}
+                className={ARROW_CLASS}
+                aria-label="Next products"
+              >
+                <ChevronRight size={20} strokeWidth={1.75} aria-hidden="true" />
+              </button>
+            </div>
           </div>
+        </SectionHeading>
 
-          {/* Nav Arrow Buttons on Right */}
-          <div className="flex items-center justify-end gap-2 flex-shrink-0">
-            <button
-              type="button"
-              onClick={prev}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white text-text shadow-xs transition-all duration-200 hover:border-text hover:bg-surface-dark hover:text-white"
-              aria-label="Previous products"
-            >
-              <ChevronLeft size={20} strokeWidth={1.75} />
-            </button>
-            <button
-              type="button"
-              onClick={next}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white text-text shadow-xs transition-all duration-200 hover:border-text hover:bg-surface-dark hover:text-white"
-              aria-label="Next products"
-            >
-              <ChevronRight size={20} strokeWidth={1.75} />
-            </button>
-          </div>
-        </div>
-
-        {/* Carousel Slider (Mobile: 2 Cards, Tablet: 3 Cards, Desktop: 4 Cards - Contained) */}
         <div className="relative w-full overflow-hidden">
           <div
             ref={railRef}
@@ -228,7 +211,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
               ? Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={`shop-skel-${i}`}
-                    className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-4rem)/5)] min-w-0"
+                    className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-3rem)/4)] min-w-0"
                     data-slider-item
                   >
                     <SkeletonProductCard className="w-full" />
@@ -237,7 +220,7 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
               : categoryProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-4rem)/5)] min-w-0"
+                    className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-3rem)/4)] min-w-0"
                     data-slider-item
                   >
                     <ProductCard
@@ -255,13 +238,11 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({
         </div>
 
         {/* Carousel Progress Indicator */}
-        <div className="mt-6 flex items-center justify-between gap-4">
-          <div className="h-1 flex-1 rounded-full bg-surface-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-belims-blue transition-all duration-300 ease-out"
-              style={{ width: `${indicatorPct}%` }}
-            />
-          </div>
+        <div className="mt-5 h-0.5 overflow-hidden bg-border" aria-hidden="true">
+          <div
+            className="h-full bg-text transition-[width] duration-300 ease-out motion-reduce:transition-none"
+            style={{ width: `${indicatorPct}%` }}
+          />
         </div>
       </div>
     </section>

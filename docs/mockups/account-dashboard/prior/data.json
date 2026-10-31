@@ -1,0 +1,18 @@
+{
+  "notice": "Anonymised representative fixture for review only. It mirrors fields supported by AccountPage.tsx; it is not live customer data.",
+  "customer": {
+    "first_name": "Alex",
+    "last_name": "Mokoena",
+    "display_name": "Alex M.",
+    "roles": ["customer"],
+    "billing": { "address_1": "18 Workshop Road", "city": "Durban North", "state": "KwaZulu-Natal", "postcode": "4051", "country": "ZA" },
+    "shipping": { "address_1": "18 Workshop Road", "city": "Durban North", "state": "KwaZulu-Natal", "postcode": "4051", "country": "ZA" }
+  },
+  "orders": [
+    { "id": "fixture-01", "order_number": "10482", "date_created": "2026-10-24T09:30:00", "status": "processing", "total": "2149.00", "currency": "ZAR", "line_items": [{ "id": "1", "product_id": "101", "name": "Impact Drill Set", "quantity": 1, "price": "2149.00", "total": "2149.00" }, { "id": "2", "product_id": "102", "name": "Drill Bit Set", "quantity": 1, "price": "0.00", "total": "0.00" }], "shipping_address": { "street": "18 Workshop Road", "city": "Durban North", "province": "KwaZulu-Natal", "postalCode": "4051", "country": "ZA" }, "billing_address": { "street": "18 Workshop Road", "city": "Durban North", "province": "KwaZulu-Natal", "postalCode": "4051", "country": "ZA" }, "payment_method": "card", "shipping_lines": [{ "id": "1", "method_title": "Standard delivery", "method_id": "flat_rate", "total": "75.00" }], "tracking": [] },
+    { "id": "fixture-02", "order_number": "10391", "date_created": "2026-10-03T10:15:00", "status": "completed", "total": "849.00", "currency": "ZAR", "line_items": [{ "id": "3", "product_id": "103", "name": "Heavy Duty Extension Lead", "quantity": 1, "price": "849.00", "total": "849.00" }], "shipping_address": { "street": "18 Workshop Road", "city": "Durban North", "province": "KwaZulu-Natal", "postalCode": "4051", "country": "ZA" }, "billing_address": { "street": "18 Workshop Road", "city": "Durban North", "province": "KwaZulu-Natal", "postalCode": "4051", "country": "ZA" }, "payment_method": "card", "shipping_lines": [], "tracking": [] },
+    { "id": "fixture-03", "order_number": "10211", "date_created": "2026-09-16T15:45:00", "status": "cancelled", "total": "399.00", "currency": "ZAR", "line_items": [{ "id": "4", "product_id": "104", "name": "Safety Gloves", "quantity": 2, "price": "199.50", "total": "399.00" }], "shipping_address": { "street": "", "city": "", "province": "", "postalCode": "", "country": "ZA" }, "billing_address": { "street": "18 Workshop Road", "city": "Durban North", "province": "KwaZulu-Natal", "postalCode": "4051", "country": "ZA" }, "payment_method": "card", "shipping_lines": [], "tracking": [] }
+  ],
+  "empty_state": { "orders": [] },
+  "incomplete_address": { "billing": { "address_1": "", "city": "", "state": "", "postcode": "", "country": "ZA" } }
+}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
   ShoppingBasket,
@@ -13,12 +13,8 @@ import {
   Sparkles,
   ArrowRight,
   Scale,
-  Truck,
   LogOut,
-  Building2,
-  Grid3x3,
   AlertCircle,
-  Clock,
   CreditCard,
 } from "lucide-react";
 import {
@@ -43,6 +39,7 @@ import { MegaMenu } from "./MegaMenu";
 import { MobileNav } from "./MobileNav";
 import { SearchResults, SearchBrand } from "./SearchResults";
 import { fetchProductFilters } from "../services/wooCommerceService";
+import { buildCategoryCounts } from "../utils/categoryCounts";
 import {
   buildAddressLabel,
   readStoredAddress,
@@ -91,19 +88,7 @@ interface HeaderProps {
   setCurrentUser: (user: UserData | null) => void;
   showToast?: (message: string, type: "success" | "error") => void;
   cartCoupon?: { code: string; discount_type: string; amount: string } | null;
-  /** Optional live delivery-promise data driving the secondary-nav ETA pills. */
-  deliveryPromise?: {
-    fastestEta?: string;
-    serviceLabel?: string;
-  };
 }
-
-const getTimeGreeting = (): string => {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-};
 
 export const Header: React.FC<HeaderProps> = ({
   selectedStore,
@@ -120,18 +105,17 @@ export const Header: React.FC<HeaderProps> = ({
   setCurrentUser,
   showToast,
   cartCoupon,
-  deliveryPromise,
 }) => {
   const navigate = useNavigate();
-  const timeGreeting = getTimeGreeting();
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isServicesPanelOpen, setIsServicesPanelOpen] = useState(false);
-  const [isSearchCategoryDropdownOpen, setIsSearchCategoryDropdownOpen] =
-    useState(false);
-  const [searchCategory, setSearchCategory] = useState("All Departments");
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
   const [isWelcomeDrawerOpen, setIsWelcomeDrawerOpen] = useState(false);
+  const openUserPanel = useCallback(() => {
+    if (currentUser) setIsAccountPanelOpen(true);
+    else setIsWelcomeDrawerOpen(true);
+  }, [currentUser]);
   const [isDeliveryLocationModalOpen, setIsDeliveryLocationModalOpen] =
     useState(false);
   const [deliveryLocationModalType, setDeliveryLocationModalType] = useState<
@@ -185,10 +169,19 @@ export const Header: React.FC<HeaderProps> = ({
     products: Product[];
   } | null>(null);
   const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
-  const [activeMegaCategory, setActiveMegaCategory] =
-    useState<CategoryNode | null>(null);
   const megaMenuCloseTimerRef = useRef<number | null>(null);
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
+  const location = useLocation();
+  // Desktop header condenses to one row after scrolling (sub-nav pills collapse).
+  const [isCondensed, setIsCondensed] = useState(false);
+
+  useEffect(() => {
+    // setState bails out when the boolean is unchanged, so no throttle is needed.
+    const onScroll = () => setIsCondensed(window.scrollY > 80);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const syncDeliveryFromStorage = React.useCallback(() => {
     const { address, legacyLabel } = readStoredAddress();
@@ -318,7 +311,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   useEffect(() => {
     const handleOpenMobileMenu = () => setMobileMenuOpen(true);
-    const handleOpenAccountPanel = () => setIsAccountPanelOpen(true);
+    const handleOpenAccountPanel = () => openUserPanel();
     const handleFulfillmentChange = () => {
       const storedFulfillment = localStorage.getItem("fulfillmentType");
       const pickupSelected =
@@ -382,6 +375,7 @@ export const Header: React.FC<HeaderProps> = ({
     legacyDeliveryLabel,
     selectedStore,
     syncDeliveryFromStorage,
+    openUserPanel,
   ]);
 
   const pickupLabel = selectedStore?.name || "Select Store";
@@ -498,9 +492,6 @@ export const Header: React.FC<HeaderProps> = ({
     const loadCategories = async () => {
       const tree = await initializeCategoryTree();
       setCategoryTree(tree);
-      if (tree.length > 0 && !activeMegaCategory) {
-        setActiveMegaCategory(tree[0]);
-      }
     };
     loadCategories();
   }, []);
@@ -665,6 +656,14 @@ export const Header: React.FC<HeaderProps> = ({
     }, 140);
   };
 
+  const closeMegaMenuNow = () => {
+    if (megaMenuCloseTimerRef.current !== null) {
+      window.clearTimeout(megaMenuCloseTimerRef.current);
+      megaMenuCloseTimerRef.current = null;
+    }
+    setIsMegaMenuOpen(false);
+  };
+
   useEffect(() => {
     return () => {
       if (megaMenuCloseTimerRef.current !== null) {
@@ -673,100 +672,114 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, []);
 
+  // Close the mega menu on navigation and on Escape (focus returns to the trigger).
+  useEffect(() => {
+    closeMegaMenuNow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMegaMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      closeMegaMenuNow();
+      const triggers = Array.from(
+        document.querySelectorAll<HTMLButtonElement>('[aria-controls="mega-menu"]'),
+      );
+      triggers.find((t) => t.offsetParent !== null)?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isMegaMenuOpen]);
+
+  // Top 10 second-level categories by catalogue product count (same source as the mega menu).
+  const subNavPills = useMemo(() => {
+    const counts = buildCategoryCounts(categoryTree, products);
+    return categoryTree
+      .flatMap((dept) => dept.children ?? [])
+      .filter((node) => (counts.get(node.id) || 0) > 0)
+      .sort((a, b) => (counts.get(b.id) || 0) - (counts.get(a.id) || 0))
+      .slice(0, 10);
+  }, [categoryTree, products]);
+
+  // Full trigger in the sub-nav; icon-only trigger in the main row once condensed.
+  const renderDepartmentsTrigger = (withLabel: boolean) => (
+    <button
+      type="button"
+      aria-expanded={isMegaMenuOpen}
+      aria-controls="mega-menu"
+      aria-label={withLabel ? undefined : "Departments"}
+      onClick={() => (isMegaMenuOpen ? closeMegaMenuNow() : openMegaMenu())}
+      onMouseEnter={openMegaMenu}
+      onMouseLeave={closeMegaMenu}
+      className={`inline-flex h-11 flex-shrink-0 items-center gap-2 rounded-md font-heading text-base font-bold uppercase font-condensed tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+        withLabel ? "px-4" : "w-11 justify-center"
+      } ${isMegaMenuOpen ? "bg-white text-belims-blue" : "bg-primary text-white hover:bg-white hover:text-belims-blue"}`}
+    >
+      <LayoutGrid size={18} strokeWidth={2} aria-hidden />
+      {withLabel && (
+        <>
+          Departments
+          <ChevronDown size={16} className={`transition-transform ${isMegaMenuOpen ? "rotate-180" : ""}`} aria-hidden />
+        </>
+      )}
+    </button>
+  );
+
   return (
     <>
-      {/* ─── Row 1: Topbar utility strip (Nexvo structure) ─── */}
-      <div className="topbar topbar--show-separator-line hidden md:block">
-        <div className="topbar__inner">
-          <div className="topbar__column topbar__left">
-            <ul className="topbar__menu">
-              <li className="topbar__menu-item">
-                <Link to="/wishlist" className="block">
-                  Wishlist
-                </Link>
-              </li>
-              <li className="topbar__menu-item">
-                <Link to="/track-order" className="block">
-                  Track Your Order
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div className="topbar__column topbar__center" />
-
-          <div className="topbar__column topbar__right">
-            <div className="topbar__delivery">
-              <button
-                type="button"
-                onClick={() => openDeliveryLocationPanel("pickup")}
-                className="topbar__delivery-item"
-              >
-                <MapPin
-                  size={15}
-                  className="flex-shrink-0"
-                  strokeWidth={1.75}
-                />
-                <span className="topbar__delivery-text">
-                  <span>Pickup from:</span>
-                  <span className="truncate">{pickupLabel}</span>
-                </span>
-                <ChevronRight size={14} className="flex-shrink-0" />
+      {/* ─── Utility bar (scrolls away; header below is sticky) ─── */}
+      <div className="hidden bg-belims-blue text-[13px] text-white/80 md:block">
+        <div className="bg-black/20">
+          <div className="container mx-auto flex min-h-9 items-center justify-between gap-4 px-4">
+            <button
+              type="button"
+              onClick={() => openDeliveryLocationPanel("pickup")}
+              className="inline-flex min-h-9 items-center gap-1.5 hover:text-white"
+            >
+              <MapPin size={15} strokeWidth={1.75} aria-hidden />
+              Pickup from <b className="font-bold text-white">{pickupLabel}</b>
+              <ChevronDown size={14} aria-hidden />
+            </button>
+            <nav aria-label="Utility" className="flex items-center gap-5">
+              <Link to="/track-order" className="hover:text-white hover:underline">Track your order</Link>
+              <Link to="/wishlist" className="hover:text-white hover:underline">Wishlist</Link>
+              <button type="button" onClick={toggleStoreLocator} className="hover:text-white hover:underline">
+                Store locator &amp; leaflets
               </button>
-               <button
-                 type="button"
-                 onClick={openDeliveryPopover}
-                 className="topbar__delivery-item"
-               >
-                 <Truck size={15} className="flex-shrink-0" strokeWidth={1.75} />
-                 <span className="topbar__delivery-text">
-                   <span>Deliver to:</span>
-                   <span className="truncate">
-                     {hasDeliveryAddress
-                       ? pillAddressLine || deliveryPostalCode
-                       : "Enter your address"}
-                   </span>
-                 </span>
-                 <ChevronRight size={14} className="flex-shrink-0" />
-               </button>
-            </div>
+              <button type="button" onClick={() => setIsServicesPanelOpen(true)} className="hover:text-white hover:underline">
+                Other services
+              </button>
+            </nav>
           </div>
         </div>
       </div>
 
+      {isMegaMenuOpen && (
+        <div className="fixed inset-0 z-[1199] hidden bg-black/30 md:block" onClick={closeMegaMenuNow} aria-hidden />
+      )}
+
       <header className="font-sans overflow-x-clip overflow-y-visible text-white sticky top-0 z-[1200]">
-        <section className="w-full overflow-x-clip overflow-y-visible bg-belims-blue text-white shadow-[5px_0_30px_0_rgb(0_0_0_/_.08)]">
-          {/* ─── Row 2: Sixty60-style logo row ─── */}
-          <div className="relative hidden md:flex w-full items-center gap-4 bg-belims-blue text-white px-6 lg:px-[50px] py-4">
-            <Link
-              to="/"
-              aria-label="Belims home"
-              className="flex-shrink-0 flex items-center"
-            >
-              <img
-                src="/images/belims-logo-white.webp"
-                alt="Belims Hardware"
-                className="h-10 lg:h-12 w-auto object-contain"
-              />
+        <section className="w-full overflow-x-clip overflow-y-visible border-b border-white/15 bg-belims-blue text-white">
+          {/* ─── Main row: logo · (Departments when condensed) · delivery · search · account · cart ─── */}
+          <div className={`container relative mx-auto hidden items-center gap-4 px-4 transition-[min-height] duration-200 md:flex ${isCondensed ? "min-h-16" : "min-h-[76px]"}`}>
+            <Link to="/" aria-label="Belims home" className="flex flex-shrink-0 items-center">
+              <img src="/images/belims-logo-white.webp" alt="Belims Hardware" width={400} height={106} className="h-9 w-auto object-contain" />
             </Link>
+
+            {isCondensed && renderDepartmentsTrigger(false)}
 
             {/* Address pill */}
             <div className="relative">
               <button
                 type="button"
                 onClick={openDeliveryPopover}
-                className="hidden md:flex items-center gap-3 rounded-xl bg-white/10 hover:bg-white/[0.14] transition-colors px-4 py-2.5 min-w-[220px] max-w-[260px] text-left focus:outline-none focus:ring-2 focus:ring-primary/60"
+                className="hidden min-w-[200px] max-w-[240px] items-center gap-3 rounded-md border border-white/30 px-3 py-2 text-left transition-colors hover:border-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white lg:flex"
               >
-                <MapPin
-                  size={18}
-                  strokeWidth={1.75}
-                  className="flex-shrink-0 text-primary"
-                />
-                <span className="flex flex-col leading-tight min-w-0">
-                  <span className="text-[12px] font-bold uppercase tracking-normal text-white/60">
-                    Delivering to
-                  </span>
-                  <span className="text-sm font-bold text-white truncate">
+                <MapPin size={18} strokeWidth={1.75} className="flex-shrink-0 text-white" />
+                <span className="flex min-w-0 flex-col leading-tight">
+                  <span className="text-[12px] font-bold uppercase text-white/60">Delivering to</span>
+                  <span className="truncate text-base font-bold text-white">
                     {hasDeliveryAddress
                       ? pillAddressLine || deliveryPostalCode || "Enter your address"
                       : "Enter your address"}
@@ -786,22 +799,20 @@ export const Header: React.FC<HeaderProps> = ({
               />
             </div>
 
-            {/* Search bar (fills remaining width) */}
-            <div className="flex-1 min-w-0 mx-2">
+            {/* Search */}
+            <div className="relative min-w-0 flex-1">
               <form
                 onSubmit={handleSearchSubmit}
-                className="relative flex h-12 items-center bg-surface rounded-pill overflow-hidden"
+                role="search"
+                className="flex h-12 items-center rounded-md border-2 border-white bg-surface pl-4 pr-1 focus-within:border-primary"
               >
-                <div className="pl-5 pr-2 flex-shrink-0 text-text-tertiary">
-                  <Search size={18} strokeWidth={2} />
-                </div>
+                <Search size={18} strokeWidth={2} className="flex-shrink-0 text-text-tertiary" aria-hidden />
                 <input
                   type="text"
-                  placeholder="Search products and brands"
+                  placeholder="Search products, brands and SKUs"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => setIsSearchCategoryDropdownOpen(false)}
-                  className="input h-full min-h-0 flex-1 bg-transparent border-0 text-text placeholder:text-text-tertiary focus:ring-0 focus:outline-none focus:text-text rounded-none px-1"
+                  className="input h-full min-h-0 flex-1 rounded-none border-0 bg-transparent px-3 text-base text-text placeholder:text-text-tertiary focus:text-text focus:outline-none focus:ring-0"
                   aria-label="Search products"
                 />
                 {searchQuery && (
@@ -811,96 +822,18 @@ export const Header: React.FC<HeaderProps> = ({
                       setSearchQuery("");
                       setSearchResults(null);
                     }}
-                    className="px-3 text-text-tertiary text-sm font-bold hover:text-text transition-colors"
+                    className="flex h-10 w-10 items-center justify-center text-text-tertiary transition-colors hover:text-text"
                     aria-label="Clear search"
                   >
                     <X size={16} />
                   </button>
                 )}
-                {/* Category selector — collapsed to right-side chip on xl+ */}
-                <div className="relative h-full hidden xl:block">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIsSearchCategoryDropdownOpen(
-                        !isSearchCategoryDropdownOpen,
-                      )
-                    }
-                    className="h-full py-0 pl-4 pr-5 text-text text-sm font-semibold border-l border-border flex items-center gap-2 bg-surface hover:bg-surface-muted transition-colors"
-                    style={{ minWidth: "170px" }}
-                  >
-                    <span className="truncate">{searchCategory}</span>
-                    <ChevronDown
-                      size={14}
-                      className={`transition-transform duration-200 text-text-tertiary ${
-                        isSearchCategoryDropdownOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  {isSearchCategoryDropdownOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setIsSearchCategoryDropdownOpen(false)}
-                      />
-                      <div className="absolute top-[calc(100%+8px)] right-0 w-64 bg-surface rounded-block border border-border py-3 z-50 shadow-pop">
-                        <div className="px-4 pb-2 mb-2 border-b border-border">
-                          <span className="text-eyebrow text-text-tertiary">
-                            Shop by Category
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSearchCategory("All Departments");
-                            setIsSearchCategoryDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-5 py-2.5 text-sm transition-colors flex items-center justify-between group ${
-                            searchCategory === "All Departments"
-                              ? "bg-primary text-white"
-                              : "hover:bg-surface-muted text-text"
-                          }`}
-                        >
-                          All Departments
-                          <ChevronRight
-                            size={14}
-                            className={
-                              searchCategory === "All Departments"
-                                ? "text-white/50"
-                                : "text-text-tertiary group-hover:text-primary"
-                            }
-                          />
-                        </button>
-                        {categoryTree.map((cat: CategoryNode) => (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              setSearchCategory(cat.label);
-                              setIsSearchCategoryDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-5 py-2.5 text-sm transition-colors flex items-center justify-between group ${
-                              searchCategory === cat.label
-                                ? "bg-primary text-white"
-                                : "hover:bg-surface-muted text-text"
-                            }`}
-                          >
-                            {cat.label}
-                            <ChevronRight
-                              size={14}
-                              className={
-                                searchCategory === cat.label
-                                  ? "text-white/50"
-                                  : "text-text-tertiary group-hover:text-primary"
-                              }
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
+                <button
+                  type="submit"
+                  className="h-10 flex-shrink-0 rounded-sm bg-primary px-5 font-heading text-base font-bold uppercase font-condensed tracking-wide text-white transition-colors hover:bg-secondary"
+                >
+                  Search
+                </button>
               </form>
 
               <SearchResults
@@ -922,27 +855,25 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Account chip */}
             <button
               type="button"
-              onClick={() =>
-                currentUser ? setIsAccountPanelOpen(true) : setIsWelcomeDrawerOpen(true)
-              }
+              onClick={openUserPanel}
               aria-label={
                 currentUser
                   ? `Account: ${currentUser.first_name || currentUser.username}`
                   : "Sign in or create account"
               }
-              className="hidden md:flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-white/[0.08] transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-white/[0.12] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <User size={26} strokeWidth={1.75} className="text-white" />
-              <span className="flex flex-col leading-tight text-left">
-                <span className="text-[12px] font-bold uppercase tracking-normal text-white/60">
-                  {timeGreeting}
+              {currentUser && (
+                <span className="hidden flex-col text-left leading-tight xl:flex">
+                  <span className="text-[12px] font-bold uppercase text-white/70">
+                    Account:
+                  </span>
+                  <span className="text-base font-bold text-white">
+                    {currentUser.first_name || currentUser.username}
+                  </span>
                 </span>
-                <span className="text-sm font-bold text-white">
-                  {currentUser
-                    ? currentUser.first_name || currentUser.username
-                    : "Sign In · Sign Up"}
-                </span>
-              </span>
+              )}
             </button>
 
             {/* Basket with running total */}
@@ -950,23 +881,17 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={toggleCart}
               aria-label={`Cart, ${cartCount} items, ${formatCurrency(cartTotal)}`}
-              className="relative flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.08] transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="relative flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-white/[0.12] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <span className="relative">
-                <ShoppingBasket
-                  size={26}
-                  strokeWidth={1.75}
-                  className="text-white"
-                />
+                <ShoppingBasket size={26} strokeWidth={1.75} className="text-white" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-pill bg-cart-bubble text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                  <span className="absolute -right-2 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-cart-bubble px-1 text-[10px] font-bold leading-none text-white">
                     {cartCount}
                   </span>
                 )}
               </span>
-              <span className="text-sm font-bold text-white tabular-nums">
-                {formatCurrency(cartTotal)}
-              </span>
+              <span className="text-base font-bold tabular-nums text-white">{formatCurrency(cartTotal)}</span>
             </button>
           </div>
 
@@ -1056,7 +981,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 aria-label="Account"
-                onClick={() => setIsAccountPanelOpen(true)}
+                onClick={openUserPanel}
                 className="text-white flex items-center justify-center transition-opacity duration-200 hover:opacity-70"
               >
                 <User size={20} strokeWidth={1.75} />
@@ -1081,29 +1006,34 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="md:hidden w-full bg-belims-blue px-4 pb-3 relative">
             <form
               onSubmit={handleSearchSubmit}
-              className="flex items-center h-11 bg-white/10 rounded-full overflow-hidden"
+              role="search"
+              className="flex h-12 items-center rounded-md border-2 border-white bg-surface pl-3 pr-1 focus-within:border-primary"
             >
-              <div className="pl-4 pr-2 flex-shrink-0 text-white/60">
-                <Search size={18} strokeWidth={2} />
-              </div>
+              <Search size={18} strokeWidth={2} className="flex-shrink-0 text-text-tertiary" aria-hidden />
               <input
                 type="text"
                 placeholder="Search products and brands"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-transparent text-white placeholder:text-white/50 text-sm font-medium focus:outline-none border-0 focus:ring-0 h-full px-0"
+                className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-base text-text placeholder:text-text-tertiary focus:outline-none focus:ring-0"
                 aria-label="Search products"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => { setSearchQuery(''); setSearchResults(null); }}
-                  className="pr-4 text-white/60 hover:text-white transition-colors"
+                  className="flex h-10 w-10 items-center justify-center text-text-tertiary transition-colors hover:text-text"
                   aria-label="Clear search"
                 >
                   <X size={16} />
                 </button>
               )}
+              <button
+                type="submit"
+                className="h-9 flex-shrink-0 rounded-sm bg-primary px-4 font-heading text-base font-bold uppercase font-condensed text-white"
+              >
+                Go
+              </button>
             </form>
             <SearchResults
               searchResults={searchResults}
@@ -1143,96 +1073,36 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
 
-          {/* ─── Row 3: White secondary nav (Sixty60 pattern) ─── */}
-          <div className="hidden md:block bg-surface text-text border-b border-border">
-            <div className="flex items-center justify-between gap-6 px-6 lg:px-[50px] py-3">
-              {/* Left cluster */}
-              <div className="flex items-center gap-5 min-w-0">
-                <div
-                  className="relative"
-                  onMouseEnter={openMegaMenu}
-                  onMouseLeave={closeMegaMenu}
-                >
-                  <button
-                    type="button"
-                    aria-haspopup="true"
-                    aria-expanded={isMegaMenuOpen}
-                    className="flex items-center gap-2 text-text font-heading font-bold text-sm hover:text-primary transition-colors"
+          {/* ─── Sub-nav: Departments + live category pills (collapses when condensed) ─── */}
+          <div
+            className={`hidden overflow-hidden border-t border-white/15 transition-[max-height,opacity] duration-200 md:block ${
+              isCondensed ? "max-h-0 opacity-0" : "max-h-16 opacity-100"
+            }`}
+            inert={isCondensed || undefined}
+          >
+            <div className="container mx-auto flex min-h-[60px] items-center gap-3 px-4">
+              {renderDepartmentsTrigger(true)}
+              <nav aria-label="Popular categories" className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+                {subNavPills.map((node) => (
+                  <Link
+                    key={node.id}
+                    to={`/shop/${encodeURIComponent(node.id)}`}
+                    className="inline-flex h-11 flex-shrink-0 items-center whitespace-nowrap border-y-[3px] border-transparent px-3 font-heading text-base font-bold uppercase font-condensed tracking-wide text-white/85 transition-colors hover:border-b-primary hover:text-white"
                   >
-                    <LayoutGrid size={18} strokeWidth={2} />
-                    Shop by Department
-                    <ChevronDown
-                      size={14}
-                      className={`transition-transform ${
-                        isMegaMenuOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <span className="h-6 w-px bg-border" aria-hidden="true" />
-
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-sm font-bold text-text-secondary whitespace-nowrap">
-                    Shop By Delivery
-                  </span>
-                  {deliveryPromise?.fastestEta && (
-                    <span className="inline-flex items-center gap-1.5 rounded-pill border border-primary/30 text-primary text-xs font-bold px-3 py-1 whitespace-nowrap">
-                      <Truck size={13} strokeWidth={2.25} />
-                      {deliveryPromise.fastestEta}
-                    </span>
-                  )}
-                  {deliveryPromise?.serviceLabel && (
-                    <span className="inline-flex items-center gap-1.5 rounded-pill border border-success/40 text-success text-xs font-bold px-3 py-1 whitespace-nowrap">
-                      <Clock size={13} strokeWidth={2.25} />
-                      {deliveryPromise.serviceLabel}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Right cluster */}
-              <nav
-                className="flex items-center gap-6"
-                aria-label="Secondary navigation"
-              >
-                <Link
-                  to="/wishlist"
-                  className="flex items-center gap-2 text-text font-heading font-bold text-sm hover:text-primary transition-colors"
-                >
-                  <Heart size={18} strokeWidth={2} />
-                  My Shop
-                </Link>
-                <button
-                  type="button"
-                  onClick={toggleStoreLocator}
-                  className="flex items-center gap-2 text-text font-heading font-bold text-sm hover:text-primary transition-colors"
-                >
-                  <Building2 size={18} strokeWidth={2} />
-                  Browse Stores &amp; Leaflets
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsServicesPanelOpen(true)}
-                  className="flex items-center gap-2 text-text font-heading font-bold text-sm hover:text-primary transition-colors"
-                >
-                  <Grid3x3 size={18} strokeWidth={2} />
-                  Other Services
-                </button>
+                    {node.label}
+                  </Link>
+                ))}
               </nav>
             </div>
           </div>
         </section>
 
-        {/* Mega Menu - Positioned outside main section to prevent clipping */}
         <MegaMenu
+          id="mega-menu"
           isOpen={isMegaMenuOpen}
           categoryTree={categoryTree}
-          activeMegaCategory={activeMegaCategory}
-          setActiveMegaCategory={setActiveMegaCategory}
-          handleShopAll={handleShopAll}
-          handleCategorySelect={handleCategorySelect}
           products={products}
+          onClose={closeMegaMenuNow}
           onMouseEnter={openMegaMenu}
           onMouseLeave={closeMegaMenu}
         />
@@ -1246,7 +1116,7 @@ export const Header: React.FC<HeaderProps> = ({
           onShopAll={handleShopAll}
           hamburgerRef={hamburgerRef}
           onOpenStoreLocator={toggleStoreLocator}
-          onOpenAccount={() => setIsAccountPanelOpen(true)}
+          onOpenAccount={openUserPanel}
         />
 
         {/* Services Side Panel */}
@@ -1348,35 +1218,35 @@ export const Header: React.FC<HeaderProps> = ({
           isOpen={isAccountPanelOpen}
           onClose={() => setIsAccountPanelOpen(false)}
           title={currentUser ? `Welcome, ${currentUser.first_name || currentUser.username}!` : "My Account"}
-          widthClassName="w-full max-w-md"
+          widthClassName="w-full max-w-sm"
           footer={
             currentUser ? (
-              <div className="p-5">
+              <div className="p-4 sm:p-5">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700 transition-colors"
+                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 font-heading font-condensed text-button font-bold uppercase text-white transition-colors hover:bg-belims-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue focus-visible:ring-offset-2"
                 >
                   <LogOut size={18} />
                   Log out
                 </button>
               </div>
             ) : (
-              <div className="p-5">
-                <p className="text-sm text-text-secondary mb-4 leading-relaxed">
+              <div className="p-4 sm:p-5">
+                <p className="mb-4 text-sm leading-relaxed text-text-secondary">
                   Sign in or create a profile now for access to the widest range of products all in one place, saving you time and money.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <Link
                     to="/login"
                     onClick={() => setIsAccountPanelOpen(false)}
-                    className="w-full h-[46px] flex items-center justify-center gap-2 px-4 text-sm font-semibold bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 transition-colors"
+                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 font-heading font-condensed text-button font-bold uppercase text-white transition-colors hover:bg-belims-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue focus-visible:ring-offset-2"
                   >
                     Sign in
                   </Link>
                   <Link
                     to="/register"
                     onClick={() => setIsAccountPanelOpen(false)}
-                    className="h-[46px] flex items-center justify-center gap-2 px-4 text-sm font-semibold border border-neutral-200 text-neutral-900 rounded-lg hover:bg-neutral-50 transition-colors"
+                    className="flex min-h-12 items-center justify-center gap-2 rounded-md border-2 border-belims-blue px-3 py-3 font-heading font-condensed text-button font-bold uppercase text-belims-blue transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue focus-visible:ring-offset-2"
                   >
                     Create an Account
                   </Link>
@@ -1386,7 +1256,7 @@ export const Header: React.FC<HeaderProps> = ({
           }
         >
           {currentUser && (
-            <div className="border-b border-gray-100">
+            <div className="divide-y divide-border border-b border-border">
               {[
                 { label: "Dashboard", to: "/account/dashboard", icon: <LayoutGrid size={20} /> },
                 { label: "Orders", to: "/account/orders", icon: <ShoppingBasket size={20} /> },
@@ -1399,10 +1269,10 @@ export const Header: React.FC<HeaderProps> = ({
                   key={to}
                   to={to}
                   onClick={() => setIsAccountPanelOpen(false)}
-                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-surface-muted border-b border-gray-100"
+                  className="flex min-h-16 w-full items-center gap-4 px-6 py-4 text-left transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-belims-blue"
                 >
-                  <span className="text-text-tertiary">{icon}</span>
-                  <span className="flex-1 text-sm font-semibold text-text">{label}</span>
+                  <span className="text-belims-blue">{icon}</span>
+                  <span className="flex-1 text-base font-semibold text-text">{label}</span>
                   <span className="text-text-tertiary"><ChevronRight size={18} /></span>
                 </Link>
               ))}
@@ -1410,22 +1280,22 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {!currentUser && (
-            <div className="p-5">
-              <div className="text-sm font-semibold text-text mb-2">
+            <div className="border-b border-border p-6">
+              <h3 className="mb-3 font-heading font-condensed text-h5 font-extrabold uppercase text-text">
                 Let's get started
-              </div>
-              <div className="text-sm text-text-secondary mb-3 leading-relaxed">
+              </h3>
+              <p className="mb-3 text-base leading-relaxed text-text-secondary">
                 See trade pricing across our range and unlock checkout
                 access with a trade account.
-              </div>
-              <div className="text-sm text-text-secondary mb-3 leading-relaxed">
+              </p>
+              <p className="mb-5 text-base leading-relaxed text-text-secondary">
                 Bulk pricing, site delivery and exclusive trade-only
                 deals — built for professionals.
-              </div>
+              </p>
               <Link
                 to="/register?type=trade"
                 onClick={() => setIsAccountPanelOpen(false)}
-                className="text-sm font-semibold text-text hover:underline inline-flex items-center gap-1"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 font-heading font-condensed text-button font-bold uppercase text-white transition-colors hover:bg-belims-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue focus-visible:ring-offset-2"
               >
                 Let's get started
                 <ArrowRight size={14} />

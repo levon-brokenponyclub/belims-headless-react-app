@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronRight } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 
 interface ProductAccordionsProps {
   ecommercePolicies: any;
@@ -7,126 +7,55 @@ interface ProductAccordionsProps {
   setExpandedPolicy: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
+// Copy comes from Site Settings → Ecommerce policies; items with no text are hidden.
+const POLICIES = [
+  { key: "return", title: "Returns", field: "return_policy" },
+  { key: "change_mind", title: "Change of mind", field: "change_of_mind" },
+  { key: "warranty", title: "Warranty", field: "warranty" },
+  { key: "shipping", title: "Delivery & collection", field: "shipping" },
+] as const;
+
 export const ProductAccordions: React.FC<ProductAccordionsProps> = ({
   ecommercePolicies,
   expandedPolicy,
   setExpandedPolicy,
 }) => {
+  const items = POLICIES.filter(({ field }) => ecommercePolicies?.[field]);
+  if (!ecommercePolicies) {
+    return <p className="py-4 text-base text-text-tertiary">Loading policies…</p>;
+  }
+
   return (
-    <div className="space-y-0">
-      {/* 15-Days Return Policy */}
-      <div className="border-b border-border rounded overflow-hidden">
-        <button
-          onClick={() =>
-            setExpandedPolicy(expandedPolicy === "return" ? null : "return")
-          }
-          className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
-        >
-          <span className="text-base font-bold text-text font-heading transition-colors">
-            15-Days Return Policy
-          </span>
-          <ChevronRight
-            size={20}
-            className={`text-text transition-transform ${expandedPolicy === "return" ? "rotate-90" : ""}`}
-          />
-        </button>
-        {expandedPolicy === "return" && (
-          <div className="pb-6 px-0 bg-white animate-fadeIn">
-            <div
-              className="text-base text-text-tertiary prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: ecommercePolicies?.return_policy || "Loading...",
-              }}
-            />
+    <div>
+      {items.map(({ key, title, field }) => {
+        const isOpen = expandedPolicy === key;
+        return (
+          <div key={key} className="border-b border-border">
+            <h3>
+              <button
+                type="button"
+                id={`policy-${key}`}
+                aria-expanded={isOpen}
+                aria-controls={`policy-${key}-panel`}
+                onClick={() => setExpandedPolicy(isOpen ? null : key)}
+                className="flex w-full items-center justify-between py-4 text-left font-heading text-base font-bold text-text hover:text-belims-blue"
+              >
+                {title}
+                {isOpen ? <Minus size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
+              </button>
+            </h3>
+            {isOpen && (
+              <div
+                id={`policy-${key}-panel`}
+                role="region"
+                aria-labelledby={`policy-${key}`}
+                className="prose prose-sm max-w-none pb-5 text-base text-text-secondary"
+                dangerouslySetInnerHTML={{ __html: ecommercePolicies[field] }}
+              />
+            )}
           </div>
-        )}
-      </div>
-
-      {/* Change of Mind Return */}
-      <div className="border-b border-border rounded overflow-hidden">
-        <button
-          onClick={() =>
-            setExpandedPolicy(
-              expandedPolicy === "change_mind" ? null : "change_mind",
-            )
-          }
-          className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
-        >
-          <span className="text-base font-bold text-text font-heading transition-colors">
-            Change of Mind Return
-          </span>
-          <ChevronRight
-            size={20}
-            className={`text-text transition-transform ${expandedPolicy === "change_mind" ? "rotate-90" : ""}`}
-          />
-        </button>
-        {expandedPolicy === "change_mind" && (
-          <div className="pb-6 px-0 bg-white animate-fadeIn">
-            <div
-              className="text-base text-text-tertiary prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: ecommercePolicies?.change_of_mind || "Loading...",
-              }}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Warranty */}
-      <div className="border-b border-border rounded overflow-hidden">
-        <button
-          onClick={() =>
-            setExpandedPolicy(expandedPolicy === "warranty" ? null : "warranty")
-          }
-          className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
-        >
-          <span className="text-base font-bold text-text font-heading transition-colors">
-            Warranty
-          </span>
-          <ChevronRight
-            size={20}
-            className={`text-text transition-transform ${expandedPolicy === "warranty" ? "rotate-90" : ""}`}
-          />
-        </button>
-        {expandedPolicy === "warranty" && (
-          <div className="pb-6 px-0 bg-white animate-fadeIn">
-            <div
-              className="text-base text-text-tertiary prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: ecommercePolicies?.warranty || "Loading...",
-              }}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Delivery and Shipping */}
-      <div className="border-b border-border rounded overflow-hidden">
-        <button
-          onClick={() =>
-            setExpandedPolicy(expandedPolicy === "shipping" ? null : "shipping")
-          }
-          className="w-full flex items-center justify-between p-6 px-0 bg-white transition-colors text-left group"
-        >
-          <span className="text-base font-bold text-text font-heading transition-colors">
-            Delivery and Shipping
-          </span>
-          <ChevronRight
-            size={20}
-            className={`text-text transition-transform ${expandedPolicy === "shipping" ? "rotate-90" : ""}`}
-          />
-        </button>
-        {expandedPolicy === "shipping" && (
-          <div className="pb-6 px-0 bg-white animate-fadeIn">
-            <div
-              className="text-base text-text-tertiary prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: ecommercePolicies?.shipping || "Loading...",
-              }}
-            />
-          </div>
-        )}
-      </div>
+        );
+      })}
     </div>
   );
 };

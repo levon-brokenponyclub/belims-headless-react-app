@@ -77,6 +77,8 @@ export interface ProductCardCustomizations {
     quickViewButton?: ProductCardActionOverride;
   };
   slots?: ProductCardSlots;
+  /** Named card treatments keep archive and product-page rail styling scoped to their consumers. */
+  appearance?: "industrial" | "archive";
 }
 
 export const createProductCardCustomizations = (
@@ -84,11 +86,19 @@ export const createProductCardCustomizations = (
 ) => customizations;
 
 export const PRODUCT_CARD_PRESETS: Record<
-  "compactCard" | "searchCard" | "perfectMatchCard",
+  "compactCard" | "archiveCard" | "railCard" | "searchCard" | "perfectMatchCard",
   ProductCardCustomizations
 > = {
   compactCard: createProductCardCustomizations({
     imageBlockClassName: "aspect-square w-full",
+  }),
+  archiveCard: createProductCardCustomizations({
+    appearance: "archive",
+    categoryText: (product) => product.brand || product.category || "",
+  }),
+  railCard: createProductCardCustomizations({
+    appearance: "industrial",
+    categoryText: (product) => product.brand || product.category || "",
   }),
   searchCard: createProductCardCustomizations({
     hiddenElements: ["category", "quickViewIcon"],
@@ -127,6 +137,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   customizations,
 }) => {
   const isFlatHorizontal = variant === "flat-horizontal";
+  const isArchive = customizations?.appearance === "archive";
   const navigate = useNavigate();
 
   const [notifyStatus, setNotifyStatus] = useState<
@@ -400,6 +411,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   }, [shouldRenderQuickView]);
 
   const productUrl = buildProductUrl(product);
+  const isIndustrial = customizations?.appearance === "industrial";
   const displayCategory =
     (typeof customizations?.categoryText === "function"
       ? customizations.categoryText(product)
@@ -412,7 +424,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     <>
       <article
         className={[
-          `group flex flex-col h-full rounded-2xl border border-border/70 bg-white p-3 sm:p-4 shadow-xs hover:shadow-md hover:border-border-strong transition-all duration-300 ${
+          `group flex flex-col h-full ${
+            isIndustrial
+              ? "rounded-md border-2 border-border bg-white p-3 transition-colors hover:border-belims-blue"
+              : isArchive
+                ? "rounded-md border border-border bg-white transition-colors hover:border-border-strong"
+              : "rounded-2xl border border-border/70 bg-white p-3 sm:p-4 shadow-xs hover:shadow-md hover:border-border-strong transition-all duration-300"
+          } ${
             isFlatHorizontal ? "sm:flex-row sm:gap-4" : ""
           }`,
           className,
@@ -422,7 +440,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Image Container */}
         <div
-          className={`relative aspect-square w-full rounded-xl bg-[#F8F9FA] overflow-hidden flex items-center justify-center p-3 mb-3 ${
+          className={`relative aspect-square w-full ${isIndustrial || isArchive ? "bg-white" : "rounded-xl bg-[#F8F9FA]"} overflow-hidden flex items-center justify-center ${isArchive ? "p-3" : "p-3 mb-3"} ${
             isFlatHorizontal ? "sm:w-48 sm:mb-0 sm:flex-shrink-0" : ""
           }`}
         >
@@ -449,14 +467,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             )}
           </Link>
 
-          {/* Wishlist Floating Button (shows on hover) */}
+          {/* Wishlist stays available on touch and pointer layouts. */}
           <button
             type="button"
             onClick={handleToggleWishlist}
-            className={`absolute right-2.5 top-2.5 z-10 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-xs text-text transition-all duration-200 hover:bg-white hover:text-red-500 ${
+            className={`absolute right-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-white text-text transition-colors hover:border-primary hover:text-red-500 ${
               isWishlisted
-                ? "opacity-100 text-red-500"
-                : "opacity-0 group-hover:opacity-100"
+                ? "text-red-500"
+                : ""
             }`}
             aria-label={
               isWishlisted ? "Remove from wishlist" : "Add to wishlist"
@@ -469,10 +487,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             />
           </button>
 
+          {isArchive && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openQuickView();
+              }}
+              className="absolute right-2.5 top-[3.25rem] z-10 grid h-9 w-9 place-items-center rounded-sm border border-border bg-white text-text transition-colors hover:border-primary hover:text-primary"
+              title="Quick view"
+              aria-label={`Quick view ${product.name}`}
+            >
+              <Eye size={17} />
+            </button>
+          )}
+
           {/* Deal / Sale Badge (Top Left) */}
           {badgeLabel && !isHidden("badge") && (
-            <span
-              className={`absolute left-2.5 top-2.5 z-10 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xs ${badgeClass}`}
+          <span
+              className={`absolute left-2.5 top-2.5 z-10 rounded-sm px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}
             >
               {badgeLabel}
             </span>
@@ -492,30 +526,38 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Content */}
         {customizations?.slots?.beforeContent?.(product)}
-        <div className="flex flex-1 flex-col justify-between">
+        <div className={`flex flex-1 flex-col justify-between ${isArchive ? "px-3.5 pb-3.5 pt-1" : ""}`}>
           <div>
             {/* Category above title */}
             {!isHidden("category") && (
-              <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-text-tertiary mb-1 truncate">
+              <p className={`${isIndustrial ? "text-caption" : isArchive ? "text-[11px]" : "text-[11px] sm:text-xs"} font-semibold uppercase tracking-wider text-text-tertiary mb-1 truncate`}>
                 {displayCategory}
               </p>
             )}
 
             {/* Product Title */}
-            <h3 className="font-heading font-semibold text-text text-sm sm:text-[15px] line-clamp-2 min-h-[38px] leading-snug hover:text-belims-blue transition-colors mb-2">
+            <h3 className={`font-heading font-semibold text-text ${isArchive ? "text-sm min-h-[2.7em]" : "text-sm sm:text-[15px] min-h-[38px]"} line-clamp-2 leading-snug hover:text-belims-blue transition-colors mb-1`}>
               <Link to={productUrl}>{product.name}</Link>
             </h3>
+            {(isIndustrial || isArchive) && (
+              <p className={`mb-1 flex items-center gap-1.5 text-sm font-semibold ${
+                product.stock <= 0 ? "text-stock-out" : product.stock <= (isArchive ? 5 : 3) ? "text-stock-low" : "text-stock-ok"
+              }`}>
+                <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
+                {product.stock <= 0 ? "Out of stock" : product.stock <= 3 ? `Only ${product.stock} left` : "In stock"}
+              </p>
+            )}
           </div>
 
           {/* Price Area: Dominant Price + Sale Price replacing stars */}
           <div className="mt-auto pt-1">
-            <div className="flex items-center justify-between gap-2 min-h-[26px]">
-              <span className="font-heading text-base sm:text-lg font-bold text-text">
+            <div className={`flex items-center gap-2 min-h-[26px] ${isArchive ? "justify-start" : "justify-between"}`}>
+              <span className={`font-heading text-lg font-extrabold ${hasConsumerStrike ? "text-primary" : "text-text"}`}>
                 {formatMoney(displayPrice)}
               </span>
 
               {hasConsumerStrike && consumerCompareAt ? (
-                <span className="text-xs sm:text-sm font-semibold text-text-tertiary line-through">
+                <span className="text-[13px] font-normal text-text-tertiary line-through">
                   {formatMoney(consumerCompareAt)}
                 </span>
               ) : isTradeSpecial && tradePrice > 0 ? (
@@ -535,9 +577,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     e.stopPropagation();
                     addWithPriceMode(isTradeSpecial ? "trade" : "retail");
                   }}
-                  className="flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-border bg-white px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold font-heading text-text shadow-2xs transition-all duration-200 hover:bg-belims-blue hover:border-belims-blue hover:text-white"
+                  className={
+                    isIndustrial
+                      ? "flex h-10 flex-1 items-center justify-center rounded-md bg-belims-blue px-3 font-heading font-condensed text-button font-bold uppercase text-white transition-colors hover:bg-primary"
+                      : isArchive
+                        ? "flex h-11 flex-1 items-center justify-center rounded-sm bg-secondary px-3 font-heading text-sm font-bold text-white transition-colors hover:bg-primary"
+                      : "flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-border bg-white px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold font-heading text-text shadow-2xs transition-all duration-200 hover:bg-belims-blue hover:border-belims-blue hover:text-white"
+                  }
                 >
-                  <ShoppingCart size={15} />
+                  {!isIndustrial && <ShoppingCart size={15} />}
                   <span className="truncate">Add to cart</span>
                 </button>
               ) : (
@@ -563,7 +611,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               )}
 
               {/* Quick View Button (Square) */}
-              <button
+              {!isIndustrial && !isArchive && <button
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
@@ -575,7 +623,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 aria-label="Quick View"
               >
                 <Eye size={17} />
-              </button>
+              </button>}
             </div>
           </div>
         </div>

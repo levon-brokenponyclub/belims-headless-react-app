@@ -1,0 +1,234 @@
+<!doctype html>
+<!--
+  Header option C — "Search-first compact". For a catalogue where most visits start with a specific part (screws, bits, sealants):
+  a dominant search with product + category + brand typeahead, the live category pills from the home page under it,
+  and a cascading 3-pane department browser (department → subcategory → sub-subcategory or top products in that branch).
+  Condenses to a single sticky row on scroll (pills collapse; Departments moves next to search).
+  Real data: ../shop-product/data.js; store from ecommerce-policies.
+  Target components: Header.tsx, MegaMenu.tsx, SearchModal (inline typeahead), CategoryGrid (pills reused), mobile menu.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Header option C — Belims mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@87.5,700;87.5,800;100,400;100,500;100,600;100,700;100,800&display=swap">
+<link rel="stylesheet" href="../home/mockup.css">
+<link rel="stylesheet" href="header.css">
+<style>
+  .hC { position: sticky; top: 0; z-index: 45; background: #fff; border-bottom: 1px solid var(--color-border); }
+  .hC-top .container { display: flex; align-items: center; gap: 16px; min-height: 80px; transition: min-height .2s; }
+  .hC.condensed .hC-top .container { min-height: 64px; }
+  .hC-logo { font-weight: 900; font-size: 26px; letter-spacing: -.02em; color: var(--color-belims-blue); margin-right: 8px; }
+  .hC-dept-mini { display: none; }
+  .hC.condensed .hC-dept-mini { display: inline-flex; }
+  .hC-search { position: relative; flex: 1; max-width: 760px; }
+  .hC-search form { display: flex; align-items: center; height: 52px; background: var(--color-surface-muted); border: 2px solid transparent; border-radius: var(--radius-md); padding: 0 6px 0 16px; gap: 10px; }
+  .hC-search form:focus-within { border-color: var(--color-border-strong); background: #fff; }
+  .hC-search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; font: inherit; font-size: 16px; }
+  .hC-search .go { height: 40px; padding: 0 16px; border: 0; border-radius: 6px; background: var(--color-primary); color: #fff; font-weight: 800; cursor: pointer; }
+  .hC-search .go:hover { background: var(--color-secondary); }
+  .hC-store { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); font-size: 13px; background: #fff; cursor: pointer; white-space: nowrap; }
+  .hC-store b { font-weight: 800; }
+  .hC-right { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .hC-sub { overflow: hidden; max-height: 64px; transition: max-height .2s, opacity .2s; }
+  .hC.condensed .hC-sub { max-height: 0; opacity: 0; }
+  .hC-sub .container { display: flex; align-items: center; gap: 8px; min-height: 60px; }
+  .hC-depts { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border: 0; border-radius: var(--radius-md); background: var(--color-surface-dark); color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; flex: none; }
+  .hC-depts[aria-expanded="true"] { background: var(--color-primary); }
+  .hC-dept-mini.hC-depts { padding: 0 12px; }
+  .hC-pills { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+  .hC-pills a { flex: none; display: inline-flex; align-items: center; height: 44px; padding: 0 16px; border: 1px solid var(--color-border); border-radius: var(--radius-pill); font-size: 14px; font-weight: 500; color: var(--color-text-secondary); white-space: nowrap; }
+  .hC-pills a:hover { border-color: var(--color-primary); color: var(--color-primary); }
+  .hC-deal { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 8px; font-weight: 800; color: var(--color-primary); }
+
+  .hC-mega { border-top: 1px solid var(--color-border); }
+  .hC-mega .container { display: grid; grid-template-columns: 280px 300px minmax(0, 1fr); min-height: 420px; padding: 0; }
+  .hC-pane { border-right: 1px solid var(--color-border); padding: 12px 0; overflow-y: auto; max-height: 70vh; }
+  .hC-pane:last-child { border-right: 0; padding: 20px 24px; }
+  .hC-pane h3 { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--color-text-tertiary); padding: 4px 16px 8px; }
+  .hC-pane:last-child h3 { padding: 0 0 12px; }
+  .hC-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 44px; padding: 0 16px; border: 0; background: none; text-align: left; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .hC-row small { color: var(--color-text-tertiary); font-weight: 500; }
+  .hC-row[aria-current="true"] { background: var(--color-surface-muted); color: var(--color-primary); }
+  .hC-row .chev { opacity: .4; display: inline-flex; }
+  .hC-all { display: block; padding: 10px 16px; font-weight: 800; font-size: 14px; text-decoration: underline; }
+  .hC-links { columns: 2; column-gap: 24px; padding: 0; margin: 0; }
+  .hC-links li { list-style: none; break-inside: avoid; }
+  .hC-links a { display: block; padding: 6px 0; font-size: 14px; }
+  .hC-prods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .hC-prod { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .hC-prod:hover { border-color: var(--color-border-strong); }
+  .hC-prod img { aspect-ratio: 1; object-fit: contain; width: 100%; }
+  .hC-prod b { font-size: 14px; }
+  .hC-prod b.sale { color: var(--color-primary); }
+  .hC-prod span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 600; }
+  @media (max-width: 1279px) { .hC-mega .container { grid-template-columns: 250px 260px minmax(0, 1fr); } .hC-prods { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hC-store { display: none; } }
+  @media (max-width: 1023px) {
+    .hC-top .container { min-height: 60px; gap: 4px; }
+    .hC-logo { margin-right: auto; font-size: 22px; }
+    .hC-mobile-search { padding: 0 16px 12px; }
+    .hC.condensed .hC-mobile-search { padding-bottom: 8px; }
+  }
+</style>
+</head>
+<body>
+<div id="mock-bar"></div>
+<div class="option-intro"><div class="container"><strong>Option C — Search-first compact.</strong><span>Built around search: big typeahead (products, categories, brands), live pills under it, and a 3-pane department browser. Scroll down to see it condense into one sticky row.</span></div></div>
+
+<header class="hC" id="hC">
+  <div class="hC-top">
+    <div class="container">
+      <button class="hdr-action show-mobile" type="button" id="c-burger" aria-label="Open menu"></button>
+      <a class="hC-logo" href="../home/index.html">BELIMS</a>
+      <button class="hC-depts hC-dept-mini hide-mobile" type="button" id="c-dept-mini" aria-label="Departments"></button>
+      <div class="hC-search hide-mobile">
+        <form role="search">
+          <span id="c-ic"></span>
+          <label class="sr-only" for="c-q">Search products, brands and SKUs</label>
+          <input id="c-q" placeholder="Search 1,382 products, brands and SKUs" autocomplete="off">
+          <button class="go" type="submit">Search</button>
+        </form>
+        <div class="ta" id="c-ta" hidden></div>
+      </div>
+      <div class="hC-right">
+        <button class="hC-store hide-mobile" type="button" id="c-store"></button>
+        <a class="hdr-action hide-mobile" href="#" id="c-account"></a>
+        <a class="hdr-action" href="#" id="c-cart" aria-label="Cart, 0 items, R0.00"></a>
+      </div>
+    </div>
+  </div>
+  <div class="hC-mobile-search show-mobile">
+    <div class="hC-search" style="max-width:none;width:100%">
+      <form role="search">
+        <label class="sr-only" for="c-qm">Search products and brands</label>
+        <input id="c-qm" placeholder="Search products and brands" autocomplete="off">
+        <button class="go" type="submit">Go</button>
+      </form>
+      <div class="ta" id="c-tam" hidden></div>
+    </div>
+  </div>
+  <nav class="hC-sub hide-mobile" aria-label="Shop">
+    <div class="container" id="c-sub"></div>
+  </nav>
+  <div class="mega hC-mega" id="c-mega" hidden>
+    <div class="container">
+      <div class="hC-pane" id="c-p1"></div>
+      <div class="hC-pane" id="c-p2"></div>
+      <div class="hC-pane" id="c-p3"></div>
+    </div>
+  </div>
+</header>
+<div class="mega-scrim" id="c-scrim"></div>
+
+<main class="container demo-page">
+  <div class="ph dark">Page content</div>
+  <div class="row"><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div></div>
+  <div class="row"><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div></div>
+  <div class="demo-notes">
+    <h2>Why this option</h2>
+    <ul>
+      <li>Search is the primary control: 712 of 1,382 products are fasteners and adhesives, which people search for by size or spec rather than browse.</li>
+      <li>The 3-pane browser reaches any of the 110 categories in two hovers and previews real products, so customers see what's in a branch before clicking.</li>
+      <li>Condensing on scroll keeps search and cart visible with the least vertical space of the three options.</li>
+      <li>Trade-off: least brand expression; the white header relies on the page for visual punch.</li>
+    </ul>
+  </div>
+</main>
+
+<script src="../shop-product/data.js"></script>
+<script src="../shop-product/shop.js"></script>
+<script src="header.js"></script>
+<script>
+renderChromeFor("c");
+document.getElementById("c-burger").innerHTML = ICON.menu;
+document.getElementById("c-ic").innerHTML = ICON.search;
+document.getElementById("c-q").placeholder = `Search ${DB.products.length.toLocaleString("en-US")} products, brands and SKUs`;
+document.getElementById("c-store").innerHTML = `${ICON.pin}<span>Collect from <b>${esc(STORE?.name || "—")}</b></span>${ICON.down}`;
+document.getElementById("c-account").innerHTML = `${ICON.user}<span class="hide-mobile"><small>Good morning</small><b>Sign in</b></span>`;
+document.getElementById("c-cart").innerHTML = `<span class="cart-wrap">${ICON.cart}<span class="cart-count">0</span></span><span class="hide-mobile"><small>Cart</small><b>R0.00</b></span>`;
+document.getElementById("c-dept-mini").innerHTML = ICON.menu;
+
+// Live pills = second-level categories by catalogue count (same source as the home pill rail)
+const pills = DEPTS.flatMap((d) => d.kids).sort((a, b) => b.count - a.count).slice(0, 12);
+document.getElementById("c-sub").innerHTML = `
+  <button class="hC-depts" type="button" id="c-dept">${ICON.menu} Departments ${ICON.down}</button>
+  <div class="hC-pills">${pills.map((p) => `<a href="${catHref(p.slug)}">${esc(p.name)}</a>`).join("")}</div>
+  <a class="hC-deal" href="${DEALS_HREF}">${ICON.tag} Deals</a>`;
+
+// 3-pane cascade
+const p1 = document.getElementById("c-p1"), p2 = document.getElementById("c-p2"), p3 = document.getElementById("c-p3");
+const row = (n, attr, i) => `<button class="hC-row" type="button" ${attr}="${i}"><span>${esc(n.name)} <small>${n.count}</small></span>${n.kids.length ? `<span class="chev">${ICON.right}</span>` : ""}</button>`;
+const prodCard = (p) => `<a class="hC-prod" href="${productHref(p.id)}">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy">` : ""}<span>${esc(p.name)}</span>
+  ${p.deal && !p.deal.trade ? `<b class="sale">${money(p.deal.price)}</b>` : `<b>${money(p.price)}</b>`}</a>`;
+let cur1 = DEPTS[0], cur2 = null;
+function showProducts(node) {
+  const items = CAT.productsIn(node.slug);
+  const deals = items.filter((p) => p.deal);
+  const pick = [...deals, ...items.filter((p) => !p.deal && p.img)].slice(0, 6);
+  p3.innerHTML = `<h3>${node.kids.length ? `In ${esc(node.name)}` : `Top products in ${esc(node.name)}`}</h3>
+    ${node.kids.length ? `<ul class="hC-links">${node.kids.map((g) => `<li><a href="${catHref(g.slug)}">${esc(g.name)} <small style="color:var(--color-text-tertiary)">${g.count}</small></a></li>`).join("")}</ul><h3 style="margin-top:20px">Popular here</h3>` : ""}
+    <div class="hC-prods">${pick.slice(0, node.kids.length ? 3 : 6).map(prodCard).join("")}</div>
+    <a class="hC-all" style="padding-left:0" href="${catHref(node.slug)}">Shop all ${esc(node.name)} (${node.count})</a>`;
+}
+function show1(d) {
+  cur1 = d; cur2 = null;
+  p1.querySelectorAll("[data-c1]").forEach((b) => b.setAttribute("aria-current", String(DEPTS[b.dataset.c1] === d)));
+  p2.innerHTML = `<h3>${esc(d.name)}</h3><a class="hC-all" href="${catHref(d.slug)}">Shop all ${d.count}</a>${d.kids.map((k, i) => row(k, "data-c2", i)).join("")}`;
+  showProducts(d);
+}
+function show2(k) {
+  cur2 = k;
+  p2.querySelectorAll("[data-c2]").forEach((b) => b.setAttribute("aria-current", String(cur1.kids[b.dataset.c2] === k)));
+  showProducts(k);
+}
+p1.innerHTML = `<h3>Departments</h3>${DEPTS.map((d, i) => row(d, "data-c1", i)).join("")}<a class="hC-all" href="../shop-product/archive.html">All products</a>`;
+show1(DEPTS[0]);
+const pick = (pane, attr, fn, list) => (e) => { const b = e.target.closest(`[${attr}]`); if (b) fn(list()[b.getAttribute(attr)]); };
+["mouseover", "focusin"].forEach((ev) => {
+  p1.addEventListener(ev, pick(p1, "data-c1", show1, () => DEPTS));
+  p2.addEventListener(ev, pick(p2, "data-c2", show2, () => cur1.kids));
+});
+// Arrow keys: up/down within a pane, right moves to the next pane, left back
+document.getElementById("c-mega").addEventListener("keydown", (e) => {
+  const pane = e.target.closest(".hC-pane");
+  if (!pane) return;
+  const items = [...pane.querySelectorAll("button, a")];
+  const i = items.indexOf(document.activeElement);
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus(); }
+  if (e.key === "ArrowRight") { e.preventDefault(); pane.nextElementSibling?.querySelector("button, a")?.focus(); }
+  if (e.key === "ArrowLeft") { e.preventDefault(); pane.previousElementSibling?.querySelector("[aria-current=true], button, a")?.focus(); }
+});
+
+const scrim = document.getElementById("c-scrim"), mega = document.getElementById("c-mega");
+const deptBtn = document.getElementById("c-dept"), mini = document.getElementById("c-dept-mini");
+initMega(deptBtn, mega, { scrim });
+// The condensed-row button opens the same panel
+mini.setAttribute("aria-controls", "c-mega");
+mini.setAttribute("aria-expanded", "false");
+mini.addEventListener("click", () => {
+  const open = mega.hidden;
+  mega.hidden = !open;
+  mini.setAttribute("aria-expanded", String(open));
+  scrim.classList.toggle("open", open);
+  if (open) p1.querySelector("button").focus();
+});
+scrim.addEventListener("click", () => { mega.hidden = true; mini.setAttribute("aria-expanded", "false"); });
+deptBtn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown") { e.preventDefault(); if (mega.hidden) deptBtn.click(); p1.querySelector("button").focus(); } });
+
+// Condense on scroll
+const header = document.getElementById("hC");
+let ticking = false;
+addEventListener("scroll", () => {
+  if (ticking) return;
+  ticking = true;
+  requestAnimationFrame(() => { header.classList.toggle("condensed", scrollY > 80); ticking = false; });
+}, { passive: true });
+
+initTypeahead(document.getElementById("c-q"), document.getElementById("c-ta"));
+initTypeahead(document.getElementById("c-qm"), document.getElementById("c-tam"));
+initDrawer(document.getElementById("c-burger"), { title: "Shop", theme: {} });
+</script>
+</body>
+</html>

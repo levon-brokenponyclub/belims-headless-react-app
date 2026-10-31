@@ -1,52 +1,42 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Product } from "../types";
 import { isProductPurchasable } from "../utils/price";
 import { buildProductUrl } from "../utils/product";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { SkeletonProductCard } from "./Skeleton";
+import { SectionHeading } from "./SectionHeading";
+import { CategoryFeature, CategoryFeatureConfig } from "./CategoryFeature";
 
 type DealTabKey = "deal_of_day" | "weekly" | "trade_deals";
 
-type DealTabConfig = {
-  key: DealTabKey;
-  label: string;
-  title: string;
-  description: string;
-  image: string;
-  link: string;
-  linkLabel: string;
-};
-
-const DEAL_TABS: DealTabConfig[] = [
+const DEAL_TABS: { key: DealTabKey; label: string; description: string }[] = [
   {
     key: "deal_of_day",
-    label: "Daily Deals",
-    title: "Daily Deals",
+    label: "Daily deals",
     description: "Fresh discounts daily. New savings every morning.",
-    image: "/images/development/athens-mosaic-04a.webp",
-    link: "/deals",
-    linkLabel: "View daily deals",
   },
   {
     key: "weekly",
-    label: "Weekly Deals",
-    title: "Weekly Deals",
+    label: "Weekly deals",
     description: "Weekly savings across selected products.",
-    image: "/images/development/athens-mosaic-03.webp",
-    link: "/deals/weekly",
-    linkLabel: "View weekly deals",
   },
   {
     key: "trade_deals",
-    label: "Trade Deals",
-    title: "Trade Deals",
+    label: "Trade deals",
     description: "Exclusive trade pricing for approved trade accounts.",
-    image: "/images/development/athens-mosaic-02d.webp",
-    link: "/trade/deals",
-    linkLabel: "View trade deals",
   },
 ];
+
+const SPOTLIGHT: CategoryFeatureConfig = {
+  slug: "hand-tools",
+  title: "Hand tools",
+  description: "Built for daily use on site and at home.",
+  image: "/images/development/athens-mosaic-06.webp",
+  imageWidth: 1420,
+};
+
+const MAX_DEALS = 6;
 
 interface DealsSectionProps {
   products: Product[];
@@ -69,6 +59,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
 }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<DealTabKey>("deal_of_day");
+  const activeTabConfig = DEAL_TABS.find((tab) => tab.key === activeTab)!;
 
   const tabProducts = useMemo(() => {
     const filtered = products.filter((product) => {
@@ -98,270 +89,85 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
       );
     });
 
-    return filtered.slice(0, 10);
+    return filtered.slice(0, MAX_DEALS);
   }, [activeTab, products]);
 
-  const showSkeletons = isLoadingProducts;
-
-  const width = useWindowWidth();
-  const railRef = useRef<HTMLDivElement | null>(null);
-  const [railWidth, setRailWidth] = useState(0);
-  const [stepWidth, setStepWidth] = useState(0);
-  const [index, setIndex] = useState(0);
-
-  const itemsLength = showSkeletons ? 5 : tabProducts.length;
-
-  const slidesPerView = useMemo(() => {
-    if (!railWidth || !stepWidth) return 1;
-    return Math.max(1, Math.floor(railWidth / stepWidth));
-  }, [railWidth, stepWidth]);
-
-  const maxIndex = useMemo(() => {
-    return Math.max(0, itemsLength - slidesPerView);
-  }, [itemsLength, slidesPerView]);
-
-  useEffect(() => {
-    setIndex((prev) => Math.min(prev, maxIndex));
-  }, [maxIndex]);
-
-  useEffect(() => {
-    if (!railRef.current) return;
-
-    const measure = () => {
-      const rail = railRef.current;
-      if (!rail) return;
-
-      setRailWidth(rail.clientWidth);
-
-      const children = Array.from(
-        rail.querySelectorAll<HTMLElement>("[data-slider-item]"),
-      );
-      if (children.length === 0) return;
-
-      if (children.length >= 2) {
-        const step = children[1].offsetLeft - children[0].offsetLeft;
-        setStepWidth(step > 0 ? step : children[0].offsetWidth);
-      } else {
-        setStepWidth(children[0].offsetWidth);
-      }
-    };
-
-    measure();
-
-    const ro = new ResizeObserver(() => measure());
-    ro.observe(railRef.current);
-
-    window.addEventListener("resize", measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [width, itemsLength]);
-
-  useEffect(() => {
-    if (!railRef.current) return;
-    setIndex(0);
-    railRef.current.scrollTo({ left: 0, behavior: "smooth" });
-  }, [activeTab]);
-
-  const scrollToIndex = (nextIndex: number) => {
-    if (!railRef.current || !stepWidth) return;
-    railRef.current.scrollTo({
-      left: nextIndex * stepWidth,
-      behavior: "smooth",
-    });
-  };
-
-  const prev = () => {
-    const nextIndex = index <= 0 ? maxIndex : index - 1;
-    setIndex(nextIndex);
-    scrollToIndex(nextIndex);
-  };
-
-  const next = () => {
-    const nextIndex = index >= maxIndex ? 0 : index + 1;
-    setIndex(nextIndex);
-    scrollToIndex(nextIndex);
-  };
-
-  const indicatorPct =
-    maxIndex === 0 ? 100 : Math.min(100, (index / maxIndex) * 100);
-
-  // Hide section if no purchasable deals are available across all tabs
-  const hasAnyDeals = useMemo(() => {
-    return products.some((product) => {
-      // Only count purchasable products (no backorder, valid price, in stock)
-      if (!isProductPurchasable(product)) return false;
-
-      const consumerType = product.deals_resolved?.consumer?.bestDeal?.type;
-      const tradeType = product.deals_resolved?.trade?.bestDeal?.type;
-      return (
-        consumerType === "deal_of_day" ||
-        consumerType === "weekly_special" ||
-        consumerType === "clearance" ||
-        tradeType === "trade_special" ||
-        (product.sale_price && parseFloat(String(product.sale_price)) > 0)
-      );
-    });
-  }, [products]);
-
-  if (!hasAnyDeals && !isLoadingProducts) {
-    return null;
-  }
-
   return (
-    <section className="w-full py-10">
+    <section className="w-full bg-belims-blue py-10 md:py-14" aria-labelledby="home-deals-title">
       <div className="container mx-auto px-4">
-        <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
-          <h2 className="text-h5 font-bold tracking-tight text-text md:text-h4">
-            Shop Deals
-          </h2>
-          <div
-            className="flex w-full items-center justify-start gap-4 md:w-auto"
-            role="tablist"
-          >
+        <SectionHeading id="home-deals-title" eyebrow="Save more" title="Shop deals" tone="inverse">
+          <div className="flex gap-6 overflow-x-auto no-scrollbar" role="tablist">
             {DEAL_TABS.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => {
-                  setActiveTab(tab.key);
-                  setIndex(0);
-                  scrollToIndex(0);
-                }}
-                className={`text-lg font-semibold transition-colors ${
+                role="tab"
+                aria-selected={activeTab === tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`h-11 shrink-0 whitespace-nowrap border-b-2 text-lg font-semibold transition-colors ${
                   activeTab === tab.key
-                    ? "text-text"
-                    : "text-text-tertiary hover:text-text"
+                    ? "border-primary text-white"
+                    : "border-transparent text-white/60 hover:text-white"
                 }`}
               >
                 {tab.label}
               </button>
             ))}
           </div>
-        </div>
+        </SectionHeading>
 
-        <div className="flex flex-col lg:flex-row gap-5 h-auto animate-fadeIn">
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <div
-              ref={railRef}
-              className="flex-1 overflow-x-auto no-scrollbar flex gap-4 lg:gap-5 items-stretch snap-x snap-mandatory scroll-pl-0"
-              aria-roledescription="carousel"
-              onScroll={() => {
-                if (!railRef.current || !stepWidth) return;
-                const nextIndex = Math.round(
-                  railRef.current.scrollLeft / stepWidth,
-                );
-                setIndex(Math.min(maxIndex, Math.max(0, nextIndex)));
-              }}
-            >
-              {showSkeletons
-                ? Array.from({ length: 5 }).map((_, itemIndex) => (
-                    <div
-                      key={`deals-skel-${itemIndex}`}
-                      className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2.15)] sm:basis-[48%] lg:basis-[calc((100%-4rem)/5)] min-w-0"
-                      data-slider-item
-                    >
-                      <SkeletonProductCard className="w-full" />
-                    </div>
-                  ))
-                : tabProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2.15)] sm:basis-[48%] lg:basis-[calc((100%-4rem)/5)] min-w-0"
-                      data-slider-item
-                      onClick={() => navigate(buildProductUrl(product))}
-                    >
-                      <ProductCard
-                        product={product}
-                        addToCart={addToCart}
-                        onBuyNow={onBuyNow}
-                        onCompare={onCompare}
-                        isAuthenticated={isAuthenticated}
-                        isTradeApproved={isTradeApproved}
-                        className="h-full"
-                        customizations={PRODUCT_CARD_PRESETS.compactCard}
-                      />
-                    </div>
-                  ))}
+        <p className="-mt-2 mb-5 text-base text-white/75" aria-live="polite">
+          {activeTabConfig.description}
+        </p>
+
+        <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <CategoryFeature feature={SPOTLIGHT} />
+
+          {isLoadingProducts ? (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+              {Array.from({ length: MAX_DEALS }).map((_, index) => (
+                <SkeletonProductCard key={`deals-skel-${index}`} className="w-full" />
+              ))}
             </div>
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center justify-between gap-4">
-          <div className="h-0.5 w-full rounded-full bg-surface-soft overflow-hidden">
-            <div
-              className="h-full rounded-full bg-belims-blue transition-all duration-300"
-              style={{ width: `${indicatorPct}%` }}
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={prev}
-              className="group relative h-12 w-12 overflow-hidden rounded-full border border-border bg-white text-text transition-colors duration-300 ease-out hover:border-border-strong hover:bg-surface-dark hover:text-white"
-              aria-label="Previous products"
-            >
-              <span className="absolute inset-0 origin-right scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
-              <span className="relative z-10 flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="26"
-                  height="26"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="lucide lucide-chevron-left"
-                  aria-hidden="true"
+          ) : tabProducts.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+              {tabProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="min-w-0"
+                  onClick={() => navigate(buildProductUrl(product))}
                 >
-                  <path d="m15 18-6-6 6-6"></path>
-                </svg>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={next}
-              className="group relative h-12 w-12 overflow-hidden rounded-full border border-border bg-white text-text transition-colors duration-300 ease-out hover:border-border-strong hover:bg-surface-dark hover:text-white"
-              aria-label="Next products"
-            >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
-              <span className="relative z-10 flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="26"
-                  height="26"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="lucide lucide-chevron-right"
-                  aria-hidden="true"
-                >
-                  <path d="m9 18 6-6-6-6"></path>
-                </svg>
-              </span>
-            </button>
-          </div>
+                  <ProductCard
+                    product={product}
+                    addToCart={addToCart}
+                    onBuyNow={onBuyNow}
+                    onCompare={onCompare}
+                    isAuthenticated={isAuthenticated}
+                    isTradeApproved={isTradeApproved}
+                    className="h-full"
+                    customizations={PRODUCT_CARD_PRESETS.compactCard}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface p-6 text-center">
+              <p className="font-heading text-h5 font-bold text-text">
+                No {activeTabConfig.label.toLowerCase()} right now
+              </p>
+              <p className="mt-1 text-base text-text-secondary">
+                Check back soon, or browse the full range.
+              </p>
+              <Link
+                to="/shop"
+                className="mt-4 inline-flex h-12 items-center rounded-md border border-border-strong px-6 font-heading text-button uppercase font-condensed tracking-wide text-belims-blue transition-colors hover:bg-surface-dark hover:text-white"
+              >
+                Browse all products
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </section>
   );
 };
-
-function useWindowWidth() {
-  const [w, setW] = useState<number>(() =>
-    typeof window === "undefined" ? 1024 : window.innerWidth,
-  );
-  useEffect(() => {
-    const onResize = () => setW(window.innerWidth);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-  return w;
-}

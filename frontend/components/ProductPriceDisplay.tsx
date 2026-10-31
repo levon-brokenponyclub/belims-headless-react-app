@@ -116,7 +116,7 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
       <div className="items-start gap-4">
         <div className="flex justify-start gap-2">
           <div
-            className={`font-heading text-[28px] font-bold ${headlineClass}`}
+            className={`font-heading text-h2 font-bold tabular-nums ${headlineClass}`}
           >
             {formatMoney(dominantPrice)}
           </div>
@@ -125,34 +125,34 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
             <div className="mt-3">
               <div className="grid grid-cols-3 gap-3 rounded border border-gray-200 bg-white px-4 py-3">
                 <div className="text-center">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                  <div className="text-caption font-semibold uppercase tracking-wider text-text-tertiary">
                     Retail
                   </div>
-                  <div className="mt-1 font-body text-sm font-semibold text-gray-900">
+                  <div className="mt-1 font-body text-base font-semibold text-gray-900">
                     {formatMoney(retailPrice)}
                   </div>
                 </div>
 
                 <div className="text-center">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                  <div className="text-caption font-semibold uppercase tracking-wider text-text-tertiary">
                     Trade
                   </div>
-                  <div className="mt-1 font-body text-sm font-bold text-gray-900">
+                  <div className="mt-1 font-body text-base font-bold text-gray-900">
                     {formatMoney(tradePrice)}
                   </div>
                 </div>
 
                 <div className="text-center">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                  <div className="text-caption font-semibold uppercase tracking-wider text-text-tertiary">
                     Save
                   </div>
-                  <div className="mt-1 inline-flex items-center justify-center rounded-lg bg-green-50 px-2 py-1 font-body text-sm font-bold text-green-700">
+                  <div className="mt-1 inline-flex items-center justify-center rounded-lg bg-green-50 px-2 py-1 font-body text-base font-bold text-green-700">
                     {formatMoney(savings)}
                   </div>
                 </div>
               </div>
 
-              <div className="mt-2 font-body text-xs text-gray-600">
+              <div className="mt-2 font-body text-caption text-gray-600">
                 {secondaryCopy ?? (
                   <span className="italic">
                     Add at trade price now — register at checkout to claim this
@@ -164,12 +164,12 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
           ) : (
             <>
               {compareForNonTrade && (
-                <div className="flex flex-wrap items-center gap-2 font-body text-[18px] text-text-tertiary">
+                <div className="flex flex-wrap items-center gap-2 font-body text-xl text-text-tertiary">
                   <span className="line-through">
                     {formatMoney(compareForNonTrade)}
                   </span>
                   {/* {savings > 0 && (
-                    <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-[12px] font-semibold text-gray-700">
+                    <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-caption font-semibold text-gray-700">
                       Save {formatMoney(savings)}
                     </span>
                   )} */}
@@ -180,7 +180,7 @@ export const ProductPriceDisplay: React.FC<ProductPriceDisplayProps> = ({
         </div>
 
         {showCountdown && timeLeft && !dualMode && (
-          <div className="mt-1 inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs font-semibold text-amber-700">
+          <div className="mt-1 inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-body text-caption font-semibold text-amber-700">
             <Clock size={14} />
             {timeLeft}
           </div>

@@ -111,8 +111,8 @@ export const BottomDrawer: React.FC<BottomDrawerProps> = ({
         tabIndex={-1}
         className={`pointer-events-auto relative z-[1] ${widthClassName} ${heightClassName} border border-black/10 bg-white shadow-[0_-16px_45px_rgba(15,23,42,0.18)] transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${
           isRightPlacement
-            ? "ml-auto h-full rounded-none md:rounded-l-[22px] md:rounded-r-none"
-            : "rounded-t-[18px] md:rounded-t-[22px]"
+            ? "ml-auto h-full"
+            : ""
         } ${panelClassName || ""} ${
           isRightPlacement
             ? isDrawerVisible

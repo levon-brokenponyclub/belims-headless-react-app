@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronRight,
   Minus,
@@ -7,8 +7,6 @@ import {
   X,
   ArrowLeft,
   ArrowRight,
-  Target,
-  Loader2,
   Clock,
   Heart,
 } from "lucide-react";
@@ -19,8 +17,7 @@ import {
 import { Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, STORES } from "../constants";
 import { formatCurrency, isProductPurchasable } from "../utils/price";
-import { buildProductUrl } from "../utils/product";
-import { StockBar } from "./StockBar";
+import { buildProductUrl, formatSpecValue, parseProductDescription } from "../utils/product";
 import { DeliveryLocationModal } from "./DeliveryLocationModal";
 import { VideoPlayer } from "./VideoPlayer";
 import { generateProductDescription } from "../services/geminiService";
@@ -48,11 +45,12 @@ import { RecentlyViewed } from "./RecentlyViewed";
 import { StoreLocator } from "./StoreLocator";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { ProductPriceDisplay } from "./ProductPriceDisplay";
-import { FulfillmentBlock } from "./FulfillmentBlock";
+import { FulfilmentChooser } from "./FulfilmentChooser";
 import { FulfillmentTab } from "./FulfillmentTabs";
 import { ProductAccordions } from "./ProductAccordions";
 import { TradePricingAvailable } from "./TradePricingAvailable";
 import { Spinner } from "./Spinner";
+import { SectionHeading, ViewAllLink } from "./SectionHeading";
 interface SingleProductProps {
   product: Product;
   allProducts?: Product[];
@@ -75,20 +73,6 @@ interface ShippingRate {
   tier?: ShippingTier;
 }
 
-const formatEtaDateLabel = (date: Date): string =>
-  date.toLocaleDateString("en-ZA", { month: "short", day: "numeric" });
-
-const parseEarliestDateFromEta = (eta?: string | null): Date | null => {
-  if (!eta) return null;
-  const value = eta.trim();
-  if (!value) return null;
-
-  const [startRaw] = value.split(" - ");
-  const parsed = new Date(startRaw.trim());
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-};
-
 const classifyRate = (
   rate: ShippingRate,
   allRates: ShippingRate[],
@@ -102,37 +86,6 @@ const classifyRate = (
   if (rate.total_price === minPrice && minPrice < maxPrice) return "Economy";
   if (rate.total_price === maxPrice) return "Express";
   return "Standard";
-};
-
-const formatEta = (dateStr?: string | null): string => {
-  if (!dateStr) return "Estimated Arrival";
-  const value = dateStr.trim();
-  if (!value) return "Estimated Arrival";
-
-  const formatDate = (input: string) => {
-    const parsed = new Date(input);
-    if (Number.isNaN(parsed.getTime())) return "";
-    return parsed.toLocaleDateString("en-ZA", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  if (value.includes(" - ")) {
-    const [startRaw, endRaw] = value.split(" - ").map((part) => part.trim());
-    const start = formatDate(startRaw);
-    const end = formatDate(endRaw);
-
-    if (start && end) {
-      return start === end
-        ? `Estimated Arrival: ${start}`
-        : `Estimated Arrival: ${start} - ${end}`;
-    }
-  }
-
-  const single = formatDate(value);
-  if (single) return `Estimated Arrival: ${single}`;
-  return value;
 };
 
 export const SingleProduct: React.FC<SingleProductProps> = ({
@@ -166,7 +119,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const [qty, setQty] = useState(1);
 
   // Policies
-  const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
+  const [expandedPolicy, setExpandedPolicy] = useState<string | null>("return");
   const [ecommercePolicies, setEcommercePolicies] = useState<any>(null);
 
   // Store Locator
@@ -220,12 +173,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   // Sticky bottom CTA (Athens-like): show when BuyBox actions are out of view
   const [showBottomCta, setShowBottomCta] = useState(false);
   const buyBoxRef = useRef<HTMLDivElement>(null);
-
-  // Frequently Bought With Slider
-  const frequentlyBoughtRailRef = useRef<HTMLDivElement | null>(null);
-  const [frequentlyBoughtRailWidth, setFrequentlyBoughtRailWidth] = useState(0);
-  const [frequentlyBoughtStepWidth, setFrequentlyBoughtStepWidth] = useState(0);
-  const [frequentlyBoughtIndex, setFrequentlyBoughtIndex] = useState(0);
 
   const pricingInfo = useMemo(() => {
     const tradeDealsInfo = product.deals_resolved?.trade;
@@ -339,24 +286,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     if (badgeStyle === "trade") return "bg-[#ECF0F1] text-[#04223E]";
     return "bg-[#DF1119] text-white";
   })();
-
-  const earliestDeliveryEta = useMemo(() => {
-    if (!deliveryRates.length) return "";
-
-    const parsedDates = deliveryRates
-      .map((rate) => parseEarliestDateFromEta(rate.expected_delivery_date))
-      .filter((date): date is Date => Boolean(date));
-
-    if (parsedDates.length > 0) {
-      const earliestDate = new Date(
-        Math.min(...parsedDates.map((date) => date.getTime())),
-      );
-      return formatEtaDateLabel(earliestDate);
-    }
-
-    const fallbackEta = formatEta(deliveryRates[0]?.expected_delivery_date);
-    return fallbackEta.replace(/^Estimated Arrival:\s*/i, "") || "";
-  }, [deliveryRates]);
 
   const refreshStoredAddress = () => {
     const { address, legacyLabel } = readStoredAddress();
@@ -820,15 +749,224 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         ? product.images
         : [product.image];
 
-    // Add video as first item if it exists
-    if (product.video_url) {
+    // Add video as first item if it exists. The CMS falls back to a dev placeholder clip — skip that.
+    if (product.video_url && !product.video_url.includes("/images/development/")) {
       return [`video:${product.video_url}`, ...items];
     }
     return items;
   }, [product.images, product.image, product.video_url]);
 
+  const categoryCrumbs = (product.breadcrumbs || []).filter(
+    (crumb) => crumb.label && crumb.label.toLowerCase() !== "shop",
+  );
+  const breadcrumbTrail: { label: string; to?: string }[] = [
+    { label: "Home", to: "/" },
+    { label: "Shop", to: "/shop" },
+    ...categoryCrumbs.map((crumb) => ({
+      label: crumb.label,
+      to: `/shop/${encodeURIComponent(crumb.slug || crumb.label)}`,
+    })),
+    { label: product.name },
+  ];
+
+  const leafCategory = breadcrumbTrail.length > 3 ? breadcrumbTrail[breadcrumbTrail.length - 2] : null;
+
+  const stockLine =
+    product.stock <= 0
+      ? { text: "Out of stock", tone: "text-stock-out" }
+      : product.stock <= 3
+        ? { text: `In stock — only ${product.stock} left`, tone: "text-stock-low" }
+        : product.stock <= 10
+          ? { text: "In stock — low stock", tone: "text-stock-low" }
+          : { text: "In stock", tone: "text-stock-ok" };
+
+  // Specs / features live as lists inside the description HTML; structured `specifications` add weight + dimensions.
+  const parsedDescription = useMemo(
+    () => parseProductDescription(product.description || ""),
+    [product.description],
+  );
+  const specRows: [string, string][] = [
+    ...parsedDescription.specs,
+    ...(product.specifications || [])
+      .map(({ label, value }) => [label, formatSpecValue(value)] as [string, string])
+      .filter(([label, value]) => value && !parsedDescription.specs.some(([l]) => l.toLowerCase() === label.toLowerCase())),
+  ];
+  const preferredKeySpecs = ["motor type", "drill voltage", "voltage", "max torque", "no-load speed", "impact rate", "weight"];
+  const keySpecs = [...specRows]
+    .sort(([left], [right]) => {
+      const leftIndex = preferredKeySpecs.indexOf(left.toLowerCase());
+      const rightIndex = preferredKeySpecs.indexOf(right.toLowerCase());
+      return (leftIndex < 0 ? Number.MAX_SAFE_INTEGER : leftIndex) - (rightIndex < 0 ? Number.MAX_SAFE_INTEGER : rightIndex);
+    })
+    .slice(0, 4);
+  const featureList = product.features?.length ? product.features : parsedDescription.features;
+  const shortDescription = useMemo(() => {
+    const text = (new DOMParser().parseFromString(product.short_description || "", "text/html").body.textContent || "").trim();
+    return text.toLowerCase() === product.name.trim().toLowerCase() ? "" : text;
+  }, [product.short_description, product.name]);
+
+  useEffect(() => {
+    const previous = document.title;
+    document.title = `${product.name} | Belims`;
+    return () => {
+      document.title = previous;
+    };
+  }, [product.name]);
+
+  // Product + BreadcrumbList JSON-LD. Store-level Google reviews are deliberately not included.
+  useEffect(() => {
+    const origin = window.location.origin;
+    const url = `${origin}${buildProductUrl(product)}`;
+    const images = gallery.filter((item) => !item.startsWith("video:"));
+    const data = [
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.name,
+        sku: product.sku || undefined,
+        image: images.length ? images : undefined,
+        brand: product.brand ? { "@type": "Brand", name: product.brand } : undefined,
+        category: categoryCrumbs.map((crumb) => crumb.label).join(" > ") || undefined,
+        offers: {
+          "@type": "Offer",
+          url,
+          priceCurrency: "ZAR",
+          price: Number(consumerPrice || 0).toFixed(2),
+          availability: isProductPurchasable(product)
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+        },
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: breadcrumbTrail.slice(1).map((crumb, idx) => ({
+          "@type": "ListItem",
+          position: idx + 1,
+          name: crumb.label,
+          ...(crumb.to ? { item: `${origin}${crumb.to}` } : {}),
+        })),
+      },
+    ];
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.dataset.pdpJsonld = "true";
+    script.textContent = JSON.stringify(data);
+    document.head.appendChild(script);
+    return () => script.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id, product.name, consumerPrice, gallery]);
+
+  const [cartStatus, setCartStatus] = useState("");
+
+  // Cross-sells, then same-category products — "Complete the job" fallback when there are no bundle candidates.
+  const fallbackMatches = useMemo(() => {
+    const mainCategory =
+      product.breadcrumbs?.find((b) => b.label !== "Shop")?.label || product.category;
+    const crossSellIds = product.cross_sell_ids || [];
+    const crossSells = crossSellIds.length
+      ? allProducts.filter((p) => crossSellIds.includes(p.id)).slice(0, 10)
+      : [];
+    const sameCategory = allProducts
+      .filter(
+        (p) =>
+          p.id !== product.id &&
+          !crossSells.some((rp) => rp.id === p.id) &&
+          (p.breadcrumbs || []).some((b) => b.label === mainCategory),
+      )
+      .slice(0, Math.max(0, 10 - crossSells.length));
+    return [...crossSells, ...sameCategory];
+  }, [allProducts, product.id, product.breadcrumbs, product.category, product.cross_sell_ids]);
+
+  type PdpTab = "overview" | "specs" | "works" | "delivery";
+  const pdpTabs: { id: PdpTab; label: string }[] = [
+    { id: "overview", label: "Overview" },
+    ...(specRows.length > 0 ? [{ id: "specs" as const, label: "Specifications" }] : []),
+    ...(product.bundleCandidates?.length || fallbackMatches.length
+      ? [{ id: "works" as const, label: "Works with" }]
+      : []),
+    { id: "delivery", label: "Delivery & warranty" },
+  ];
+  const [activeTab, setActiveTab] = useState<PdpTab>("overview");
+  useEffect(() => setActiveTab("overview"), [product.id]);
+
+  // Arrow keys / Home / End move between tabs (roving tabindex).
+  const onTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const index = pdpTabs.findIndex((tab) => tab.id === activeTab);
+    const nextIndex =
+      e.key === "ArrowRight" ? (index + 1) % pdpTabs.length
+      : e.key === "ArrowLeft" ? (index - 1 + pdpTabs.length) % pdpTabs.length
+      : e.key === "Home" ? 0
+      : e.key === "End" ? pdpTabs.length - 1
+      : -1;
+    if (nextIndex < 0) return;
+    e.preventDefault();
+    const next = pdpTabs[nextIndex].id;
+    setActiveTab(next);
+    e.currentTarget.querySelector<HTMLButtonElement>(`#pdp-tab-${next}`)?.focus();
+  };
+
+  // Rows for "Complete the job": bundle candidates carry their own price/stock; fallbacks are full catalogue products.
+  const jobItems = useMemo(() => {
+    const bundle = product.bundleCandidates || [];
+    if (bundle.length > 0) {
+      return bundle.slice(0, 4).map((item) => {
+        const url = buildProductUrl({ id: item.id, name: item.name } as Product);
+        const inStock = typeof item.stock !== "number" || item.stock > 0;
+        return {
+          id: item.id,
+          name: item.name,
+          image: item.image,
+          price: item.price,
+          compareAt: typeof item.regular_price === "number" && item.regular_price > item.price ? item.regular_price : null,
+          url,
+          inStock,
+          onAdd: () => {
+            if (!inStock) {
+              navigate(url);
+              return;
+            }
+            addToCart({
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              regular_price: item.regular_price,
+              image: item.image,
+              category: item.category,
+              stock: typeof item.stock === "number" ? item.stock : 99,
+              maxStock: typeof item.stock === "number" ? item.stock : 99,
+              in_stock: inStock,
+              quantity: 1,
+            } as unknown as Product);
+          },
+        };
+      });
+    }
+    return fallbackMatches.slice(0, 4).map((p) => {
+      const url = buildProductUrl(p);
+      const inStock = isProductPurchasable(p);
+      const price = p.deals_resolved?.consumer?.price ?? p.price;
+      const compareAt = p.deals_resolved?.consumer?.compareAtPrice;
+      return {
+        id: p.id,
+        name: p.name,
+        image: p.image,
+        price,
+        compareAt: compareAt && compareAt > price ? compareAt : null,
+        url,
+        inStock,
+        onAdd: () => (inStock ? addToCart(p) : navigate(url)),
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.bundleCandidates, fallbackMatches]);
+
+  const relatedProducts = useMemo(
+    () => allProducts.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 5),
+    [allProducts, product.id, product.category],
+  );
+
   const [isAddToCartLoading, setIsAddToCartLoading] = useState(false);
-  const [isBuyNowLoading, setIsBuyNowLoading] = useState(false);
   const BUTTON_SPINNER_MIN_MS = 450;
 
   const handleAddToCart = () => {
@@ -851,49 +989,20 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
       addToCart(productToAdd);
     }
+    setCartStatus(`Added ${qty} × ${product.name} to cart`);
   };
 
-  const handleBuyNowAction = () => {
-    handleAddToCart();
-    navigate("/checkout");
-  };
-
-  const runActionWithIndicator = (
-    action: "add" | "buy",
-    callback: () => void,
-  ) => {
-    if (action === "add") {
-      setIsAddToCartLoading(true);
-    } else {
-      setIsBuyNowLoading(true);
-    }
-
-    const startedAt = Date.now();
-
-    try {
-      callback();
-    } finally {
-      const elapsed = Date.now() - startedAt;
-      const remaining = Math.max(0, BUTTON_SPINNER_MIN_MS - elapsed);
-
-      window.setTimeout(() => {
-        if (action === "add") {
-          setIsAddToCartLoading(false);
-        } else {
-          setIsBuyNowLoading(false);
-        }
-      }, remaining);
-    }
-  };
-
+  // Keeps the "Adding…" state visible for at least BUTTON_SPINNER_MIN_MS.
   const handleAddToCartClick = () => {
-    if (!isProductPurchasable(product) || isAddToCartLoading || isBuyNowLoading) return;
-    runActionWithIndicator("add", handleAddToCart);
-  };
-
-  const handleBuyNowClick = () => {
-    if (!isProductPurchasable(product) || isAddToCartLoading || isBuyNowLoading) return;
-    runActionWithIndicator("buy", handleBuyNowAction);
+    if (!isProductPurchasable(product) || isAddToCartLoading) return;
+    setIsAddToCartLoading(true);
+    const startedAt = Date.now();
+    try {
+      handleAddToCart();
+    } finally {
+      const remaining = Math.max(0, BUTTON_SPINNER_MIN_MS - (Date.now() - startedAt));
+      window.setTimeout(() => setIsAddToCartLoading(false), remaining);
+    }
   };
 
   const handleNextImage = (e: React.MouseEvent) => {
@@ -938,30 +1047,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     localStorage.setItem("belims_fulfillment_tab", "pickup");
     localStorage.setItem("fulfillmentType", "pickup");
     setIsDeliveryModalOpen(true);
-  };
-  const handleResetPickupStore = () => {
-    localStorage.removeItem("selectedPickupStore");
-    localStorage.removeItem("selectedPickupStoreDistance");
-    localStorage.removeItem("pickupStoreSelected");
-    localStorage.setItem("devSkipDefaultStore", "true");
-    setSelectedStore(null);
-    setPickupSchedule(null);
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("belims:reset-pickup-store"));
-    }
-  };
-  const handleEnableDefaultStore = () => {
-    localStorage.removeItem("devSkipDefaultStore");
-    const defaultStore = getDefaultStore(storeLocations);
-    setSelectedStore(defaultStore);
-    setPickupSchedule(null);
-    if (defaultStore) {
-      localStorage.setItem("selectedPickupStore", JSON.stringify(defaultStore));
-      localStorage.setItem("pickupStoreSelected", "true");
-    }
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("belims:enable-default-store"));
-    }
   };
   const hydratePickupDistances = () => {
     if (hasPickupLocationRef.current) return;
@@ -1052,51 +1137,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
     hydratePickupDistances();
   }, [fulfillmentType, storeLocations]);
 
-  // Frequently Bought With Slider Logic
-  useEffect(() => {
-    if (!frequentlyBoughtRailRef.current) return;
-
-    const measure = () => {
-      const rail = frequentlyBoughtRailRef.current;
-      if (!rail) return;
-
-      setFrequentlyBoughtRailWidth(rail.clientWidth);
-
-      const children = Array.from(
-        rail.querySelectorAll<HTMLElement>("[data-fbw-slider-item]"),
-      );
-      if (children.length === 0) return;
-
-      if (children.length >= 2) {
-        const step = children[1].offsetLeft - children[0].offsetLeft;
-        setFrequentlyBoughtStepWidth(step > 0 ? step : children[0].offsetWidth);
-      } else {
-        setFrequentlyBoughtStepWidth(children[0].offsetWidth);
-      }
-    };
-
-    measure();
-
-    const ro = new ResizeObserver(() => measure());
-    ro.observe(frequentlyBoughtRailRef.current);
-
-    window.addEventListener("resize", measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, []);
-
-  const scrollToFrequentlyBoughtIndex = (nextIndex: number) => {
-    if (!frequentlyBoughtRailRef.current || !frequentlyBoughtStepWidth) return;
-    frequentlyBoughtRailRef.current.scrollTo({
-      left: nextIndex * frequentlyBoughtStepWidth,
-      behavior: "smooth",
-    });
-  };
-
   return (
     <div className="relative bg-white">
+      <p className="sr-only" role="status" aria-live="polite">
+        {cartStatus}
+      </p>
       {/* Full Screen Gallery Modal */}
       {isGalleryOpen && (
         <div className="fixed inset-0 z-[80] bg-black/95 flex flex-col items-center justify-center p-4 animate-fadeIn">
@@ -1154,7 +1199,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 }`}
               >
                 {item.startsWith("video:") ? (
-                  <div className="w-full h-full bg-black flex items-center justify-center text-white text-xs font-bold">
+                  <div className="w-full h-full bg-black flex items-center justify-center text-white text-caption font-bold">
                     ▶ VIDEO
                   </div>
                 ) : (
@@ -1295,7 +1340,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                       <h2 className="text-base font-semibold text-white">
                         Schedule pickup
                       </h2>
-                      <p className="text-sm text-white/90">
+                      <p className="text-caption text-white/90">
                         Choose your preferred pickup date and time.
                       </p>
                     </div>
@@ -1310,14 +1355,14 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                 </div>
                 <div className="p-5 space-y-4">
                   <div>
-                    <p className="text-sm font-semibold text-text">
+                    <p className="text-caption font-semibold text-text">
                       Schedule pickup
                     </p>
-                    <p className="mt-0.5 text-xs text-text-tertiary">
+                    <p className="mt-0.5 text-caption text-text-tertiary">
                       Choose your preferred pickup date and time.
                     </p>
                   </div>
-                  <label className="block text-xs font-semibold text-text-secondary">
+                  <label className="block text-caption font-semibold text-text-secondary">
                     Date
                     <input
                       type="date"
@@ -1327,10 +1372,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         setSchedulePickupDate(e.target.value);
                         setSchedulePickupTime("");
                       }}
-                      className="mt-1 w-full rounded border border-border px-3 py-2 text-sm focus:ring-2 focus:ring-belims-blue outline-none"
+                      className="mt-1 w-full rounded border border-border px-3 py-2 text-base focus:ring-2 focus:ring-belims-blue outline-none"
                     />
                   </label>
-                  <label className="block text-xs font-semibold text-text-secondary">
+                  <label className="block text-caption font-semibold text-text-secondary">
                     Time
                     <input
                       type="time"
@@ -1349,13 +1394,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         }
                         setSchedulePickupTime(val);
                       }}
-                      className="mt-1 w-full rounded border border-border px-3 py-2 text-sm focus:ring-2 focus:ring-belims-blue outline-none disabled:bg-surface-muted disabled:text-text-tertiary"
+                      className="mt-1 w-full rounded border border-border px-3 py-2 text-base focus:ring-2 focus:ring-belims-blue outline-none disabled:bg-surface-muted disabled:text-text-tertiary"
                     />
                   </label>
                   <button
                     type="button"
                     onClick={handleSave}
-                    className="w-full rounded-md bg-belims-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-belims-navy"
+                    className="w-full rounded-md bg-belims-blue px-4 py-2.5 text-base font-semibold text-white transition-colors hover:bg-belims-navy"
                   >
                     Save pickup time
                   </button>
@@ -1408,101 +1453,82 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         }}
       />
 
-      {/* Sticky header (simple Athens-style: no hide/show secondary nav logic) */}
-      <div className="sticky top-0 z-40 bg-white">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <div className="text-base text-gray flex items-center gap-2 whitespace-nowrap">
-              <span
-                className="cursor-pointer hover:text-belims-blue transition-colors"
-                onClick={() => navigate(-1)}
-              >
-                Home
-              </span>
-              {product.breadcrumbs && product.breadcrumbs.length > 0 && (
-                <>
-                  {product.breadcrumbs.map((breadcrumb, idx) => (
-                    <React.Fragment key={idx}>
-                      <ChevronRight
-                        size={14}
-                        className="text-gray flex-shrink-0"
-                      />
-                      <span className="text-text-secondary">{breadcrumb.label}</span>
-                    </React.Fragment>
-                  ))}
-                  <ChevronRight
-                    size={14}
-                    className="text-text-tertiary flex-shrink-0"
-                  />
-                </>
+      <nav className="container mx-auto px-4 py-4" aria-label="Breadcrumb">
+        <ol className="flex flex-wrap items-center gap-1.5 text-caption text-text-secondary">
+          {breadcrumbTrail.map((crumb, idx) => (
+            <li key={`${crumb.label}-${idx}`} className="flex items-center gap-1.5">
+              {crumb.to ? (
+                <Link to={crumb.to} className="underline-offset-4 hover:text-belims-blue hover:underline">
+                  {crumb.label}
+                </Link>
+              ) : (
+                <span aria-current="page" className="font-semibold text-text">
+                  {crumb.label}
+                </span>
               )}
-              <span className="text-gray flex-shrink-0">{product.name}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+              {crumb.to && <ChevronRight size={12} aria-hidden="true" />}
+            </li>
+          ))}
+        </ol>
+      </nav>
 
-      {/* Page layout */}
+      {/* Layout B: wide gallery + sticky purchase panel; content flows in the left column */}
       <div className="bg-white">
-        <div className="container mx-auto px-4 py-12 pt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            {/* LEFT COLUMN */}
-            <div className="order-1 lg:order-1 lg:col-span-7">
-              {/* Featured Image / Gallery */}
-              <div className="bg-[#F9F9F9] rounded-xl overflow-hidden border border-border">
-                <div className="w-full h-[340px] md:h-[520px] flex items-center justify-center p-6 cursor-zoom-in">
-                  {mainImage.startsWith("video:") ? (
-                    <VideoPlayer
-                      url={mainImage.replace("video:", "")}
-                      title={product.name}
-                    />
-                  ) : (
-                    <img
-                      src={mainImage}
-                      alt={product.name}
-                      loading="eager"
-                      decoding="async"
-                      className="max-w-full max-h-full object-contain mix-blend-multiply"
-                      onClick={() => setIsGalleryOpen(true)}
-                    />
-                  )}
-                </div>
-
-                {/* {gallery.length > 1 && (
-                  <div className="flex gap-3 overflow-x-auto p-4 border-t border-border bg-white no-scrollbar">
+        <div className="container mx-auto px-4 pb-12">
+          <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
+            {/* LEFT COLUMN — gallery */}
+            <section className="order-1 lg:col-span-7" aria-label="Product images">
+              <div className="flex flex-col-reverse gap-3 md:flex-row">
+                {gallery.length > 1 && (
+                  <div className="no-scrollbar flex gap-2 overflow-x-auto md:max-h-[480px] md:w-20 md:flex-col md:overflow-y-auto">
                     {gallery.map((item, idx) => (
                       <button
-                        key={idx}
+                        key={item}
+                        type="button"
                         onClick={() => setMainImage(item)}
-                        className={`w-20 h-20 rounded border-2 overflow-hidden flex-shrink-0 transition-all ${
-                          mainImage === item
-                            ? "border-belims-blue"
-                            : "border-transparent opacity-70 hover:opacity-100"
+                        aria-label={`Show ${item.startsWith("video:") ? "video" : `image ${idx + 1}`}`}
+                        aria-pressed={mainImage === item}
+                        className={`h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border-2 bg-white p-1 transition-colors ${
+                          mainImage === item ? "border-belims-blue" : "border-border hover:border-border-strong"
                         }`}
-                        aria-label={`Go to ${item.startsWith("video:") ? "video" : "image"} ${idx + 1}`}
                       >
                         {item.startsWith("video:") ? (
-                          <div className="w-full h-full bg-black flex items-center justify-center text-white text-xs font-bold">
-                            ▶ VIDEO
-                          </div>
+                          <span className="flex h-full w-full items-center justify-center bg-belims-blue text-caption font-bold text-white">
+                            ▶ Video
+                          </span>
                         ) : (
-                          <img
-                            src={item}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={item} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" />
                         )}
                       </button>
                     ))}
                   </div>
-                )} */}
+                )}
+                <div className="relative flex aspect-square max-h-[560px] flex-1 items-center justify-center rounded-md border border-border bg-white p-6">
+                  {mainImage.startsWith("video:") ? (
+                    <VideoPlayer url={mainImage.replace("video:", "")} title={product.name} />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsGalleryOpen(true)}
+                      className="flex h-full w-full cursor-zoom-in items-center justify-center"
+                      aria-label="Open full-screen gallery"
+                    >
+                      <img
+                        src={mainImage}
+                        alt={product.name}
+                        loading="eager"
+                        decoding="async"
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            </section>
 
-            {/* RIGHT COLUMN */}
-            <div className="order-2 lg:order-2 lg:col-span-5 lg:row-span-2 lg:self-start lg:sticky lg:top-24 lg:h-fit">
+            {/* RIGHT COLUMN — sticky purchase panel */}
+            {/* Capped to the viewport so a tall panel (trade block, both fulfilment cards) stays reachable while sticky */}
+            <div className="order-2 lg:sticky lg:top-32 lg:col-span-5 lg:row-span-2 lg:h-fit lg:max-h-[calc(100vh-9rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
               <div>
                 {/* ProductSummary */}
                 <div className="bg-white">
@@ -1514,28 +1540,34 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           <button
                             type="button"
                             onClick={() => onBrandClick(product.brand!)}
-                            className="inline-block rounded border border-border bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-text-tertiary hover:border-primary hover:text-primary transition-colors"
+                            className="inline-block rounded border border-border bg-transparent px-2.5 py-1 text-caption font-semibold uppercase tracking-widest text-text-tertiary hover:border-primary hover:text-primary transition-colors"
                           >
                             {product.brand}
                           </button>
                         ) : (
-                          <span className="inline-block rounded border border-border bg-transparent px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-text-tertiary">
+                          <span className="inline-block rounded border border-border bg-transparent px-2.5 py-1 text-caption font-semibold uppercase tracking-widest text-text-tertiary">
                             {product.brand}
                           </span>
                         ))}
                       {dealBadgeLabel && (
                         <span
                           className={[
-                            "inline-flex items-center rounded px-2.5 py-1 text-xs font-bold uppercase",
+                            "inline-flex items-center rounded px-2.5 py-1 text-caption font-bold uppercase",
                             badgeToneClass,
                           ].join(" ")}
                         >
                           {dealBadgeLabel}
                         </span>
                       )}
+                    </div>
+                    <div className="mb-2 flex items-start justify-between gap-4">
+                      <h1 className="font-heading font-condensed text-h2 font-extrabold uppercase leading-none text-text">
+                        {product.name}
+                      </h1>
                       <button
                         type="button"
                         aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                        aria-pressed={isWishlisted}
                         onClick={() => {
                           const nowIn = toggleWishlist({
                             id: product.id,
@@ -1549,56 +1581,37 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           });
                           setIsWishlisted(nowIn);
                         }}
-                        className={`ml-auto flex items-center justify-center rounded-full p-2 border transition-colors ${
+                        className={`grid h-11 w-11 flex-shrink-0 place-items-center rounded-md border-2 transition-colors ${
                           isWishlisted
-                            ? "border-red-200 bg-red-50 hover:bg-red-100"
-                            : "border-border bg-white hover:border-red-200 hover:bg-red-50"
+                            ? "border-primary bg-white"
+                            : "border-border-strong bg-white hover:border-primary"
                         }`}
                       >
                         <Heart
                           size={18}
-                          className={isWishlisted ? "text-red-500" : "text-text-tertiary"}
+                          className={isWishlisted ? "text-primary" : "text-text-secondary"}
                           fill={isWishlisted ? "currentColor" : "none"}
                           strokeWidth={isWishlisted ? 2 : 1.5}
                         />
                       </button>
                     </div>
-                    <h1 className="text-h3 font-bold text-text font-heading mb-1">
-                      {product.name}
-                    </h1>
-                    <div className="text-base text-text-tertiary mb-3">
-                      {/* {product.category || "N/A"} |  */}SKU:{" "}
-                      {product.sku || "N/A"}
-                    </div>
-
-                    {product.features && product.features.length > 0 && (
-                      <div className="mt-4">
-                        <h3 className="font-semibold text-base text-text font-heading mb-2">
-                          Key Features
-                        </h3>
-                        <ul className="space-y-1">
-                          {product.features.map((feature, idx) => (
-                            <li
-                              key={idx}
-                              className="text-[12px] text-text-secondary flex items-center gap-2"
-                            >
-                              <Target
-                                size={8}
-                                className="text-green-600 flex-shrink-0 mt-0.5"
-                              />
-                              <span>{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    <p className="mb-3 flex flex-wrap gap-x-4 text-caption text-text-tertiary">
+                      <span>
+                        SKU <b className="text-text">{product.sku || "N/A"}</b>
+                      </span>
+                      {leafCategory?.to && (
+                        <span>
+                          Category{" "}
+                          <Link to={leafCategory.to} className="font-semibold text-text underline underline-offset-4 hover:text-belims-blue">
+                            {leafCategory.label}
+                          </Link>
+                        </span>
+                      )}
+                    </p>
                   </div>
 
                   {/* BuyBoxCard */}
-                  <div
-                    ref={buyBoxRef}
-                    className="mt-6 rounded-lg border-border bg-white p-0 shadow-sm"
-                  >
+                  <div ref={buyBoxRef} className="mt-5 border-t border-border pt-5">
                     {/* Price + stock */}
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
@@ -1618,10 +1631,28 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           showDualTradePricing={false}
                           showCountdown={false}
                         />
-                        <StockBar
-                          current={product.stock}
-                          max={product.maxStock}
-                        />
+                        <div className={`mt-4 ${stockLine.tone}`}>
+                          <p className="flex items-center gap-1.5 text-base font-semibold">
+                            <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
+                            {stockLine.text}
+                          </p>
+                          <div className="mt-2 h-1 w-full overflow-hidden bg-border" aria-hidden="true">
+                            <div
+                              className="h-full bg-current"
+                              style={{ width: `${Math.min(100, (product.stock / Math.max(product.maxStock || 1, 1)) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                        {keySpecs.length > 0 && (
+                          <dl className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border">
+                            {keySpecs.map(([label, value]) => (
+                              <div key={label} className="min-w-0 bg-surface-muted px-4 py-4 sm:px-5">
+                                <dt className="text-caption font-bold uppercase tracking-wide text-text-tertiary">{label}</dt>
+                                <dd className="mt-1.5 break-words text-base font-semibold leading-snug text-text sm:text-lg">{value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
                       </div>
 
                       {product.isBundle &&
@@ -1630,32 +1661,37 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           !isTradeApproved &&
                           !showTradeDeal
                         ) && (
-                          <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded ml-4 flex-shrink-0">
+                          <span className="bg-green-100 text-green-700 text-caption font-bold px-2 py-1 rounded ml-4 flex-shrink-0">
                             Bundle Savings
                           </span>
                         )}
                     </div>
 
                     {/* Qty + CTAs */}
-                    <div className="space-y-3 mt-4 mb-4">
-                      <div className="flex gap-4">
-                        <div className="flex items-center border border-border rounded-sm bg-white h-11">
+                    <div className="mt-5 mb-4">
+                      <div className="flex gap-3">
+                        <div className="flex h-12 items-center rounded-md border border-border-strong bg-white" role="group" aria-labelledby="pdp-qty-label">
+                          <span id="pdp-qty-label" className="sr-only">Quantity</span>
                           <button
+                            type="button"
                             onClick={() => setQty(Math.max(1, qty - 1))}
                             disabled={qty <= 1}
-                            className="px-3 hover:bg-surface-muted text-text-secondary h-full rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                            aria-label="Decrease quantity"
+                            className="h-full px-3 text-text-secondary hover:text-belims-blue disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <Minus size={15} />
                           </button>
-                          <div className="w-7 text-center font-semibold text-sm">
+                          <output className="w-8 text-center text-base font-bold" aria-live="polite">
                             {qty}
-                          </div>
+                          </output>
                           <button
+                            type="button"
                             onClick={() =>
                               setQty(Math.min(product.stock ?? 1, qty + 1))
                             }
                             disabled={qty >= (product.stock ?? 1)}
-                            className="px-3 hover:bg-surface-muted text-text-secondary h-full rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                            aria-label="Increase quantity"
+                            className="h-full px-3 text-text-secondary hover:text-belims-blue disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <Plus size={15} />
                           </button>
@@ -1663,16 +1699,15 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
                         <div className="flex flex-1">
                           <button
+                            type="button"
                             onClick={handleAddToCartClick}
                             disabled={
                               !isProductPurchasable(product) ||
-                              isAddToCartLoading ||
-                              isBuyNowLoading
+                              isAddToCartLoading
                             }
-                            className="group relative h-11 w-full overflow-hidden rounded-md bg-belims-blue text-white transition-colors disabled:opacity-50"
+                            className="h-12 w-full rounded-md bg-primary text-white transition-colors hover:bg-belims-blue disabled:opacity-50"
                           >
-                            <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                            <span className="relative z-10 flex items-center justify-center gap-2 [&>[data-icon=inline-start]]:-ml-0.5 [&>[data-icon=inline-end]]:-mr-0.5 font-heading font-bold transition-colors group-hover:text-white">
+                            <span className="flex items-center justify-center gap-2 font-heading font-condensed text-button font-bold uppercase [&>[data-icon=inline-start]]:-ml-0.5">
                               {isAddToCartLoading ? (
                                 <>
                                   <Spinner data-icon="inline-start" />
@@ -1687,28 +1722,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                           </button>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleBuyNowClick}
-                        disabled={
-                          !isProductPurchasable(product) ||
-                          isAddToCartLoading ||
-                          isBuyNowLoading
-                        }
-                        className="group relative h-11 w-full overflow-hidden rounded-md bg-surface-dark text-white transition-colors disabled:opacity-50"
-                      >
-                        <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                        <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors">
-                          {isBuyNowLoading ? (
-                            <>
-                              <Loader2 size={16} className="animate-spin" />
-                              Processing...
-                            </>
-                          ) : (
-                            "Buy Now"
-                          )}
-                        </span>
-                      </button>
                     </div>
 
                     {/* Trade Price Block (unchanged behavior) */}
@@ -1717,17 +1730,17 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                         {isTradeApproved ? (
                           <>
                             <div className="flex items-center justify-between gap-3 mb-3">
-                              <h3 className="text-sm font-bold text-text-secondary">
+                              <h3 className="text-base font-bold text-text-secondary">
                                 Trade price
                               </h3>
-                              <span className="bg-green-100 border uppercase border-green-500 px-5 py-1 text-xs font-extrabold text-green-700 rounded-full tabular-nums">
+                              <span className="bg-green-100 border uppercase border-green-500 px-5 py-1 text-caption font-extrabold text-green-700 rounded-full tabular-nums">
                                 Applied
                               </span>
                             </div>
 
                             <div className="grid grid-cols-3 gap-3 text-center rounded-lg border border-border bg-white p-4 shadow-sm">
                               <div className="flex flex-col items-center justify-center">
-                                <div className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wide">
+                                <div className="text-caption font-semibold text-text-tertiary uppercase tracking-wide">
                                   Retail
                                 </div>
                                 <div className="mt-1 text-base font-bold text-text tabular-nums">
@@ -1735,7 +1748,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                 </div>
                               </div>
                               <div className="relative flex flex-col items-center justify-center rounded bg-belims-blue p-3">
-                                <div className="text-[10px] font-bold text-white uppercase tracking-wide">
+                                <div className="text-caption font-bold text-white uppercase tracking-wide">
                                   Trade
                                 </div>
                                 <div className="mt-1 text-base font-extrabold text-white tabular-nums">
@@ -1743,16 +1756,16 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                 </div>
                               </div>
                               <div className="flex flex-col items-center justify-center">
-                                <div className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wide">
+                                <div className="text-caption font-semibold text-text-tertiary uppercase tracking-wide">
                                   Discount
                                 </div>
-                                <div className="mt-1 inline-flex items-center gap-1 rounded bg-green-100 border border-green-500 px-5 py-1 text-sm font-extrabold text-green-700 tabular-nums">
+                                <div className="mt-1 inline-flex items-center gap-1 rounded bg-green-100 border border-green-500 px-5 py-1 text-base font-extrabold text-green-700 tabular-nums">
                                   {formatCurrency(pricingInfo.savings)}
                                 </div>
                               </div>
                             </div>
 
-                            <div className="mt-4 text-xs text-text-secondary text-center">
+                            <div className="mt-4 text-caption text-text-secondary text-center">
                               <span className="font-medium">
                                 Trade pricing applied.
                               </span>
@@ -1768,10 +1781,10 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                               <>
                                 <div className="flex items-center justify-between gap-3 mb-3">
                                   <div className="expandedTitle">
-                                    <div className="text-sm font-bold text-text mb-1">
+                                    <div className="text-base font-bold text-text mb-1">
                                       Trade deal details
                                     </div>
-                                    <div className="text-xs text-text-secondary mb-3">
+                                    <div className="text-caption text-text-secondary mb-3">
                                       Available to contractors with a Belims
                                       trade account.
                                     </div>
@@ -1780,7 +1793,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => setShowTradeDeal(false)}
-                                    className="text-[11px] font-bold uppercase tracking-wide text-text-secondary bg-white px-2 py-1 rounded-md border border-border hover:border-border-soft transition-colors"
+                                    className="text-caption font-bold uppercase tracking-wide text-text-secondary bg-white px-2 py-1 rounded-md border border-border hover:border-border-soft transition-colors"
                                   >
                                     VIEW RETAIL PRICE
                                   </button>
@@ -1788,7 +1801,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
 
                                 <div className="grid grid-cols-3 gap-3 text-center rounded-lg border border-border bg-white p-4 shadow-sm">
                                   <div className="flex flex-col items-center justify-center">
-                                    <div className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wide">
+                                    <div className="text-caption font-semibold text-text-tertiary uppercase tracking-wide">
                                       Retail
                                     </div>
                                     <div className="mt-1 text-base font-bold text-text tabular-nums">
@@ -1796,22 +1809,22 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                     </div>
                                   </div>
                                   <div className="relative flex flex-col items-center justify-center rounded-lg bg-orange-100 p-2">
-                                    <div className="text-[10px] font-bold text-orange-700 uppercase tracking-wide">
+                                    <div className="text-caption font-bold text-orange-700 uppercase tracking-wide">
                                       Trade
                                     </div>
                                     <div className="mt-1 text-base font-extrabold text-orange-700 tabular-nums">
                                       {formatCurrency(pricingInfo.tradePrice)}
                                     </div>
 
-                                    <div className="mt-2 inline-flex items-center rounded-full bg-belims-accent px-4 py-0.5 text-[10px] font-semibold text-white">
+                                    <div className="mt-2 inline-flex items-center rounded-full bg-belims-accent px-4 py-0.5 text-caption font-semibold text-white">
                                       Trade discount
                                     </div>
                                   </div>
                                   <div className="flex flex-col items-center justify-center">
-                                    <div className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wide">
+                                    <div className="text-caption font-semibold text-text-tertiary uppercase tracking-wide">
                                       Save
                                     </div>
-                                    <div className="mt-1 inline-flex items-center gap-1 rounded bg-green-100 border border-green-500 px-5 py-1 text-sm font-extrabold text-green-700 tabular-nums">
+                                    <div className="mt-1 inline-flex items-center gap-1 rounded bg-green-100 border border-green-500 px-5 py-1 text-base font-extrabold text-green-700 tabular-nums">
                                       {formatCurrency(pricingInfo.savings)}
                                     </div>
                                   </div>
@@ -1820,13 +1833,13 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                                 <div className="flex flex-col sm:flex-row sm:justify-center sm:items-center gap-4 mt-2">
                                   <a
                                     href="/trade-accounts"
-                                    className="mt-3 text-center text-xs text-text-tertiary underline hover:text-text-secondary"
+                                    className="mt-3 text-center text-caption text-text-tertiary underline hover:text-text-secondary"
                                   >
                                     Learn about the Belims trade accounts
                                   </a>
                                   <a
                                     href="/trade-accounts"
-                                    className="inline mt-3 text-center text-xs text-text-tertiary underline hover:text-text-secondary"
+                                    className="inline mt-3 text-center text-caption text-text-tertiary underline hover:text-text-secondary"
                                   >
                                     Register for a Belims trade account
                                   </a>
@@ -1840,291 +1853,174 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   </div>
                 </div>
 
-                <FulfillmentBlock
-                  productStock={product.stock}
+                <FulfilmentChooser
                   fulfillmentType={fulfillmentType}
                   onSelectFulfillment={handleSelectFulfillment}
                   onSetDeliveryLocation={handleOpenDeliveryLocation}
-                  onAddDeliveryAddress={() => navigate("/delivery-details/add-address")}
                   hasDeliveryLocation={hasDeliveryLocation}
                   deliveryAddress={deliveryAddress}
                   pickupStore={selectedStore}
                   pickupSchedule={pickupSchedule}
-                  earliestDeliveryEta={earliestDeliveryEta}
                   deliveryRates={deliveryRates}
-                  loadingDeliveryRates={
-                    loadingDeliveryRates || isResolvingStoredAddress
-                  }
+                  loadingDeliveryRates={loadingDeliveryRates || isResolvingStoredAddress}
                   deliveryRatesError={deliveryRatesError}
-                  onSchedulePickup={() => setIsSchedulePickupOpen(true)}
-                  onViewPickupDetails={handleOpenPickupDetails}
-                  onResetPickupStore={handleResetPickupStore}
-                  onEnableDefaultStore={handleEnableDefaultStore}
                   selectedDeliveryOptionId={selectedDeliveryOptionId}
                   onSelectDeliveryOption={(id) => {
                     setSelectedDeliveryOptionId(id);
                     sessionStorage.setItem("selectedDeliveryOptionId", id);
                   }}
+                  onViewPickupDetails={handleOpenPickupDetails}
+                  onSchedulePickup={() => setIsSchedulePickupOpen(true)}
                   focusDeliveryPanelSignal={focusDeliveryPanelSignal}
                 />
 
-                {/* Perfect Match With — bundle candidates grid */}
-                {product.bundleCandidates && product.bundleCandidates.length > 0 && (
-                  <section className="mt-8">
-                    <h3 className="text-h6 font-bold text-text mb-4">
-                      Perfect Match With
-                    </h3>
-                    <div className="grid grid-cols-3 gap-4">
-                      {product.bundleCandidates.slice(0, 3).map((item) => {
-                        const hasSale =
-                          typeof item.regular_price === "number" &&
-                          item.regular_price > item.price;
-                        const inStock =
-                          typeof item.stock !== "number" || item.stock > 0;
-                        return (
-                          <div key={item.id} className="flex flex-col">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                navigate(
-                                  buildProductUrl({
-                                    id: item.id,
-                                    name: item.name,
-                                  } as Product),
-                                )
-                              }
-                              className="aspect-square rounded-xl bg-surface-muted overflow-hidden mb-3 flex items-center justify-center hover:opacity-90 transition-opacity"
-                              aria-label={`View ${item.name}`}
-                            >
-                              {item.image ? (
-                                <img
-                                  src={item.image}
-                                  alt={item.name}
-                                  loading="lazy"
-                                  className="w-full h-full object-contain mix-blend-multiply p-3"
-                                />
-                              ) : (
-                                <span className="text-xs text-text-tertiary">
-                                  No image
-                                </span>
-                              )}
-                            </button>
-                            <div className="text-sm font-semibold text-text mb-1 line-clamp-2 min-h-[2.5rem]">
-                              {item.name}
-                            </div>
-                            <div className="mb-3 flex items-baseline gap-2">
-                              <span
-                                className={`text-sm font-bold ${
-                                  hasSale ? "text-red-600" : "text-text"
-                                }`}
-                              >
-                                {formatCurrency(item.price)}
-                              </span>
-                              {hasSale && (
-                                <span className="text-xs text-text-tertiary line-through">
-                                  {formatCurrency(item.regular_price as number)}
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (!inStock) {
-                                  navigate(
-                                    buildProductUrl({
-                                      id: item.id,
-                                      name: item.name,
-                                    } as Product),
-                                  );
-                                  return;
-                                }
-                                addToCart({
-                                  id: item.id,
-                                  name: item.name,
-                                  price: item.price,
-                                  regular_price: item.regular_price,
-                                  image: item.image,
-                                  category: item.category,
-                                  stock:
-                                    typeof item.stock === "number"
-                                      ? item.stock
-                                      : 99,
-                                  maxStock:
-                                    typeof item.stock === "number"
-                                      ? item.stock
-                                      : 99,
-                                  in_stock: inStock,
-                                  quantity: 1,
-                                } as unknown as Product);
-                              }}
-                              className="mt-auto w-full rounded-md bg-black py-2.5 text-sm font-bold text-white hover:bg-secondary transition-colors"
-                            >
-                              {inStock ? "Add" : "View"}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                )}
-
-                {/* Recommended slider (fallback when no bundle candidates) */}
-                {(() => {
-                  // Hide when the bundle-candidates grid above has already rendered
-                  if (product.bundleCandidates && product.bundleCandidates.length > 0) {
-                    return null;
-                  }
-                  const mainCategory =
-                    product.breadcrumbs?.find((b) => b.label !== "Shop")
-                      ?.label || product.category;
-
-                  let recommendedProducts: Product[] = [];
-
-                  if (
-                    product.cross_sell_ids &&
-                    product.cross_sell_ids.length > 0
-                  ) {
-                    const crossSellIds = product.cross_sell_ids;
-                    recommendedProducts = allProducts
-                      .filter((p) => crossSellIds.includes(p.id))
-                      .slice(0, 10);
-                  }
-
-                  if (recommendedProducts.length < 10) {
-                    const mainCategoryProducts = allProducts
-                      .filter((p) => {
-                        if (p.id === product.id) return false;
-                        if (recommendedProducts.some((rp) => rp.id === p.id))
-                          return false;
-                        return (p.breadcrumbs || []).some(
-                          (b) => b.label === mainCategory,
-                        );
-                      })
-                      .slice(0, 10 - recommendedProducts.length);
-
-                    recommendedProducts = [
-                      ...recommendedProducts,
-                      ...mainCategoryProducts,
-                    ];
-                  }
-
-                  if (recommendedProducts.length === 0) return null;
-
-                  const slidesPerView = Math.max(
-                    1,
-                    Math.floor(
-                      frequentlyBoughtRailWidth / frequentlyBoughtStepWidth,
-                    ),
-                  );
-                  const maxIndex = Math.max(
-                    0,
-                    recommendedProducts.length - slidesPerView,
-                  );
-                  const indicatorPct =
-                    maxIndex === 0
-                      ? 100
-                      : Math.min(100, (frequentlyBoughtIndex / maxIndex) * 100);
-
-                  const handleFrequentlyBoughtPrev = () => {
-                    const nextIndex =
-                      frequentlyBoughtIndex <= 0
-                        ? maxIndex
-                        : frequentlyBoughtIndex - 1;
-                    setFrequentlyBoughtIndex(nextIndex);
-                    scrollToFrequentlyBoughtIndex(nextIndex);
-                  };
-
-                  const handleFrequentlyBoughtNext = () => {
-                    const nextIndex =
-                      frequentlyBoughtIndex >= maxIndex
-                        ? 0
-                        : frequentlyBoughtIndex + 1;
-                    setFrequentlyBoughtIndex(nextIndex);
-                    scrollToFrequentlyBoughtIndex(nextIndex);
-                  };
-
-                  return (
-                    <div className="mt-8 pt-6 border-t border-border">
-                      <div className="mb-6">
-                        <h3 className="text-h6 font-bold text-text font-heading">
-                          Perfect Match With
-                        </h3>
-                      </div>
-
-                      {/* Slider Container - 100% width */}
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <div
-                          ref={frequentlyBoughtRailRef}
-                          className="flex gap-3 overflow-x-auto no-scrollbar items-stretch snap-x snap-mandatory scroll-pl-0"
-                          aria-roledescription="carousel"
-                          onScroll={() => {
-                            if (
-                              !frequentlyBoughtRailRef.current ||
-                              !frequentlyBoughtStepWidth
-                            )
-                              return;
-                            const nextIndex = Math.round(
-                              frequentlyBoughtRailRef.current.scrollLeft /
-                                frequentlyBoughtStepWidth,
-                            );
-                            setFrequentlyBoughtIndex(
-                              Math.min(maxIndex, Math.max(0, nextIndex)),
-                            );
-                          }}
-                        >
-                          {recommendedProducts.map((p) => (
-                            <div
-                              key={p.id}
-                              className="flex-shrink-0 snap-start basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-4rem)/5)] min-w-0"
-                              data-fbw-slider-item
-                            >
-                              <ProductCard
-                                product={p}
-                                addToCart={addToCart}
-                                className="h-full"
-                                customizations={
-                                  PRODUCT_CARD_PRESETS.perfectMatchCard
-                                }
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
             </div>
 
-            {/* DETAILS COLUMN (below buy box on mobile, below image on desktop) */}
-            <div className="order-3 lg:order-3 lg:col-span-7">
-              {/* Product Description */}
-              <div className="mt-10 lg:mt-0">
-                <h3 className="text-h6 font-bold text-text font-heading mb-3 border-b border-border-strong pb-3">
-                  Product Description
-                </h3>
-                <div className="prose prose-sm max-w-none text-text-tertiary text-base [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-text [&_h3]:mt-4 [&_h3]:mb-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-text [&_h4]:mt-3 [&_h4]:mb-2 [&_strong]:font-bold [&_strong]:text-text [&_b]:font-bold [&_b]:text-text [&_em]:italic [&_i]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:mb-3 [&_ul]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:mb-3 [&_ol]:mt-2 [&_li]:text-text [&_li]:leading-relaxed [&_p]:mb-2 [&_p]:leading-relaxed [&_br]:content-[''] [&_table]:w-full [&_table]:border-collapse [&_table]:mb-3 [&_th]:border [&_th]:border-border-strong [&_th]:bg-surface-dark [&_th]:p-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-border-strong [&_td]:p-2">
-                  {product.description ? (
-                    <div
-                      dangerouslySetInnerHTML={{ __html: product.description }}
-                    />
-                  ) : (
-                    <p className="text-text-tertiary italic">
-                      No description available.
-                    </p>
-                  )}
-                </div>
+            {/* DETAILS — tabs under the gallery (below the purchase panel on mobile) */}
+            <div className="order-3 lg:col-span-7 lg:mt-8">
+              <div
+                role="tablist"
+                aria-label="Product information"
+                className="flex gap-5 overflow-x-auto border-b-2 border-border"
+                onKeyDown={onTabKeyDown}
+              >
+                {pdpTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    id={`pdp-tab-${tab.id}`}
+                    aria-selected={activeTab === tab.id}
+                    aria-controls={`pdp-panel-${tab.id}`}
+                    tabIndex={activeTab === tab.id ? 0 : -1}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`-mb-0.5 min-h-12 shrink-0 whitespace-nowrap border-b-[3px] px-1 py-3 text-left font-heading font-condensed text-base font-bold uppercase leading-tight transition-colors ${
+                      activeTab === tab.id
+                        ? "border-text font-extrabold text-text"
+                        : "border-transparent text-text-tertiary hover:text-text"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
-              {/* ProductAccordions */}
-              <div className="mt-10">
+              <div
+                role="tabpanel"
+                id="pdp-panel-overview"
+                aria-labelledby="pdp-tab-overview"
+                hidden={activeTab !== "overview"}
+                tabIndex={0}
+                className="py-7 focus:outline-none"
+              >
+              {/* Overview */}
+              <section aria-labelledby="pdp-overview">
+                <h2 id="pdp-overview" className="sr-only">
+                  Overview
+                </h2>
+                {shortDescription && <p className="mb-4 text-base font-semibold text-text">{shortDescription}</p>}
+                {featureList.length > 0 && (
+                  <ul className="mb-5 space-y-1.5 text-base text-text">
+                    {featureList.map((feature, idx) => (
+                      <li key={idx} className="flex gap-2">
+                        <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 bg-primary" aria-hidden="true" />
+                        <span>{feature.charAt(0).toUpperCase() + feature.slice(1)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {parsedDescription.restHtml && (
+                  <div className="prose prose-sm max-w-none text-text-secondary text-base [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-text [&_h3]:mt-4 [&_h3]:mb-2 [&_h4]:text-base [&_h4]:font-semibold [&_h4]:text-text [&_h4]:mt-3 [&_h4]:mb-2 [&_strong]:font-bold [&_strong]:text-text [&_b]:font-bold [&_b]:text-text [&_em]:italic [&_i]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ul]:mb-3 [&_ul]:mt-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_ol]:mb-3 [&_ol]:mt-2 [&_li]:text-text [&_li]:leading-relaxed [&_p]:mb-2 [&_p]:leading-relaxed [&_br]:content-[''] [&_table]:w-full [&_table]:border-collapse [&_table]:mb-3 [&_th]:border [&_th]:border-border-strong [&_th]:bg-surface-dark [&_th]:p-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-border-strong [&_td]:p-2">
+                    <div dangerouslySetInnerHTML={{ __html: parsedDescription.restHtml }} />
+                  </div>
+                )}
+                {!shortDescription && !featureList.length && !parsedDescription.restHtml && (
+                  <p className="text-base text-text-tertiary">No description yet for this product.</p>
+                )}
+              </section>
+
+              </div>
+              {specRows.length > 0 && (
+              <div
+                role="tabpanel"
+                id="pdp-panel-specs"
+                aria-labelledby="pdp-tab-specs"
+                hidden={activeTab !== "specs"}
+                tabIndex={0}
+                className="py-7 focus:outline-none"
+              >
+                <section aria-labelledby="pdp-specs">
+                  <h2 id="pdp-specs" className="sr-only">
+                    Specifications
+                  </h2>
+                  <table className="w-full border-collapse text-base">
+                    <tbody>
+                      {specRows.map(([label, value]) => (
+                        <tr key={label} className="border-b border-border even:bg-surface-muted">
+                          <th scope="row" className="w-1/2 px-3 py-2.5 text-left font-semibold text-text-secondary">
+                            {label}
+                          </th>
+                          <td className="px-3 py-2.5 text-text">{value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </section>
+              </div>
+              )}
+              {jobItems.length > 0 && (
+                <div
+                  role="tabpanel"
+                  id="pdp-panel-works"
+                  aria-labelledby="pdp-tab-works"
+                  hidden={activeTab !== "works"}
+                  tabIndex={0}
+                  className="py-7 focus:outline-none"
+                >
+                  <section aria-labelledby="pdp-works-heading">
+                    <h2 id="pdp-works-heading" className="mb-4 font-heading text-h5 font-bold text-text">Perfect match with</h2>
+                    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {jobItems.map((item) => (
+                        <li key={item.id} className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-white p-3 transition-colors hover:border-belims-blue">
+                          <Link to={item.url} tabIndex={-1} aria-hidden="true" className="grid h-16 w-16 place-items-center rounded bg-surface-muted">
+                            {item.image && <img src={item.image} alt="" loading="lazy" decoding="async" className="max-h-full max-w-full object-contain" />}
+                          </Link>
+                          <div className="min-w-0">
+                            <Link to={item.url} className="line-clamp-2 text-base font-semibold leading-snug text-text hover:text-belims-blue">{item.name}</Link>
+                            <div className="mt-1 flex items-baseline gap-2">
+                              <b className={`text-base ${item.compareAt ? "text-primary" : "text-text"}`}>{formatCurrency(item.price)}</b>
+                              {item.compareAt && <span className="text-caption text-text-tertiary line-through">{formatCurrency(item.compareAt)}</span>}
+                            </div>
+                          </div>
+                          <button type="button" onClick={item.onAdd} aria-label={`${item.inStock ? "Add" : "View"} ${item.name}${item.inStock ? " to cart" : ""}`} className="min-h-10 rounded-md border border-border-strong bg-white px-3 font-heading font-condensed text-button font-bold uppercase text-text transition-colors hover:bg-surface-dark hover:text-white">
+                            {item.inStock ? "Add" : "View"}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                </div>
+              )}
+              <div
+                role="tabpanel"
+                id="pdp-panel-delivery"
+                aria-labelledby="pdp-tab-delivery"
+                hidden={activeTab !== "delivery"}
+                tabIndex={0}
+                className="py-7 focus:outline-none"
+              >
+              {/* Delivery & returns — the only place Returns / Warranty appear on the page */}
+              <section aria-labelledby="pdp-delivery">
+                <h2 id="pdp-delivery" className="sr-only">
+                  Delivery &amp; returns
+                </h2>
                 <ProductAccordions
                   ecommercePolicies={ecommercePolicies}
                   expandedPolicy={expandedPolicy}
                   setExpandedPolicy={setExpandedPolicy}
                 />
+              </section>
               </div>
             </div>
           </div>
@@ -2133,7 +2029,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
       {/* Sticky Bottom CTA (Athens-like: only appears when BuyBox actions are out of view) */}
       <div
         data-sticky-cart-bar
-        className={`fixed left-0 right-0 bottom-0 z-[260] bg-white border-t border-border px-4 py-3 transition-transform duration-300 ${
+        className={`fixed left-0 right-0 bottom-0 z-[260] bg-white border-t border-border px-4 py-3 transition-transform duration-300 md:hidden ${
           showBottomCta ? "translate-y-0" : "translate-y-full"
         }`}
       >
@@ -2164,12 +2060,11 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             <button
               onClick={handleAddToCartClick}
               disabled={
-                !isProductPurchasable(product) || isAddToCartLoading || isBuyNowLoading
+                !isProductPurchasable(product) || isAddToCartLoading
               }
-              className="group relative h-11 w-full overflow-hidden rounded-md bg-surface-muted text-text transition-colors disabled:opacity-50 md:w-[140px]"
+              className="h-11 w-full rounded-md bg-primary text-white transition-colors hover:bg-belims-blue disabled:opacity-50 md:w-[160px]"
             >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-surface-dark transition-transform duration-300 ease-out group-hover:scale-x-100" />
-              <span className="relative z-10 flex items-center justify-center gap-2 [&>[data-icon=inline-start]]:-ml-0.5 [&>[data-icon=inline-end]]:-mr-0.5 font-heading font-bold transition-colors group-hover:text-white">
+              <span className="flex items-center justify-center gap-2 font-heading font-condensed text-button font-bold uppercase [&>[data-icon=inline-start]]:-ml-0.5">
                 {isAddToCartLoading ? (
                   <>
                     <Spinner data-icon="inline-start" />
@@ -2183,26 +2078,6 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={handleBuyNowClick}
-              disabled={
-                !isProductPurchasable(product) || isAddToCartLoading || isBuyNowLoading
-              }
-              className="group relative hidden h-11 w-full overflow-hidden rounded-md bg-surface-dark text-white transition-colors disabled:opacity-50 md:block md:w-[140px]"
-            >
-              <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
-              <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors">
-                {isBuyNowLoading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  "Buy Now"
-                )}
-              </span>
-            </button>
           </div>
         </div>
       </div>
@@ -2215,7 +2090,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
             </style>
             <div className="overflow-hidden">
               <div
-                className="flex items-center whitespace-nowrap py-3 text-[13px] font-semibold text-text"
+                className="flex items-center whitespace-nowrap py-3 text-caption font-semibold text-text"
                 style={{
                   animation: "bundle-marquee 28s linear infinite",
                   width: "max-content",
@@ -2245,28 +2120,22 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         </>
       )}
 
-      {/* How About These Section */}
-      {allProducts.length > 0 && (
-        <section className="py-12 bg-white border-t border-border mb-0">
+      {/* Related: more from the product's own category */}
+      {relatedProducts.length > 0 && (
+        <section className="border-t border-border bg-white py-12" aria-labelledby="pdp-related">
           <div className="container mx-auto px-4">
-            <h3 className="text-2xl font-bold text-text font-heading mb-8">
-              How about these
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {allProducts
-                .filter(
-                  (p) => p.id !== product.id && p.category === product.category,
-                )
-                .slice(0, 4)
-                .map((p) => (
-                  <div key={p.id}>
-                    <ProductCard
-                      product={p}
-                      addToCart={addToCart}
-                      customizations={PRODUCT_CARD_PRESETS.compactCard}
-                    />
-                  </div>
-                ))}
+            <SectionHeading id="pdp-related" eyebrow="Keep shopping" title={`More in ${leafCategory?.label || product.category}`} titleSize="h2">
+              {leafCategory?.to && <ViewAllLink to={leafCategory.to}>View all</ViewAllLink>}
+            </SectionHeading>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-5">
+              {relatedProducts.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  addToCart={addToCart}
+                  customizations={PRODUCT_CARD_PRESETS.railCard}
+                />
+              ))}
             </div>
           </div>
         </section>

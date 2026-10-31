@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Belims Home — Variant A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap">
+<link rel="stylesheet" href="mockup.css">
+<style>
+  .feature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 32px; }
+  .feature-row .rail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 1023px) { .feature-row { grid-template-columns: 1fr; } }
+  @media (max-width: 639px) { .feature-row .rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .feature-row .spotlight { min-height: 100%; }
+</style>
+</head>
+<body>
+
+<nav class="mock-bar" aria-label="Mockup pages">
+  <strong>MOCKUP</strong>
+  <a href="index.html">Recommended</a>
+  <a href="variant-a.html" aria-current="page">Variant A</a>
+  <a href="variant-b.html">Variant B</a>
+  <a href="components.html">Components</a>
+</nav>
+
+<header class="header">
+  <div class="container header-row">
+    <span class="logo">BELIMS</span>
+    <div class="search">Search tools, brands, SKUs…</div>
+    <div class="header-icons"><span>Account</span><span>Trade</span><span>Cart (2)</span></div>
+  </div>
+</header>
+
+<main>
+  <div class="container" style="padding-top:12px"><p class="mock-note">Variant A — shorter page. FeaturedGrid removed with no replacement. Shop Deals = full-width 4-up rail, with the category spotlight as a second row in the same section.</p></div>
+
+  <!-- 1. Hero -->
+  <section class="hero" aria-label="Featured">
+    <div class="ph dark">Hero image (CMS)</div>
+    <div class="hero-scrim"></div>
+    <div class="container" style="width:100%">
+      <div class="hero-copy">
+        <div class="eyebrow">Spring tool event</div>
+        <h1>Built for the job site</h1>
+        <p>Professional power tools, hand tools and hardware — delivered nationwide.</p>
+        <a class="btn btn-primary" href="#">Shop power tools</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Pill rail -->
+  <section class="pill-rail" aria-label="Shop by category">
+    <div class="container pill-row">
+      <span class="pill-label">Shop by category</span>
+      <a class="pill" href="#">Power Tools</a><a class="pill" href="#">Hand Tools</a><a class="pill" href="#">Fasteners &amp; Adhesives</a>
+      <a class="pill" href="#">Safety &amp; Protective Wear</a><a class="pill" href="#">Outdoor, Garden &amp; Patio</a><a class="pill" href="#">Machinery</a>
+      <a class="pill" href="#">Water Tanks &amp; Filtration</a><a class="pill" href="#">Locks &amp; Security</a>
+    </div>
+  </section>
+
+  <!-- 3. Shop Deals first (deals above new arrivals) -->
+  <section class="section muted" aria-labelledby="s-deals">
+    <div class="container">
+      <div class="section-head">
+        <div><div class="eyebrow">Save more</div><h2 class="title" id="s-deals">Shop deals</h2></div>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-note="Fresh discounts every morning.">Daily deals</button>
+          <button class="tab" role="tab" aria-selected="false" data-note="Weekly savings across selected products.">Weekly deals</button>
+          <button class="tab" role="tab" aria-selected="false" data-trade="true" data-note="Approved trade accounts see trade pricing at checkout.">Trade deals</button>
+        </div>
+        <div class="head-actions">
+          <a class="view-all" href="#">View all deals</a>
+          <div class="arrows"><button class="arrow" aria-label="Previous">‹</button><button class="arrow" aria-label="Next">›</button></div>
+        </div>
+      </div>
+      <p class="tab-note" data-tab-note>Fresh discounts every morning.</p>
+      <div class="rail" data-cards="4" data-sale="true" data-cta="true"></div>
+      <div class="progress"><span></span></div>
+
+      <!-- CategoryFeature row (generic, configurable category) -->
+      <div class="feature-row">
+        <a class="spotlight" href="#">
+          <div class="ph dark">Spotlight image</div>
+          <div class="spotlight-copy">
+            <div class="eyebrow" style="color:#fff;opacity:.8">Category spotlight</div>
+            <h3>Hand tools</h3>
+            <p>Dependable hand tools for site and home.</p>
+            <span class="btn btn-on-image">Shop hand tools</span>
+          </div>
+        </a>
+        <div class="rail" data-cards="6"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. New arrivals / best sellers -->
+  <section class="section" aria-labelledby="s-new">
+    <div class="container">
+      <div class="section-head">
+        <div><div class="eyebrow">Just landed</div><h2 class="title" id="s-new">Shop the range</h2></div>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true">New arrivals</button>
+          <button class="tab" role="tab" aria-selected="false">Best sellers</button>
+        </div>
+        <div class="head-actions">
+          <a class="view-all" href="#">View all</a>
+          <div class="arrows"><button class="arrow" aria-label="Previous">‹</button><button class="arrow" aria-label="Next">›</button></div>
+        </div>
+      </div>
+      <div class="rail" data-cards="4" data-cta="true"></div>
+      <div class="progress"><span></span></div>
+    </div>
+  </section>
+
+  <!-- 5. Collage -->
+  <section class="section" style="padding-top:0" aria-label="Featured categories">
+    <div class="container">
+      <div class="collage">
+        <a href="#"><div class="ph dark">Power tools</div><div class="tile-copy"><h3>Power tools</h3><span>Shop now</span></div></a>
+        <a href="#"><div class="ph dark">Tool kits</div><div class="tile-copy"><h3>Tool kits</h3><span>Shop now</span></div></a>
+        <a class="c-tall" href="#"><div class="ph dark">Drills</div><div class="tile-copy"><h3>Drilling power</h3><span>Shop drills</span></div></a>
+        <a class="c-wide" href="#"><div class="ph dark">Cutting tools</div><div class="tile-copy"><h3>Cutting tools</h3><span>Shop now</span></div></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Popular categories -->
+  <section class="section muted" aria-labelledby="s-popular">
+    <div class="container">
+      <div class="section-head"><div><div class="eyebrow">Most shopped</div><h2 class="title" id="s-popular">Popular categories</h2></div></div>
+      <div class="promo-grid">
+        <a class="promo" href="#" style="background:#fff">
+          <div><div class="count">412 products</div><h3>Power tools</h3><p>Drills, grinders, saws and more from the brands the trade trusts.</p><span class="btn btn-secondary">Shop now</span></div>
+          <div class="ph">Image</div>
+        </a>
+        <a class="promo" href="#" style="background:#fff">
+          <div><div class="count">1 204 products</div><h3>Fasteners &amp; adhesives</h3><p>Anchors, nails, tapes and glues for every fixing job.</p><span class="btn btn-secondary">Shop now</span></div>
+          <div class="ph">Image</div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Brands -->
+  <section class="section blue" aria-labelledby="s-brands">
+    <div class="container">
+      <div class="section-head">
+        <div><div class="eyebrow">Trusted brands</div><h2 class="title" id="s-brands">Shop by brand</h2></div>
+        <div class="arrows"><button class="arrow" aria-label="Previous brands">‹</button><button class="arrow" aria-label="Next brands">›</button></div>
+      </div>
+      <div class="brand-row">
+        <a class="brand" href="#">Bosch</a><a class="brand" href="#">Makita</a><a class="brand" href="#">DeWalt</a>
+        <a class="brand" href="#">Stanley</a><a class="brand" href="#">Einhell</a><a class="brand" href="#">Ryobi</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="trust-row">
+      <div class="trust"><div class="trust-icon">⇢</div><div><strong>Nationwide delivery</strong><span>Courier to your door or site</span></div></div>
+      <div class="trust"><div class="trust-icon">⌂</div><div><strong>Click &amp; collect</strong><span>Collect from your nearest store</span></div></div>
+      <div class="trust"><div class="trust-icon">↺</div><div><strong>Easy returns</strong><span>See returns policy</span></div></div>
+      <div class="trust"><div class="trust-icon">◆</div><div><strong>Trade accounts</strong><span>Exclusive trade pricing</span></div></div>
+    </div>
+    <div class="footer-cols">
+      <div><h4>Belims</h4><p>Existing footer content unchanged.</p></div>
+      <div><h4>Shop</h4><ul><li>Power tools</li><li>Hand tools</li><li>Deals</li></ul></div>
+      <div><h4>Help</h4><ul><li>Delivery</li><li>Returns</li><li>Contact</li></ul></div>
+      <div><h4>Trade</h4><ul><li>Apply</li><li>Trade deals</li></ul></div>
+    </div>
+  </div>
+</footer>
+
+<script src="mockup.js"></script>
+</body>
+</html>

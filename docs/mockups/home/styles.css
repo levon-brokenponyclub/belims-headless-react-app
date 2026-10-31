@@ -1,0 +1,149 @@
+/* Home mockup — Google reviews section + style directions (default: Industrial · Brand; ?style=baseline|industrial|workshop|hivis).
+   Overrides only; the approved baseline is mockup.css. Static mockup, not app code. */
+
+/* ---------- Google reviews (baseline) ---------- */
+.reviews-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; align-items: stretch; }
+@media (max-width: 1023px) { .reviews-grid { grid-template-columns: 1fr; } }
+.rv-summary { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 24px; display: flex; flex-direction: column; gap: 10px; background: #fff; }
+.rv-g { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); }
+.rv-g i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 900; color: #fff; background: conic-gradient(#ea4335 0 25%, #fbbc05 0 50%, #34a853 0 75%, #4285f4 0); }
+.rv-score { font-size: 64px; line-height: 1; font-weight: 800; font-stretch: 87.5%; }
+.stars { color: #f5a623; letter-spacing: 2px; font-size: 18px; }
+.rv-count { font-size: 14px; color: var(--color-text-secondary); }
+.rv-actions { display: grid; gap: 8px; margin-top: auto; }
+.rv-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1023px) { .rv-list { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: minmax(280px, 80%); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; } .rv-list > * { scroll-snap-align: start; } }
+.rv-card { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #fff; }
+.rv-card blockquote { margin: 0; font-size: 15px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.rv-who { display: flex; align-items: center; gap: 10px; margin-top: auto; font-size: 13px; }
+.rv-who .av { width: 36px; height: 36px; border-radius: 50%; background: var(--color-surface-muted); display: grid; place-items: center; font-weight: 800; }
+.rv-who b { display: block; font-size: 14px; }
+.rv-who small { color: var(--color-text-tertiary); }
+.sample-flag { display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; padding: 2px 6px; border: 1px dashed #c9a400; color: #5a4800; background: #fff7d6; border-radius: 4px; }
+.placement-note { margin-top: 16px; }
+
+/* Style switcher in the mock bar */
+.mock-bar .style-sw { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+.mock-bar .style-sw span { opacity: .6; }
+
+/* ======================================================================
+   1 · INDUSTRIAL — black-led, square, heavy condensed type (extends the header)
+   ====================================================================== */
+[data-style~="industrial"] { --radius-md: 4px; --radius-sm: 2px; --radius-pill: 4px; }
+[data-style~="industrial"] .title { font-size: 44px; font-weight: 800; letter-spacing: -.02em; line-height: .95; }
+[data-style~="industrial"] .title::after { content: ""; display: block; width: 48px; height: 4px; background: var(--color-primary); margin-top: 10px; }
+[data-style~="industrial"] .eyebrow { color: var(--color-text-tertiary); }
+[data-style~="industrial"] .section.muted { background: #0d0d0d; color: #fff; }
+[data-style~="industrial"] .section.muted .title, [data-style~="industrial"] .section.muted .view-all { color: #fff; }
+[data-style~="industrial"] .section.muted .eyebrow { color: rgba(255,255,255,.55); }
+[data-style~="industrial"] .section.muted .tab { color: rgba(255,255,255,.55); }
+[data-style~="industrial"] .section.muted .tab[aria-selected="true"] { color: #fff; }
+[data-style~="industrial"] .section.muted .tab-note { color: rgba(255,255,255,.6); }
+[data-style~="industrial"] .section.muted .dept .ph { background: #1a1a1a; border-color: #2a2a2a; color: #777; }
+[data-style~="industrial"] .section.muted .dept strong { color: #fff; }
+[data-style~="industrial"] .section.muted .dept small { color: rgba(255,255,255,.72); }
+[data-style~="industrial"] .section.blue { background: #000; border-top: 4px solid var(--color-primary); }
+[data-style~="industrial"] .card { border: 2px solid var(--color-border); }
+[data-style~="industrial"] .card:hover { border-color: #000; }
+[data-style~="industrial"] .section.muted .card { border-color: #222; }
+[data-style~="industrial"] .section.muted .card:hover { border-color: var(--color-primary); }
+[data-style~="industrial"] .btn, [data-style~="industrial"] .card-cta { text-transform: uppercase; letter-spacing: .04em; font-stretch: 87.5%; }
+[data-style~="industrial"] .hero-copy h1 { font-size: 72px; }
+[data-style~="industrial"] .pill-rail { background: #111; border-bottom-color: #222; }
+[data-style~="industrial"] .pill-label { color: #fff; }
+[data-style~="industrial"] .pill { border-color: #333; color: rgba(255,255,255,.8); }
+[data-style~="industrial"] .pill:hover { border-color: var(--color-primary); color: #fff; }
+[data-style~="industrial"] .promo { background: #fff; border: 2px solid var(--color-border); }
+[data-style~="industrial"] .rv-summary { background: #000; color: #fff; border-color: #000; }
+[data-style~="industrial"] .rv-summary .rv-count, [data-style~="industrial"] .rv-summary .rv-g { color: rgba(255,255,255,.7); }
+[data-style~="industrial"] .rv-summary .btn-secondary { color: #fff; border-color: rgba(255,255,255,.5); }
+[data-style~="industrial"] .rv-card { border-width: 2px; }
+@media (max-width: 767px) { [data-style~="industrial"] .title { font-size: 30px; } [data-style~="industrial"] .hero-copy h1 { font-size: 44px; } }
+
+/* ======================================================================
+   SELECTED · INDUSTRIAL + BRAND COLOURS (data-style="industrial brand" + data-theme="brand")
+   Shared header/buttons/cards/footer live in ../theme.css; these are the home-section overrides only.
+   ====================================================================== */
+
+
+/* Page */
+[data-style~="brand"] .hero-scrim { background: linear-gradient(90deg, rgba(50,39,131,.92) 0%, rgba(50,39,131,.55) 45%, rgba(0,0,0,0) 80%); }
+[data-style~="brand"] .pill-rail { background: #fff; border-bottom-color: var(--color-border); }
+[data-style~="brand"] .pill-label { color: var(--brand); }
+[data-style~="brand"] .pill { border-color: var(--color-border); color: var(--color-text-secondary); }
+[data-style~="brand"] .pill:hover { border-color: var(--color-primary); color: var(--color-primary); }
+[data-style~="brand"] .section.muted { background: var(--brand); }
+[data-style~="brand"] .section.muted .card { border-color: transparent; }
+[data-style~="brand"] .section.muted .card:hover { border-color: var(--color-primary); }
+[data-style~="brand"] .section.muted .dept .ph { background: #fff; border-color: transparent; color: #999; }
+[data-style~="brand"] .section.muted .tab[aria-selected="true"] { border-bottom-color: var(--color-primary); }
+[data-style~="brand"] .section.blue { background: var(--brand); border-top: 4px solid var(--color-primary); }
+[data-style~="brand"] .section.muted .eyebrow, [data-style~="brand"] .section.blue .eyebrow { color: rgba(255,255,255,.7); }
+[data-style~="brand"] .promo { border-color: var(--color-border); }
+[data-style~="brand"] .promo:hover { border-color: var(--brand); }
+[data-style~="brand"] .brand:hover { border-color: var(--color-primary); }
+[data-style~="brand"] .rv-summary { background: var(--brand); border-color: var(--brand); }
+[data-style~="brand"] .rv-summary .btn-secondary { color: #fff; border-color: rgba(255,255,255,.6); }
+[data-style~="brand"] .rv-summary .btn-secondary:hover { background: #fff; color: var(--brand); }
+[data-style~="brand"] .rv-card:hover { border-color: var(--brand); }
+
+/* ======================================================================
+   2 · WORKSHOP — warm paper neutrals, softer radius, mixed-case titles, navy brand band
+   ====================================================================== */
+[data-style="workshop"] { --radius-md: 14px; --radius-sm: 10px; --color-surface-muted: #f3efe7; --color-border: #e6e0d4; }
+[data-style="workshop"] body, [data-style="workshop"] main { background: #fbf9f5; }
+[data-style="workshop"] .title { text-transform: none; font-stretch: 100%; font-weight: 800; font-size: 34px; letter-spacing: -.025em; }
+[data-style="workshop"] .eyebrow { color: #8a6a3d; letter-spacing: .12em; }
+[data-style="workshop"] .hero-copy h1 { text-transform: none; font-stretch: 100%; letter-spacing: -.035em; font-size: 60px; }
+[data-style="workshop"] .hero-scrim { background: linear-gradient(90deg, rgba(30,22,12,.72), rgba(30,22,12,.08) 70%); }
+[data-style="workshop"] .btn { border-radius: 999px; }
+[data-style="workshop"] .btn-primary { background: var(--color-text); }
+[data-style="workshop"] .btn-primary:hover { background: var(--color-primary); }
+[data-style="workshop"] .card { border-color: transparent; background: #fff; }
+[data-style="workshop"] .card:hover { border-color: #d8cfbe; }
+[data-style="workshop"] .card-media .ph { background: #f3efe7; }
+[data-style="workshop"] .card-cta { border-radius: 999px; background: #fff; color: var(--color-text); border: 1px solid #d8cfbe; }
+[data-style="workshop"] .card-cta:hover { background: var(--color-text); color: #fff; }
+[data-style="workshop"] .tab[aria-selected="true"] { border-bottom-color: var(--color-text); }
+[data-style="workshop"] .pill-rail { background: #fbf9f5; }
+[data-style="workshop"] .pill { background: #fff; }
+[data-style="workshop"] .spotlight, [data-style="workshop"] .collage a { border-radius: 20px; }
+[data-style="workshop"] .tile-copy h3, [data-style="workshop"] .spotlight-copy h3, [data-style="workshop"] .promo h3 { text-transform: none; font-stretch: 100%; letter-spacing: -.02em; }
+[data-style="workshop"] .section.blue { background: #1f1b4d; }
+[data-style="workshop"] .brand { border-radius: 14px; }
+[data-style="workshop"] .rv-card, [data-style="workshop"] .rv-summary { border-color: transparent; }
+[data-style="workshop"] .rv-summary { background: #f3efe7; }
+[data-style="workshop"] .rv-card blockquote { font-size: 17px; font-family: Georgia, "Times New Roman", serif; }
+
+/* ======================================================================
+   3 · HI-VIS — black + safety yellow utility accents, zero radius, hazard dividers. Red kept for sale prices only.
+   ====================================================================== */
+[data-style="hivis"] { --radius-md: 0; --radius-sm: 0; --radius-pill: 0; --hivis: #ffd100; }
+[data-style="hivis"] .eyebrow { display: inline-block; background: var(--hivis); color: #000; padding: 2px 8px; letter-spacing: .1em; }
+[data-style="hivis"] .section.blue .eyebrow { color: #000; opacity: 1; }
+[data-style="hivis"] .title { font-size: 40px; letter-spacing: -.01em; }
+[data-style="hivis"] .section + .section::before { content: ""; display: block; height: 10px; margin-top: calc(var(--section-y) * -1); margin-bottom: var(--section-y); background: repeating-linear-gradient(-45deg, #000 0 14px, var(--hivis) 14px 28px); }
+[data-style="hivis"] .btn-primary { background: #000; color: var(--hivis); }
+[data-style="hivis"] .btn-primary:hover { background: var(--hivis); color: #000; }
+[data-style="hivis"] .btn-on-image { background: var(--hivis); color: #000; }
+[data-style="hivis"] .card { border: 2px solid #000; }
+[data-style="hivis"] .card-cta { background: var(--hivis); color: #000; text-transform: uppercase; letter-spacing: .04em; }
+[data-style="hivis"] .card-cta:hover { background: #000; color: var(--hivis); }
+[data-style="hivis"] .badge:not(.trade) { background: #000; color: var(--hivis); }
+[data-style="hivis"] .tab[aria-selected="true"] { border-bottom-color: #000; border-bottom-width: 4px; }
+[data-style="hivis"] .pill { border: 2px solid #000; color: #000; font-weight: 700; }
+[data-style="hivis"] .pill:hover { background: var(--hivis); color: #000; border-color: #000; }
+[data-style="hivis"] .section.muted { background: var(--hivis); }
+[data-style="hivis"] .section.muted .eyebrow { background: #000; color: var(--hivis); }
+[data-style="hivis"] .section.muted .tab { color: rgba(0,0,0,.55); }
+[data-style="hivis"] .section.muted .tab[aria-selected="true"] { color: #000; }
+[data-style="hivis"] .section.muted .dept .ph { border: 2px solid #000; }
+[data-style="hivis"] .section.blue { background: #000; }
+[data-style="hivis"] .brand:hover { border-color: var(--hivis); }
+[data-style="hivis"] .hero-copy h1 { color: #fff; }
+[data-style="hivis"] .hero-copy .eyebrow { background: var(--hivis); color: #000; opacity: 1; }
+[data-style="hivis"] .promo { border: 2px solid #000; background: #fff; }
+[data-style="hivis"] .rv-summary { background: var(--hivis); border: 2px solid #000; }
+[data-style="hivis"] .rv-card { border: 2px solid #000; }
+[data-style="hivis"] .stars { color: #000; }
+@media (max-width: 767px) { [data-style="hivis"] .title { font-size: 28px; } }

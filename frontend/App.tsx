@@ -35,14 +35,15 @@ import { AdminOrderPreview } from "./components/AdminOrderPreview";
 import { AdminAccountPreview } from "./components/AdminAccountPreview";
 import { Archive } from "./components/Archive";
 import { RecentlyViewed } from "./components/RecentlyViewed";
-import { FeaturedGrid } from "./components/FeaturedGrid";
 import { FilterSearch } from "./components/FilterSearch";
 import { ShopByCategory } from "./components/ShopByCategory";
 import { DealsSection } from "./components/DealsSection";
 import { CategoryGrid } from "./components/CategoryGrid";
-import { TradeDeals } from "./components/TradeDeals";
+import { ShopByDepartment } from "./components/ShopByDepartment";
+import { useHomeCategories } from "./hooks/useHomeCategories";
 import { TrackOrderPage } from "./components/TrackOrderPage";
 import { BrandStrip } from "./components/BrandStrip";
+import { BelimsReviews } from "./components/BelimsReviews";
 import { AuthPage } from "./components/AuthPage";
 import { DeliveryDetailsAddAddress } from "./components/DeliveryDetailsAddAddress";
 import { AccountPage } from "./components/AccountPage";
@@ -219,11 +220,10 @@ const ArchivePage = ({
   const { categorySlug, brandSlug } = useParams();
   const [searchParams] = useSearchParams();
 
-  const categoryParam = searchParams.get("category") || undefined;
-  const rangeParam = searchParams.get("range") || undefined;
-  const categoryLabel = categorySlug
-    ? decodeURIComponent(categorySlug).replace(/-/g, " ")
-    : categoryParam;
+  // Slug (or legacy name / ?category=) — Archive resolves it against the category tree.
+  const categoryParam = categorySlug
+    ? decodeURIComponent(categorySlug)
+    : searchParams.get("category") || undefined;
 
   // /brands/:brandSlug (brand archive) or legacy /shop?brand=
   const brandParam = brandSlug ? decodeURIComponent(brandSlug) : searchParams.get("brand") || undefined;
@@ -241,9 +241,8 @@ const ArchivePage = ({
     <Archive
       products={products}
       isLoadingProducts={isLoadingProducts}
-      category={categoryLabel}
+      categoryParam={categoryParam}
       brand={brand}
-      range={rangeParam}
       searchQuery={searchQuery}
       addToCart={addToCart}
       onBuyNow={onBuyNow}
@@ -337,6 +336,11 @@ const HomePage = ({
   // Homepage rails: the small home set; fall back to the full catalogue if it came back empty
   const railProducts = homeProducts.length > 0 ? homeProducts : products;
   const isLoadingRails = homeProducts.length > 0 ? false : isLoadingHomeProducts || isLoadingProducts;
+  const categoryImageSource = useMemo(
+    () => [...homeProducts, ...products],
+    [homeProducts, products],
+  );
+  const homeCategories = useHomeCategories(categoryImageSource);
 
   return (
     <>
@@ -348,6 +352,8 @@ const HomePage = ({
         ranges={rangeOptions}
       /> */}
 
+      <CategoryGrid categories={homeCategories.subcategories} />
+
       <ShopByCategory
         products={railProducts}
         isLoadingProducts={isLoadingRails}
@@ -357,10 +363,6 @@ const HomePage = ({
         isAuthenticated={isAuthenticated}
         isTradeApproved={isTradeApproved}
       />
-
-      <FeaturedGrid />
-      {/* Collage Grid */}
-      <CollageGrid />
 
       <DealsSection
         products={railProducts}
@@ -372,20 +374,17 @@ const HomePage = ({
         isTradeApproved={isTradeApproved}
       />
 
-      <CategoryGrid />
+      <CollageGrid />
 
-      {/* Featured Category Spotlights */}
-
-      <TradeDeals
-        products={railProducts}
-        addToCart={addToCart}
-        onBuyNow={handleBuyNow}
-        onCompare={addToCompare}
-        isAuthenticated={isAuthenticated}
-        isTradeApproved={isTradeApproved}
+      <ShopByDepartment
+        departments={homeCategories.departments}
+        isLoading={homeCategories.isLoading}
       />
 
-      <PopularCategories />
+      <PopularCategories
+        categories={homeCategories.subcategories}
+        isLoading={homeCategories.isLoading}
+      />
 
       {/* <section className="mb-16" aria-label="Featured categories">
         <div className="container mx-auto px-4">
@@ -526,6 +525,9 @@ const HomePage = ({
           </div>
         </div>
       </section> */}
+
+      {/* Store-level Google reviews (hidden if the API fails) */}
+      <BelimsReviews />
 
       {/* Brand Strip */}
       <BrandStrip />
@@ -1481,6 +1483,18 @@ function MainApp(props) {
                   user={props.currentUser}
                   onLogout={props.handleLogout}
                   addToCart={props.addToCart}
+                  products={props.products}
+                />
+              }
+            />
+            <Route
+              path="/account/orders/:orderNumber"
+              element={
+                <AccountPage
+                  user={props.currentUser}
+                  onLogout={props.handleLogout}
+                  addToCart={props.addToCart}
+                  products={props.products}
                 />
               }
             />
@@ -1491,6 +1505,7 @@ function MainApp(props) {
                   user={props.currentUser}
                   onLogout={props.handleLogout}
                   addToCart={props.addToCart}
+                  products={props.products}
                 />
               }
             />
@@ -1498,7 +1513,9 @@ function MainApp(props) {
         </div>
       </main>
 
-      {!isCheckoutRoute && !SHOW_COMING_SOON && <Footer />}
+      {!isCheckoutRoute && !SHOW_COMING_SOON && (
+        <Footer onSelectStore={() => props.setIsLocatorOpen(true)} />
+      )}
 
       {/* <FreeShippingWidget cartItems={props.cartItems} /> */}
 

@@ -10,7 +10,8 @@ export interface Product {
   image: string;
   featured_image?: string;
   images?: string[]; // For gallery
-  
+  video_url?: string;
+  stock: number;
   maxStock: number; // For the stock bar visual
   weight?: number; // Weight in kg for shipping calculation
   isBundle?: boolean;
@@ -22,7 +23,8 @@ export interface Product {
   brand_slug?: string;
   sku?: string;
   features?: string[];
-  specifications?: { label: string; value: string }[];
+  specifications?: { label: string; value: string | { length?: string; width?: string; height?: string } }[];
+  short_description?: string;
   tags?: string[]; // For AI matching
   bundleCandidates?: BundleCandidate[];
   cross_sell_ids?: string[]; // WooCommerce cross-sell product IDs
@@ -129,7 +131,9 @@ export interface BundleCandidate {
   price: number;
   regular_price?: number;
   image: string;
-  
+  category?: string;
+  stock?: number;
+}
 
 export interface Store {
   id: string;

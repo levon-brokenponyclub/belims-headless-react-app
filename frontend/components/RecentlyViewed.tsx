@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Product } from "../types";
 import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
 import { getRecentlyViewed } from "../services/storageService";
-import { History } from "lucide-react";
+import { SectionHeading } from "./SectionHeading";
 
 interface RecentlyViewedProps {
   addToCart: (product: Product) => void;
@@ -38,17 +38,12 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
   if (displayProducts.length === 0) return null;
 
   return (
-    <section className="py-12 bg-gray-50 border-t border-gray-100">
+    <section className="border-t border-border bg-white py-12" aria-labelledby="recently-viewed">
       <div className="container mx-auto px-4">
-        <div className="flex items-center gap-2 mb-8">
-          <History className="text-belims-blue" size={20} />
-          <h3 className="text-2xl font-bold text-gray-900 font-heading">
-            Recently Viewed
-          </h3>
-        </div>
+        <SectionHeading id="recently-viewed" eyebrow="Your history" title="Recently viewed" titleSize="h2" />
 
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {displayProducts.slice(0, 4).map((product) => (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-5">
+          {displayProducts.slice(0, 5).map((product) => (
             <div key={product.id}>
               <ProductCard
                 product={product}
@@ -57,7 +52,7 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({
                 onCompare={onCompare}
                 isAuthenticated={isAuthenticated}
                 isTradeApproved={isTradeApproved}
-                customizations={PRODUCT_CARD_PRESETS.compactCard}
+                customizations={PRODUCT_CARD_PRESETS.railCard}
               />
             </div>
           ))}

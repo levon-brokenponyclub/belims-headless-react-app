@@ -1,279 +1,200 @@
-import React from "react";
-import { ProductCard, PRODUCT_CARD_PRESETS } from "./ProductCard";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 import { CategoryNode, Product } from "../types";
+import { formatCurrency } from "../utils/price";
+import { buildProductUrl } from "../utils/product";
+import { buildCategoryCounts, productsInCategory } from "../utils/categoryCounts";
 
 interface MegaMenuProps {
+  id: string;
   isOpen: boolean;
   categoryTree: CategoryNode[];
-  activeMegaCategory: CategoryNode | null;
-  setActiveMegaCategory: (category: CategoryNode | null) => void;
-  handleShopAll: () => void;
-  handleCategorySelect: (label: string) => void;
   products: Product[];
+  onClose: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
 }
 
+const categoryHref = (node: CategoryNode) => `/shop/${encodeURIComponent(node.id)}`;
+
+// Reads the already-resolved consumer price (dealService output) — no pricing logic here.
+const PreviewPrice: React.FC<{ product: Product }> = ({ product }) => {
+  const consumer = product.deals_resolved?.consumer;
+  const tradeOnly = consumer?.bestDeal?.type === "trade_special" || product.deals_resolved?.trade?.bestDeal?.type === "trade_special";
+  if (tradeOnly) {
+    return (
+      <span className="block">
+        <span className="block text-xs font-bold uppercase tracking-wide text-belims-blue">Trade deal</span>
+        <span className="font-bold">{formatCurrency(Number(product.regular_price || product.price) || 0)}</span>
+      </span>
+    );
+  }
+  const price = consumer?.price ?? product.price;
+  const compareAt = consumer?.compareAtPrice;
+  return (
+    <span className="block">
+      <span className={`font-bold ${compareAt ? "text-primary" : ""}`}>{formatCurrency(Number(price) || 0)}</span>
+      {compareAt ? <s className="ml-2 text-sm text-text-tertiary">{formatCurrency(compareAt)}</s> : null}
+    </span>
+  );
+};
+
 export const MegaMenu: React.FC<MegaMenuProps> = ({
+  id,
   isOpen,
   categoryTree,
-  activeMegaCategory,
-  setActiveMegaCategory,
-  handleShopAll,
-  handleCategorySelect,
   products,
+  onClose,
   onMouseEnter,
   onMouseLeave,
 }) => {
-  const [activeChildCategory, setActiveChildCategory] =
-    React.useState<CategoryNode | null>(null);
+  const counts = useMemo(() => buildCategoryCounts(categoryTree, products), [categoryTree, products]);
+  const hasCounts = products.length > 0;
+  // Hide empty branches once the catalogue is loaded (e.g. CMS terms with no listed products).
+  const visible = (nodes: CategoryNode[] = []) =>
+    hasCounts
+      ? nodes.filter((n) => (counts.get(n.id) || 0) > 0).sort((a, b) => (counts.get(b.id) || 0) - (counts.get(a.id) || 0))
+      : nodes;
 
-  React.useEffect(() => {
-    if (
-      activeMegaCategory?.children &&
-      activeMegaCategory.children.length > 0
-    ) {
-      setActiveChildCategory(activeMegaCategory.children[0]);
-    } else {
-      setActiveChildCategory(null);
+  const departments = visible(categoryTree);
+  const [deptId, setDeptId] = useState<string | null>(null);
+  const [subId, setSubId] = useState<string | null>(null);
+  const dept = departments.find((d) => d.id === deptId) ?? departments[0];
+  const subs = visible(dept?.children);
+  const sub = subs.find((s) => s.id === subId) ?? null;
+  const focusNode = sub ?? dept;
+
+  useEffect(() => {
+    if (isOpen) setSubId(null);
+  }, [isOpen, deptId]);
+
+  const preview = useMemo(() => {
+    if (!focusNode) return [];
+    const inBranch = productsInCategory(focusNode, products);
+    const picks = [
+      ...inBranch.filter((p) => p.deals_resolved?.consumer?.bestDeal || p.deals_resolved?.trade?.bestDeal),
+      ...inBranch.filter((p) => !(p.deals_resolved?.consumer?.bestDeal || p.deals_resolved?.trade?.bestDeal) && p.image),
+    ];
+    return picks.slice(0, visible(focusNode.children).length ? 3 : 6);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNode, products]);
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const pane = (e.target as HTMLElement).closest<HTMLElement>("[data-mega-pane]");
+    if (!pane) return;
+    const items = Array.from(pane.querySelectorAll<HTMLElement>("a[href]"));
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      (pane.nextElementSibling as HTMLElement | null)?.querySelector<HTMLElement>("a[href]")?.focus();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const prev = pane.previousElementSibling as HTMLElement | null;
+      (prev?.querySelector<HTMLElement>("[aria-current='true']") ?? prev?.querySelector<HTMLElement>("a[href]"))?.focus();
     }
-  }, [activeMegaCategory]);
+  };
 
-  const saleProducts = React.useMemo(() => {
-    return products
-      .filter(
-        (product) =>
-          Boolean((product as any).onSale) ||
-          Boolean(
-            product.sale_price &&
-            product.regular_price &&
-            product.sale_price < product.regular_price,
-          ) ||
-          product.deals_resolved?.consumer?.bestDeal?.type === "sale",
-      )
-      .slice(0, 2);
-  }, [products]);
+  const count = (node: CategoryNode) =>
+    hasCounts ? <small className="font-medium text-text-tertiary">{counts.get(node.id) || 0}</small> : null;
 
-  const displayProducts = React.useMemo(() => {
-    if (saleProducts.length >= 2) return saleProducts.slice(0, 2);
+  const row = (node: CategoryNode, active: boolean, onActivate: () => void) => (
+    <li key={node.id}>
+      <Link
+        to={categoryHref(node)}
+        onClick={onClose}
+        onMouseEnter={onActivate}
+        onFocus={onActivate}
+        aria-current={active ? "true" : undefined}
+        className={`flex min-h-11 items-center justify-between gap-2 border-l-[3px] px-4 text-base font-bold transition-colors ${
+          active ? "border-primary bg-surface-muted text-primary" : "border-transparent text-text hover:bg-surface-muted"
+        }`}
+      >
+        <span className="min-w-0 truncate">
+          {node.label} {count(node)}
+        </span>
+        {visible(node.children).length > 0 && <ChevronRight size={16} className="shrink-0 opacity-40" aria-hidden />}
+      </Link>
+    </li>
+  );
 
-    const saleIds = new Set(saleProducts.map((product) => product.id));
-    const fallbackProducts = products
-      .filter((product) => !saleIds.has(product.id))
-      .slice(0, 2 - saleProducts.length);
-
-    return [...saleProducts, ...fallbackProducts];
-  }, [products, saleProducts]);
-
-  if (!isOpen) return null;
+  const paneTitle = "px-4 pb-2 pt-1 font-heading text-sm font-bold uppercase font-condensed tracking-wide text-text-tertiary";
 
   return (
     <div
-      className="absolute left-0 right-0 top-full w-full bg-surface border-b border-border z-[1200] animate-fadeIn shadow-pop"
+      id={id}
+      role="region"
+      aria-label="Departments"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onKeyDown={onKeyDown}
+      className={`absolute inset-x-0 top-full z-[1201] hidden border-b border-border border-t-4 border-t-primary bg-surface text-text ${isOpen ? "md:block" : ""}`}
     >
-      <div
-        className="container mx-auto grid min-h-[500px]"
-        style={{ gridTemplateColumns: "20% 20% 20% 40%" }}
-      >
-        {/* Left Column: Parent Categories */}
-        <div className="bg-white border-r border-border flex flex-col max-h-[600px]">
-          {/* <div className="px-5 py-4 border-b border-border">
-            <span className="text-[11px] font-black uppercase tracking-widest text-text-secondary">
-              Shop by Category
-            </span>
-          </div> */}
-
-          <div className="flex-1 overflow-y-auto py-3 px-3">
-            <button
-              type="button"
-              className="w-full mb-3 px-4 py-2.5 rounded-pill text-left text-[15px] font-semibold font-heading bg-primary text-white hover:bg-primary/90 transition-colors"
-              onClick={handleShopAll}
-            >
-              Shop All
-            </button>
-
-            {categoryTree.map((cat: CategoryNode) => {
-              const isActive = activeMegaCategory?.id === cat.id;
-              return (
-                <button
-                  type="button"
-                  key={cat.id}
-                  className={`w-full px-4 py-2.5 rounded-md text-left text-[15px] font-semibold font-heading flex justify-between items-center transition-colors ${
-                    isActive
-                      ? "bg-surface-muted text-text"
-                      : "hover:bg-surface-muted text-text"
-                  }`}
-                  onMouseEnter={() => setActiveMegaCategory(cat)}
-                  onClick={() => handleCategorySelect(cat.label)}
-                >
-                  {cat.label}
-                </button>
-              );
-            })}
-          </div>
+      <div className="container mx-auto grid min-h-[420px] grid-cols-[260px_280px_minmax(0,1fr)] xl:grid-cols-[280px_300px_minmax(0,1fr)]">
+        <div data-mega-pane className="max-h-[70vh] overflow-y-auto border-r border-border py-3">
+          <h3 className={paneTitle}>Departments</h3>
+          <ul>{departments.map((d) => row(d, d.id === dept?.id, () => setDeptId(d.id)))}</ul>
+          <Link to="/shop" onClick={onClose} className="block px-4 py-2.5 text-base font-bold underline">
+            All products
+          </Link>
         </div>
 
-        {/* Column 2: Child Categories of hovered parent */}
-        <div className="p-6 bg-surface border-r border-border overflow-y-auto max-h-[600px]">
-          {activeMegaCategory ? (
-            <div className="animate-fadeIn">
-              {activeMegaCategory.children &&
-              activeMegaCategory.children.length > 0 ? (
-                <div className="flex flex-col gap-1">
-                  <div className="px-2 pb-3 mb-3 border-b border-border">
-                    <span className="font-heading text-[11px] font-bold uppercase tracking-widest text-text-tertiary">
-                      {activeMegaCategory.label}
-                    </span>
-                  </div>
+        <div data-mega-pane className="max-h-[70vh] overflow-y-auto border-r border-border py-3">
+          {dept && (
+            <>
+              <h3 className={paneTitle}>{dept.label}</h3>
+              <Link to={categoryHref(dept)} onClick={onClose} className="block px-4 py-2.5 text-base font-bold underline">
+                Shop all{hasCounts ? ` ${counts.get(dept.id) || 0}` : ""}
+              </Link>
+              <ul>{subs.map((s) => row(s, s.id === sub?.id, () => setSubId(s.id)))}</ul>
+            </>
+          )}
+        </div>
 
-                  {activeMegaCategory.children.map((childCategory) => {
-                    const isChildActive =
-                      activeChildCategory?.id === childCategory.id;
-
-                    return (
-                      <button
-                        type="button"
-                        key={childCategory.id}
-                        onMouseEnter={() =>
-                          setActiveChildCategory(childCategory)
-                        }
-                        onClick={() =>
-                          handleCategorySelect(childCategory.label)
-                        }
-                        className={`w-full px-4 py-2.5 rounded-md text-left text-[14px] font-semibold font-heading flex items-center justify-between transition-colors ${
-                          isChildActive
-                            ? "bg-surface-muted text-text"
-                            : "text-text hover:bg-surface-muted"
-                        }`}
-                      >
-                        <span className="truncate">{childCategory.label}</span>
-                        <span className="text-xs font-bold text-text-secondary">→</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex flex-col items-start justify-center h-64 text-text-secondary">
-                  <p className="text-lg font-bold text-text">
-                    {activeMegaCategory.label}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCategorySelect(activeMegaCategory.label)
-                    }
-                    className="mt-4 btn-primary"
-                  >
-                    Shop Now
-                  </button>
-                </div>
+        <div data-mega-pane className="max-h-[70vh] overflow-y-auto px-6 py-5">
+          {focusNode && (
+            <>
+              <h3 className="pb-3 font-heading text-h4 font-bold uppercase font-condensed">{focusNode.label}</h3>
+              {visible(focusNode.children).length > 0 && (
+                <ul className="mb-5 columns-2 gap-6">
+                  {visible(focusNode.children).map((g) => (
+                    <li key={g.id} className="break-inside-avoid">
+                      <Link to={categoryHref(g)} onClick={onClose} className="block py-1.5 text-base text-text-secondary hover:text-primary">
+                        {g.label} {count(g)}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </div>
-          ) : (
-            <p className="text-sm text-text-secondary"></p>
-          )}
-        </div>
-
-        {/* Column 3: Flyout sibling + subcategory context */}
-        <div className="p-6 bg-surface border-r border-border overflow-y-auto max-h-[600px]">
-          {activeMegaCategory?.children &&
-          activeMegaCategory.children.length > 0 ? (
-            <div className="h-full animate-fadeIn">
-              <div className="px-2 pb-3 mb-3 border-b border-border">
-                <h4 className="font-heading text-[11px] font-bold uppercase tracking-widest text-text-tertiary">
-                  {activeChildCategory?.label || "Subcategories"}
-                </h4>
-              </div>
-
-              <div className="flex flex-col gap-1 mb-5">
-                {/* {activeMegaCategory.children.map((sibling) => {
-                  const isSiblingActive =
-                    activeChildCategory?.id === sibling.id;
-                  return (
-                    <button
-                      key={sibling.id}
-                      type="button"
-                      onMouseEnter={() => setActiveChildCategory(sibling)}
-                      onClick={() => handleCategorySelect(sibling.label)}
-                      className={`w-full px-4 py-3 rounded-md text-left font-bold text-sm font-heading flex items-center justify-between transition-colors ${
-                        isSiblingActive
-                          ? "bg-surface-muted text-text"
-                          : "text-text hover:bg-surface-muted"
-                      }`}
-                    >
-                      <span className="truncate">{sibling.label}</span>
-                      <span className="text-xs font-bold text-text-secondary">→</span>
-                    </button>
-                  );
-                })} */}
-              </div>
-
-              <div className="px-2">
-                {/* <div className="text-[11px] font-black uppercase tracking-widest text-text-secondary mb-3">
-                  {activeChildCategory?.label || "Subcategories"}
-                </div> */}
-
-                {activeChildCategory?.children &&
-                activeChildCategory.children.length > 0 ? (
-                  <div className="flex flex-col gap-y-3">
-                    {activeChildCategory.children.map((subCategory) => (
-                      <button
-                        key={subCategory.id}
-                        type="button"
-                        onClick={() => handleCategorySelect(subCategory.label)}
-                        className="text-[14px] text-text-secondary hover:text-primary text-left transition-colors w-full"
-                      >
-                        {subCategory.label}
-                      </button>
+              {preview.length > 0 && (
+                <>
+                  <p className="pb-3 text-sm font-bold uppercase tracking-wide text-text-tertiary">Popular here</p>
+                  <ul className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+                    {preview.map((p) => (
+                      <li key={p.id}>
+                        <Link
+                          to={buildProductUrl(p)}
+                          onClick={onClose}
+                          className="flex h-full flex-col gap-1.5 rounded-md border border-border p-2.5 text-sm transition-colors hover:border-border-strong"
+                        >
+                          {p.image && <img src={p.image} alt="" loading="lazy" className="aspect-square w-full object-contain" />}
+                          <span className="line-clamp-2 font-semibold">{p.name}</span>
+                          <PreviewPrice product={p} />
+                        </Link>
+                      </li>
                     ))}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      activeChildCategory &&
-                      handleCategorySelect(activeChildCategory.label)
-                    }
-                    className="text-[14px] font-semibold text-primary hover:underline"
-                  >
-                    Shop{" "}
-                    {activeChildCategory?.label || activeMegaCategory.label}
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="h-full p-6 flex items-center justify-center text-text-secondary"></div>
+                  </ul>
+                </>
+              )}
+              <Link to={categoryHref(focusNode)} onClick={onClose} className="mt-4 inline-block text-base font-bold underline">
+                Shop all {focusNode.label}
+                {hasCounts ? ` (${counts.get(focusNode.id) || 0})` : ""}
+              </Link>
+            </>
           )}
-        </div>
-
-        {/* Right Column: On Sale products */}
-        <div className="p-6 bg-white overflow-y-auto max-h-[600px]">
-          <div className="px-2 pb-3 mb-3 border-b border-border">
-            <h4 className="font-heading text-[11px] font-bold uppercase tracking-widest text-text-tertiary">
-              On Sale
-            </h4>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8">
-            {displayProducts.length > 0 ? (
-              displayProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  addToCart={() => {}}
-                  className="h-full"
-                  customizations={PRODUCT_CARD_PRESETS.searchCard}
-                />
-              ))
-            ) : (
-              <div className="rounded-md border border-border bg-white p-4 text-sm text-text-secondary">
-                No sale products currently.
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>

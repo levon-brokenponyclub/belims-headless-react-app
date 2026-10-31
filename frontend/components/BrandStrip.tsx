@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useWindowWidth } from "../hooks/useWindowWidth";
+import { SectionHeading } from "./SectionHeading";
 
 type Brand = {
   name: string;
@@ -65,20 +68,11 @@ function getCmsBaseUrl() {
   return "/api";
 }
 
-function useWindowWidth() {
-  const [w, setW] = useState<number>(() =>
-    typeof window === "undefined" ? 1380 : window.innerWidth,
-  );
-  useEffect(() => {
-    const onResize = () => setW(window.innerWidth);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-  return w;
-}
+const ARROW_CLASS =
+  "grid h-10 w-10 place-items-center rounded-md border border-white/30 text-white transition-colors hover:bg-white hover:text-text disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white";
 
 export function BrandStrip() {
-  const width = useWindowWidth();
+  const width = useWindowWidth(1380);
   const [brands, setBrands] = useState<Brand[]>(FALLBACK_BRANDS);
 
   useEffect(() => {
@@ -174,6 +168,7 @@ export function BrandStrip() {
 
   useEffect(() => {
     if (!hasOverflow) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = window.setInterval(() => {
       setIndex((i) => (i >= maxIndex ? 0 : Math.min(maxIndex, i + step)));
     }, 4500);
@@ -183,46 +178,30 @@ export function BrandStrip() {
   const translatePct = (index * 100) / slidesPerView;
 
   return (
-    <section
-      className="bg-belims-blue border-y border-black/5"
-      aria-label="Trusted brands"
-    >
-      <div className="container mx-auto px-4 py-14 pb-16 md:py-14 md:pb-16">
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="font-heading text-h3 text-white">Trusted brands</h3>
-
+    <section className="border-t-4 border-primary bg-belims-blue" aria-labelledby="home-brands-title">
+      <div className="container mx-auto px-4 py-10 md:py-14">
+        <SectionHeading id="home-brands-title" eyebrow="Trusted brands" title="Shop by brand" tone="inverse">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={prev}
               disabled={!hasOverflow}
               aria-label="Previous brands"
-              className={[
-                "grid h-10 w-10 place-items-center rounded-lg",
-                "border border-white/15 bg-white/5 text-white/80",
-                "transition-colors hover:bg-white/10 hover:text-white",
-                "disabled:opacity-40 disabled:hover:bg-white/5",
-              ].join(" ")}
+              className={ARROW_CLASS}
             >
-              ‹
+              <ChevronLeft size={20} strokeWidth={1.75} aria-hidden="true" />
             </button>
-
             <button
               type="button"
               onClick={next}
               disabled={!hasOverflow}
               aria-label="Next brands"
-              className={[
-                "grid h-10 w-10 place-items-center rounded-lg",
-                "border border-white/15 bg-white/5 text-white/80",
-                "transition-colors hover:bg-white/10 hover:text-white",
-                "disabled:opacity-40 disabled:hover:bg-white/5",
-              ].join(" ")}
+              className={ARROW_CLASS}
             >
-              ›
+              <ChevronRight size={20} strokeWidth={1.75} aria-hidden="true" />
             </button>
           </div>
-        </div>
+        </SectionHeading>
 
         <div
           ref={railRef}
@@ -248,14 +227,7 @@ export function BrandStrip() {
                 <a
                   href={brand.url}
                   aria-label={`Shop ${brand.name}`}
-                  className={[
-                    "group flex flex-col items-center gap-2",
-                    "rounded-lg bg-white px-4 py-5",
-                    "border border-black/10",
-                    "shadow-[0_1px_2px_rgba(16,24,40,0.06)]",
-                    "transition-all duration-200",
-                    "hover:shadow-[0_8px_24px_rgba(16,24,40,0.08)] hover:-translate-y-0.5",
-                  ].join(" ")}
+                  className="group flex flex-col items-center gap-2 rounded-md border-2 border-transparent bg-surface px-4 py-5 transition-colors hover:border-primary focus:outline-none focus-visible:border-primary"
                 >
                   <span className="flex items-center justify-center h-12 w-full overflow-hidden">
                     {brand.logo ? (

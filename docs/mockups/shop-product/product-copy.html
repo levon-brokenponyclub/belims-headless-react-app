@@ -1,0 +1,742 @@
+<!doctype html>
+<!--
+  Belims — single product mockup (STEP 2, static). Reference: /product/20v-lithium-ion-impact-drill-296.
+  Real data only (data.js snapshot 2026-10-31): name, SKU, brand, price, stock 3 / maxStock 100, 1 image, specs parsed from the CMS
+  description list + weight/dimensions, features list, 4 bundle candidates, ecommerce-policies copy, Umzinto store.
+  No ratings, reviews or Q&A (none in the API). No variations (all 1,382 products are simple — Q-3a).
+  Addresses (STEP 0): title "Belims Hardware" on every route → per-product <title> + Product & BreadcrumbList JSON-LD ·
+  unlabeled qty buttons → labelled stepper · no aria-live → live total + toast · key specs above the fold ·
+  delivery / collection / returns / warranty in the buy box (from the policy endpoint) · single-image gallery handled
+  (no empty thumbnail strip), click-to-zoom lightbox · sticky buy box (desktop) + sticky add-to-cart (mobile) ·
+  description specs rendered as a table (empty CMS rows dropped, model mismatch flagged) · related from the same category.
+  Target components: SingleProduct.tsx → ProductGallery, PurchaseBox, StickyAddToCart, SpecsTable, TrustStrip (reuse), RelatedProducts, JSON-LD.
+  Other products: ?id=<listing id> renders listing-level data only (detail captured for 296).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product — Belims mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@87.5,700;87.5,800;100,400;100,500;100,600;100,700;100,800&display=swap">
+<link rel="stylesheet" href="../home/mockup.css">
+<link rel="stylesheet" href="shop.css">
+<link rel="stylesheet" href="../header/header.css">
+<link rel="stylesheet" href="../header/site-header.css">
+<link rel="stylesheet" href="../theme.css">
+</head>
+<body>
+<div id="site-header"></div>
+
+<main id="main">
+  <div class="container">
+    <nav class="crumbs" aria-label="Breadcrumb"><ol id="crumbs"></ol></nav>
+    <div id="detail-note"></div>
+
+    <div class="pdp">
+      <section aria-label="Product images">
+        <button class="gallery-main" type="button" id="gallery-main" aria-label="Zoom image">
+          <img id="main-img" alt="" fetchpriority="high">
+          <span class="zoom-hint" aria-hidden="true">Click to zoom</span>
+        </button>
+        <div class="thumbs" id="thumbs"></div>
+        <p class="gallery-note" id="gallery-note"></p>
+      </section>
+
+      <section class="buybox" aria-labelledby="pdp-title">
+        <a class="brand-chip" id="brand-chip" href="#"></a>
+        <h1 id="pdp-title"></h1>
+        <div class="meta-row" id="meta-row"></div>
+
+        <div class="pdp-price" id="price-block"></div>
+        <p class="vat">Price includes VAT</p>
+
+        <p class="stock-line" id="stock-line"></p>
+        <div class="stockbar" id="stockbar" aria-hidden="true"><span></span></div>
+
+        <dl class="key-specs" id="key-specs"></dl>
+
+        <div class="buy-row" id="buy-anchor">
+          <div class="qty" role="group" aria-label="Quantity">
+            <button type="button" id="qty-dec" aria-label="Decrease quantity">−</button>
+            <input id="qty" type="number" inputmode="numeric" min="1" value="1" aria-label="Quantity">
+            <button type="button" id="qty-inc" aria-label="Increase quantity">+</button>
+          </div>
+          <button class="btn btn-primary btn-lg" type="button" id="add-main">Add to cart</button>
+        </div>
+        <div class="buy-row-2">
+          <button class="btn btn-secondary btn-lg" type="button" id="buy-now">Buy now</button>
+          <button class="wish" type="button" id="wish" aria-pressed="false" aria-label="Add to wishlist">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+          </button>
+        </div>
+        <p class="vat" id="line-total" aria-live="polite" style="margin-top:8px"></p>
+
+        <div class="fulfil" id="fulfil"></div>
+        <div class="bundle" id="bundle" hidden></div>
+      </section>
+    </div>
+  </div>
+
+  <nav class="pdp-nav" aria-label="Product sections">
+    <div class="container"><ul id="pdp-nav"></ul></div>
+  </nav>
+
+  <div class="container">
+    <section class="content-sec" id="overview" aria-labelledby="h-overview">
+      <div class="content-grid">
+        <div>
+          <h2 id="h-overview">Overview</h2>
+          <p id="short" style="font-size:17px;margin-bottom:16px"></p>
+          <ul class="features" id="features"></ul>
+          <div id="overview-flag"></div>
+        </div>
+        <div id="spec-wrap">
+          <h2 id="specifications">Specifications</h2>
+          <table class="specs"><caption class="sr-only">Specifications</caption><tbody id="specs"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-sec" id="delivery" aria-labelledby="h-delivery">
+      <h2 id="h-delivery">Delivery &amp; returns</h2>
+      <div class="accordion" id="policies"></div>
+    </section>
+
+    <section class="content-sec" id="related" aria-labelledby="h-related">
+      <div class="section-head" style="margin-bottom:16px">
+        <div><div class="eyebrow">Keep shopping</div><h2 id="h-related" style="margin:0">More in <span id="related-cat"></span></h2></div>
+        <a class="view-all" id="related-all" href="#">View all</a>
+      </div>
+      <div class="hrail" id="related-rail"></div>
+    </section>
+
+    <section class="content-sec" id="recent" aria-labelledby="h-recent" hidden style="border-bottom:0">
+      <h2 id="h-recent">Recently viewed</h2>
+      <div class="hrail" id="recent-rail"></div>
+    </section>
+  </div>
+</main>
+
+<div class="sticky-atc" id="sticky-atc" aria-hidden="true">
+  <div class="info"><strong id="sticky-name"></strong><span id="sticky-price"></span></div>
+  <button class="btn btn-primary" type="button" id="add-sticky" tabindex="-1">Add to cart</button>
+</div>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+  <button class="icon-btn" type="button" id="lightbox-close" aria-label="Close image viewer">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+  </button>
+  <img id="lightbox-img" alt="">
+</div>
+
+<div id="site-footer"></div>
+
+<script src="data.js"></script>
+<script src="shop.js"></script>
+<script src="../header/header.js"></script>
+<script src="../header/site-header.js"></script>
+<script>
+renderChrome("product", ["layout", "Layout Style", [["", "Option 1 · Modern Pro"], ["b2", "Option 2 · Industrial Trade"], ["b3", "Option 3 · Premium Modern"]]]);
+const rawLayout = new URLSearchParams(location.search).get("layout");
+const LAYOUT = (rawLayout === "b2" || rawLayout === "b3") ? rawLayout : "b1";
+document.body.dataset.layout = LAYOUT;
+
+const id = new URLSearchParams(location.search).get("id") || String(DB.product.id);
+const full = String(DB.product.id) === id;
+const listing = DB.products.find((p) => String(p.id) === id);
+const P = full
+  ? { ...DB.product, deal: listing?.deal || null, img: DB.product.images[0] }
+  : listing && { id: listing.id, slug: listing.slug, name: listing.name, brand: listing.brand, category: listing.cat, price: listing.price, stock: listing.stock,
+      images: listing.img ? [listing.img] : [], deal: listing.deal, specs: [], features: [], bundle: [], short: "" };
+
+if (!P) {
+  document.getElementById("main").innerHTML = `<div class="container"><div class="state-box" style="margin:48px 0"><h2>Product not found</h2><p>It may have been removed or renamed.</p><a class="btn btn-primary" href="archive.html">Browse all products</a></div></div>`;
+  throw new Error("not found");
+}
+
+const catNode = CAT.byName.get((P.category || "").trim().toLowerCase());
+const catPath = catNode ? CAT.pathOf(catNode.slug) : [];
+document.title = `${P.name} — Belims mockup`;
+
+if (!full) {
+  document.getElementById("detail-note").innerHTML = `<p class="mock-note" style="margin-top:12px">Mockup: full detail (description, specs, bundle) was captured for product 296 only — this page shows listing data for #${esc(P.id)}. <a href="product.html" style="text-decoration:underline">Open the reference product</a></p>`;
+}
+
+// Breadcrumb
+const crumbs = [["Home", "../home/index.html"], ["Shop", "archive.html"], ...catPath.map((c) => [c.name, `archive.html?cat=${c.slug}`]), [P.name]];
+document.getElementById("crumbs").innerHTML = crumbs.map(([l, h], i) => i === crumbs.length - 1
+  ? `<li><span aria-current="page">${esc(l)}</span></li>` : `<li><a href="${h}">${esc(l)}</a></li>`).join("");
+
+// Gallery
+const imgs = P.images.filter(Boolean);
+const mainImg = document.getElementById("main-img");
+let active = 0;
+const setImage = (i) => {
+  active = i;
+  mainImg.src = imgs[i];
+  mainImg.alt = `${P.name}${imgs.length > 1 ? ` — image ${i + 1} of ${imgs.length}` : ""}`;
+  document.querySelectorAll("#thumbs button").forEach((b, j) => b.setAttribute("aria-current", String(j === i)));
+};
+if (imgs.length) {
+  setImage(0);
+  if (imgs.length > 1) {
+    document.getElementById("thumbs").innerHTML = imgs.map((src, i) => `<button type="button" aria-label="Show image ${i + 1}" data-thumb="${i}"><img src="${esc(src)}" alt="" loading="lazy"></button>`).join("");
+  }
+  document.getElementById("gallery-note").textContent = imgs.length === 1 ? "1 image in the CMS for this product." : "";
+} else {
+  const g = document.getElementById("gallery-main");
+  g.style.cursor = "default";
+  g.disabled = true;
+  g.innerHTML = `<span class="noimg" style="position:absolute;inset:0;display:grid;place-items:center;color:var(--color-text-tertiary);font-weight:600">No image available</span>`;
+}
+document.getElementById("thumbs").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-thumb]");
+  if (b) setImage(+b.dataset.thumb);
+});
+// Swipe on the main image (mobile)
+let x0 = null;
+mainImg.addEventListener("touchstart", (e) => (x0 = e.touches[0].clientX), { passive: true });
+mainImg.addEventListener("touchend", (e) => {
+  if (x0 === null || imgs.length < 2) return;
+  const dx = e.changedTouches[0].clientX - x0;
+  if (Math.abs(dx) > 40) setImage((active + (dx < 0 ? 1 : imgs.length - 1)) % imgs.length);
+  x0 = null;
+});
+
+// Lightbox
+const lb = document.getElementById("lightbox");
+const lbClose = document.getElementById("lightbox-close");
+const openLb = () => { if (!imgs.length) return; document.getElementById("lightbox-img").src = imgs[active]; document.getElementById("lightbox-img").alt = mainImg.alt; lb.classList.add("open"); lbClose.focus(); };
+const closeLb = () => { lb.classList.remove("open"); document.getElementById("gallery-main").focus(); };
+document.getElementById("gallery-main").addEventListener("click", openLb);
+lbClose.addEventListener("click", closeLb);
+lb.addEventListener("click", (e) => { if (e.target === lb) closeLb(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && lb.classList.contains("open")) closeLb(); });
+
+// Buy box
+const brandChip = document.getElementById("brand-chip");
+if (P.brand) { brandChip.textContent = P.brand; brandChip.href = `archive.html?brand=${encodeURIComponent(P.brand)}`; brandChip.setAttribute("aria-label", `More from ${P.brand}`); }
+else brandChip.remove();
+document.getElementById("pdp-title").textContent = P.name;
+document.getElementById("meta-row").innerHTML = [
+  P.sku ? `<span>SKU <b>${esc(P.sku)}</b></span>` : "",
+  catNode ? `<span>Category <a href="archive.html?cat=${catNode.slug}" style="text-decoration:underline"><b>${esc(catNode.name)}</b></a></span>` : "",
+].join("");
+
+const unit = P.deal && !P.deal.trade ? P.deal.price : P.price;
+document.getElementById("price-block").innerHTML = P.deal && !P.deal.trade
+  ? `<span class="now sale">${money(P.deal.price)}</span><span class="was">${money(P.deal.was)}</span><span class="save">${P.deal.pct}% off · ${DEAL_LABEL[P.deal.type]}</span>`
+  : `<span class="now">${money(P.price)}</span>${P.deal?.trade ? `<span class="save" style="background:var(--color-belims-blue)">Trade accounts save ${P.deal.pct}%</span>` : ""}`;
+
+const stockLine = document.getElementById("stock-line");
+const maxStock = P.maxStock || 100;
+if (P.stock <= 0) { stockLine.className = "stock-line out"; stockLine.textContent = "Out of stock"; }
+else if (P.stock <= 5) { stockLine.className = "stock-line low"; stockLine.textContent = `In stock — only ${P.stock} left`; }
+else stockLine.textContent = "In stock";
+document.querySelector("#stockbar span").style.width = `${Math.min(100, (P.stock / maxStock) * 100)}%`;
+if (P.stock > 5) document.getElementById("stockbar").hidden = true;
+
+const KEY = ["Motor Type", "Drill Voltage", "Max Torque", "No-Load Speed", "Impact Rate", "Weight"];
+const keySpecs = KEY.map((k) => P.specs.find(([label]) => label === k)).filter(Boolean).slice(0, 4);
+const ks = document.getElementById("key-specs");
+if (keySpecs.length) ks.innerHTML = keySpecs.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("");
+else ks.remove();
+
+// Quantity + live total
+const qty = document.getElementById("qty");
+qty.max = String(Math.max(1, P.stock));
+const lineTotal = document.getElementById("line-total");
+const syncQty = (v) => {
+  const n = Math.min(Math.max(1, parseInt(v, 10) || 1), Math.max(1, P.stock));
+  qty.value = n;
+  document.getElementById("qty-dec").disabled = n <= 1;
+  document.getElementById("qty-inc").disabled = n >= P.stock;
+  lineTotal.textContent = n > 1 ? `${n} × ${money(unit)} = ${money(n * unit)}` : "";
+};
+document.getElementById("qty-dec").addEventListener("click", () => syncQty(+qty.value - 1));
+document.getElementById("qty-inc").addEventListener("click", () => syncQty(+qty.value + 1));
+qty.addEventListener("change", () => syncQty(qty.value));
+syncQty(1);
+const addToCart = () => toast(`Added ${qty.value} × ${P.name} to cart`);
+document.getElementById("add-main").addEventListener("click", addToCart);
+document.getElementById("add-sticky").addEventListener("click", addToCart);
+document.getElementById("buy-now").addEventListener("click", () => toast("Buy now → checkout (mockup)"));
+if (P.stock <= 0) ["add-main", "add-sticky", "buy-now", "qty-inc", "qty-dec"].forEach((i) => (document.getElementById(i).disabled = true));
+const wish = document.getElementById("wish");
+wish.addEventListener("click", () => {
+  const on = wish.getAttribute("aria-pressed") !== "true";
+  wish.setAttribute("aria-pressed", String(on));
+  wish.setAttribute("aria-label", on ? "Remove from wishlist" : "Add to wishlist");
+  toast(on ? "Saved to wishlist" : "Removed from wishlist");
+});
+
+// Fulfilment + trust (policy endpoint)
+const pol = DB.policies, store = pol.stores[0];
+const isPowerTool = catPath.some((c) => c.slug === "power-tools");
+const rows = [
+  ["⇢", "Delivery", pol.shipping, "Enter your address at checkout for rates"],
+  store && ["⌂", `Collect from ${store.name}`, store.address, store.phone ? `Call ${store.phone}` : ""],
+  ["↺", "Returns", pol.return_policy, ""],
+  isPowerTool && ["◆", "Warranty", pol.warranty, ""],
+].filter(Boolean).filter((r) => r[2]);
+document.getElementById("fulfil").innerHTML = rows.map(([ic, t, b, extra]) => `<div class="fulfil-row"><span class="ic" aria-hidden="true">${ic}</span><div><strong>${esc(t)}</strong><span>${esc(b)}</span>${extra ? `<br><span>${esc(extra)}</span>` : ""}</div></div>`).join("")
+  + `<div class="fulfil-row"><span class="ic" aria-hidden="true">?</span><div><a href="#delivery">Delivery &amp; returns details</a></div></div>`;
+
+// Bundle
+if (P.bundle.length) {
+  const b = document.getElementById("bundle");
+  b.hidden = false;
+  b.innerHTML = `<h2>Perfect match with</h2>` + P.bundle.map((x) => `<div class="bundle-item">
+    <img src="${esc(x.img)}" alt="" loading="lazy"><div><a href="product.html?id=${x.id}">${esc(x.name)}</a><div class="p">${money(x.price)}</div></div>
+    <button class="add-sm" type="button" data-add="${x.id}" aria-label="Add ${esc(x.name)} to cart">Add</button></div>`).join("");
+}
+
+// Content
+document.getElementById("short").textContent = P.short || "";
+document.getElementById("features").innerHTML = P.features.map((f) => `<li>${esc(f.charAt(0).toUpperCase() + f.slice(1))}</li>`).join("");
+if (full) {
+  const modelSpec = P.specs.find(([k]) => k === "Model");
+  if (modelSpec && P.sku && modelSpec[1] !== P.sku) {
+    document.getElementById("overview-flag").innerHTML = `<p class="data-flag">Data check (CMS, not a design issue): the description's model (${esc(modelSpec[1])}) doesn't match the SKU (${esc(P.sku)}); two spec lines ("Integrated Work Light", "Included") are empty and are hidden.</p>`;
+  }
+}
+if (!P.short && !P.features.length) document.querySelector("#overview .content-grid > div").innerHTML = `<h2 id="h-overview">Overview</h2><p style="color:var(--color-text-secondary)">No description yet for this product.</p>`;
+if (P.specs.length) document.getElementById("specs").innerHTML = P.specs.map(([k, v]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("");
+else document.getElementById("spec-wrap").remove();
+
+const policyRows = [["Returns", pol.return_policy], ["Change of mind", pol.change_of_mind], ["Warranty", pol.warranty], ["Delivery & collection", pol.shipping + (store ? ` · Collect from ${store.name}, ${store.address}.` : "")]].filter(([, b]) => b);
+document.getElementById("policies").innerHTML = policyRows.map(([t, b], i) => `<details ${i === 0 ? "open" : ""}><summary>${esc(t)}</summary><p>${esc(b)}</p></details>`).join("");
+
+// Related (same category)
+const related = DB.products.filter((p) => p.cat === P.category && String(p.id) !== String(P.id)).slice(0, 12);
+document.getElementById("related-cat").textContent = catNode?.name || P.category;
+document.getElementById("related-all").href = catNode ? `archive.html?cat=${catNode.slug}` : "archive.html";
+document.getElementById("related-rail").innerHTML = related.map((p) => cardHTML(p)).join("");
+if (!related.length) document.getElementById("related").remove();
+
+// Recently viewed (localStorage, per viewer)
+let recent = [];
+try { recent = JSON.parse(localStorage.getItem("belims-mock-recent") || "[]"); } catch {}
+recent = [String(P.id), ...recent.filter((x) => x !== String(P.id))].slice(0, 12);
+try { localStorage.setItem("belims-mock-recent", JSON.stringify(recent)); } catch {}
+const recentItems = recent.slice(1).map((rid) => DB.products.find((p) => String(p.id) === rid)).filter(Boolean);
+if (recentItems.length) {
+  document.getElementById("recent").hidden = false;
+  document.getElementById("recent-rail").innerHTML = recentItems.map((p) => cardHTML(p)).join("");
+}
+
+// In-page nav + scroll spy
+const secs = [["overview", "Overview"], ["delivery", "Delivery & returns"], ["related", "Related"], ["recent", "Recently viewed"]].filter(([sid]) => { const el = document.getElementById(sid); return el && !el.hidden; });
+document.getElementById("pdp-nav").innerHTML = secs.map(([sid, l]) => `<li><a href="#${sid}" data-spy="${sid}">${l}</a></li>`).join("");
+const spy = new IntersectionObserver((entries) => entries.forEach((en) => {
+  if (en.isIntersecting) document.querySelectorAll("[data-spy]").forEach((a) => a.setAttribute("aria-current", String(a.dataset.spy === en.target.id)));
+}), { rootMargin: "-40% 0px -55% 0px" });
+secs.forEach(([sid]) => spy.observe(document.getElementById(sid)));
+
+// Mobile sticky add-to-cart: shows once the main buy row leaves the viewport
+const sticky = document.getElementById("sticky-atc");
+document.getElementById("sticky-name").textContent = P.name;
+document.getElementById("sticky-price").textContent = money(unit);
+new IntersectionObserver(([en]) => {
+  const show = !en.isIntersecting && en.boundingClientRect.top < 0;
+  sticky.classList.toggle("show", show);
+  sticky.setAttribute("aria-hidden", String(!show));
+  document.getElementById("add-sticky").tabIndex = show ? 0 : -1;
+}).observe(document.getElementById("buy-anchor"));
+
+// JSON-LD (Product + BreadcrumbList)
+const origin = "https://www.belims.co.za";
+const ld = [
+  {
+    "@context": "https://schema.org", "@type": "Product", name: P.name, sku: P.sku || undefined,
+    image: imgs, brand: P.brand ? { "@type": "Brand", name: P.brand } : undefined,
+    description: P.short || undefined, category: catPath.map((c) => c.name).join(" > ") || undefined,
+    offers: { "@type": "Offer", priceCurrency: "ZAR", price: unit.toFixed(2),
+      availability: P.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      url: `${origin}/product/${P.slug || ""}-${P.id}` },
+  },
+  {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: [["Shop", "/shop"], ...catPath.map((c) => [c.name, `/shop/${c.slug}`]), [P.name]].map(([name, path], i) => ({
+      "@type": "ListItem", position: i + 1, name, ...(path ? { item: origin + path } : {}),
+    })),
+  },
+];
+const s = document.createElement("script");
+s.type = "application/ld+json";
+s.textContent = JSON.stringify(ld);
+document.head.append(s);
+
+// ---------- Fulfilment chooser: "location entered" state ----------
+// Address + rates are SAMPLE values from a live Bob Go quote (Durban North 4019, Sat 31 Oct). Store name/address/phone are real.
+const SAMPLE_ADDRESS = { suburb: "Durban North", postcode: "4019" };
+const SAMPLE_RATES = [
+  { id: "standard", name: "Standard Delivery", tag: "Budget", tone: "ok", price: 75, eta: "Arrives 03 Nov – 06 Nov" },
+  { id: "nextday", name: "Next Day Delivery", tag: "Faster", tone: "warn", price: 125, eta: "Arrives 02 Nov" },
+  { id: "sameday", name: "Same Day Delivery", tag: "", tone: "", price: 400, eta: "Arrives 02 Nov" },
+];
+const SAMPLE_STORE_HOURS = "Open · closes 2pm";
+
+function renderFulfilment(host) {
+  let method = "delivery";
+  let rate = SAMPLE_RATES[1];
+  host.className = "fulfil-switcher-box";
+  host.setAttribute("role", "region");
+  host.setAttribute("aria-label", "Fulfillment method");
+  const draw = () => {
+    const isDelivery = method === "delivery";
+    host.innerHTML = `
+      <p class="fc-label">HOW DO YOU WANT IT?</p>
+      <div class="fc-switcher" role="tablist" aria-label="Fulfillment method">
+        <button type="button" role="tab" class="fc-tab ${isDelivery ? "active" : ""}" data-method="delivery" aria-selected="${isDelivery}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
+          <span>Delivery</span>
+        </button>
+        <button type="button" role="tab" class="fc-tab ${!isDelivery ? "active" : ""}" data-method="collect" aria-selected="${!isDelivery}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6"/></svg>
+          <span>Pick up</span>
+        </button>
+      </div>
+      <div class="fc-content">
+        ${isDelivery ? `
+          <div class="fc-card-active" data-method-card="delivery">
+            <span class="fc-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg></span>
+            <div class="fc-body">
+              <strong>Delivery to ${esc(SAMPLE_ADDRESS.suburb)}, ${esc(SAMPLE_ADDRESS.postcode)}</strong>
+              <span>${esc(rate.name)} · <b>${money(rate.price)}</b></span>
+              <span class="fc-eta">${esc(rate.eta)}</span>
+            </div>
+            <button class="fc-change" type="button" data-open-rates aria-label="Change delivery option">CHANGE</button>
+          </div>
+        ` : `
+          <div class="fc-card-active" data-method-card="collect">
+            <span class="fc-ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6"/></svg></span>
+            <div class="fc-body">
+              <strong>Collect from ${esc(store?.name || "Umzinto")} <em class="free">FREE</em></strong>
+              <span><span class="open">${SAMPLE_STORE_HOURS.split(" · ")[0]}</span> · ${SAMPLE_STORE_HOURS.split(" · ")[1]}</span>
+              <span class="fc-eta">${esc(store?.address || "")}</span>
+            </div>
+          </div>
+        `}
+      </div>`;
+  };
+  draw();
+  const choose = (m) => { method = m; draw(); host.querySelector(`[data-method="${m}"]`).focus(); };
+  host.addEventListener("click", (e) => {
+    if (e.target.closest("[data-open-rates]")) { e.preventDefault(); e.stopPropagation(); return openRates(); }
+    const tab = e.target.closest(".fc-tab");
+    if (tab) choose(tab.dataset.method);
+  });
+  host.addEventListener("keydown", (e) => {
+    if (!["ArrowLeft", "ArrowRight", " ", "Enter"].includes(e.key) || e.target.closest("button.fc-change")) return;
+    const tab = e.target.closest(".fc-tab");
+    if (!tab) return;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      choose(method === "delivery" ? "collect" : "delivery");
+    }
+  });
+
+  // Delivery options panel
+  const back = document.createElement("div");
+  back.className = "drawer-backdrop";
+  const panel = document.createElement("div");
+  panel.className = "rates-panel";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+  panel.setAttribute("aria-labelledby", "rates-title");
+  panel.hidden = true;
+  document.body.append(back, panel);
+  let pending = rate;
+  const drawPanel = () => {
+    panel.innerHTML = `
+      <div class="rates-head">
+        <div><h2 id="rates-title">Delivery options</h2><p>${esc(SAMPLE_ADDRESS.suburb)}, ${esc(SAMPLE_ADDRESS.postcode)}</p></div>
+        <button class="icon-btn" type="button" data-close-rates aria-label="Close delivery options"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div class="rates-body" role="radiogroup" aria-labelledby="rates-title">
+        ${SAMPLE_RATES.map((r) => `<label class="rate"><input type="radio" name="rate" value="${r.id}" ${r.id === pending.id ? "checked" : ""}>
+          <span class="rate-main"><strong>${esc(r.name)}</strong>${r.tag ? `<em class="tag ${r.tone}">${r.tag}</em>` : ""}<span>${esc(r.eta)}</span></span>
+          <b>${money(r.price)}</b></label>`).join("")}
+        <p class="rates-src">Sample rates from a live quote — real rates come from the shipping provider at runtime.</p>
+      </div>
+      <div class="rates-foot"><a href="#" data-close-rates>Change address</a><button class="btn btn-primary btn-lg" type="button" data-done-rates>Done</button></div>`;
+  };
+  function openRates() {
+    pending = rate;
+    drawPanel();
+    panel.hidden = false;
+    void panel.offsetWidth;
+    panel.classList.add("open");
+    back.classList.add("open");
+    document.body.style.overflow = "hidden";
+    panel.querySelector("input:checked").focus();
+  }
+  const closeRates = () => {
+    panel.classList.remove("open");
+    back.classList.remove("open");
+    document.body.style.overflow = "";
+    setTimeout(() => (panel.hidden = true), 250);
+    host.querySelector("[data-open-rates]")?.focus();
+  };
+  panel.addEventListener("change", (e) => { if (e.target.name === "rate") pending = SAMPLE_RATES.find((r) => r.id === e.target.value); });
+  panel.addEventListener("click", (e) => {
+    if (e.target.closest("[data-close-rates]")) { e.preventDefault(); closeRates(); }
+    if (e.target.closest("[data-done-rates]")) { rate = pending; method = "delivery"; draw(); closeRates(); toast(`Delivery: ${rate.name} — ${money(rate.price)}`); }
+  });
+  back.addEventListener("click", closeRates);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && panel.classList.contains("open")) closeRates(); });
+}
+
+// ---------- Production-Ready Layout B Options (Option 1: Modern Pro, Option 2: Industrial Trade, Option 3: Premium Modern) ----------
+const gallerySec = document.querySelector('.pdp > section[aria-label="Product images"]');
+const buybox = document.querySelector(".buybox");
+const fulfil = document.getElementById("fulfil");
+const bundle = document.getElementById("bundle");
+const overview = document.getElementById("overview");
+const delivery = document.getElementById("delivery");
+const pdpNav = document.querySelector(".pdp-nav");
+const pdp = document.querySelector(".pdp");
+
+// Common Layout B foundation: Content flows in the left column under the gallery
+[overview, delivery].forEach((sec) => {
+  sec.classList.remove("content-sec");
+  sec.classList.add("flow-sec");
+  gallerySec.append(sec);
+});
+renderFulfilment(fulfil);
+overview.querySelector(".content-grid").classList.add("stack");
+pdpNav.remove();
+
+// ==========================================================================
+// OPTION 1: Modern Clean Pro (Default / b1)
+// ==========================================================================
+if (LAYOUT === "b1") {
+  // In-flow sticky pill navigation
+  const subnav = document.createElement("nav");
+  subnav.className = "b1-subnav";
+  subnav.setAttribute("aria-label", "Product details navigation");
+  subnav.innerHTML = `<ul>
+    <li><a href="#overview" aria-current="true">Overview</a></li>
+    <li><a href="#specifications">Specifications</a></li>
+    ${!bundle.hidden ? `<li><a href="#bundle">Accessories</a></li>` : ""}
+    <li><a href="#delivery">Delivery &amp; Returns</a></li>
+  </ul>`;
+  overview.before(subnav);
+
+  // Modern Clean Cross-sell Accessories
+  if (!bundle.hidden) {
+    bundle.classList.add("flow-sec");
+    bundle.innerHTML = `<div class="section-head" style="margin-bottom:14px"><div><div class="eyebrow">Works with</div><h2 style="font-size:22px;margin:0">Frequently Bought Together</h2></div></div>
+      <div class="b1-acc-grid">${P.bundle.map((x) => `<div class="b1-acc-card">
+        <img src="${esc(x.img)}" alt="" loading="lazy">
+        <a href="product.html?id=${x.id}">${esc(x.name)}</a>
+        <div class="price">${money(x.price)}</div>
+        <button class="btn btn-secondary btn-sm" type="button" data-add="${x.id}" style="width:100%;height:38px;font-size:13px;font-weight:700">Add to cart</button>
+      </div>`).join("")}</div>`;
+    overview.after(bundle);
+  }
+
+  // Active pill state on scroll
+  const spyLinks = subnav.querySelectorAll("a");
+  const subnavObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        spyLinks.forEach((a) => a.setAttribute("aria-current", String(a.getAttribute("href") === "#" + entry.target.id)));
+      }
+    });
+  }, { rootMargin: "-20% 0px -60% 0px" });
+  [overview, document.getElementById("spec-wrap"), bundle, delivery].filter(Boolean).forEach((el) => subnavObserver.observe(el));
+}
+
+// ==========================================================================
+// OPTION 2: Industrial Trade / Contractor (b2)
+// ==========================================================================
+if (LAYOUT === "b2") {
+  // Gallery technical badge
+  const techBadge = document.createElement("div");
+  techBadge.className = "b2-tech-badge";
+  techBadge.textContent = "20V BRUSHLESS • INDUSTRIAL SPEC";
+  document.getElementById("gallery-main").prepend(techBadge);
+
+  // Trade Pricing Callout in Buybox
+  const tradePrice = unit * 0.9;
+  const tradeBox = document.createElement("div");
+  tradeBox.className = "b2-trade-pricing";
+  tradeBox.innerHTML = `
+    <div class="b2-trade-row">
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#64748b;letter-spacing:.05em">Trade Account Price</div>
+        <div class="b2-trade-price">${money(tradePrice)}</div>
+      </div>
+      <span class="b2-trade-tag">Save 10% Trade</span>
+    </div>
+    <div class="b2-retail-row">
+      <span>Standard Retail: <b style="color:var(--color-text)">${money(unit)}</b> (incl. VAT)</span>
+      <span style="margin-left:auto;font-weight:700;color:var(--color-stock-ok)">● Trade Credit Available</span>
+    </div>`;
+  document.getElementById("price-block").after(tradeBox);
+
+  // Contractor Quick Batch Quantity Selector
+  const batchRow = document.createElement("div");
+  batchRow.className = "b2-batch-row";
+  batchRow.innerHTML = `<span class="b2-batch-label">Quick Qty:</span>
+    <button type="button" class="b2-batch-btn" data-batch="1">1</button>
+    <button type="button" class="b2-batch-btn" data-batch="2">2</button>
+    <button type="button" class="b2-batch-btn" data-batch="5">5</button>
+    <button type="button" class="b2-batch-btn" data-batch="10">10</button>`;
+  document.getElementById("buy-anchor").before(batchRow);
+  batchRow.querySelectorAll("[data-batch]").forEach((btn) => {
+    btn.addEventListener("click", () => syncQty(+btn.dataset.batch));
+  });
+
+  // Change Add to cart text to industrial CTA
+  const addBtn = document.getElementById("add-main");
+  addBtn.textContent = "Add to Trade Order";
+
+  // Interactive Checkbox Kit Builder ("Job Site Bundle")
+  if (!bundle.hidden) {
+    bundle.classList.add("flow-sec");
+    const kitItems = [
+      { id: P.id, name: P.name, price: unit, sku: P.sku || "CIDLI2002", img: imgs[0], main: true },
+      ...P.bundle.map((b) => ({ ...b, sku: `SKU-${b.id}` }))
+    ];
+    bundle.innerHTML = `
+      <div class="b2-kit-builder">
+        <div class="b2-kit-header">
+          <div>
+            <h3>Job-Site Ready Kit Builder</h3>
+            <p style="margin:4px 0 0;font-size:13px;color:#64748b">Bundle compatible accessories &amp; power packs for your crew</p>
+          </div>
+          <span class="b2-kit-badge">Contractor Bundle</span>
+        </div>
+        <div class="b2-kit-items">
+          ${kitItems.map((item, idx) => `
+            <label class="b2-kit-item">
+              <input type="checkbox" data-b2kit="${idx}" ${item.main ? "checked disabled" : "checked"}>
+              <img src="${esc(item.img)}" alt="" loading="lazy">
+              <div>
+                <div class="b2-kit-title">${esc(item.name)}${item.main ? ' <small style="color:#0284c7;font-weight:800">(Base Unit)</small>' : ""}</div>
+                <div class="b2-kit-meta">${esc(item.sku)} · High-demand trade stock</div>
+              </div>
+              <div class="b2-kit-price">${money(item.price)}</div>
+            </label>
+          `).join("")}
+        </div>
+        <div class="b2-kit-footer">
+          <div class="b2-kit-total-box">
+            Selected Total: <span class="b2-kit-total-amount" id="b2-total-val"></span>
+          </div>
+          <button class="b2-kit-add-btn" type="button" id="b2-kit-add">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            <span id="b2-kit-btn-text">Add Bundle to Cart</span>
+          </button>
+        </div>
+      </div>`;
+    overview.after(bundle);
+
+    const syncKit = () => {
+      const selected = [...bundle.querySelectorAll("[data-b2kit]")].filter((c) => c.checked).map((c) => kitItems[c.dataset.b2kit]);
+      const sum = selected.reduce((acc, curr) => acc + Number(curr.price), 0);
+      bundle.querySelector("#b2-total-val").textContent = money(sum);
+      bundle.querySelector("#b2-kit-btn-text").textContent = `Add ${selected.length} items to cart`;
+    };
+    bundle.addEventListener("change", syncKit);
+    bundle.querySelector("#b2-kit-add").addEventListener("click", () => {
+      const selected = [...bundle.querySelectorAll("[data-b2kit]")].filter((c) => c.checked).map((c) => kitItems[c.dataset.b2kit]);
+      toast(`Added ${selected.length} bundle items to cart`);
+    });
+    syncKit();
+  }
+}
+
+// ==========================================================================
+// OPTION 3: Premium Modern Hardware (b3)
+// ==========================================================================
+if (LAYOUT === "b3") {
+  // Remove "Price includes VAT" from buybox as requested
+  document.querySelector(".buybox > p.vat")?.remove();
+
+  // In-flow Tab System in left column
+  const specWrap = document.getElementById("spec-wrap");
+  const tabPanels = [
+    { id: "tab-overview", title: "Overview", content: overview.querySelector(".content-grid > div") },
+    { id: "tab-specs", title: "Technical Specifications", content: specWrap },
+    { id: "tab-ecosystem", title: "Works with", content: bundle },
+    { id: "tab-delivery", title: "Delivery & Warranty", content: delivery }
+  ];
+
+  const tabsWrap = document.createElement("div");
+  tabsWrap.className = "b3-tabs-wrap";
+  tabsWrap.innerHTML = `
+    <div class="b3-tablist" role="tablist" aria-label="Product Sections">
+      ${tabPanels.map((tp, idx) => `
+        <button class="b3-tab" type="button" role="tab" id="b3-t-${idx}" aria-controls="${tp.id}" aria-selected="${idx === 0}" tabindex="${idx === 0 ? "0" : "-1"}">${tp.title}</button>
+      `).join("")}
+    </div>
+    <div class="b3-panels">
+      ${tabPanels.map((tp, idx) => `
+        <div class="b3-tabpanel" id="${tp.id}" role="tabpanel" aria-labelledby="b3-t-${idx}" ${idx !== 0 ? "hidden" : ""}></div>
+      `).join("")}
+    </div>`;
+
+  // Original bundle layout inside "Works with" tab as requested
+  if (!bundle.hidden) {
+    bundle.className = "bundle";
+    bundle.innerHTML = `<h2>PERFECT MATCH WITH</h2>` + P.bundle.map((x) => `<div class="bundle-item">
+      <img src="${esc(x.img)}" alt="" loading="lazy"><div><a href="product.html?id=${x.id}">${esc(x.name)}</a><div class="p">${money(x.price)}</div></div>
+      <button class="add-sm" type="button" data-add="${x.id}" aria-label="Add ${esc(x.name)} to cart">ADD</button></div>`).join("");
+  }
+
+  // Trust badges in delivery tab
+  const trustGrid = document.createElement("div");
+  trustGrid.className = "b3-trust-grid";
+  trustGrid.innerHTML = `
+    <div class="b3-trust-card">
+      <strong>Official Warranty Protection</strong>
+      <p>6-Month comprehensive repair or replacement guarantee backed by Belims Hardware.</p>
+    </div>
+    <div class="b3-trust-card">
+      <strong>Hassle-Free 15-Day Returns</strong>
+      <p>Unopened or defective items eligible for full credit or exchange within 15 days.</p>
+    </div>
+    <div class="b3-trust-card">
+      <strong>Insured Doorstep Freight</strong>
+      <p>Real-time Bob Go courier tracking with complete loss/damage insurance included.</p>
+    </div>`;
+  delivery.append(trustGrid);
+
+  // Mount panels
+  tabsWrap.querySelector("#tab-overview").append(overview.querySelector(".content-grid > div"));
+  tabsWrap.querySelector("#tab-specs").append(specWrap);
+  if (!bundle.hidden) tabsWrap.querySelector("#tab-ecosystem").append(bundle);
+  tabsWrap.querySelector("#tab-delivery").append(delivery);
+
+  overview.replaceWith(tabsWrap);
+
+  // Tab switching logic
+  const tabButtons = tabsWrap.querySelectorAll(".b3-tab");
+  const tabPanelsEl = tabsWrap.querySelectorAll(".b3-tabpanel");
+  const selectTab = (index) => {
+    tabButtons.forEach((btn, idx) => {
+      const isSelected = idx === index;
+      btn.setAttribute("aria-selected", String(isSelected));
+      btn.tabIndex = isSelected ? 0 : -1;
+      tabPanelsEl[idx].hidden = !isSelected;
+    });
+  };
+  tabButtons.forEach((btn, idx) => {
+    btn.addEventListener("click", () => selectTab(idx));
+    btn.addEventListener("keydown", (e) => {
+      if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+      const nextIdx = (idx + (e.key === "ArrowRight" ? 1 : -1) + tabButtons.length) % tabButtons.length;
+      selectTab(nextIdx);
+      tabButtons[nextIdx].focus();
+    });
+  });
+}
+
+</script>
+</body>
+</html>

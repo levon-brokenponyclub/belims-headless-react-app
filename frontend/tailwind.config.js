@@ -121,6 +121,7 @@ export default {
         // ── Utility scale — consume CSS vars ──
         xs:   ["var(--text-xs)",   { lineHeight: "1.5",  letterSpacing: "0.02em" }],
         sm:   ["var(--text-sm)",   { lineHeight: "1.5",  letterSpacing: "0.02em" }],
+        caption: ["var(--text-caption)", { lineHeight: "1.5", letterSpacing: "0.01em" }],
         base: ["var(--text-base)", { lineHeight: "1.6",  letterSpacing: "0" }],
         md:   ["var(--text-base)", { lineHeight: "1.6",  letterSpacing: "0" }],
         lg:   ["var(--text-lg)",   { lineHeight: "1.55", letterSpacing: "-0.01em" }],

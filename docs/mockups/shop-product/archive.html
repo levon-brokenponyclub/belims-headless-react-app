@@ -1,0 +1,480 @@
+<!doctype html>
+<!--
+  Belims — /shop archive mockup (STEP 2, static). Real data: data.js (1,382 products snapshot, 2026-10-31).
+  Addresses (STEP 0 findings): no pagination (1,378 cards / 39k DOM nodes) → numbered pages, 24 per page, real ?page= hrefs ·
+  only price in URL → all filter/sort/view/page state in the URL, back-button safe (pushState) ·
+  colour filter no-op + always-zero Offer facets → facets only show options with matches, counts respect other active filters ·
+  lowercase slug H1 ("power tools") → proper category name, breadcrumb from the category tree ·
+  no subcategory discovery → subcategory tiles on category archives · result count + applied chips + clear all ·
+  mobile filter drawer with live "Show N results" · empty and error states · 44px tap targets · grid/list toggle.
+  Omitted on purpose: "In stock only" (every listed product is in stock — the listing endpoint filters to instock),
+  Range facet (listing products carry no range field — likely a no-op like Colour; verify in the audit).
+  Target components: Archive.tsx → FilterSidebar / FilterDrawer, ActiveFilters, SortSelect, Pagination, ProductCard (archive variant).
+  Demo URLs: ?cat=tools-and-machinery · ?q=zzzz (empty) · ?state=error
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shop — Belims mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@87.5,700;87.5,800;100,400;100,500;100,600;100,700;100,800&display=swap">
+<link rel="stylesheet" href="../home/mockup.css">
+<link rel="stylesheet" href="shop.css">
+<link rel="stylesheet" href="../header/header.css">
+<link rel="stylesheet" href="../header/site-header.css">
+<link rel="stylesheet" href="../theme.css">
+</head>
+<body>
+<div id="site-header"></div>
+
+<div id="hero"></div>
+<p class="sr-only" id="count" aria-live="polite"></p>
+
+<main class="container" id="main">
+  <div class="shop-layout">
+    <aside class="sidebar" aria-label="Filters">
+      <div id="facets-desktop"></div>
+    </aside>
+
+    <section aria-label="Products">
+      <div class="toolbar">
+        <div class="left">
+          <button class="btn btn-secondary filter-btn" type="button" id="open-filters" aria-controls="filter-drawer" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+            Filters <span id="filter-count"></span>
+          </button>
+          <span class="count" id="range-label" style="font-size:14px;color:var(--color-text-secondary)"></span>
+        </div>
+        <div class="right">
+          <label class="sr-only" for="sort">Sort by</label>
+          <select class="select" id="sort">
+            <option value="recommended">Recommended</option>
+            <option value="newest">Newest</option>
+            <option value="price-asc">Price: low to high</option>
+            <option value="price-desc">Price: high to low</option>
+            <option value="name-asc">Name: A–Z</option>
+          </select>
+          <div class="view-toggle" role="group" aria-label="Layout">
+            <button type="button" data-view="grid" aria-pressed="true" aria-label="Grid view"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg></button>
+            <button type="button" data-view="list" aria-pressed="false" aria-label="List view"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 4h18v4H3zM3 10h18v4H3zM3 16h18v4H3z"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <div class="chips" id="chips" aria-label="Applied filters"></div>
+      <div id="results"></div>
+      <nav class="pager" id="pager" aria-label="Pagination"></nav>
+      <p class="pager-meta" id="pager-meta"></p>
+    </section>
+  </div>
+</main>
+
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<div class="drawer" id="filter-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden>
+  <div class="drawer-head">
+    <h2 id="drawer-title">Filters</h2>
+    <button class="icon-btn" type="button" id="close-filters" aria-label="Close filters">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="facets-mobile"></div>
+  <div class="drawer-foot">
+    <button class="btn btn-secondary" type="button" id="drawer-clear">Clear all</button>
+    <button class="btn btn-primary" type="button" id="drawer-apply">Show results</button>
+  </div>
+</div>
+
+<div id="site-footer"></div>
+
+<script src="data.js"></script>
+<script src="shop.js"></script>
+<script src="../header/header.js"></script>
+<script src="../header/site-header.js"></script>
+<script>
+renderChrome("archive", ["hero", "Hero", [["", "Selected"], ["current", "Original"], ["a", "A · Banner"], ["b", "B · Split"], ["c", "C · Compact"]]]);
+
+// ---------- Archive hero options (?hero=current|a|b|c). Selected: A on All products, C on category archives ----------
+const HERO_PARAM = new URLSearchParams(location.search).get("hero") || "";
+let HERO = HERO_PARAM;
+const IMG = "../../../frontend/public/images/development/";
+const HERO_IMAGES = { "tools-and-machinery": "rotary_01", "power-tools": "athens-mosaic-03", drills: "rotary_01", "hand-tools": "athens-mosaic-06", "tool-sets": "athens-mosaic-06", "outdoor-garden-and-patio": "athens-mosaic-02d" };
+const heroImage = (current) => {
+  const key = (current ? CAT.pathOf(current.slug).reverse() : []).map((c) => c.slug).find((sl) => HERO_IMAGES[sl]);
+  return `${IMG}${HERO_IMAGES[key] || "athens-mosaic-03"}-1080.webp`;
+};
+const PH = `<span class="ph-tag">Placeholder copy</span>`;
+const heroCopy = (current) => current
+  ? `Everything in ${esc(current.name.toLowerCase())}, from everyday consumables to pro-grade kit. Filter by brand, price and current deals. ${PH}`
+  : `Tools, fasteners, paint and hardware for site and home — delivered, or ready to collect in ${esc(DB.policies.stores[0]?.name || "store")}.`;
+
+function heroHTML({ title, current, countText }) {
+  HERO = HERO_PARAM || (current ? "c" : "a");
+  const path = current ? CAT.pathOf(current.slug) : [];
+  const crumbs = [["Home", "../home/index.html"], ["Shop", "archive.html"], ...path.map((c) => [c.name, `archive.html?cat=${c.slug}`])];
+  const crumbsHTML = (cls = "") => `<nav class="crumbs ${cls}" aria-label="Breadcrumb"><ol>${crumbs.map(([l, h], i) => i === crumbs.length - 1
+    ? `<li><span aria-current="page">${esc(l)}</span></li>` : `<li><a href="${h}">${esc(l)}</a></li>`).join("")}</ol></nav>`;
+  const discovery = state.q ? [] : (current ? current.children : CAT.top)
+    .map((c) => ({ slug: c.slug, name: c.name, n: CAT.productsIn(c.slug).length, img: CAT.imageFor(c.slug) }))
+    .filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
+  const scope = current ? CAT.productsIn(current.slug) : DB.products;
+  const deals = scope.filter((p) => p.deal);
+  const brandCount = new Set(scope.map((p) => p.brand).filter(Boolean)).size;
+  const eyebrow = path.length > 1 ? path[path.length - 2].name : "Shop";
+  const thumb = (d, cls) => d.img ? `<img class="${cls}" src="${esc(d.img)}" alt="" loading="lazy">` : `<span class="${cls} noimg"></span>`;
+  const dealsHref = `archive.html?${new URLSearchParams({ ...(current ? { cat: current.slug } : {}), offer: [...new Set(deals.map((p) => p.deal.type))].join(","), ...(HERO_PARAM ? { hero: HERO_PARAM } : {}) })}`;
+
+  if (HERO === "a") {
+    return `<section class="hero-a">
+      <img class="hero-a-bg" src="${heroImage(current)}" alt="">
+      <div class="container hero-a-inner">
+        ${crumbsHTML("crumbs-inv")}
+        <p class="eyebrow" style="color:#fff;opacity:.8;margin-top:28px">${esc(eyebrow)}</p>
+        <h1>${esc(title)}</h1>
+        ${state.q ? "" : `<p class="hero-a-desc">${heroCopy(current)}</p>`}
+        <p class="hero-a-meta"><span>${countText}</span><span>${brandCount} brands</span>${deals.length ? `<a href="${dealsHref}">${deals.length} on deal →</a>` : ""}</p>
+      </div>
+      <span class="ph-img-tag">Placeholder image</span>
+    </section>
+    ${discovery.length ? `<div class="hero-a-chips"><div class="container"><div class="chip-scroll" role="list" aria-label="${current ? "Subcategories" : "Departments"}">
+      ${discovery.map((d) => `<button class="img-chip" role="listitem" type="button" data-cat="${d.slug}">${thumb(d, "img-chip-im")}<span>${esc(d.name)}</span><small>${d.n}</small></button>`).join("")}
+    </div></div></div>` : ""}`;
+  }
+
+  if (HERO === "b") {
+    const shown = discovery.slice(0, 5), rest = discovery.length - shown.length;
+    return `<section class="hero-b"><div class="container hero-b-grid">
+      <div class="hero-b-copy">
+        ${crumbsHTML()}
+        <h1>${esc(title)}</h1>
+        ${state.q ? "" : `<p class="hero-b-desc">${heroCopy(current)}</p>`}
+        <dl class="hero-b-stats">
+          <div><dt>Products</dt><dd>${countText.split(" ")[0]}</dd></div>
+          <div><dt>Brands</dt><dd>${brandCount}</dd></div>
+          <div><dt>On deal</dt><dd>${deals.length}</dd></div>
+        </dl>
+        ${deals.length ? `<a class="btn btn-primary" href="${dealsHref}">Shop ${deals.length} deal${deals.length > 1 ? "s" : ""}</a>` : ""}
+      </div>
+      ${shown.length ? `<div class="hero-b-tiles">
+        ${shown.map((d) => `<button class="hero-b-tile" type="button" data-cat="${d.slug}">${thumb(d, "hero-b-im")}<span><strong>${esc(d.name)}</strong><small>${d.n} products</small></span></button>`).join("")}
+        ${rest > 0 ? `<button class="hero-b-tile more" type="button" data-scroll-cats><strong>+${rest} more</strong><small>See all ${current ? "subcategories" : "departments"} in the filter</small></button>` : ""}
+      </div>` : ""}
+    </div></section>`;
+  }
+
+  if (HERO === "c") {
+    return `<section class="hero-c"><div class="container">
+      ${crumbsHTML()}
+      <div class="hero-c-row">
+        <div><h1>${esc(title)}</h1><span class="hero-c-count">${countText}</span></div>
+        <form class="hero-c-search" data-within role="search">
+          <label class="sr-only" for="within">Search in ${esc(title)}</label>
+          <input id="within" placeholder="Search in ${esc(current ? current.name : "all products")}" value="${esc(state.q)}">
+          <button class="btn btn-secondary" type="submit">Search</button>
+        </form>
+      </div>
+      ${discovery.length ? `<div class="hero-c-strip">
+        <div class="circle-scroll" role="list" aria-label="${current ? "Subcategories" : "Departments"}">
+          ${discovery.map((d) => `<button class="circle" role="listitem" type="button" data-cat="${d.slug}">${thumb(d, "circle-im")}<span>${esc(d.name)}</span></button>`).join("")}
+        </div>
+      </div>` : ""}
+    </div></section>`;
+  }
+
+  // Current (as built so far)
+  return `<div class="container">
+    ${crumbsHTML()}
+    <div class="page-head"><div><h1>${esc(title)}</h1><p class="count">${countText}</p></div></div>
+    ${discovery.length && current ? `<div class="subcats">${discovery.map((d) => `<button class="subcat" type="button" data-cat="${d.slug}">${thumb(d, "")}<span>${esc(d.name)}<small>${d.n} products</small></span></button>`).join("")}</div>` : ""}
+  </div>`;
+}
+
+document.addEventListener("submit", (e) => {
+  if (!e.target.matches("[data-within]")) return;
+  e.preventDefault();
+  setState({ q: e.target.querySelector("input").value.trim() });
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-scroll-cats]")) return;
+  const facet = document.querySelector('#facets-desktop [data-facet="category"]');
+  (facet?.offsetParent ? facet : document.getElementById("open-filters")).scrollIntoView({ behavior: "smooth", block: "center" });
+  if (!facet?.offsetParent) document.getElementById("open-filters").click();
+});
+
+const PER_PAGE = 24;
+const OFFERS = ["deal_of_day", "weekly_special", "trade_special"];
+const SORTS = ["recommended", "newest", "price-asc", "price-desc", "name-asc"];
+const openFacets = new Set(["category", "price", "offers", "brand"]);
+let showAllBrands = false;
+
+const readState = () => {
+  const u = new URLSearchParams(location.search);
+  const list = (k) => (u.get(k) || "").split(",").filter(Boolean);
+  return {
+    cat: CAT.bySlug.has(u.get("cat")) ? u.get("cat") : "",
+    brand: list("brand"),
+    offer: list("offer").filter((o) => OFFERS.includes(o)),
+    min: u.get("min") || "",
+    max: u.get("max") || "",
+    q: u.get("q") || "",
+    sort: SORTS.includes(u.get("sort")) ? u.get("sort") : "recommended",
+    view: u.get("view") === "list" ? "list" : "grid",
+    page: Math.max(1, parseInt(u.get("page") || "1", 10) || 1),
+  };
+};
+let state = readState();
+
+const toQuery = (s) => {
+  const u = new URLSearchParams();
+  if (s.cat) u.set("cat", s.cat);
+  if (s.q) u.set("q", s.q);
+  if (s.brand.length) u.set("brand", s.brand.join(","));
+  if (s.offer.length) u.set("offer", s.offer.join(","));
+  if (s.min) u.set("min", s.min);
+  if (s.max) u.set("max", s.max);
+  if (s.sort !== "recommended") u.set("sort", s.sort);
+  if (s.view !== "grid") u.set("view", s.view);
+  if (s.page > 1) u.set("page", s.page);
+  if (HERO_PARAM) u.set("hero", HERO_PARAM);
+  const q = u.toString();
+  return q ? `?${q}` : location.pathname.split("/").pop();
+};
+
+function setState(patch, { resetPage = true } = {}) {
+  state = { ...state, ...patch, ...(resetPage && !("page" in patch) ? { page: 1 } : {}) };
+  try { history.pushState(null, "", toQuery(state)); } catch {}
+  render();
+}
+window.addEventListener("popstate", () => { state = readState(); render(); });
+
+// Each facet is filtered by every other active filter (so counts stay honest).
+const passes = (p, s, skip) => {
+  if (skip !== "cat" && s.cat && !CAT.subtree.get(s.cat).has(p.cat.trim().toLowerCase())) return false;
+  if (skip !== "brand" && s.brand.length && !s.brand.includes(p.brand)) return false;
+  if (skip !== "offer" && s.offer.length && !(p.deal && s.offer.includes(p.deal.type))) return false;
+  if (skip !== "price") {
+    const v = effectivePrice(p);
+    if (s.min && v < +s.min) return false;
+    if (s.max && v > +s.max) return false;
+  }
+  if (s.q) {
+    const hay = `${p.name} ${p.brand} ${p.cat}`.toLowerCase();
+    if (!s.q.toLowerCase().split(/\s+/).every((w) => hay.includes(w))) return false;
+  }
+  return true;
+};
+
+function sorted(list) {
+  const out = [...list];
+  const by = {
+    newest: (a, b) => +b.id - +a.id,
+    "price-asc": (a, b) => effectivePrice(a) - effectivePrice(b),
+    "price-desc": (a, b) => effectivePrice(b) - effectivePrice(a),
+    "name-asc": (a, b) => a.name.localeCompare(b.name),
+  }[state.sort];
+  return by ? out.sort(by) : out;
+}
+
+function facetHTML(id, title, body) {
+  const open = openFacets.has(id);
+  return `<div class="facet">
+    <button type="button" aria-expanded="${open}" data-facet="${id}">${title}</button>
+    <div class="facet-body" ${open ? "" : "hidden"}>${body}</div></div>`;
+}
+
+function facetsHTML(scope) {
+  const s = state;
+  // Category: path up + children of current (or top level)
+  const catPool = DB.products.filter((p) => passes(p, s, "cat"));
+  const countIn = (slug) => catPool.filter((p) => CAT.subtree.get(slug).has(p.cat.trim().toLowerCase())).length;
+  const current = s.cat ? CAT.bySlug.get(s.cat) : null;
+  const children = (current ? current.children : CAT.top)
+    .map((c) => ({ c, n: countIn(c.slug) })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
+  const path = current ? CAT.pathOf(current.slug) : [];
+  const catBody = `
+    ${current ? `<button class="more-btn" type="button" data-cat="${esc(current.parent || "")}" style="padding:0 0 8px">← ${current.parent ? "Back to " + esc(CAT.bySlug.get(current.parent).name) : "All products"}</button>` : ""}
+    ${path.length ? `<div class="opt" style="font-weight:800">${esc(current.name)}<span class="n">${countIn(current.slug)}</span></div>` : ""}
+    ${children.map(({ c, n }) => `<label class="opt ${current ? "indent" : ""}"><input type="radio" name="cat-${scope}" data-cat="${c.slug}"> ${esc(c.name)}<span class="n">${n}</span></label>`).join("")}`;
+
+  // Price
+  const priceBody = `<div class="price-inputs">
+    <div><label for="min-${scope}">Min (R)</label><input class="field" id="min-${scope}" inputmode="numeric" data-price="min" value="${esc(s.min)}" placeholder="0"></div>
+    <span style="padding-top:18px">–</span>
+    <div><label for="max-${scope}">Max (R)</label><input class="field" id="max-${scope}" inputmode="numeric" data-price="max" value="${esc(s.max)}" placeholder="${Math.ceil(Math.max(...DB.products.map(effectivePrice)))}"></div>
+  </div>`;
+
+  // Offers (only types with matches)
+  const offerPool = DB.products.filter((p) => passes(p, s, "offer"));
+  const offerOpts = OFFERS.map((t) => ({ t, n: offerPool.filter((p) => p.deal?.type === t).length }))
+    .filter((o) => o.n > 0 || s.offer.includes(o.t));
+  const offerBody = offerOpts.map(({ t, n }) => `<label class="opt"><input type="checkbox" data-offer="${t}" ${s.offer.includes(t) ? "checked" : ""}> ${DEAL_LABEL[t]}<span class="n">${n}</span></label>`).join("");
+
+  // Brand
+  const brandPool = DB.products.filter((p) => passes(p, s, "brand"));
+  const brandOpts = DB.brands.map(([b]) => ({ b, n: brandPool.filter((p) => p.brand === b).length }))
+    .filter((o) => o.n > 0 || s.brand.includes(o.b)).sort((a, b) => b.n - a.n);
+  const visibleBrands = showAllBrands ? brandOpts : brandOpts.slice(0, 6);
+  const brandBody = visibleBrands.map(({ b, n }) => `<label class="opt"><input type="checkbox" data-brand="${esc(b)}" ${s.brand.includes(b) ? "checked" : ""}> ${esc(b)}<span class="n">${n}</span></label>`).join("")
+    + (brandOpts.length > 6 ? `<button class="more-btn" type="button" data-more-brands>${showAllBrands ? "Show fewer" : `Show all ${brandOpts.length}`}</button>` : "");
+
+  return [
+    facetHTML("category", "Category", catBody),
+    facetHTML("price", "Price", priceBody),
+    offerOpts.length ? facetHTML("offers", "Offers", offerBody) : "",
+    brandOpts.length ? facetHTML("brand", "Brand", brandBody) : "",
+  ].join("");
+}
+
+function chipsHTML() {
+  const s = state, chips = [];
+  if (s.q) chips.push([`Search: “${s.q}”`, { q: "" }]);
+  if (s.cat) chips.push([CAT.bySlug.get(s.cat).name, { cat: "" }]);
+  s.offer.forEach((o) => chips.push([DEAL_LABEL[o], { offer: s.offer.filter((x) => x !== o) }]));
+  s.brand.forEach((b) => chips.push([b, { brand: s.brand.filter((x) => x !== b) }]));
+  if (s.min || s.max) chips.push([`${s.min ? money(s.min) : "R0"} – ${s.max ? money(s.max) : "any"}`, { min: "", max: "" }]);
+  window._chipPatches = chips.map((c) => c[1]);
+  return chips.map(([label], i) => `<button class="chip" type="button" data-chip="${i}" aria-label="Remove filter ${esc(label)}">${esc(label)}<span aria-hidden="true">×</span></button>`).join("")
+    + (chips.length > 1 ? `<button class="chip clear" type="button" data-clear>Clear all</button>` : "");
+}
+
+function pagerHTML(total) {
+  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const p = Math.min(state.page, pages);
+  if (pages === 1) return "";
+  const link = (n, label = n, extra = "") => n === p
+    ? `<span aria-current="page">${n}</span>`
+    : `<a href="${esc(toQuery({ ...state, page: n }))}" data-page="${n}" ${extra}>${label}</a>`;
+  const nums = new Set([1, pages, p - 1, p, p + 1].filter((n) => n >= 1 && n <= pages));
+  let html = p > 1 ? link(p - 1, "‹", 'aria-label="Previous page" rel="prev"') : `<span class="disabled" aria-hidden="true">‹</span>`;
+  let last = 0;
+  [...nums].sort((a, b) => a - b).forEach((n) => {
+    if (n - last > 1) html += `<span class="gap" aria-hidden="true">…</span>`;
+    html += link(n);
+    last = n;
+  });
+  html += p < pages ? link(p + 1, "›", 'aria-label="Next page" rel="next"') : `<span class="disabled" aria-hidden="true">›</span>`;
+  return html;
+}
+
+let firstPaint = true;
+function render() {
+  const s = state;
+  const all = sorted(DB.products.filter((p) => passes(p, s)));
+  const pages = Math.max(1, Math.ceil(all.length / PER_PAGE));
+  if (s.page > pages) s.page = pages;
+  const start = (s.page - 1) * PER_PAGE;
+  const pageItems = all.slice(start, start + PER_PAGE);
+  const current = s.cat ? CAT.bySlug.get(s.cat) : null;
+
+  // Hero (variant via ?hero=) + breadcrumb + subcategory discovery
+  const title = s.q ? `Results for “${s.q}”` : current ? current.name : "All products";
+  document.title = `${title} — Belims mockup`;
+  const countText = `${all.length.toLocaleString("en-US")} product${all.length === 1 ? "" : "s"}`;
+  document.getElementById("count").textContent = countText;
+  document.getElementById("range-label").textContent = all.length ? `Showing ${start + 1}–${start + pageItems.length} of ${all.length.toLocaleString("en-US")}` : "";
+  document.getElementById("hero").innerHTML = heroHTML({ title, current, countText, total: all.length });
+
+  // Facets (desktop + drawer)
+  document.getElementById("facets-desktop").innerHTML = facetsHTML("d");
+  document.getElementById("facets-mobile").innerHTML = facetsHTML("m");
+  const active = (s.cat ? 1 : 0) + s.brand.length + s.offer.length + (s.min || s.max ? 1 : 0);
+  document.getElementById("filter-count").textContent = active ? `(${active})` : "";
+  document.getElementById("drawer-apply").textContent = `Show ${all.length.toLocaleString("en-US")} results`;
+  document.getElementById("chips").innerHTML = chipsHTML();
+
+  // Toolbar
+  document.getElementById("sort").value = s.sort;
+  document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === s.view)));
+
+  // Results
+  const results = document.getElementById("results");
+  if (new URLSearchParams(location.search).get("state") === "error") {
+    results.innerHTML = `<div class="state-box" role="alert"><h2>We couldn't load products</h2><p>The product service didn't respond. Your filters are kept — try again.</p><button class="btn btn-primary" type="button" onclick="location.search=''">Retry</button></div>`;
+  } else if (firstPaint) {
+    results.innerHTML = `<div class="grid">${Array.from({ length: 8 }, () => `<div class="skel-card" aria-hidden="true"><div class="skel" style="aspect-ratio:1"></div><div class="skel" style="height:10px;width:40%"></div><div class="skel" style="height:14px"></div><div class="skel" style="height:18px;width:55%"></div></div>`).join("")}</div>`;
+    results.setAttribute("aria-busy", "true");
+    firstPaint = false;
+    setTimeout(render, 450);
+    return;
+  } else if (!all.length) {
+    results.innerHTML = `<div class="state-box"><h2>No products match</h2><p>Try removing a filter or searching for something broader.</p>
+      ${active || s.q ? `<button class="btn btn-primary" type="button" data-clear>Clear all filters</button>` : ""}
+      <div class="suggest">${CAT.top.slice(0, 5).map((c) => `<a class="pill" href="archive.html?cat=${c.slug}">${esc(c.name)}</a>`).join("")}</div></div>`;
+  } else {
+    results.innerHTML = `<div class="grid ${s.view === "list" ? "list" : ""}">${pageItems.map((p) => cardHTML(p)).join("")}</div>`;
+  }
+  results.removeAttribute("aria-busy");
+  document.getElementById("pager").innerHTML = all.length ? pagerHTML(all.length) : "";
+  document.getElementById("pager-meta").textContent = all.length > PER_PAGE ? `Page ${s.page} of ${pages}` : "";
+}
+
+// Events (delegated; both sidebar and drawer)
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  const facetBtn = t.closest("[data-facet]");
+  if (facetBtn) {
+    const id = facetBtn.dataset.facet;
+    openFacets.has(id) ? openFacets.delete(id) : openFacets.add(id);
+    render();
+    document.querySelector(`#${facetBtn.closest("#facets-mobile") ? "facets-mobile" : "facets-desktop"} [data-facet="${id}"]`)?.focus();
+    return;
+  }
+  const catBtn = t.closest("button[data-cat]");
+  if (catBtn) return setState({ cat: catBtn.dataset.cat });
+  if (t.closest("[data-more-brands]")) { showAllBrands = !showAllBrands; return render(); }
+  const chip = t.closest("[data-chip]");
+  if (chip) return setState(window._chipPatches[+chip.dataset.chip]);
+  if (t.closest("[data-clear]")) return setState({ cat: "", brand: [], offer: [], min: "", max: "", q: "" });
+  const pageLink = t.closest("[data-page]");
+  if (pageLink) {
+    e.preventDefault();
+    setState({ page: +pageLink.dataset.page }, { resetPage: false });
+    document.getElementById("main").scrollIntoView({ behavior: "smooth" });
+  }
+  const viewBtn = t.closest("[data-view]");
+  if (viewBtn) setState({ view: viewBtn.dataset.view }, { resetPage: false });
+});
+
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.dataset.cat !== undefined && t.type === "radio") return setState({ cat: t.dataset.cat });
+  if (t.dataset.brand) return setState({ brand: t.checked ? [...state.brand, t.dataset.brand] : state.brand.filter((b) => b !== t.dataset.brand) });
+  if (t.dataset.offer) return setState({ offer: t.checked ? [...state.offer, t.dataset.offer] : state.offer.filter((o) => o !== t.dataset.offer) });
+  if (t.dataset.price) return setState({ [t.dataset.price]: t.value.replace(/[^\d.]/g, "") });
+  if (t.id === "sort") setState({ sort: t.value });
+});
+
+// Drawer
+const drawer = document.getElementById("filter-drawer");
+const backdrop = document.getElementById("drawer-backdrop");
+const opener = document.getElementById("open-filters");
+function setDrawer(open) {
+  if (open) { drawer.hidden = false; void drawer.offsetWidth; }
+  drawer.classList.toggle("open", open);
+  backdrop.classList.toggle("open", open);
+  opener.setAttribute("aria-expanded", String(open));
+  document.body.style.overflow = open ? "hidden" : "";
+  if (open) setTimeout(() => document.getElementById("close-filters").focus(), 50);
+  else { setTimeout(() => (drawer.hidden = true), 250); opener.focus(); }
+}
+opener.addEventListener("click", () => setDrawer(true));
+document.getElementById("close-filters").addEventListener("click", () => setDrawer(false));
+document.getElementById("drawer-apply").addEventListener("click", () => setDrawer(false));
+document.getElementById("drawer-clear").addEventListener("click", () => setState({ cat: "", brand: [], offer: [], min: "", max: "" }));
+backdrop.addEventListener("click", () => setDrawer(false));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && drawer.classList.contains("open")) setDrawer(false);
+  if (e.key === "Tab" && drawer.classList.contains("open")) {
+    const f = [...drawer.querySelectorAll("button, input, select, a[href]")].filter((el) => !el.disabled && el.offsetParent);
+    if (!f.length) return;
+    if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+    else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+  }
+});
+
+// Header search (site-header) keeps the current query visible
+document.getElementById("sh-q").value = state.q;
+
+render();
+</script>
+</body>
+</html>

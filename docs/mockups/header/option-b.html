@@ -1,0 +1,182 @@
+<!doctype html>
+<!--
+  Header option B — "Industrial dark". Closest to the Krank-style reference and the home mockup's condensed type:
+  black bar, departments inline as condensed uppercase triggers, one mega panel per department with subcategory image tiles
+  (real product image from each subtree), search as an overlay row with typeahead.
+  Real data: ../shop-product/data.js (categories, products, deals), ecommerce-policies (store).
+  Trade-off: hides the search box behind an icon on desktop and shows only 4–5 departments inline (rest under "More").
+  Target components: Header.tsx, MegaMenu.tsx, SearchModal (overlay), mobile menu.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Header option B — Belims mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@87.5,700;87.5,800;100,400;100,500;100,600;100,700;100,800&display=swap">
+<link rel="stylesheet" href="../home/mockup.css">
+<link rel="stylesheet" href="header.css">
+<style>
+  .hB { position: relative; z-index: 45; background: #000; color: #fff; }
+  .hB-util { background: #161616; font-size: 12px; color: rgba(255,255,255,.75); }
+  .hB-util .container { display: flex; justify-content: space-between; align-items: center; min-height: 36px; gap: 16px; }
+  .hB-util span, .hB-util a { display: inline-flex; align-items: center; gap: 6px; }
+  .hB-util .r { display: flex; gap: 20px; }
+  .hB-util a:hover { color: #fff; text-decoration: underline; }
+  .hB-util b { color: #fff; }
+  .hB-main .container { display: flex; align-items: stretch; min-height: 72px; gap: 8px; }
+  .hB-logo { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 24px; letter-spacing: -.02em; margin-right: 16px; }
+  .hB-logo i { width: 12px; height: 24px; background: var(--color-primary); display: inline-block; }
+  .hB-nav { display: flex; align-items: stretch; flex: 1; min-width: 0; }
+  .hB-trig { display: inline-flex; align-items: center; gap: 4px; padding: 0 12px; border: 0; background: none; color: #fff; font-size: 14px; font-weight: 800; text-transform: uppercase; font-stretch: 87.5%; letter-spacing: .02em; cursor: pointer; white-space: nowrap; border-bottom: 4px solid transparent; border-top: 4px solid transparent; }
+  .hB-trig:hover, .hB-trig[aria-expanded="true"] { border-bottom-color: var(--color-primary); }
+  .hB-trig.deal { color: #fff; }
+  .hB-trig.deal span { background: var(--color-primary); padding: 6px 10px; border-radius: 4px; }
+  .xl-only { }
+  .below-xl { display: none !important; }
+  @media (max-width: 1279px) { .xl-only { display: none !important; } .below-xl { display: block !important; } }
+  .hB-icons { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .hB-icon { width: 48px; height: 48px; border: 0; background: none; color: #fff; display: grid; place-items: center; cursor: pointer; border-radius: var(--radius-md); position: relative; }
+  .hB-icon:hover, .hB-icon[aria-expanded="true"] { background: rgba(255,255,255,.12); }
+  .hB-icon .cart-count { top: 4px; right: 2px; }
+
+  .hB-search { background: #fff; color: var(--color-text); border-bottom: 1px solid var(--color-border-strong); }
+  .hB-search[hidden] { display: none; }
+  .hB-search .container { padding-top: 16px; padding-bottom: 16px; }
+  .hB-search form { position: relative; display: flex; align-items: center; gap: 12px; border-bottom: 3px solid #000; }
+  .hB-search input { flex: 1; min-width: 0; height: 60px; border: 0; outline: none; font: inherit; font-size: 24px; font-weight: 700; }
+  .hB-search .hint { font-size: 12px; color: var(--color-text-tertiary); margin-top: 8px; }
+
+  .hB-mega { border-top: 4px solid var(--color-primary); }
+  .hB-mega .container { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 32px; padding-top: 28px; padding-bottom: 28px; }
+  .hB-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px 16px; align-content: start; }
+  @media (max-width: 1279px) { .hB-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .hB-tile > a { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 14px; }
+  .hB-tile > a .im { width: 56px; height: 56px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); display: grid; place-items: center; padding: 4px; background: #fff; flex: none; }
+  .hB-tile > a .im img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .hB-tile > a small { display: block; font-weight: 500; font-size: 12px; color: var(--color-text-tertiary); }
+  .hB-tile ul { padding: 0 0 0 66px; margin: 4px 0 0; }
+  .hB-tile li { list-style: none; }
+  .hB-tile li a { display: block; padding: 3px 0; font-size: 13px; color: var(--color-text-secondary); }
+  .hB-cta { background: #000; color: #fff; border-radius: var(--radius-md); padding: 24px; display: flex; flex-direction: column; justify-content: space-between; min-height: 260px; }
+  .hB-cta .n { font-size: 64px; line-height: 1; font-weight: 800; font-stretch: 87.5%; }
+  .hB-cta .t { font-size: 22px; font-weight: 800; text-transform: uppercase; font-stretch: 87.5%; line-height: 1.05; }
+  .hB-cta a.btn { background: var(--color-primary); color: #fff; }
+  .hB-cta a.btn:hover { background: #fff; color: #000; }
+  .hB-cta a.sub { color: rgba(255,255,255,.75); font-size: 13px; text-decoration: underline; margin-top: 10px; }
+  .hB-more ul { padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .hB-more li { list-style: none; }
+  .hB-more li a { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-weight: 800; }
+  .hB-more li a:hover { border-color: #000; }
+  .hB-more img { width: 48px; height: 48px; object-fit: contain; }
+  @media (max-width: 1023px) { .hB-main .container { min-height: 60px; } .hB-logo { margin-right: auto; } }
+</style>
+</head>
+<body>
+<div id="mock-bar"></div>
+<div class="option-intro"><div class="container"><strong>Option B — Industrial dark.</strong><span>Most distinctive and closest to the reference: departments are one click away, each with an image-led panel. Hover a department; click the search icon for the overlay.</span></div></div>
+
+<header class="hB">
+  <div class="hB-util hide-mobile"><div class="container" id="b-util"></div></div>
+  <div class="hB-main">
+    <div class="container">
+      <button class="hB-icon show-mobile" type="button" id="b-burger" aria-label="Open menu"></button>
+      <a class="hB-logo" href="../home/index.html"><i aria-hidden="true"></i>BELIMS</a>
+      <nav class="hB-nav hide-mobile" aria-label="Departments" id="b-nav"></nav>
+      <div class="hB-icons">
+        <button class="hB-icon" type="button" id="b-search-btn" aria-label="Search" aria-expanded="false" aria-controls="b-search"></button>
+        <a class="hB-icon hide-mobile" href="#" aria-label="Sign in or sign up" id="b-account"></a>
+        <a class="hB-icon" href="#" aria-label="Cart, 0 items" id="b-cart"></a>
+      </div>
+    </div>
+  </div>
+  <div class="hB-search" id="b-search" hidden>
+    <div class="container">
+      <form role="search">
+        <label class="sr-only" for="b-q">Search products, brands and SKUs</label>
+        <span id="b-search-ic"></span>
+        <input id="b-q" placeholder="What are you looking for?" autocomplete="off">
+        <button class="hB-icon" type="button" id="b-search-close" aria-label="Close search" style="color:#000"></button>
+        <div class="ta" id="b-ta" hidden></div>
+      </form>
+      <p class="hint">Try “impact drill”, “Ingco” or “PVA”</p>
+    </div>
+  </div>
+  <div id="b-megas"></div>
+</header>
+<div class="mega-scrim" id="b-scrim"></div>
+
+<main class="container demo-page">
+  <div class="ph dark">Page content</div>
+  <div class="row"><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div></div>
+  <div class="demo-notes">
+    <h2>Why this option</h2>
+    <ul>
+      <li>Strongest brand moment — the black bar and condensed type match the new home sections and the Krank-style direction.</li>
+      <li>Every department is one hover away, and each panel leads with real product imagery, which helps a range that is mostly fasteners and tools.</li>
+      <li>Trade-off: search is behind an icon on desktop (an extra click for the most-used control), and long department names need “&amp;” shortening to fit.</li>
+    </ul>
+  </div>
+</main>
+
+<script src="../shop-product/data.js"></script>
+<script src="../shop-product/shop.js"></script>
+<script src="header.js"></script>
+<script>
+renderChromeFor("b");
+const short = (n) => n.replace(/ and /g, " & ");
+document.getElementById("b-util").innerHTML = `
+  <div style="display:flex;gap:20px"><span>${ICON.pin} Pickup from <b>${esc(STORE?.name || "—")}</b></span><span>${ICON.truck} ${esc(DB.policies.shipping)}</span></div>
+  <div class="r"><a href="#">Track your order</a><a href="#">Store locator &amp; leaflets</a><a href="#">Trade accounts</a></div>`;
+document.getElementById("b-burger").innerHTML = ICON.menu;
+document.getElementById("b-search-btn").innerHTML = ICON.search;
+document.getElementById("b-search-ic").innerHTML = ICON.search;
+document.getElementById("b-search-close").innerHTML = ICON.close;
+document.getElementById("b-account").innerHTML = ICON.user;
+document.getElementById("b-cart").innerHTML = `${ICON.cart}<span class="cart-count">0</span>`;
+
+const INLINE = 5;
+const inline = DEPTS.slice(0, INLINE), more = DEPTS.slice(INLINE - 1);
+document.getElementById("b-nav").innerHTML = inline.map((d, i) => `<button class="hB-trig ${i === INLINE - 1 ? "xl-only" : ""}" type="button" data-b="${i}">${esc(short(d.name))}</button>`).join("")
+  + `<button class="hB-trig" type="button" data-b="more">More ${ICON.down}</button>
+     <a class="hB-trig deal" href="${DEALS_HREF}"><span>Deals</span></a>`;
+
+const tile = (k) => `<div class="hB-tile"><a href="${catHref(k.slug)}"><span class="im">${k.img ? `<img src="${esc(k.img)}" alt="" loading="lazy">` : ""}</span><span>${esc(k.name)}<small>${k.count} products</small></span></a>
+  ${k.kids.length ? `<ul>${k.kids.slice(0, 4).map((g) => `<li><a href="${catHref(g.slug)}">${esc(g.name)}</a></li>`).join("")}${k.kids.length > 4 ? `<li><a href="${catHref(k.slug)}" style="font-weight:700;text-decoration:underline;color:var(--color-text)">+${k.kids.length - 4} more</a></li>` : ""}</ul>` : ""}</div>`;
+const megas = document.getElementById("b-megas");
+megas.innerHTML = inline.map((d, i) => `<div class="mega hB-mega" id="b-mega-${i}" hidden><div class="container">
+    <div class="hB-tiles">${d.kids.map(tile).join("")}</div>
+    <div class="hB-cta"><div><div class="n">${d.count}</div><div class="t">${esc(d.name)}</div></div>
+      <div><a class="btn" href="${catHref(d.slug)}" style="width:100%">Shop all ${esc(short(d.name))}</a>
+      ${dealsIn(d.slug).length ? `<a class="sub" href="${DEALS_HREF}">${dealsIn(d.slug).length} deal${dealsIn(d.slug).length > 1 ? "s" : ""} in this department</a>` : ""}</div></div>
+  </div></div>`).join("")
+  + `<div class="mega hB-mega hB-more" id="b-mega-more" hidden><div class="container" style="grid-template-columns:1fr">
+      <ul>${more.map((d, i) => `<li class="${i === 0 ? "below-xl" : ""}"><a href="${catHref(d.slug)}">${d.img ? `<img src="${esc(d.img)}" alt="">` : ""}<span>${esc(d.name)}<small style="display:block;font-weight:500;font-size:12px;color:var(--color-text-tertiary)">${esc(tagline(d))}</small></span></a></li>`).join("")}
+      <li><a href="../shop-product/archive.html">All products<small style="display:block;font-weight:500;font-size:12px;color:var(--color-text-tertiary)">${DB.products.length.toLocaleString("en-US")} items</small></a></li></ul>
+    </div></div>`;
+const scrim = document.getElementById("b-scrim");
+document.querySelectorAll("[data-b]").forEach((t) => initMega(t, document.getElementById(`b-mega-${t.dataset.b}`), { scrim }));
+// Left/right arrows move between department triggers
+document.getElementById("b-nav").addEventListener("keydown", (e) => {
+  if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const ts = [...document.querySelectorAll("#b-nav .hB-trig")].filter((x) => x.offsetParent);
+  const i = ts.indexOf(document.activeElement);
+  ts[(i + (e.key === "ArrowRight" ? 1 : -1) + ts.length) % ts.length].focus();
+});
+
+// Search overlay
+const sBtn = document.getElementById("b-search-btn"), sRow = document.getElementById("b-search");
+const setSearch = (open) => {
+  sRow.hidden = !open;
+  sBtn.setAttribute("aria-expanded", String(open));
+  if (open) { document.querySelectorAll("[data-mega-open]").forEach((t) => t._closeMega()); document.getElementById("b-q").focus(); }
+  else sBtn.focus();
+};
+sBtn.addEventListener("click", () => setSearch(sRow.hidden));
+document.getElementById("b-search-close").addEventListener("click", () => setSearch(false));
+document.getElementById("b-q").addEventListener("keydown", (e) => { if (e.key === "Escape" && document.getElementById("b-ta").hidden) setSearch(false); });
+initTypeahead(document.getElementById("b-q"), document.getElementById("b-ta"));
+initDrawer(document.getElementById("b-burger"), { title: "Menu", theme: { "--d-bg": "#0d0d0d", "--d-fg": "#fff", "--d-line": "#262626", "--d-head": "#000" } });
+</script>
+</body>
+</html>

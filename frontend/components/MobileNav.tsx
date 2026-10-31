@@ -22,7 +22,7 @@ export interface NavNode extends Omit<CategoryNode, 'children'> {
 // ── Internal helpers ───────────────────────────────────────
 const enrichNode = (node: CategoryNode): NavNode => ({
   ...node,
-  href: `/shop/${encodeURIComponent(node.label)}`,
+  href: `/shop/${encodeURIComponent(node.id)}`,
   children: node.children?.map(enrichNode),
 });
 

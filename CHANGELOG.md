@@ -13,9 +13,551 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 5. Bump the plugin version (`global-site-settings.php` header + `GLOBAL_SITE_SETTINGS_VERSION`) for every plugin change and name the version in the title.
 6. Release flow is in [README → Deployment](README.md#deployment-vercel): commit to `main` → verify on https://belims.vercel.app → `git push origin main:vercel`.
 
+## 2026-10-31 — Account dashboard audit and concepts
+
+Why: establish an evidence-backed redesign direction for the Account Dashboard before changing its production implementation.
+
+### docs/audits, docs/design and docs/mockups/account-dashboard
+
+- Added a source- and local-route-response-backed account dashboard audit, current data/route map, usability priorities and scoped recommendations.
+- Added proposed account-specific design tokens plus three standalone, interactive and anonymised review concepts: Industrial Command Centre, Modern Retail Customer Hub and Hybrid Trade & Retail.
+- Added the design-review index, component state showcase and fixture data. No production application component was changed.
+
+### Verified
+
+- `npm run build` succeeds with the existing duplicate `type` attribute warning in `components/AuthPage.tsx` and the large-bundle warning.
+- `npx tsc --noEmit` remains blocked by existing syntax errors in `app/api/products/search/route.ts`, `backups/SingleProduct.tsx` and `src/features/chatbot/lib/api.ts`.
+- `http://localhost:3000/account/dashboard` returned HTTP 200. Browser DOM/console and responsive review are pending a browser review session.
+
+## 2026-10-31 — Open the guest welcome drawer on mobile
+
+Why: the mobile account icon and navigation were opening the signed-in account panel for signed-out users, so the WelcomeDrawer never appeared on mobile.
+
+### frontend/components/Header.tsx
+- Routed all account entry points, including the mobile bottom-nav event, to WelcomeDrawer for guests and the account drawer for signed-in users.
+- Kept the shared blue drawer styling and existing sign-in flow.
+
+### docs/FEATURES.md
+- Noted that both mobile and desktop use the shared account drawer styling.
+
+### Verified
+- `npm run build` succeeds. It still reports the existing duplicate `type` attribute in `components/AuthPage.tsx` and the large-bundle warning.
+
+## 2026-10-31 — Match guest and account drawers to filter drawer
+
+Why: requested the Welcome and account panels use the same blue header, panel radius, typography, spacing and brand actions as the archive filter drawer.
+
+### frontend/components/Drawer.tsx, WelcomeDrawer.tsx and Header.tsx
+- Set the shared drawer header to the prominent Belims-blue bar with uppercase white heading and large close control; both panels use the same width and rounded outer edge.
+- Increased account navigation row sizing and switched icons to Belims blue. Updated sign-in, account creation and logout actions to the filter drawer's red primary / blue outline styles.
+- Kept authentication, account navigation and support content behavior intact.
+
+### docs/FEATURES.md
+- Updated the drawer design note.
+
+### Verified
+- `npm run build` succeeds. It still reports the existing duplicate `type` attribute in `components/AuthPage.tsx` and the large-bundle warning.
+
+## 2026-10-31 — Expand related rails and refresh drawer styling
+
+Why: requested five desktop products in related and recently viewed sections, mockup sale-price styling, and a refreshed welcome / filter drawer design.
+
+### frontend/components/SingleProduct.tsx and RecentlyViewed.tsx
+- Related and recently viewed rails now render up to five cards in five columns on desktop.
+
+### frontend/components/ProductCard.tsx
+- Sale prices use the red 18px bold style with a muted, smaller strike-through comparison price.
+
+### frontend/components/WelcomeDrawer.tsx, Drawer.tsx and Archive.tsx
+- Restyled the welcome drawer with a blue title bar, stronger navigation rows and bordered support cards; the account drawer keeps its existing styling.
+- Matched the archive filter drawer to the mockup with left-side placement, a prominent blue title bar, larger facet rows, visible Min/Max labels, and fixed Clear all / Show results actions.
+
+### docs/FEATURES.md
+- Updated the product rails, sale-price, welcome drawer and archive filter drawer notes.
+
+### Verified
+- `npm run build` succeeds. It still reports the existing duplicate `type` attribute in `components/AuthPage.tsx` and the large-bundle warning.
+
+## 2026-10-31 — Refine product page columns and details
+
+Why: requested the mockup's product tabs and 7 / 5 gallery-to-content split, `text-h2` related-section headings, and removal of Buy now and Subtotal.
+
+### frontend/components/SingleProduct.tsx, SectionHeading.tsx and RecentlyViewed.tsx
+- Removed the product page Buy now button and Subtotal display; Add to cart remains the primary purchase action.
+- Restyled product tabs to use the mockup's left-aligned, horizontally scrollable labels and dark active underline.
+- Changed the desktop layout to a 7-column gallery and 5-column product panel; the detail tabs align to the 7-column gallery.
+- Added a heading-size option and applied `text-h2` to Keep shopping and Recently viewed.
+
+### docs/FEATURES.md
+- Updated the product-page layout and action description.
+
+### Verified
+- `npm run build` succeeds. It still reports the existing duplicate `type` attribute in `components/AuthPage.tsx` and the large-bundle warning.
+
+## 2026-10-31 — Match product fulfilment and key-spec layouts to Option 3
+
+Why: requested the mockup's segmented Delivery / Pickup selector and two-by-two key specification layout.
+
+### frontend/components/FulfilmentChooser.tsx and SingleProduct.tsx
+- Replaced stacked delivery and pickup radio cards with accessible segmented tabs and one active detail card. Address editing, delivery-rate selection, store selection, pickup scheduling and live status remain available.
+- Changed the four key specifications to a roomier two-by-two grid matching the mockup's label and value hierarchy.
+
+### docs/FEATURES.md
+- Documented the segmented fulfilment control and two-by-two key-spec grid.
+
+### Verified
+- `npm run build` succeeds. It still reports the existing duplicate `type` attribute in `components/AuthPage.tsx` and the large-bundle warning.
+
+## 2026-10-31 — Port product page Option 3
+
+Why: requested the full Option 3 product-page layout and sections in the live product page.
+
+### frontend/components/SingleProduct.tsx
+- Added up to four description-backed key specs, a Buy now action wired to the existing cart drawer callback, and an accessible quantity subtotal.
+- Reorganized product details into Overview, Specifications, Works with and Delivery & warranty tabs. Works with is shown only when bundle or fallback products exist; its cards retain live add-to-cart and stock behavior.
+- Kept the existing product data, deal and trade pricing, gallery, wishlist, store selection, delivery-rate drawer, CMS policy accordions, mobile sticky cart, related products and recently viewed sections.
+- Avoided the mockup's sample delivery data and static warranty / returns claims; delivery and policy content remains connected to live application sources.
+
+### docs/FEATURES.md
+- Updated the product page feature map to describe the Option 3 structure and live behavior.
+
+### Verified
+- `npm run build` succeeds. It still reports the pre-existing duplicate `type` attribute in `components/AuthPage.tsx` and the large-bundle warning.
+
+## 2026-10-31 — Simplify signed-out header account control
+
+Why: remove the time-based “Good afternoon” and “Sign In · Sign Up” text from the header for signed-out visitors.
+
+### frontend/components/Header.tsx
+- Signed-out visitors now see the account icon without the greeting or sign-in text; the icon still opens the existing welcome/sign-in drawer and retains its accessible label.
+- Signed-in users see “Account:” above their name instead of a time-based greeting.
+- Removed the now-unused time greeting helper.
+
+### Verified
+- `npm run build` succeeds. It still reports the pre-existing duplicate `type` attribute in `components/AuthPage.tsx` and the large-bundle warning.
+
+## 2026-10-31 — Restore footer policy strip and refine typography
+
+Why: requested the CMS policy strip back in the footer and a full footer typography audit.
+
+### frontend/components/Footer.tsx and TrustStrip.tsx
+- Restored `TrustStrip` between the contact callout and brand-blue footer section.
+- Standardized footer links and contact copy at 15px with 24px line-height; policy descriptions at 14px / 20px; policy titles at 15px / 20px; navigation labels at 13px; and copyright metadata at 13px.
+- Increased mobile policy descriptions from 11px to 14px and kept the link and contact targets comfortably sized.
+
+### docs/mockups/footer/option-c.html and footer.css
+- Restored the policy strip in option C and aligned footer type sizes with the live component hierarchy.
+
+### Verified
+- `npm run build` succeeds; `git diff --check` is clean. The build still reports the pre-existing duplicate `type` attribute in `components/AuthPage.tsx` and the large-bundle warning.
+
+## 2026-10-31 — Footer audit and three layout concepts
+
+Why: the current footer has dead `#` links, plain-text phone/email, a non-actionable store prompt, a fixed copyright year, and a narrow-screen navigation layout that stacks all three link groups. The policy trust row is CMS-driven and should remain conditional.
+
+### docs/mockups/footer/
+- Added three responsive HTML concepts: A — blue brand base; B — light directory; C — service counter with direct phone/email actions.
+- Shared CSS follows the Industrial + brand tokens. Internal app routes and `tel:` / `mailto:` contacts are linked; destinations without an existing route remain marked as prototype placeholders.
+- Added the footer mockups and audit summary to the docs index and feature map.
+
+### Verified
+- Static HTML/CSS mockups only; no application code or server configuration changed.
+
+## 2026-10-31 — Footer option C implemented
+
+Why: requested the service-counter mockup as the live footer, with the policy strip removed.
+
+### frontend/components/Footer.tsx and App.tsx
+- Ported option C: contact callout, blue brand/index section, account and shop routes, payment marks and social icons.
+- Removed `TrustStrip` from the rendered footer. The “Select a store” action now opens the existing StoreLocator modal; phone and email use `tel:` and `mailto:` actions.
+- Added React Router links for existing app routes and a current copyright year. Policy and social destinations without an existing route remain placeholders pending mapping.
+
+### docs/mockups/footer/option-c.html
+- Removed the policy strip to keep the mockup aligned with the live footer.
+
+### Verified
+- `npm run build` succeeds. It still reports the pre-existing duplicate `type` attribute in `components/AuthPage.tsx` and the existing large-bundle warning; neither is part of this footer change.
+
+## 2026-10-31 — Shop archive product cards match the approved mockup
+
+Why: `/shop` still used the older rounded card design after the archive layout port.
+
+### frontend/components/ProductCard.tsx and Archive.tsx
+- Added an archive-only product card style: square white surface, brand label, two-line title, stock status, sale-aware price, and full-width blue Add to cart action.
+- Kept Wishlist and Quickview icons visible and accessible on archive cards; other product card consumers retain their existing appearance.
+- Pricing, deals, cart behavior and wishlist / Quickview actions are unchanged.
+
+### Verified
+- `npm run build` succeeds. Local Vite server responds `200` at `/shop` on port 3000. Build reports a pre-existing duplicate `type` attribute in `components/AuthPage.tsx` and the existing large-bundle warning; neither is part of this card change.
+
+---
+
+## 2026-10-31 — Product page: fulfilment chooser polish, one-column overview, typography pass
+
+### frontend/components/FulfilmentChooser.tsx
+- Matches `docs/mockups/shop-product/product-copy.html` (tab toggle + one active card).
+- **Pickup:** the **Change store** button is removed; **Schedule pickup** (or Change time) is now the single action and sits in the same place and style as **Change** in Delivery (right edges match at 1280px: both end at x=1209). When no store is selected a **Choose store** button remains so a store can still be picked. Change store is otherwise only reachable via the header "Pickup from …" selector.
+- **Delivery:** the title truncates to one line (`truncate`, full text in `title`), e.g. "Delivery to 5 Durnford Ave, La Lucia, Umhlanga, 4051, South Africa, Umhlanga, KwaZulu-Natal".
+- One shared `ACTION_BUTTON` class for both actions.
+
+### frontend/components/SingleProduct.tsx
+- Overview feature list is a single column.
+
+### Typography (new `caption` token, 13px)
+- `index.css` `--text-caption`, `tailwind.config.js` `text-caption`. Spec table added to `docs/design/belims-design-tokens.md`.
+- Audit found the product page mixing the 10 / 11px `text-xs` / `text-sm` for real content (breadcrumb, SKU line, stock line, trade grid labels, option lines, item names) plus arbitrary `text-[10|11|12|13|15|18|28px]`. Now: meta and uppercase labels `text-caption` (13), body / values `text-base` (15), price `text-h2` (30, tabular numerals), compare-at `text-xl`, content-tab labels `text-base`, description colour `text-text-secondary` (was tertiary grey), industrial rail-card brand line `text-caption`. Applied in `SingleProduct.tsx`, `FulfilmentChooser.tsx`, `ProductPriceDisplay.tsx`, `ProductCard.tsx` (industrial appearance only).
+- Left alone on purpose (sitewide, not product-page): header / footer / cookie-bar text, the shared `SectionHeading` eyebrow (11px, e.g. "KEEP SHOPPING"), and the default `ProductCard` category line.
+
+### Verified
+- `npm run build` OK; type-check (scratch copy): only the two existing wishlist-id errors in `SingleProduct.tsx` (`isInWishlist(product.id)` string vs number — unchanged, see risks).
+- `vite preview`, product 296 with a long saved address: delivery title one line and truncated; Pickup tab shows no Change store, **Schedule pickup** right-aligned like Change; at 375px both tabs fit, no horizontal overflow, button inside the card; features list one column. Computed sizes: H1 30/800, price 30/700, tab labels 15/800, breadcrumb and SKU line 13, stock line 15/600, list 15. Remaining sub-12px text on the page is header / footer / cookie bar / the shared eyebrow only.
+
+---
+
+## 2026-10-31 — Account page Phase 3: Addresses, Details and Wishlist restyled and split out
+
+Phase 3 of [docs/design/account-page-implementation-plan.md](docs/design/account-page-implementation-plan.md). Behaviour unchanged except where noted.
+
+### frontend/components/account/ (new)
+- `AddressesView.tsx`: shipping / billing cards (Default badge, 2px brand border), inline confirm-remove, Edit → existing `/delivery-details/add-address?context=account&type=…&mode=edit`, Set as default, Add button for a missing type, empty state. Same API calls (`clearBillingAddress` / `clearShippingAddress`, default saved through `AccountPage.handleSetDefault`).
+- `DetailsView.tsx`: Profile form (labelled inputs, `autocomplete`, read-only email with hint, Save), Password card (email reset link), Account type card. Same `updateUserProfile` call.
+- `WishlistView.tsx`: card grid (live image, live price, stock line), Add to cart (disabled when out of stock / no longer sold / catalogue loading), remove with live announcement, empty state.
+- `ui.ts` (one button / field / card class set) and `Notice.tsx` (`role="status"` / `role="alert"`); `DashboardView` and `OrderDetailView` now use `ui.ts` instead of their own copies.
+- `hooks/useWishlist.ts`: wishlist items synced via `belims:wishlist-updated` and `storage`.
+
+### frontend/components/AccountPage.tsx
+- 1,197 → 134 lines: route owner only (tab / order param, orders + wishlist data, default-address handler, sign-in guard, payment redirect). All renderers and form state moved into the views above.
+
+### Verified
+- `npm run build` OK; no type errors in `account/*`, `AccountPage.tsx` or `useWishlist`.
+- `vite preview` with `fetch` stubbed in-page (anonymised data, no real credentials; stub token, wishlist, cart and address keys removed afterwards): Set as default saved the address (`deliveryAddressV2` postcode 4319, header "Delivering to Umhlanga, 4319"); remove asks for confirmation, Cancel closes it, Yes sends the billing-clear `PUT /users/me`; Edit goes to the address form route; details save sent the edited profile and showed the success notice; reset email request sent for the account email; all 5 inputs labelled; wishlist showed live price R2,690.00 for a stale R1, "Only 3 left", a missing product disabled "No longer available", Add to cart raised the cart by R2,690.00, remove announced and the nav count updated, empty state after removing all. 375 / 1024 / 1280: no overflow, one account nav, all targets >= 44px. Fixed during testing: wishlist product images clipped and titles inherited the global `h3` size. No console errors.
+- Not exercised: a real address edit round-trip (the form is an existing page) and an out-of-stock product.
+
+---
+
+## 2026-10-31 — Account page Phase 2: Orders list + order detail route + reorder
+
+Phase 2 of [docs/design/account-page-implementation-plan.md](docs/design/account-page-implementation-plan.md).
+
+### frontend/components/account/ (new)
+- `OrdersView.tsx`: filters All / Active / Completed / Cancelled kept in the URL (`?status=`, back-button safe) with live counts; table from `lg` (Items column from `xl`), stacked list below; per-order **Reorder**; loading skeleton; empty state. Rows link to `/account/orders/<order_number>`.
+- `OrderDetailView.tsx`: back link, header (number, date, payment, status badge, **Reorder all**), stepper, every Bob Go shipment (Track + courier site), items with per-line **Add**, subtotal / discount / delivery / total, delivery (or billing) address, payment; loading and **not found** states. Discount is derived (subtotal + delivery − total) and only shown when > 0.
+- `reorder.ts`: re-adds lines from the **live catalogue** (current price / deals / stock, never the historical line price). Out-of-stock and removed products are skipped; lines with less stock than ordered are added partially; the result is reported in a polite live region ("Added 3 items… Skipped: X (only 3 of 5 in stock); Y (no longer available)").
+
+### Routing / page
+- `App.tsx`: new route `/account/orders/:orderNumber` (same `AccountPage`, `products` passed).
+- `AccountPage.tsx`: reads `orderNumber`; that path is the Orders tab (title "Order #n"). Removed the local `selectedOrder` state, the Phase 0 `?order=` shim, the old order list / detail renderers and status-colour helpers, and the now-unused imports. Dashboard rows link to the new route. Order detail is looked up in the loaded list (the endpoint returns the full list), so there is no per-order fetch; `GET /orders/:id` stays available if the list is ever paginated.
+
+### Verified
+- `npm run build` OK; no type errors in `account/*` or `AccountPage.tsx`.
+- `vite preview` with `fetch` stubbed in-page (anonymised data, no real credentials; stub token and the test cart items removed afterwards), real catalogue: deep link to `/account/orders/10531` on a fresh mount shows the loading state then the order with tracking, ETA and totals (R2,765.00 + R75.00 = R2,840.00); unknown order shows "Order not found"; filters apply from the URL and Back restores the previous filter; Reorder all added 3 units of a 5-unit line with 3 in stock (cart R0.00 → R8,070.00 = 3 × R2,690.00) and reported the partial line plus a missing product; list Reorder works; layouts at 375 / 768 / 1024 / 1280 have no overflow, one account nav, all targets >= 44px. No console errors.
+- Not exercised: an out-of-stock product (listings hide them) and orders beyond a handful (no pagination yet).
+
+---
+
+## 2026-10-31 — Account page Phase 1: Option A shell, nav and dashboard
+
+Why: Phase 1 of [docs/design/account-page-implementation-plan.md](docs/design/account-page-implementation-plan.md), built from `docs/mockups/account-dashboard/option-a-command-centre.html`. Band colour is the `bg-belims-blue` token. The Orders / Addresses / Details / Wishlist views keep their current content (restyled in Phases 2–3) inside the new shell.
+
+### frontend/components/account/ (new)
+- `AccountShell.tsx`: blue band (greeting / tab title, account-type badge, "Delivering to"), nav rail from `lg`, scroll strip below `lg`; focus moves to the page heading when the tab changes.
+- `AccountNav.tsx`: real `<Link>`s with `aria-current="page"`, wishlist count (screen-reader text), Sign out button.
+- `DashboardView.tsx`: trade bar (contractor), **latest active order** card (stepper + Bob Go tracking → `/track-order`), stats strip (total / active / wishlist), recent orders (stretched row links to `/account/orders?order=<id>`), quick actions, skeleton loading and a no-orders state.
+- `OrderStatusTracker.tsx`, `StatusBadge.tsx`, `orderStatus.ts`: one status system (label + dot, never colour alone), delivery stepper (Placed → Processing → Shipped → Delivered; none for cancelled / refunded / failed). Active = pending, processing, on-hold, partially-shipped, shipped (the old count was processing + on-hold only).
+- Reorder is not in this phase (Phase 2).
+
+### Other
+- `hooks/useCustomerOrders.ts`: orders fetch moved out of `AccountPage`, sorted newest first, cancels on unmount.
+- `utils/date.ts`: single `formatDate` (en-ZA) replacing the local copy.
+- `AccountPage.tsx`: now routes to the shell + views; old sidebar, `renderDashboard`, menu list and local date / active-count code removed.
+
+### Verified
+- `npm run build` OK; type-check (scratch copy, chatbot syntax error patched there only): no errors in the new files or `AccountPage.tsx`.
+- `vite preview` with `fetch` stubbed in-page using anonymised data (no real credentials; stub token and wishlist removed afterwards): Default / Trade / Empty / Loading at 375px and Default at 768 / 1024 / 1280 — no horizontal overflow, one visible account nav with `aria-current`, one H1, all targets >= 44px, 6 skeleton blocks while loading. Tab navigation moves focus to the new H1; wishlist badge and back-to-dashboard work. No console errors.
+
+---
+
+## 2026-10-31 — Account page Phase 0: P0 fixes
+
+Why: first phase of [design/account-page-implementation-plan.md](docs/design/account-page-implementation-plan.md) — fix the shipped dead/dishonest UI regardless of the redesign. Band colour for the redesign: `bg-belims-blue` (decided).
+
+### frontend/components/AccountPage.tsx
+- Removed the hard-coded **Account Balance** card (stat grid is now 2-up).
+- Dashboard **Recent orders rows are links** (stretched link; Track stays separate) to `/account/orders?order=<id>`, which opens that order's detail (`?order=` read on the Orders tab; Phase 2 replaces it with `/account/orders/:orderNumber`). "View All" is a real `Link`.
+- **Wishlist** resolves each item against the live catalogue (new optional `products` prop): real (deal) price via `formatCurrency`, Add to cart disabled when out of stock / not in the catalogue / catalogue still loading, and adds the real product (no more hard-coded `stock_status: "instock"` / `sale_price: null`). Removal is announced in a polite live region; wishlist tab gets its header subtitle.
+- **Details**: labels linked to inputs (`htmlFor`/`id`) with `autocomplete`; save/address messages use `role="status"` / `role="alert"`. The disabled password fields and "coming soon" are replaced by **Email me a reset link** (`requestPasswordReset`, existing `users/forgot-password` endpoint) with a live-region result.
+- **Payment tab removed** (PayFast is redirect-only; there are no saved cards). `/account/payment` redirects to `/account/dashboard`.
+- Dates use `en-ZA`; avatar initial no longer throws when `username` is missing; `roles` access guarded; removed an unused `category` arg that caused a type error.
+
+### frontend/App.tsx
+- Both `/account` routes pass `products` to `AccountPage`.
+
+### Verified
+- `npm run build` OK. Type-check (scratch copy with the chatbot syntax error patched there only): no errors in `AccountPage.tsx`.
+- `vite preview`, with `fetch` stubbed in-page using the anonymised fixture (no real credentials; stub token and wishlist removed afterwards): dashboard shows 2 stat cards and no balance; rows link to `/account/orders?order=901` and open the order with tracking; wishlist shows the live price R2,690.00 for a stale stored price of R1, a catalogue-missing item as disabled "Unavailable", removal announced; details inputs all labelled with autocomplete, no password fields, reset email request sent for the signed-in email; `/account/payment` → `/account/dashboard`. No console errors.
+- Not yet exercised with live data: out-of-stock wishlist item (none in the catalogue are out of stock — listings hide them) and a real reset email send.
+
+---
+
+## 2026-10-31 — Account mockup: Option A selected and extended (docs only)
+
+Decisions: Option A; keep `R2,690.00`; remove Payment tab; delete Account Balance (recorded in `AUDIT.md`). `AccountPage.tsx` still untouched.
+
+### docs/mockups/account-dashboard/option-a-command-centre.html
+- Now covers the whole account: Dashboard, Orders (status filters, table / stacked list), **order detail** (stepper, Bob Go tracking, items with per-line Add, subtotal / delivery / total, address or collect store, Reorder all), Addresses (default badge + set default with live message, saved addresses), Details (labelled inputs with `autocomplete`, live-region save message, reset-password link instead of disabled fields), Wishlist (stock-aware add, remove with live message). Hash routes, `aria-current` nav, focus moves to the page heading on navigation.
+- Default / Loading / Empty / Trade states work on every view.
+
+### Verified
+- 8 routes x 4 widths (375 / 768 / 1024 / 1280) x 4 states = 128 combinations: no errors, no horizontal overflow, one visible account nav with `aria-current`, one H1, every input labelled, all targets >= 44px. Exercised nav, order filters, order detail + not-found, collect-order stepper, set default address, details save, wishlist remove, empty states.
+
+---
+
+## 2026-10-31 — Account dashboard: audit + three mockup options (docs only)
+
+Why: redesign groundwork for `/account/dashboard`. No app code changed (`AccountPage.tsx` untouched).
+
+### docs/mockups/account-dashboard/
+- `AUDIT.md`: stack check (Vite SPA, Tailwind v3) and a P0/P1/P2 findings table with line evidence, plus batched suggestions/questions.
+- `option-a-command-centre.html`, `option-b-card-dashboard.html`, `option-c-trade-pro.html`: self-contained (Tailwind v4 CDN, vanilla JS, inlined `data.json`), each with the account shell (desktop + mobile nav) and Dashboard in Default / Loading / Empty / Trade states.
+- `index.html`: comparison + live preview at 375 / 768 / 1280. `data.json`: anonymised fixture shaped from `fetchCustomerOrders()`; hand-built (no test account available).
+- Earlier untracked concept set (`variant-a/b/c`, `components.html`, old `index.html` / `data.json`) moved to `prior/`.
+
+### Verified
+- Each option loaded at 375 / 768 / 1024 / 1280 x 4 states: no console errors, no horizontal overflow, one visible account nav with `aria-current`, all interactive targets >= 44px; state toggle, Option C delivery/collect control, qty steppers and reorder toasts exercised in the DOM.
+
+---
+
+## 2026-10-31 — Product page: 6 / 6 columns, slimmer buy panel, Complete the job
+
+Why: requested refinements to the product page.
+
+### frontend/components/SingleProduct.tsx
+- Columns from `lg`: gallery **6/12**, purchase panel **6/12**, tabs under the gallery 6/12.
+- Removed from the purchase panel: "Price includes VAT", the 2×2 key specs grid, **Buy now** (panel and mobile sticky bar; its loading state, handlers and the `runActionWithIndicator` helper went with it — Add to cart keeps the min-450 ms "Adding…" state inline).
+- Wishlist button sits right-aligned beside the H1.
+- **Complete the job** (eyebrow "Works with", mockup layout A): full-width row after the product columns, before More in <category> — 4 cards (72px image, name, price, outlined Add). Uses bundle candidates; falls back to cross-sells / same category (resolved consumer price) when there are none. Out-of-stock items show View.
+- "Perfect match with" tab removed (content moved to Complete the job); the old fallback slider and its measuring state / ResizeObserver effect removed.
+
+### frontend/components/FulfilmentChooser.tsx
+- Cards match the mockup `.fc-card`: radio · 40px grey icon tile · body · action grid; 1px border, selected = 2px brand border with a brand ring + red dot; 14 / 13px body text; Free tag; Change / Add as outlined condensed buttons ("Add" on small screens, "Add address" from `sm`). Change store / Schedule pickup links show only while Collect is selected.
+
+### frontend/types.ts
+- `Product` had lost `stock` and `video_url` in HEAD (blank line where they were) — restored; both are on every API product and read throughout the storefront.
+
+### Verified
+- `npm run build` OK.
+- Real type-check (scratch copy, chatbot `api.ts` syntax patched there only): earlier "tsc clean" claims in this log were not valid — `app/api/products/search/route.ts` and `src/features/chatbot/lib/api.ts` have syntax errors, so `tsc` never reached type-checking. With those bypassed: 17 errors, none in code changed this session (the 2 in `SingleProduct.tsx` are the existing wishlist `id` string-vs-number calls). Fixing the rest is a separate task.
+- `vite preview`, product 296, 1440px: gallery 654px; no VAT line, key specs or Buy now; wishlist beside title; tabs Overview | Specifications | Delivery & returns; Complete the job 4 × 328px columns, then More in Drills. 375px: no horizontal overflow, Complete the job stacks 1-up.
+
+---
+
+## 2026-10-31 — Product page: 5 / 7 columns + content tabs
+
+Why: requested — wider purchase panel, and the long content flow replaced by tabs under the gallery.
+
+### frontend/components/SingleProduct.tsx
+- Grid from `lg`: gallery **5/12** (square main image, max 560px), purchase panel **7/12** (still sticky, viewport-capped), content under the gallery **5/12**.
+- **Tabs** under the gallery: Overview · Specifications · Perfect match with · Delivery & returns (Specifications / Perfect match hidden when empty). WAI-ARIA tabs: `tablist` / `tab` / `tabpanel`, roving tabindex, ←/→/Home/End; panels stay mounted (`hidden`) so the fallback slider keeps measuring; resets to Overview on product change. Equal-width tabs, labels wrap to two lines (`text-sm` below `sm`) so all four fit from 375px up.
+- The section headings inside the panels are now screen-reader-only labels (the tab is the visible title); unused `pdpSectionTitle` removed.
+- The fallback "Perfect match" list (cross-sells, then same category) moved from an inline IIFE into a `fallbackMatches` memo so the tab knows whether it has content.
+
+### Verified
+- `npm run build` OK; full `tsc` (excl. `backups/`): only the 7 pre-existing errors (`app/api`, chatbot). `vite preview`, product 296: 1440px gallery 538px / panel 770px, tab bar 538px with no overflow; 1024px tab bar 390px, no overflow; 375px tab bar fits (0px overflow), order gallery → purchase panel → tabs → More in Drills. Arrow-right moves Overview → Specifications (focus + panel); Perfect match panel shows 4 items.
+
+---
+
+## 2026-10-31 — Design port Phase 5b: Product page matched to the mockup
+
+Why: bring `/product/…` in line with `docs/mockups/shop-product/product.html` (layout B). Decisions: storefront-side spec parsing, product-page-only card style, header unchanged, sticky bar mobile-only.
+
+### frontend/components
+- `FulfilmentChooser.tsx` (new): "How do you want it?" radio cards replace the Fulfillment tiles on the product page. **Delivery** — address label, selected rate (service · price · ETA) or "N options from R…", **Change** opens a right-hand **Delivery options** drawer (Budget / Faster tags from `getDeliveryOptionMarkers`, Done saves to the existing `rate-<index>` id → `selectedDeliveryOptionId`, Change address → `DeliveryLocationModal`). **Collect** — store, Free, open/closed status, address, distance, scheduled time, Change store / Schedule pickup. Same Bob Go quote, store and storage logic as before; arrow keys switch cards; drawer closes on Escape and returns focus.
+- `SingleProduct.tsx`: uppercase condensed H1; SKU + linked Category line; "Price includes VAT"; one-line stock status with thin bar (replaces the `StockBar` chip); 2×2 **key specs** (first 4 description specs, skipping Model / Weight / Dimensions); Buy now + **wishlist** on one row; **Overview** (short description when it differs from the name, features with red square bullets, remaining description HTML); **Specifications** table (description specs + `specifications` weight / dimensions, empty values hidden); **Perfect match with** as a grey-panel list (up to 4, outlined Add); section headings with a short red rule; **More in <category>** with View all (replaces "How about these"; hidden when empty); policy accordion opens on Returns; sticky add-to-cart bar mobile-only; sticky purchase panel capped to the viewport (scrolls internally when taller). Removed now-unused ETA helpers and the dev-only reset/enable-default-store handlers.
+- `ProductAccordions.tsx`: Returns / Change of mind / Warranty / Delivery & collection with +/−, `aria-expanded` + labelled regions, empty policies hidden.
+- `ProductCard.tsx`: opt-in `appearance: "industrial"` + `railCard` preset (2px square border, brand line, stock dot, full-width blue Add to cart, no quick-view square). Default card unchanged; price paths untouched.
+- `RecentlyViewed.tsx`: `SectionHeading` + `railCard` (component is only mounted on the product page).
+
+### frontend/utils/product.ts, types.ts
+- `parseProductDescription()` lifts the "Specifications" / "Features" lists out of description HTML; `formatSpecValue()` formats dimension objects.
+- `types.ts`: `BundleCandidate` was never closed in HEAD (syntax error that stopped `tsc` before type-checking anything) — closed it and added the `category` / `stock` fields the product page reads; `specifications` value allows the dimensions object; `short_description` added.
+
+### Verified
+- `npm run build` OK. Full `tsc` (excluding `backups/`) now type-checks: only pre-existing errors in `app/api/products/search/route.ts` (5) and `src/features/chatbot/lib/api.ts` (2).
+- `vite preview` (:4173), product 296, 1440px + 375px: key specs Motor Type / Drill Voltage / Hex Shank / No-Load Speed; spec table 9 rows incl. Weight 3.06 kg and Dimensions 35 cm × 22 cm × 9.5 cm, empty "Integrated Work Light" / "Included" hidden; with a test address (Durban North 4019, removed afterwards) the live Bob Go quote showed 3 options from R75.00; drawer → Next Day R125.00 → card shows "Next Day Delivery · R125.00 · Arrives 02 Nov", `selectedDeliveryOptionId = rate-1`, focus back on Change; More in Drills + Recently viewed use the new card; mobile order H1 → Overview → Specifications → Perfect match → Delivery & returns → More in Drills → Recently viewed, no horizontal overflow, sticky bar only on mobile.
+
+---
+
+## 2026-10-31 — Design port Phase 5: Product page layout B + JSON-LD
+
+Why: Phase 5 of the design port — the approved "B · Wide gallery" product layout, structured data, and accessibility fixes. Pricing, deal, cart, trade and fulfilment logic are unchanged (render-only restructure).
+
+### frontend/components/SingleProduct.tsx
+- Layout B: wide gallery (7/12, 8/12 from `xl`) with thumbnail strip (vertical from `md`, shown only when a product has more than one image) and a click-to-open full-screen gallery button; sticky purchase panel (`lg:top-32`, clears the condensed header); content flows in the left column under the gallery — **Overview** (key features + description) → **Perfect match with** (moved from the buy column) → **Delivery & returns** (the existing policy accordions; the only place Returns / Warranty appear).
+- Breadcrumb: real links (Home → Shop → category path by slug → product). "Home" used to run `navigate(-1)`. No longer sticky.
+- Purchase panel: condensed H1, red **Add to cart**, outlined blue **Buy now**, no shadow; quantity stepper labelled (`Decrease` / `Increase quantity`, `output` with `aria-live`); add-to-cart announces "Added N × <name> to cart" in a polite live region. Delivery / Collect stays on `FulfillmentBlock` → `FulfillmentTiles` (Bob Go quotes, `DeliveryLocationModal`).
+- `document.title` = `<product> | Belims`.
+- Product + BreadcrumbList JSON-LD injected into `<head>` (name, SKU, images, brand, category path, ZAR offer from the resolved consumer price, availability) and removed on unmount. Store-level Google reviews deliberately excluded.
+- The CMS placeholder video (`/images/development/…`) is no longer added to the gallery.
+- Sticky bottom bar buttons and the "How about these" heading (`SectionHeading`) restyled to match.
+
+### Verified
+- `npm run build` OK; `tsc`: no errors in touched files (pre-existing errors in `backups/` only). `vite preview` (:4173) at 1440px and 375px on products 296, 2555, 977, 83, 949, 85, 3530: title and H1 correct, breadcrumb links resolve via Phase 4 slug routing, JSON-LD parses (296: price 2690.00 ZAR, InStock, 4-level breadcrumb), buy panel stays sticky while the left column scrolls, mobile order gallery → buy panel → Overview → Perfect match → Delivery & returns, no horizontal overflow. Thumbnail strip not exercised by live data — no catalogue product currently has more than one image.
+
+---
+
+## 2026-10-31 — Design port Phase 4: Archive (slug routing, URL state, pagination, brand hero)
+
+Why: Phase 4 of the design port. The archive matched categories by name with substring matching (over-matched, and slug links like `/shop/paint-paint` hit the wrong category), kept filters in component state (lost on Back), rendered all products in one page, and showed facets that never filtered.
+
+### frontend/components
+- `ArchiveHero.tsx` (new): Hero A (banner — brand-blue scrim over a dev placeholder image, breadcrumb, H1, count / brands / "N on deal →", department chips with product thumbnails) on `/shop`; Hero C (compact — breadcrumb, H1 + count, "Search in …" box, round subcategory strip) on category, brand and search archives. No promo block.
+- `Archive.tsx` (rewritten):
+  - Route segment resolved against the category tree: **slug first, then name** (legacy links). The products request uses the real CMS slug; the server's `product_cat` slug query includes children. Client-side fallback narrows by exact subtree labels (`productsInCategory`), no substring matching.
+  - All state in the URL: `sub`, `brands`, `offer`, `price_min`, `price_max`, `q` (search within), `sort`, `view`, `page`. Each filter change is a history entry (Back-safe) and resets to page 1. Updates read the live URL so quick consecutive clicks don't drop values.
+  - 24 per page, numbered pagination (first / last / ±1 with gaps), scrolls to the results top.
+  - Facets: Category/Department (children of the current category, empty ones hidden), Price (inputs + dual slider, committed after 400 ms), Offers (only deal types that have products), Brand. Each facet counts against the other active facets.
+  - Removed no-op facets: **Range** and **Colour** (the filters endpoint lists 31 / 44 terms but no product carries range, colour or tags data — Range filtered everything out, Colour never filtered) and **In stock only** (listings already hide out-of-stock products).
+  - Restyled to tokens (white page, brand-blue facet rule, condensed uppercase headings, no TailGrids hex colours or shadows); mobile filter drawer has a blue header, Escape to close, `role="dialog"`.
+  - `document.title` = `<title> | Belims`; result count is `aria-live`.
+- `App.tsx` `ArchivePage`: passes the raw route segment (`categoryParam`) instead of a de-hyphenated label; `?range=` support removed.
+- `Header.tsx`, `MegaMenu.tsx`, `MobileNav.tsx`: category links switched back to slugs (`/shop/<slug>`).
+
+### Verified
+- `npm run build` OK; `tsc`: no errors in touched files. `vite preview` (:4173) at 1440px and 375px: `/shop` 1,382 products, 58 pages of 24; `/shop/paint` 92 vs `/shop/paint-paint` 9 (the child "Paint" category — previously unreachable); `/shop/Paint` (legacy name) resolves; `/shop/hand-tools` 94 → subcategory + brand facets narrow correctly, chips remove, Back restores the previous filter set; `?page=2`, `?sort=price-asc` and `?price_max=200` (76 products) restore from the URL.
+
+---
+
+## 2026-10-31 — Design port Phase 3: Home retune (Industrial + brand) + reviews on Home
+
+Why: Phase 3 of the design port — bring the built home sections in line with the approved Industrial + brand mockup, and move Google reviews from the site-wide footer to Home.
+
+### frontend/components
+- `DealsSection.tsx`: brand-blue band, inverse heading, white tabs with red active rule. Deal filtering untouched.
+- `ShopByDepartment.tsx`: brand-blue band, inverse heading + "All products" link, white tiles with red hover border, white labels.
+- `BrandStrip.tsx`: red 4px top rule.
+- `HeroBanner.tsx`: brand-blue scrim (was black); CTA uppercase condensed.
+- `CategoryFeature.tsx`, `PopularCategories.tsx`: uppercase condensed CTAs; Top categories tiles 2px border.
+- `SectionHeading.tsx`: `ViewAllLink` gains an `inverse` tone for blue bands.
+- `BelimsReviews.tsx`: rebuilt to the mockup — shared section heading ("What customers say"), brand-blue rating panel with **Read all reviews** (Google Maps place) and **Write a review** (`search.google.com/local/writereview`), 3 review cards (2px border, no shadows), horizontal scroll on mobile. Still renders nothing on API error / no reviews.
+- `Footer.tsx`: reviews removed; bottom bar is brand blue with a red 4px top rule; payment logos on white chips; social icons white.
+- `TrustStrip.tsx`: icon boxes in brand blue.
+- `App.tsx`: `BelimsReviews` placed on Home before `BrandStrip`.
+
+### Parent repo
+- `.claude/launch.json`: `frontend-dev-3002` (Vite dev on :3002 while :3000 is taken) — needed to see the reviews section via the dev stub.
+
+### Verified
+- `npm run build` OK; `tsc`: no errors in touched files. Vite dev (:3002, reviews from the local dev stub — sample data) at 1440px and 375px: section order Range → Deals (blue) → Collage → Departments (blue) → Top categories → Reviews → Brands (blue, red rule) → footer (blue base); no reviews in the footer; reviews scroll horizontally on mobile; no horizontal page overflow; no console errors.
+
+---
+
+## 2026-10-31 — Design port Phase 2: brand header, 3-pane mega menu, mobile nav restyle
+
+Why: Phase 2 of the design port (approved header = mockup option C layout + brand colours). The old header carried a non-functional search "department" selector and an ETA-pill row whose data was never passed.
+
+### frontend/components/Header.tsx
+- New desktop layout: utility bar (pickup store, track order, wishlist, store locator & leaflets, other services) → sticky brand-blue main row (logo, "Delivering to" pill + popover, white search with red **Search** button, account, cart total) → sub-nav (**Departments** + top 10 second-level categories by product count). Condenses after 80px scroll: sub-nav collapses (and is `inert`), icon-only Departments button appears in the main row. Mega menu backdrop; closes on navigation and Escape (focus returns to the visible trigger).
+- Mobile: white search field with red **Go**; rest of the mobile row unchanged.
+- Removed: search scope dropdown (`searchCategory` was displayed but never applied to search), `deliveryPromise` prop + "Shop By Delivery" row (never passed by `App`), old topbar markup, `activeMegaCategory`, and the icon imports they used. All location/delivery, account, cart and search logic is unchanged.
+
+### frontend/components/MegaMenu.tsx (rewritten)
+- 3-pane cascade: department → subcategory → children + branch products (deals first). Prices read from `deals_resolved.consumer` (no pricing logic); trade specials show retail + "Trade deal". Live counts, empty branches hidden, keyboard arrows within/between panes.
+
+### frontend/utils/categoryCounts.ts (new)
+- `buildCategoryCounts` / `productsInCategory`: catalogue products per category subtree, counting unique labels (some children repeat their parent's name, e.g. "Tool Sets" > "Tool Sets", which double-counted before).
+
+### frontend/components/MobileNavPanel.tsx
+- Visual only: brand-blue root header with red rule, condensed uppercase titles, labels 11→15px. Department hints now come from the first three real subcategories (were hardcoded, e.g. "CCTV, Alarms"). Navigation logic and your `MobileNav.css` change untouched.
+
+### frontend/components/CategoryGrid.tsx
+- Home pill rail hidden from `md` up (the header sub-nav carries the same pills); kept on mobile.
+
+### frontend/index.css
+- Removed the now-unused `.topbar*` block.
+
+### Verified
+- `npm run build` OK; `tsc`: no errors in touched files. Built app at 1440px and 375px: sticky header (top 0 while scrolled), condensed height 99px, mega menu cascade + previews + counts (Tools and Machinery 481), arrows/Escape/focus return, closes on navigation, label links resolve (`/shop/Paint` 92 results; slug `/shop/paint-paint` returns 0 — reason for name links), search typeahead unchanged, mobile drawer push/back/Escape and focus, no console errors.
+
+---
+
+## 2026-10-31 — Design port Phase 1: Industrial + brand theme tokens (global)
+
+Why: first step of the approved redesign port ([ROADMAP → Design port](docs/ROADMAP.md#design-port--industrial--brand-mockups-approved-2026-10-31)). Tokens change globally by decision, so cart, checkout and account inherit the look.
+
+### frontend/index.css
+- Brand blue `rgb(50, 39, 131)` for `--color-secondary` (was `#232323`), `--color-surface-dark` (was `#000`), `--color-border-strong` (was `#000`), plus matching `--rgb-secondary` / `--rgb-surface-dark`. Body text stays black; red stays the primary CTA.
+- Industrial radii: `--radius-xs` 5→2px, `--radius-sm` 6→2px, `--radius-md` 10→4px, `--radius-lg` 30→6px, `--radius-badge` 40→4px, `--radius-pill` 100→4px.
+
+### frontend/components/SectionHeading.tsx
+- Section titles 44px desktop (`text-display-md`, 30px mobile), condensed uppercase, 48×4px red rule.
+
+### docs
+- `docs/design/belims-design-tokens.md` (new values), `docs/ROADMAP.md` (Phase 1 done).
+
+### Verified
+- `npm run build` OK. Built app (`vite preview`, 1440px), before/after on `/cart`, `/checkout`, `/login`, `/account`, `/`, `/shop/drills`, product 296: no horizontal scroll, no console errors; token radii now render as 2/4/6px across all pages.
+- Not yet themed (component-level, handled in later phases): Tailwind `rounded-full` / `rounded-xl` / `rounded-2xl` one-offs (e.g. archive card icon buttons, cart panels) and 4 hardcoded black backgrounds (home + product, e.g. "Buy Now").
+
+### Outside the repo
+- Vercel env (names only): `REACT_APP_WOO_CONSUMER_*` and `REACT_APP_GEMINI_API_KEY` are **not** set, so no client-bundle secret exposure. `GOOGLE_PLACES_API_KEY` is set (Production, Preview); the reviews 502 is Google returning `403 PERMISSION_DENIED` for Places API (New).
+
+---
+
+## 2026-10-31 — Google reviews section no longer shows API errors to shoppers
+
+Why: `/api/google-reviews` returns 502 on the preview deployment ("Failed to fetch Google reviews."), and `BelimsReviews` rendered that message in the footer on every page.
+
+### frontend/components/BelimsReviews.tsx
+- Any failure, or a response with no reviews, now renders nothing (the reason is logged with `console.error`). Removed the error and "No reviews available yet" boxes. Loading skeleton and the populated view are unchanged.
+
+### Verified
+- `npm run build` OK; `tsc`: no errors in the file. Built app on `vite preview`: the footer starts with the policy trust row, no reviews error text, no console errors.
+- Still to do (outside the repo): check `GOOGLE_PLACES_API_KEY` / Places API on Vercel so the section shows again. Not deployed.
+
+---
+
+## 2026-10-31 — Home redesign (industrial retail) + policy-driven footer trust row
+
+Why: the home page had apparel copy ("Step into Style", "timeless seating"), fake "Save 40% / 30%" badges, five FeaturedGrid links that all 404'd, collage tiles linking to `#` or all to `/trade/deals`, a Deals section that disappeared (layout jump) when empty, no H1, and a footer promising "free worldwide shipping" and "24/7 support". Plan, audit and approved mockup: `docs/audits/home-redesign-audit.md`, `docs/design/belims-design-tokens.md`, `docs/mockups/home/` (Recommended).
+
+### frontend — home sections (new order)
+- `HeroBanner.tsx`: full-bleed, CMS title is now the page **H1** (condensed uppercase), CTA uses `primary` (was `belims-blue`); no shadow or grey band. Still CMS-driven with the same LCP preload.
+- `CategoryGrid.tsx` (now directly under the hero): live second-level categories from `/categories` (top 12 by count), replacing 12 hardcoded titles, some of which had no slug.
+- `ShopByCategory.tsx`: "Shop the range" (was "Step into Style"), New arrivals / Best sellers tabs, **View all** → `/shop`, 4 cards per row on desktop (was 5), square-cornered arrows, no shadows. Carousel logic unchanged.
+- `DealsSection.tsx`: now the single **Shop deals** section (Daily / Weekly / Trade tabs) with a category spotlight; empty state instead of `return null`. Deal filtering copied unchanged (fenced). Dropped the per-tab links to `/deals`, `/deals/weekly`, `/trade/deals` (no such routes).
+- `CategoryFeature.tsx` (new): configurable category spotlight; default Hand Tools (replaces the `TradeDeals` panel).
+- `CollageGrid.tsx`: 3 tiles linked to real categories (Power tools, Garden & patio, Drills); removed `href="#"`, the hardcoded `/trade/deals` button and the mobile autoplay timer.
+- `ShopByDepartment.tsx` (new, replaces `FeaturedGrid`): live top-level categories. CMS categories have no images, so each tile uses a product image from its category subtree.
+- `PopularCategories.tsx` → "Top categories": top two second-level categories with a real product image; removed its own category fetch, the hardcoded fallback list, ~180 lines of third-party Unsplash/pngimg URLs, fake discount badges and copy, and pastel hex colours.
+- `BrandStrip.tsx`: shared heading (on-blue tone), Lucide arrows (were `‹ ›` text), no shadows or hover lift, autoplay off under `prefers-reduced-motion`, shared `useWindowWidth`.
+- Removed `FeaturedGrid.tsx`, `TradeDeals.tsx`, and the unused `/* FeaturedGrid styles */` block in `index.css`.
+- Product counts are **not shown** on category tiles: WooCommerce term counts don't match archive results (Screws: 382 vs 132 listed).
+
+### frontend — shared
+- `SectionHeading.tsx` (new): eyebrow + condensed uppercase H2 + actions slot; `ViewAllLink`.
+- `hooks/useHomeCategories.ts` (new): one `/categories` fetch for pills, departments and top categories. `hooks/useWindowWidth.ts` (new): replaces inline copies in the home components.
+- `index.css`: `--font-section-title-stretch` + `.font-condensed`. `index.html`: Archivo request adds the `wdth 87.5 / 700` instance.
+- `Footer.tsx` + `TrustStrip.tsx` (new, **site-wide**): trust row built from `GET /belims/v1/ecommerce-policies` (delivery, returns, warranty, store), shown as plain text; replaces the hardcoded false claims.
+- `ProductCard` **not** changed (11 consumers); its restyle moves to the Shop/Product redesign.
+
+### docs
+- `docs/ARCHITECTURE.md` (home route), `docs/FEATURES.md` (home sections, footer trust row), `docs/ROADMAP.md` (`/products/home` still slow; placeholder-video fallback in `class-products-endpoint.php`), `docs/README.md` (design / audits / mockups), `docs/design/belims-design-tokens.md` (implemented notes).
+- Parent repo: `.claude/launch.json` gains `frontend-build-preview` (`vite preview` on :4173) for when :3000 is taken.
+
+### Verified
+- `npm run build` OK (bundle 1,461.6 → 1,441.3 kB; only the existing chunk-size warning). `tsc --noEmit`: no errors in touched files (13 existing errors in `app/api/…`, `backups/`, `src/features/chatbot`, `types.ts`).
+- Built app on `vite preview` against the live CMS at 1440px and 375px: one H1; section order as above; no horizontal scroll; Deals tabs show exactly the API's deal products (Daily: 2555, 977 · Weekly: 83 · Trade: 949, 85); 8 departments and 2 top categories with images; all 3 collage tiles and sample pill/department links reach archives with results; footer trust row shows the 4 policy items on home, `/shop/*` and the product page; no console errors except local-only `/api/google-reviews` and `/_vercel/*` 404s.
+- Not deployed. CMS untouched.
+
 ---
 
 ## 2026-10-05 — Global Site Settings 2.10.13: suburb on saved account addresses
+
+### Deployed — production 2.10.8 → 2.10.13 (2026-10-05, from `eba7263b`, approved)
+- Pre-checks: 2.10.8, env `production`, Bob Go plugin `prod` + connected, load 0.12. Noted (unchanged by the deploy): FTG on, **FTG cron `disabled`** (was `weekly` earlier today — changed outside this session), Bob Go **Order shipped email on**, PayFast test mode.
+- Backup `~/backups/uhkkwupuum-gss-2.10.8-20261005-214718.tgz`; the 7 server files matched git `49e05c6d` (2.10.8); uploaded `includes/class-products-endpoint.php`, `includes/class-orders-endpoint.php`, `includes/bobgo-shipping/class-bobgo-tracking-endpoint.php`, `includes/class-user-endpoint.php`, `global-site-settings.php`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.13 active.
+- Cache warmed: full listing MISS (10.4 s) → HIT (2.1 s); `/products/home` cold build exceeded the 120 s client timeout but completed server-side (HIT via `www` right after); featured MISS → cached. Rate quote via `www` → production Bob Go rates (Standard R70). `/orders`, `/users/me` 200; login 200, admin 302, `/categories`, `/products/filters` 200. Settings unchanged after deploy; load 0.93.
+- Follow-up: `/products/home` cold rebuild is very slow on production (>100 s) — with the cache only the request that triggers a rebuild waits (others get the previous copy), but the query (deal meta `NUMERIC` compare, `meta_value_num` stock sort) should be optimised.
 
 Why: the account add/edit address form (`/delivery-details/add-address?context=account`) had no Suburb field, so saved addresses never carried one — and Bob Go needs the suburb (`local_area`), which checkout then had to re-ask. Province was also saved as a name in `billing_state` / `shipping_state` (WooCommerce expects `KZN`).
 

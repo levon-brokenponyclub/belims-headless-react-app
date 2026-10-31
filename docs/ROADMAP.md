@@ -39,7 +39,9 @@ _Last reviewed: 2026-10-01_
 - [ ] **Lazy-load Firebase Auth** (only on sign-in/account/checkout) — `iframe.js` is 4.2 s of the mobile critical chain.
 - [ ] **Route-level code splitting** (`React.lazy` for Shop, Product, Checkout, Account, Cart) — 244 KB unused JS, mobile TBT 440 ms.
 - [ ] **Footer CLS** (0.17–0.885 in RUM): reserve min-height for homepage product rails so skeleton/loaded/error states match.
-- [ ] Lazy-load the `TradeDeals` tile; eager + `fetchpriority="high"` for the first product row.
+- [ ] Eager + `fetchpriority="high"` for the first product row (`TradeDeals` was removed in the home redesign).
+- [ ] Optimise the `GET /belims/v1/products/home` cold rebuild (>100 s, see CHANGELOG 2026-10-05). It still didn't respond within 60 s on 2026-10-31, so the client hit its 25 s timeout and home rails waited for the full catalogue (~10 s cold).
+- [ ] `class-products-endpoint.php` gives every product without an ACF video a test video (`/images/development/output_32s_50s_360p_under1_5mb.mp4`). Remove the fallback (plugin deploy).
 - [ ] Animate progress bars with `transform: scaleX()` instead of `width`; add `width`/`height` to header/footer logos.
 - [ ] Optional: `cms.belims.co.za` Web Analytics off (admin noise).
 
@@ -70,9 +72,40 @@ _Last reviewed: 2026-10-01_
 - [ ] Converter watcher: use a PID file (`pgrep -f` matched its own SSH command).
 - [ ] Decide EWWW's role (currently lossless only) to avoid double processing.
 
-## Design migration (Nexvo)
+## Design port — Industrial + brand (mockups approved 2026-10-31)
 
-Pending sections from the migration tracker ([archive/frontend/NEXVO-MIGRATION.md](archive/frontend/NEXVO-MIGRATION.md)): Header rows 2–3, ShopByCategory, FeaturedGrid, PopularCategories, Archive, SingleProduct, Footer. Open issues: rem scale (Nexvo assumes a 10px root), missing routes `/help-center`, `/find-a-store`, `/contact`.
+Source of truth: [mockups/](mockups/) — `home/index.html` (default style), `shop-product/archive.html` (Hero A on `/shop`, Hero C on categories), `shop-product/product.html` (Layout B + delivery chooser), shared `mockups/theme.css` + `header/site-header.*`. Tokens: [design/belims-design-tokens.md](design/belims-design-tokens.md). Supersedes the Nexvo tracker ([archive/frontend/NEXVO-MIGRATION.md](archive/frontend/NEXVO-MIGRATION.md)).
+
+Decisions (2026-10-31): tokens change **globally** (cart/checkout/account inherit; regression pass in Phase 6) · order **Tokens → Header → Home → Archive → Product** · keep and build on the uncommitted `MobileNav.css` edits · home redesign stays **uncommitted** for now.
+
+Rules for every phase: inspect before editing · pricing/deal logic (`dealService`, `ProductPriceDisplay`, `ProductCard` price paths) is fenced — visual only · `npm run build` + `tsc` (touched files) + `vite preview` check at 375 / 1024 / 1440 · CHANGELOG + docs in the same change · commit only when asked · never release to production unless asked.
+
+- [ ] **Phase 0 — Prerequisites**
+  - Commit the built home redesign (uncommitted since 2026-10-31) so the port starts from a clean base.
+  - ~~Hide the reviews section on API error~~ (done 2026-10-31, uncommitted). Still open: Google returns `403 PERMISSION_DENIED` for the Vercel `GOOGLE_PLACES_API_KEY` — in Google Cloud, enable **Places API (New)** for the key's project, allow it under the key's API restrictions, and use no HTTP-referrer restriction (server-side calls send none).
+  - Decide what happens to the uncommitted `components/MobileNav.css` edits (the mobile drawer is restyled in Phase 2).
+- [x] **Phase 1 — Theme tokens** — done 2026-10-31 (uncommitted): brand-blue `secondary` / `surface-dark` / `border-strong`, radii 2/4/6px, 44px `SectionHeading`. Button classes deferred to Phase 2 (added where first used). Component one-offs (`rounded-full/xl/2xl`, hardcoded black) handled per phase.
+  - Brand blue for dark surfaces / inverse CTAs / strong outlines (`--color-surface-dark`, `--color-secondary`, `--color-border-strong`); red stays primary CTA + accents.
+  - Industrial shape: `--radius-md` 10→4px, `--radius-sm` 6→2px, `--radius-pill` → 4px; condensed uppercase section titles (44px + 4px red rule) via `SectionHeading`; uppercase condensed button style as `@layer components` classes.
+  - Blast radius: `rounded-md/card/button` appear 61× in 17 components (cart, checkout, account included) — global vs scoped is an open decision.
+- [x] **Phase 2 — Header** — done 2026-10-31 (uncommitted). Divergences from the mockup: "Delivering to" pill stays left of search (popover anchoring); no Deals link yet (needs the Phase 4 offer filter); category links use names until Phase 4 makes the archive slug-aware; Home's pill rail is hidden from `md` up (kept on mobile, where the header has no pills). CMS data surfaced in menus: categories "None" (Tools and Machinery) and "Shop By Tool Application".
+  - Brand-blue sticky header with real logo: utility bar (pickup store / delivery copy, track order, store locator, trade) → main row (logo, search with existing typeahead, collect chip, account, cart total) → sub row (Departments, top 10 live subcategory pills, Deals). Condenses to one row on scroll.
+  - Replace `MegaMenu` with the 3-pane cascade (department → subcategory → children + products in branch) from the existing category tree; keyboard: arrows, Escape, focus return.
+  - Keep all location/delivery state and modals (`DeliveryLocationModal`, `DeliveryDetailsPopover`) — restyle only.
+  - Mobile: keep the existing multi-level `MobileNav`, restyle (white panels, blue head, red accents).
+  - Then remove Home's duplicate `CategoryGrid` pill rail (the header carries it).
+- [x] **Phase 3 — Home retune** — done 2026-10-31 (uncommitted). Reviews show again once Google's Places API (New) permission is fixed (see Phase 0).
+  - Blue Deals + Departments bands, Brands band with red top rule, blue footer base; Google reviews section before Brands (store reviews, hidden when the API fails; never in Product JSON-LD).
+- [x] **Phase 4 — Archive** — done 2026-10-31 (uncommitted). `ArchiveHero` split out; filters, chips, sort and pagination stay in `Archive.tsx`. Range, Colour and In-stock facets removed (no product data behind them). Header / mega menu / mobile nav links back on slugs. Hero image is a dev placeholder until the CMS supplies one. Archive product cards now use the approved mockup treatment with Wishlist and Quickview controls retained.
+  - Hero A on `/shop`, Hero C (no promo) on `/shop/:category`; proper H1 + `document.title`.
+  - All filter / sort / view / page state in the URL (back-button safe); 24 per page with numbered pages (client-side first; server pagination needs plugin params).
+  - Category match by slug subtree (fixes "Hand Tools" substring over-match); Offer facet lists only types with matches; verify/remove the no-op Colour and Range facets.
+- [x] **Phase 5 — Product** — done 2026-10-31 (uncommitted). Then matched to the mockup (Phase 5b): `FulfilmentChooser` radio cards + rates drawer, specs table / key specs parsed from the description HTML, product-page `railCard`. Pricing/cart/fulfilment logic untouched. Placeholder video still served by the plugin; the storefront ignores it. Follow-ups: `FulfillmentBlock.tsx` + `FulfillmentTiles.tsx` are now unused (delete on approval); structured specs from the plugin would replace storefront parsing; header "Collect from" chip + Deals button from the mockup not built.
+  - Layout B: wide gallery, sticky buy panel, content + "Perfect match with" flow in the left column.
+  - Delivery / Collect chooser using the existing quote logic (`FulfillmentBlock`, `DeliveryLocationModal`, Bob Go rates); Returns + Warranty only in the Delivery & returns accordions.
+  - Product + BreadcrumbList JSON-LD, per-product title, labelled qty stepper, `aria-live` updates; ignore the placeholder video until the plugin fallback is removed.
+- [ ] **Account page (Option A)** — plan: [design/account-page-implementation-plan.md](design/account-page-implementation-plan.md) (Phase 0 P0 fixes → shell/dashboard → orders + `/account/orders/:orderNumber` → other tabs → server-side default address → QA). Mockup: `docs/mockups/account-dashboard/option-a-command-centre.html`.
+- [ ] **Phase 6 — QA + release**: full route regression (cart, checkout, account), Lighthouse, update `docs/` + CHANGELOG, release to preview; production only on request.
 
 ## Ideas backlog
 

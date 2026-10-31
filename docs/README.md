@@ -9,6 +9,9 @@ Index of project documentation. **Start at the root [README](../README.md)** —
 | [OPERATIONS.md](OPERATIONS.md) | Environments, Vercel, Cloudflare, Cloudways/Imunify, plugin deploys, local dev, performance baseline |
 | [ROADMAP.md](ROADMAP.md) | Urgent issues, launch checklist, open work, ideas |
 | [../CHANGELOG.md](../CHANGELOG.md) | Change history + how to write entries |
+| [design/belims-design-tokens.md](design/belims-design-tokens.md) | Design tokens (mirrors `frontend/index.css`) and home component specs |
+| [audits/](audits/) | Page redesign audits, including the Account Dashboard audit. |
+| [mockups/](mockups/) | Static HTML mockups (Industrial + brand): `home/`, `shop-product/` (archive + product, real-data snapshot in `data.js`), `header/` (selected header = `site-header.*`; options A/B/C kept), `footer/` (option C is ported; A/B remain alternatives), and `account-dashboard/` (`AUDIT.md`, three options A/B/C with Default / Loading / Empty / Trade states, `index.html` comparison, anonymised `data.json`; earlier concept set archived in `prior/`). Shared `theme.css`. Open the files directly. |
 | [archive/](archive/README.md) | Superseded plans and notes — reference only |
 
 Plugin docs live with each plugin:
