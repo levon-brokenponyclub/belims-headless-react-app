@@ -456,11 +456,6 @@ export const Header: React.FC<HeaderProps> = ({
     closeDeliveryPopover();
   };
 
-  const handleSavePostalCode = (address: ShippingAddress) => {
-    handleAddressSelect(address);
-    closeDeliveryPopover();
-  };
-
   const pillAddressLine = useMemo(() => {
     if (deliveryAddress) {
       // Guest postal-code-only location: "4001, Glenwood"
@@ -784,7 +779,6 @@ export const Header: React.FC<HeaderProps> = ({
                 onClose={closeDeliveryPopover}
                 onDismiss={dismissDeliveryPopover}
                 onAddDetails={handleAddDeliveryDetails}
-                onSavePostalCode={handleSavePostalCode}
                 onSelectSavedAddress={handleSelectSavedAddress}
               />
             </div>
@@ -1048,7 +1042,6 @@ export const Header: React.FC<HeaderProps> = ({
             onClose={closeDeliveryPopover}
             onDismiss={dismissDeliveryPopover}
             onAddDetails={handleAddDeliveryDetails}
-            onSavePostalCode={handleSavePostalCode}
             onSelectSavedAddress={handleSelectSavedAddress}
           />
 

@@ -192,6 +192,13 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-10-31 — Delivery details popover
+
+### frontend/components/DeliveryDetailsPopover.tsx, Header.tsx
+- Popover redesigned: signed-out or no saved address → availability copy, **Do this later** + **Add delivery details** (→ `/delivery-details/add-address`) and, for guests, a "Log in to see your saved addresses" link (→ `/login`). Signed in with saved addresses → saved list and a single **Add new address** button (no "Do this later").
+- Removed the guest postal-code form and "Use my location" from the popover (location now lives on the add-address page); dropped `onSavePostalCode` / `handleSavePostalCode`.
+- Verified: `npm run build`; guest state checked on `localhost:4173`. Signed-in states not checked (needs a login).
+
 ## 2026-10-31 — Header menu bar (option A) and add-address flow
 
 ### frontend/components/Header.tsx
