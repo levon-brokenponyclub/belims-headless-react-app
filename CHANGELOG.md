@@ -192,6 +192,12 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-10-31 — Preview build reads staging homepage content
+
+### frontend/vite.config.ts
+- The build-time homepage fetch (`GET /belims/v1/homepage`) always used `cms.belims.co.za`, while the preview site reads the **staging** CMS at runtime (`vercel.json` rewrite for `belims.vercel.app`). Homepage saves made on staging (hero eyebrow, Top Categories cards) therefore never reached https://belims.vercel.app, even though the deploy hook fired. Builds on branch `main` (`VERCEL_GIT_COMMIT_REF`) now fetch from the staging CMS; the `vercel` branch keeps `VITE_CMS_URL` / production. `HOMEPAGE_CMS_URL` overrides both.
+- Verified: local build with `VERCEL_GIT_COMMIT_REF=main` logs the staging URL and bakes the saved eyebrow and card text; the Vercel build log of `880a6f7` showed `cms.belims.co.za` (v7746372cee62, no `top_categories`).
+
 ## 2026-10-31 — Home/Archive restyle, Top Categories CMS cards, Global Site Settings 2.10.14
 
 Why: match the approved home mockup (hero, product card, Top categories) and the new Archive sort list.

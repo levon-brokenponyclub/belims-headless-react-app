@@ -7,6 +7,10 @@ export default defineConfig(({ mode }) => {
   // Load environment variables
   const env = loadEnv(mode, process.cwd(), "");
   const cmsUrl = env.VITE_CMS_URL || "https://cms.belims.co.za";
+  // Homepage content is baked in at build time. The preview site (branch `main`) reads the staging CMS at runtime
+  // (vercel.json rewrite), so its build must read staging too — otherwise saves made on staging never show up.
+  const STAGING_CMS_URL = "https://wordpress-1482444-6707114.cloudwaysapps.com";
+  const homepageCmsUrl = env.HOMEPAGE_CMS_URL || (process.env.VERCEL_GIT_COMMIT_REF === "main" ? STAGING_CMS_URL : cmsUrl);
 
   return {
     base: "/",
@@ -33,7 +37,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
-      homepagePlugin({ cmsUrl, transforms: env.VITE_CF_IMAGE_TRANSFORMS === "true" }),
+      homepagePlugin({ cmsUrl: homepageCmsUrl, transforms: env.VITE_CF_IMAGE_TRANSFORMS === "true" }),
       {
         name: "dev-api-mock-stub",
         configureServer(server) {
