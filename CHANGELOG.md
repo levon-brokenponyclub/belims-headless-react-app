@@ -192,6 +192,12 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Google reviews: hide below 4 stars
+
+### frontend/components/BelimsReviews.tsx
+- The home "What customers say" carousel only shows reviews rated 4 stars or higher (`MIN_REVIEW_RATING`); the filter runs before the `limit` slice so the carousel still fills. The aggregate rating and "Based on N Google reviews" line are Google's totals and are unchanged. The section hides itself if no review qualifies.
+- Verified: `npm run build`.
+
 ## 2026-11-01 — Footer refactor (ecommerce-footer9 layout)
 
 ### frontend/components/Footer.tsx

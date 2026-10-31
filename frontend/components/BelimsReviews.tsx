@@ -19,6 +19,8 @@ interface ReviewsPayload {
   reviews: GoogleReview[];
 }
 
+const MIN_REVIEW_RATING = 4;
+
 function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
     <span className="flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
@@ -137,7 +139,8 @@ export const BelimsReviews: React.FC<BelimsReviewsProps> = ({
     return () => controller.abort();
   }, []);
 
-  const reviews = data?.reviews.slice(0, limit) ?? [];
+  // Only 4- and 5-star reviews are shown on the storefront.
+  const reviews = data?.reviews.filter((review) => review.rating >= MIN_REVIEW_RATING).slice(0, limit) ?? [];
 
   if (!loading && reviews.length === 0) return null;
 
