@@ -50,7 +50,8 @@ import { AccountPage } from "./components/AccountPage";
 import { WishlistPage } from "./components/WishlistPage";
 import { CartPage } from "./components/CartPage";
 import { AuthModal } from "./components/AuthModal";
-import { Toast } from "./components/Toast";
+import { ToastStack } from "./components/Toast";
+import { pushToast, ToastOptions, ToastType } from "./utils/toast";
 import { CookieConsent } from "./components/CookieConsent";
 import { Skeleton, SkeletonLine, SkeletonImage } from "./components/Skeleton";
 import HeroBanner from "./components/HeroBanner";
@@ -744,10 +745,6 @@ export default function App() {
   const [categoryPills, setCategoryPills] = useState<string[]>(CATEGORY_PILLS);
   const hasCheckedAuthRef = useRef(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
   const [cartOrderNote, setCartOrderNote] = useState("");
   const [cartCoupon, setCartCoupon] = useState<{ code: string; discount_type: string; amount: string } | null>(null);
   const hasLoadedProductsRef = useRef(false);
@@ -1057,7 +1054,7 @@ export default function App() {
     loadProducts();
   }, []);
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: Product, options?: { silent?: boolean }) => {
     // Guard: block backorder products and zero/invalid prices
     if (product.stock_status === "onbackorder") {
       console.warn("[addToCart] Blocked: product is on backorder", product.id);
@@ -1083,11 +1080,16 @@ export default function App() {
       }
       return [...prev, { ...product, quantity: 1 }];
     });
-    setIsCartOpen(true);
+    if (!options?.silent) {
+      pushToast("Added to cart", "success", {
+        detail: product.name,
+        action: { label: "View cart", onClick: () => setIsCartOpen(true) },
+      });
+    }
   };
 
   const handleBuyNow = (product: Product) => {
-    addToCart(product);
+    addToCart(product, { silent: true });
     setTimeout(() => setIsCartOpen(true), 100);
   };
 
@@ -1138,8 +1140,8 @@ export default function App() {
     if (comparisonList.length <= 1) setIsCompareOpen(false);
   };
 
-  const showToast = (message: string, type: "success" | "error") => {
-    setToast({ message, type });
+  const showToast = (message: string, type: ToastType, options?: ToastOptions) => {
+    pushToast(message, type, options);
   };
 
   const handleLogin = (user: UserData) => {
@@ -1150,7 +1152,7 @@ export default function App() {
     try {
       await logoutUser();
       setCurrentUser(null);
-      showToast("Successfully logged out", "success");
+      showToast("Signed out", "success", { detail: "See you again soon" });
     } catch (error) {
       showToast("Error logging out", "error");
     }
@@ -1198,8 +1200,6 @@ export default function App() {
         currentUser={currentUser}
         setCurrentUser={setCurrentUser}
         showToast={showToast}
-        toast={toast}
-        setToast={setToast}
         handleLogin={handleLogin}
         handleLogout={handleLogout}
         onCartSaveOrderNote={(note: string) => setCartOrderNote(note)}
@@ -1645,13 +1645,7 @@ function MainApp(props) {
         </div>
       )}
 
-      {props.toast && (
-        <Toast
-          message={props.toast.message}
-          type={props.toast.type}
-          onClose={() => props.setToast(null)}
-        />
-      )}
+      <ToastStack />
 
       {!isCheckoutRoute && !SHOW_COMING_SOON && (
         <>

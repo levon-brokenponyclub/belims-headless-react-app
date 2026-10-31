@@ -1,3 +1,5 @@
+import { pushToast } from "../utils/toast";
+
 const STORAGE_KEY = "belims_wishlist";
 
 export interface WishlistItem {
@@ -23,18 +25,26 @@ export const getWishlist = (): WishlistItem[] => {
 export const isInWishlist = (productId: number): boolean =>
   getWishlist().some((item) => item.id === productId);
 
-export const addToWishlist = (item: WishlistItem): void => {
+export const addToWishlist = (item: WishlistItem, options: { silent?: boolean } = {}): void => {
   const list = getWishlist();
   if (!list.some((i) => i.id === item.id)) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...list, item]));
     window.dispatchEvent(new Event("belims:wishlist-updated"));
+    if (!options.silent) pushToast("Added to wishlist", "success", { detail: item.name });
   }
 };
 
 export const removeFromWishlist = (productId: number): void => {
+  const removed = getWishlist().find((i) => i.id === productId);
   const list = getWishlist().filter((i) => i.id !== productId);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   window.dispatchEvent(new Event("belims:wishlist-updated"));
+  if (removed) {
+    pushToast("Removed from wishlist", "info", {
+      detail: removed.name,
+      action: { label: "Undo", onClick: () => addToWishlist(removed, { silent: true }) },
+    });
+  }
 };
 
 export const toggleWishlist = (item: WishlistItem): boolean => {

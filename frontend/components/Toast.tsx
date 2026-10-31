@@ -1,46 +1,88 @@
-import React, { useEffect } from "react";
-import { CheckCircle, X, AlertCircle } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
+import { TOAST_EVENT, ToastItem, ToastType } from "../utils/toast";
 
-interface ToastProps {
-  message: string;
-  type: "success" | "error";
-  onClose: () => void;
-  duration?: number;
-}
+const MAX_VISIBLE = 3;
+const DEFAULT_DURATION = 4000;
 
-export const Toast: React.FC<ToastProps> = ({
-  message,
-  type,
-  onClose,
-  duration = 4000,
-}) => {
+const TYPE_STYLES: Record<ToastType, { accent: string; icon: React.ReactNode }> = {
+  success: { accent: "border-l-stock-ok text-stock-ok", icon: <CheckCircle2 size={20} aria-hidden /> },
+  error: { accent: "border-l-primary text-primary", icon: <AlertCircle size={20} aria-hidden /> },
+  info: { accent: "border-l-belims-blue text-belims-blue", icon: <Info size={20} aria-hidden /> },
+};
+
+const ToastCard: React.FC<{ toast: ToastItem; onClose: (id: number) => void }> = ({ toast, onClose }) => {
+  const [paused, setPaused] = useState(false);
+  const { id, duration = DEFAULT_DURATION } = toast;
+
   useEffect(() => {
-    const timer = setTimeout(onClose, duration);
-    return () => clearTimeout(timer);
-  }, [duration, onClose]);
+    if (paused) return;
+    const timer = window.setTimeout(() => onClose(id), duration);
+    return () => window.clearTimeout(timer);
+  }, [paused, id, duration, onClose]);
 
-  const isSuccess = type === "success";
+  const { accent, icon } = TYPE_STYLES[toast.type];
 
   return (
     <div
-      className={`fixed bottom-4 right-4 z-[9999] flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[320px] max-w-md animate-slide-in ${
-        isSuccess
-          ? "bg-green-50 border-green-200 text-green-800"
-          : "bg-red-50 border-red-200 text-red-800"
-      }`}
+      role={toast.type === "error" ? "alert" : "status"}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      className={`pointer-events-auto flex items-start gap-3 rounded-md border-2 border-l-4 border-border bg-white p-3 animate-toast-in ${accent.split(" ")[0]}`}
     >
-      {isSuccess ? (
-        <CheckCircle size={20} className="flex-shrink-0" />
-      ) : (
-        <AlertCircle size={20} className="flex-shrink-0" />
-      )}
-      <p className="text-sm font-medium flex-1">{message}</p>
+      <span className={`mt-0.5 flex-shrink-0 ${accent.split(" ")[1]}`}>{icon}</span>
+      <div className="min-w-0 flex-1 text-text">
+        <p className="text-base font-bold leading-snug">{toast.message}</p>
+        {toast.detail && <p className="mt-0.5 truncate text-caption text-text-secondary">{toast.detail}</p>}
+        {toast.action && (
+          <button
+            type="button"
+            onClick={() => {
+              toast.action?.onClick();
+              onClose(id);
+            }}
+            className="mt-1.5 text-caption font-bold uppercase tracking-wide text-belims-blue underline underline-offset-4 hover:text-primary"
+          >
+            {toast.action.label}
+          </button>
+        )}
+      </div>
       <button
-        onClick={onClose}
-        className="flex-shrink-0 hover:opacity-70 transition-opacity"
+        type="button"
+        onClick={() => onClose(id)}
+        aria-label="Dismiss notification"
+        className="flex-shrink-0 text-text-tertiary transition-colors hover:text-text"
       >
         <X size={16} />
       </button>
+    </div>
+  );
+};
+
+export const ToastStack: React.FC = () => {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const close = useCallback((id: number) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
+
+  useEffect(() => {
+    const onToast = (e: Event) => {
+      const item = (e as CustomEvent<ToastItem>).detail;
+      setToasts((prev) => [...prev, item].slice(-MAX_VISIBLE));
+    };
+    window.addEventListener(TOAST_EVENT, onToast);
+    return () => window.removeEventListener(TOAST_EVENT, onToast);
+  }, []);
+
+  if (toasts.length === 0) return null;
+
+  return (
+    <div
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-4 bottom-4 z-[9999] flex flex-col gap-2 md:inset-x-auto md:right-4 md:w-[380px]"
+    >
+      {toasts.map((toast) => (
+        <ToastCard key={toast.id} toast={toast} onClose={close} />
+      ))}
     </div>
   );
 };

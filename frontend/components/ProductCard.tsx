@@ -1,5 +1,5 @@
 // ProductCard.tsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -12,6 +12,7 @@ import { formatCurrency, isProductPurchasable } from "../utils/price";
 import { buildProductUrl } from "../utils/product";
 import { CARD_IMAGE_SIZES, CARD_IMAGE_WIDTHS, cmsImage, cmsSrcSet } from "../utils/image";
 import { QuickView } from "./QuickView";
+import { Spinner } from "./Spinner";
 import {
   getWishlist,
   toggleWishlist,
@@ -81,6 +82,8 @@ export const createProductCardCustomizations = (
 const brandOrCategory = (product: Product) => product.brand || product.category || "";
 
 // One card look everywhere; presets only choose which elements show.
+const ADD_TO_CART_SPINNER_MS = 450;
+
 export const PRODUCT_CARD_PRESETS: Record<
   "compactCard" | "archiveCard" | "railCard" | "searchCard" | "perfectMatchCard",
   ProductCardCustomizations
@@ -125,6 +128,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [shouldRenderQuickView, setShouldRenderQuickView] = useState(false);
   const [isQuickViewClosing, setIsQuickViewClosing] = useState(false);
   const [isQuickViewOpening, setIsQuickViewOpening] = useState(false);
+
+  // Same minimum "Adding..." state as the SingleProduct button.
+  const [isAdding, setIsAdding] = useState(false);
+  const addingTimerRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (addingTimerRef.current) window.clearTimeout(addingTimerRef.current);
+    },
+    [],
+  );
 
   // Wishlist state tracking
   const [isWishlisted, setIsWishlisted] = useState<boolean>(() =>
@@ -332,6 +345,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     addToCart(p);
   };
 
+  const handleAddToCartClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isAdding) return;
+    setIsAdding(true);
+    addWithPriceMode(isTradeSpecial ? "trade" : "retail");
+    addingTimerRef.current = window.setTimeout(() => setIsAdding(false), ADD_TO_CART_SPINNER_MS);
+  };
+
   const quickViewId = `QuickView-${product.id}`;
 
   const actionHelpers: ProductCardActionHelpers = {
@@ -514,14 +536,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {product.stock > 0 ? (
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                addWithPriceMode(isTradeSpecial ? "trade" : "retail");
-              }}
-              className="mt-2 flex h-10 w-full items-center justify-center rounded-md bg-secondary px-3 font-heading font-condensed text-button font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary"
+              onClick={handleAddToCartClick}
+              disabled={isAdding}
+              className="mt-2 flex h-10 w-full items-center justify-center rounded-md bg-secondary px-3 font-heading font-condensed text-button font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary disabled:opacity-50"
             >
-              Add to cart
+              <span className="flex items-center justify-center gap-2 [&>[data-icon=inline-start]]:-ml-0.5">
+                {isAdding ? (
+                  <>
+                    <Spinner data-icon="inline-start" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add to cart"
+                )}
+              </span>
             </button>
           ) : (
             <button

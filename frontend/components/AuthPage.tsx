@@ -58,6 +58,11 @@ const orDivider = (
   </div>
 );
 
+const welcomeDetail = (user: { first_name?: string; display_name?: string } | undefined, greeting: string) => {
+  const name = user?.first_name || user?.display_name;
+  return name ? `${greeting}, ${name}` : undefined;
+};
+
 export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, layout = "page", onSwitchMode, onClose }) => {
   const navigate = useNavigate();
   const isRegisterMode = mode === "register";
@@ -130,7 +135,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
       const { idToken, email, displayName } = await signInWithGoogle();
       const result = await loginWithFirebaseGoogle(idToken, email, displayName);
       onSuccess(result.user);
-      showToast(result.message || "Signed in with Google!", "success");
+      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome back") });
       postSuccess();
     } catch (err: any) {
       const msg = err?.message || "Google sign-in failed. Please try again.";
@@ -148,7 +153,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
       const { idToken, email, displayName } = await signInWithFacebook();
       const result = await loginWithFirebaseGoogle(idToken, email, displayName);
       onSuccess(result.user);
-      showToast(result.message || "Signed in with Facebook!", "success");
+      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome back") });
       postSuccess();
     } catch (err: any) {
       const msg = err?.message || "Facebook sign-in failed. Please try again.";
@@ -217,7 +222,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
         } catch { /* non-fatal — account still created */ }
       }
       onSuccess(result.user);
-      showToast(result.message || "Account created successfully!", "success");
+      showToast("Account created", "success", { detail: welcomeDetail(result.user, "Welcome to Belims") });
       postSuccess();
     } catch (err: any) {
       const msg = err?.message || "Something went wrong. Please try again.";
@@ -237,7 +242,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
     try {
       const result = await loginUser({ email, password });
       onSuccess(result.user);
-      showToast(result.message || "Welcome back!", "success");
+      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome back") });
       postSuccess();
     } catch (err: any) {
       const errorMsg = err?.message || "Something went wrong. Please try again.";
@@ -291,7 +296,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
       if (!idToken) throw new Error("Could not retrieve authentication token.");
       const result = await loginWithFirebasePhone(idToken, confirmedPhone.trim());
       onSuccess(result.user);
-      showToast(result.message || "Welcome!", "success");
+      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome") });
       postSuccess();
     } catch (err: any) {
       setPhoneError(err?.message || "Invalid code. Please try again.");

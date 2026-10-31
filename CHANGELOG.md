@@ -192,6 +192,23 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Toasts polish, add-to-cart toast, card "Adding..." state
+
+### frontend/utils/toast.ts (new), components/Toast.tsx, App.tsx, index.css
+- `Toast` replaced by `ToastStack`: stacked queue (max 3), flat card with accent bar and icon per type (success / error / info), optional detail line and action button, pause-on-hover, 4s auto-dismiss, bottom-right (desktop) / full-width bottom (mobile).
+- `pushToast(message, type, { detail, action, duration })` fires a toast from anywhere (event bus); `showToast` in `App.tsx` now delegates to it (signature widened, existing callers unchanged).
+- Sign in / sign up / sign out copy standardised: "Signed in successfully" (+ "Welcome back, {first name}"), "Account created", "Signed out".
+
+### frontend/services/wishlistService.ts
+- Toasts for every add ("Added to wishlist") and remove ("Removed from wishlist" with **Undo**), so ProductCard, SingleProduct, CartPage, WishlistPage and account WishlistView all get them.
+
+### frontend/App.tsx
+- `addToCart` no longer opens the cart drawer; it shows "Added to cart" with a **View cart** action. Buy Now still opens the cart.
+
+### frontend/components/ProductCard.tsx
+- Add to cart button shows the same 450ms "Adding..." spinner state as SingleProduct.
+- Verified: `npm run build`; on `localhost:4173/shop` add to cart shows the Adding state, no drawer, toast; wishlist toast stacks. Login/logout toasts and Undo not exercised (need a login).
+
 ## 2026-10-31 — Delivery popover: edit saved addresses
 
 ### frontend/components/DeliveryDetailsPopover.tsx, Header.tsx
