@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Drawer } from "./Drawer";
 import { AuthModal } from "./AuthModal";
 import { UserData } from "../services/authService";
@@ -49,7 +50,7 @@ const navLinks = [
   },
   {
     label: "Help Centre",
-    to: "#",
+    to: "/faq",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
@@ -85,12 +86,17 @@ export const WelcomeDrawer: React.FC<WelcomeDrawerProps> = ({
   setCurrentUser,
   showToast,
 }) => {
+  const navigate = useNavigate();
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const handleNavClick = (link: (typeof navLinks)[number]) => {
-    if (!link.wired) return;
-    onClose();
-    setAuthModalOpen(true);
+    if (link.wired) {
+      onClose();
+      setAuthModalOpen(true);
+    } else if (link.to.startsWith("/") && link.to !== "/login") {
+      onClose();
+      navigate(link.to);
+    }
   };
 
   return (

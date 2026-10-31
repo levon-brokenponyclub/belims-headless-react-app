@@ -42,6 +42,7 @@ import { CategoryGrid } from "./components/CategoryGrid";
 import { ShopByDepartment } from "./components/ShopByDepartment";
 import { useHomeCategories } from "./hooks/useHomeCategories";
 import { TrackOrderPage } from "./components/TrackOrderPage";
+import { FaqPage } from "./components/FaqPage";
 import { BrandStrip } from "./components/BrandStrip";
 import { BelimsReviews } from "./components/BelimsReviews";
 import { AuthPage } from "./components/AuthPage";
@@ -1468,6 +1469,7 @@ function MainApp(props) {
               element={<DeliveryDetailsAddAddress />}
             />
             <Route path="/track-order" element={<TrackOrderPage />} />
+            <Route path="/faq" element={<FaqPage />} />
             <Route path="/order-confirmation" element={<OrderConfirmation />} />
             <Route
               path="/admin/order-preview"
@@ -1515,7 +1517,7 @@ function MainApp(props) {
       </main>
 
       {!isCheckoutRoute && !SHOW_COMING_SOON && (
-        <Footer onSelectStore={() => props.setIsLocatorOpen(true)} />
+        <Footer />
       )}
 
       {/* <FreeShippingWidget cartItems={props.cartItems} /> */}

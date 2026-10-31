@@ -192,6 +192,24 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Footer refactor (ecommerce-footer9 layout)
+
+### frontend/components/Footer.tsx
+- Main block restyled after shadcnblocks ecommerce-footer9, keeping the brand-blue background: logo, tagline and contact details on the left; on the right three link columns with bold sentence-case headings and roomier link spacing, plus a fourth "Follow us" column with round red social icons to the right of Policies & support (icons moved out of the bottom bar); hairline divider, then copyright (left) and payment badges (right). Removes the separate dark bottom bar.
+- Refactor: link columns, payment badges, the shared link class and `FooterLink` are now data-driven (about 80 fewer lines). Link data and the CTA band + `TrustStrip` above are unchanged. Main grid is `minmax(260px,1fr) 3fr`; the "Select a store" link (and the `onSelectStore` prop) is removed. Social links are still `#` placeholders.
+- Verified: `npm run build`; desktop layout on `localhost:4173/faq`. Mobile width not checked.
+
+## 2026-11-01 — FAQ page, auth modal above cookie banner
+
+### frontend/components/FaqPage.tsx (new), App.tsx, Footer.tsx, WelcomeDrawer.tsx
+- New `/faq` page modelled on shadcnblocks faq12: centred heading, sticky category list (Delivery & collection, Returns, Warranty, plus a Contact `mailto:info@belims.co.za` link) and one bordered card of accordion questions per category. List highlights the active category while scrolling (`IntersectionObserver`); links jump via `/faq#delivery`, `/faq#returns`, `/faq#warranty` (handled by the existing hash scroll in `ScrollToTop`). Stacks on mobile.
+- **Placeholder copy** — replace with Site Settings → Ecommerce policies when final text is ready.
+- Footer "Policies & support" links now go to `/faq#…`; Help Centre in the Welcome drawer opens `/faq`.
+
+### frontend/components/AuthModal.tsx
+- Modal renders through a portal into `<body>`. It sat inside the sticky header's stacking context (`z-[1200]`), so the cookie banner (`z-[1300]`) covered it.
+- Verified: `npm run build`; `/faq` layout, hash jump and scroll highlight, and the sign-in modal over the cookie banner on `localhost:4173`. Mobile width not checked.
+
 ## 2026-11-01 — Auth modal and form refactor
 
 ### frontend/components/auth/authFields.tsx (new), AuthPage.tsx, AuthModal.tsx

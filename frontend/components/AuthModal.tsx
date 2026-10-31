@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { AuthPage } from "./AuthPage";
 import { UserData } from "../services/authService";
@@ -65,7 +66,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  // Portal to <body>: inside the sticky header's stacking context the modal sat below the cookie banner.
+  return createPortal(
     <div className="fixed inset-0 z-[2000] flex items-end justify-center sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
 
@@ -98,6 +100,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
