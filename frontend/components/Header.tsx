@@ -176,8 +176,12 @@ export const Header: React.FC<HeaderProps> = ({
   const [isCondensed, setIsCondensed] = useState(false);
 
   useEffect(() => {
-    // setState bails out when the boolean is unchanged, so no throttle is needed.
-    const onScroll = () => setIsCondensed(window.scrollY > 80);
+    // Hysteresis, not a single threshold: condensing removes ~73px of header height and the browser
+    // (scroll anchoring) shifts scrollY by about that much. The gap between the two thresholds must exceed
+    // that shift or the header flips back and forth while scrolling. setState bails out when unchanged.
+    const CONDENSE_AT = 150;
+    const EXPAND_AT = 40;
+    const onScroll = () => setIsCondensed((condensed) => (condensed ? window.scrollY > EXPAND_AT : window.scrollY > CONDENSE_AT));
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);

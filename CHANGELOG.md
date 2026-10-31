@@ -192,6 +192,36 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-10-31 — Header: fix flicker while scrolling
+
+### frontend/components/Header.tsx
+- The desktop header condensed at a single `scrollY > 80` threshold. Condensing removes ~73px of header height (sub-nav row + shorter main row) and the browser's scroll anchoring then shifts `scrollY` by about that much, back across the threshold, so the header flipped between condensed and expanded while scrolling.
+- Now uses hysteresis: condense above 150px, expand below 40px (gap larger than the height change).
+
+### Verified
+- `vite preview`: a slow down-and-up scroll sweep through the zone produced exactly one condense and one expand (flips triggered at ~152 and ~40px; the page then settled ~55px away from those via scroll anchoring); jittering between 60 and 120px produced 0 flips, expanded or condensed. Header height 171px expanded, 99px condensed.
+
+---
+
+## 2026-10-31 — Track Order: complete data, flat layout, all states
+
+Audit: [docs/audits/track-order-audit.md](docs/audits/track-order-audit.md) (data table, UI table, raw `UASSNTHC` response). Frontend only; the plugin is unchanged.
+
+### frontend/components/TrackingProgressCard.tsx (rewritten), TrackOrderPage.tsx (rewritten), services/tracking.ts (types + date helpers)
+- **Data now shown:** Created time, every step time (from Bob Go's `tracking_steps`, falling back to `shipment_movement_events`), event message / location, events grouped by date, courier phone, service level, order number, estimated delivery range, pickup-point details. Nothing is shown as "—". Staff names in manual-override messages are relabelled "Updated by Belims team".
+- **Dates:** en-ZA, 24 h, Africa/Johannesburg, "5 Oct 2026, 21:26"; Safari-safe parsing of Bob Go's space-separated timestamps.
+- **Stepper:** connected progress track, `stage` from the API (skipped steps shown completed), Delivered = strongest state, vertical on mobile, `<ol>` with `aria-current`.
+- **States:** skeleton, not found, error + Retry, refresh failure, invalid input, delivered / delivery-problem / returned banners; unknown statuses no longer shown as "Pending collection".
+- **Layout:** flat two-column desktop (events left, summary right); order link, items and total for the signed-in customer's matching order; several shipments selectable.
+- **Behaviour:** refresh and polling stop on terminal statuses; switch-role auto-refresh; live-region announcements instead of `alert()`; page title and `noindex`.
+
+### Verified
+- `npm run build` OK; no new type errors (16 repo-wide, unchanged).
+- `vite preview` with the track endpoint stubbed in-page using the real staging payloads for `UASSNTHC` and `UASSBNJ9` plus mutated variants (the local origin can't call the staging CMS — CORS): `UASSNTHC` matches the Bob Go page for Created 20:54, Collected 21:09, Delivered 21:26, event titles / times and the date heading; in transit, failed delivery, returned, ready-for-pickup (pickup details), multi-shipment, not-found and 500 states render; validation, form lookup, focus and announcements, sort toggle, refresh, refresh failure, switch, copy link and the signed-in order context all work. At 375 px no overflow, 13 px minimum text, no target under 44 px. No screenshots taken (per the brief).
+- Not verified live: any status other than delivered / pending (no sandbox references), multi-shipment orders, pickup points.
+
+---
+
 ## 2026-10-31 — Product page: fulfilment chooser polish, one-column overview, typography pass
 
 ### frontend/components/FulfilmentChooser.tsx

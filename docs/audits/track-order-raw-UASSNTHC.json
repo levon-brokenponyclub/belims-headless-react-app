@@ -1,0 +1,230 @@
+{
+ "_note": "Raw POST belims/v1/track {trackingRef:'UASSNTHC'} against the staging CMS (wordpress-1482444-6707114.cloudwaysapps.com), captured 2026-10-31. Staff member's name in event messages anonymised to [staff name]. The production CMS (cms.belims.co.za) returns 'Shipment ... not found' for this reference because it is a Bob Go sandbox shipment.",
+ "response": {
+  "success": true,
+  "trackingRef": "UASSNTHC",
+  "status": "Delivered",
+  "eta": "",
+  "events": [
+   {
+    "label": "",
+    "status": null,
+    "time": null,
+    "location": null,
+    "raw": {
+     "step_number": 2,
+     "label": "Collected",
+     "stage": "done",
+     "time": "2026-10-05 19:09:11+00:00",
+     "image": "https://ik.imagekit.io/z1viz85yxs/prod-v3/shipment-tracking-email-images/check-circle-100.png",
+     "image_style": "height:28px!important;max-height:28px!important;",
+     "_step_key": "collected"
+    }
+   },
+   {
+    "label": "",
+    "status": null,
+    "time": null,
+    "location": null,
+    "raw": {
+     "step_number": 1,
+     "label": "Created",
+     "stage": "done",
+     "time": "2026-10-05 18:54:52+00:00",
+     "image": "https://ik.imagekit.io/z1viz85yxs/prod-v3/shipment-tracking-email-images/check-circle-100.png",
+     "image_style": "height:28px!important;max-height:28px!important;",
+     "_step_key": "created"
+    }
+   },
+   {
+    "label": "",
+    "status": null,
+    "time": null,
+    "location": null,
+    "raw": {
+     "step_number": 5,
+     "label": "Delivered",
+     "stage": "current",
+     "time": "2026-10-05 19:26:56+00:00",
+     "image": "https://ik.imagekit.io/z1viz85yxs/prod-v3/shipment-tracking-email-images/confetti.png",
+     "image_style": "height:90px!important;max-height:90px!important;",
+     "_step_key": "delivered"
+    }
+   },
+   {
+    "label": "",
+    "status": null,
+    "time": null,
+    "location": null,
+    "raw": {
+     "step_number": 3,
+     "label": "In transit",
+     "stage": "done",
+     "time": "",
+     "image": "https://ik.imagekit.io/z1viz85yxs/prod-v3/shipment-tracking-email-images/check-circle-100.png",
+     "image_style": "height:28px!important;max-height:28px!important;",
+     "_step_key": "in-transit"
+    }
+   },
+   {
+    "label": "",
+    "status": null,
+    "time": null,
+    "location": null,
+    "raw": {
+     "step_number": 4,
+     "label": "Out for delivery",
+     "stage": "done",
+     "time": "",
+     "image": "https://ik.imagekit.io/z1viz85yxs/prod-v3/shipment-tracking-email-images/check-circle-100.png",
+     "image_style": "height:28px!important;max-height:28px!important;",
+     "_step_key": "out-for-delivery"
+    }
+   }
+  ],
+  "raw": [
+   {
+    "id": "UASSNTHC",
+    "shipment_tracking_reference": "UASSNTHC",
+    "status": "delivered",
+    "status_friendly": "Delivered",
+    "courier_slug": "sandbox",
+    "courier_name": "Sandbox Couriers",
+    "courier_phone": "",
+    "courier_logo": "https://ik.imagekit.io/z1viz85yxs/sandbox-v3/provider-logos/sandbox_couriers_logo.png",
+    "service_level": "ECO – Economy",
+    "merchant_logo": "",
+    "merchant_name": "Belims hardware ",
+    "show_branding": true,
+    "bob_go_logo": "https://ik.imagekit.io/z1viz85yxs/prod-v3/bobgo/corporate-identity/bobgo_logo_smart_shipping.png",
+    "bob_go_logo_white": "https://ik.imagekit.io/z1viz85yxs/prod-v3/bobgo/corporate-identity/bobgo_logo_smart_shipping_white.png",
+    "bob_go_logo_black": "https://ik.imagekit.io/z1viz85yxs/prod-v3/bobgo/corporate-identity/bobgo_logo_smart_shipping_black.png",
+    "type": "shipment",
+    "custom_order_name": "5576",
+    "channel_order_number": "5576",
+    "order_number": "5576",
+    "last_checkpoint_time": "",
+    "shipment_time_created": "2026-10-05 18:54:52+00:00",
+    "checkpoints": [
+     {
+      "status": "delivered",
+      "status_friendly": "Delivered",
+      "country": "",
+      "zone": "",
+      "city": "",
+      "zip": "",
+      "location": "",
+      "message": "Manually set by [staff name] ",
+      "time": "2026-10-05 21:26:56+02:00",
+      "time_string": "21:26"
+     },
+     {
+      "status": "collected",
+      "status_friendly": "Collected",
+      "country": "",
+      "zone": "",
+      "city": "",
+      "zip": "",
+      "location": "",
+      "message": "Manually set by [staff name] ",
+      "time": "2026-10-05 21:09:11+02:00",
+      "time_string": "21:09"
+     }
+    ],
+    "grouped_checkpoints": [
+     {
+      "date": "Mon, 5 October 2026",
+      "checkpoints": [
+       {
+        "status": "delivered",
+        "status_friendly": "Delivered",
+        "country": "",
+        "zone": "",
+        "city": "",
+        "zip": "",
+        "location": "",
+        "message": "Manually set by [staff name] ",
+        "time": "2026-10-05 21:26:56+02:00",
+        "time_string": "21:26"
+       },
+       {
+        "status": "collected",
+        "status_friendly": "Collected",
+        "country": "",
+        "zone": "",
+        "city": "",
+        "zip": "",
+        "location": "",
+        "message": "Manually set by [staff name] ",
+        "time": "2026-10-05 21:09:11+02:00",
+        "time_string": "21:09"
+       }
+      ],
+      "className": ""
+     }
+    ],
+    "shipment_movement_events": {
+     "collected_time": "2026-10-05 19:09:11+00:00",
+     "in_transit_time": "",
+     "out_for_delivery_time": "",
+     "ready_for_pickup_time": "",
+     "delivered_time": "2026-10-05 19:26:56+00:00"
+    },
+    "has_ready_for_pickup_status": false,
+    "tracking_steps": {
+     "collected": {
+      "step_number": 2,
+      "label": "Collected",
+      "stage": "done",
+      "time": "2026-10-05 19:09:11+00:00",
+      "image": "https://ik.imagekit.io/z1viz85yxs/prod-v3/shipment-tracking-email-images/check-circle-100.png",
+      "image_style": "height:28px!important;max-height:28px!important;"
+     },
+     "created": {
+      "step_number": 1,
+      "label": "Created",
+      "stage": "done",
+      "time": "2026-10-05 18:54:52+00:00",
+      "image": "https://ik.imagekit.io/z1viz85yxs/prod-v3/shipment-tracking-email-images/check-circle-100.png",
+      "image_style": "height:28px!important;max-height:28px!important;"
+     },
+     "delivered": {
+      "step_number": 5,
+      "label": "Delivered",
+      "stage": "current",
+      "time": "2026-10-05 19:26:56+00:00",
+      "image": "https://ik.imagekit.io/z1viz85yxs/prod-v3/shipment-tracking-email-images/confetti.png",
+      "image_style": "height:90px!important;max-height:90px!important;"
+     },
+     "in-transit": {
+      "step_number": 3,
+      "label": "In transit",
+      "stage": "done",
+      "time": "",
+      "image": "https://ik.imagekit.io/z1viz85yxs/prod-v3/shipment-tracking-email-images/check-circle-100.png",
+      "image_style": "height:28px!important;max-height:28px!important;"
+     },
+     "out-for-delivery": {
+      "step_number": 4,
+      "label": "Out for delivery",
+      "stage": "done",
+      "time": "",
+      "image": "https://ik.imagekit.io/z1viz85yxs/prod-v3/shipment-tracking-email-images/check-circle-100.png",
+      "image_style": "height:28px!important;max-height:28px!important;"
+     }
+    },
+    "show_pickup_point_details": false,
+    "show_pickup_point_details_instructions": false,
+    "pickup_point_header": "",
+    "pickup_point_location_type": "",
+    "pickup_point_instructions": null,
+    "pickup_point_provider_name": "",
+    "pickup_point_provider_logo": "",
+    "service_level_delivery_type": "door",
+    "shipment_earliest_delivery_date": "",
+    "shipment_estimated_delivery_date_to": "",
+    "shipment_estimated_delivery_date_from": ""
+   }
+  ]
+ }
+}

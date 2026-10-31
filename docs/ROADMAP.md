@@ -104,6 +104,7 @@ Rules for every phase: inspect before editing · pricing/deal logic (`dealServic
   - Layout B: wide gallery, sticky buy panel, content + "Perfect match with" flow in the left column.
   - Delivery / Collect chooser using the existing quote logic (`FulfillmentBlock`, `DeliveryLocationModal`, Bob Go rates); Returns + Warranty only in the Delivery & returns accordions.
   - Product + BreadcrumbList JSON-LD, per-product title, labelled qty stepper, `aria-live` updates; ignore the placeholder video until the plugin fallback is removed.
+- [x] **Track Order** — 2026-10-31 (uncommitted): complete tracking data, flat layout, all states; see [audits/track-order-audit.md](audits/track-order-audit.md). Deferred: plugin 404 for unknown references, live tests of in-transit / failed / multi-shipment.
 - [ ] **Account page (Option A)** — plan: [design/account-page-implementation-plan.md](design/account-page-implementation-plan.md) (Phase 0 P0 fixes → shell/dashboard → orders + `/account/orders/:orderNumber` → other tabs → server-side default address → QA). Mockup: `docs/mockups/account-dashboard/option-a-command-centre.html`.
 - [ ] **Phase 6 — QA + release**: full route regression (cart, checkout, account), Lighthouse, update `docs/` + CHANGELOG, release to preview; production only on request.
 

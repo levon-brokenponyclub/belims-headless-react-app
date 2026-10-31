@@ -1,667 +1,640 @@
 // frontend/components/TrackingProgressCard.tsx
-import React, { useMemo, useState } from "react";
+// Track Order result: model (normalisation of the Bob Go payload) + presentation (header, stepper, summary, timeline).
+import React, { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  Package,
-  Truck,
-  Route as RouteIcon,
-  MapPin,
+  AlertTriangle,
   CheckCircle2,
-  RefreshCcw,
+  Circle,
   Copy,
-  Sparkles,
-  TimerReset,
+  MapPin,
+  Package,
+  Phone,
+  RefreshCcw,
+  Route as RouteIcon,
+  Store,
+  Truck,
+  Mail,
 } from "lucide-react";
-import type { ShipmentRaw, TrackResponse } from "../services/tracking";
+import type { Order } from "../types";
+import type { ShipmentCheckpoint, ShipmentRaw, TrackResponse } from "../services/tracking";
+import {
+  formatTrackingDate,
+  formatTrackingDateTime,
+  formatTrackingDay,
+  formatTrackingTime,
+  parseTrackingDate,
+  trackingDayKey,
+} from "../services/tracking";
+import { formatCurrency } from "../utils/price";
 
-// Derive checkpoint item type from ShipmentRaw (no need to import ShipmentCheckpoint)
-type ShipmentCheckpoint = NonNullable<ShipmentRaw["checkpoints"]>[number];
+/* ------------------------------------------------------------------ model */
 
-type StepKey =
-  | "created"
+export type StatusKey =
+  | "pending"
   | "collected"
   | "in_transit"
   | "out_for_delivery"
-  | "delivered";
+  | "ready_for_pickup"
+  | "delivered"
+  | "returned"
+  | "exception"
+  | "unknown";
 
-const TRACK_STEPS: {
-  key: StepKey;
+type Tone = "ok" | "info" | "warn" | "err" | "neutral";
+
+const STATUS_META: Record<StatusKey, { label: string; tone: Tone; terminal: boolean }> = {
+  pending: { label: "Pending collection", tone: "neutral", terminal: false },
+  collected: { label: "Collected", tone: "info", terminal: false },
+  in_transit: { label: "In transit", tone: "info", terminal: false },
+  out_for_delivery: { label: "Out for delivery", tone: "info", terminal: false },
+  ready_for_pickup: { label: "Ready for pickup", tone: "info", terminal: false },
+  delivered: { label: "Delivered", tone: "ok", terminal: true },
+  returned: { label: "Returned", tone: "warn", terminal: true },
+  exception: { label: "Delivery problem", tone: "err", terminal: false },
+  unknown: { label: "Status update", tone: "neutral", terminal: false },
+};
+
+export function statusKeyFrom(status?: string | null): StatusKey {
+  const s = (status || "").toLowerCase().replace(/[-_]+/g, " ").trim();
+  if (!s) return "pending";
+  if (s.includes("deliver") && !s.includes("out for") && !s.includes("fail") && !s.includes("undeliver") && !s.includes("attempt")) return "delivered";
+  if (s.includes("return")) return "returned";
+  if (/(fail|exception|undeliver|attempt|lost|damag|cancel|held|delay|problem|refus|unable)/.test(s)) return "exception";
+  if (s.includes("ready for pickup") || s.includes("ready for collection")) return "ready_for_pickup";
+  if (s.includes("out for delivery") || s.includes("on route") || s.includes("driver")) return "out_for_delivery";
+  if (s.includes("transit") || s.includes("linehaul")) return "in_transit";
+  if (s.includes("pending")) return "pending";
+  if (s.includes("collect")) return "collected";
+  return "unknown";
+}
+
+export type TrackingStep = {
+  key: string;
   label: string;
-  Icon: React.ComponentType<{ size?: number }>;
-  match: (s: string) => boolean;
-}[] = [
-  {
-    key: "created",
-    label: "Created",
-    Icon: Package,
-    match: (s) =>
-      s.includes("created") ||
-      s.includes("submitted") ||
-      s.includes("booked") ||
-      s.includes("pending collection") ||
-      s.includes("pending"),
-  },
-  {
-    key: "collected",
-    label: "Collected",
-    Icon: Truck,
-    match: (s) => s.includes("collected") || s.includes("collection"),
-  },
-  {
-    key: "in_transit",
-    label: "In transit",
-    Icon: RouteIcon,
-    match: (s) =>
-      s.includes("in transit") ||
-      s.includes("transit") ||
-      s.includes("linehaul"),
-  },
-  {
-    key: "out_for_delivery",
-    label: "Out for delivery",
-    Icon: MapPin,
-    match: (s) =>
-      s.includes("out for delivery") ||
-      s.includes("delivery run") ||
-      s.includes("driver") ||
-      s.includes("on route"),
-  },
-  {
-    key: "delivered",
-    label: "Delivered",
-    Icon: CheckCircle2,
-    match: (s) => s.includes("delivered") || s.includes("complete"),
-  },
-];
+  state: "done" | "current" | "pending";
+  /** Formatted "5 Oct 2026, 21:26"; empty when the courier did not record one (e.g. skipped steps). */
+  at: string;
+  /** Marked done by Bob Go without a timestamp (the courier jumped ahead). Shown as completed. */
+  implied: boolean;
+};
 
-function normalizeStatus(status?: string): string {
-  return (status || "").toLowerCase().trim();
-}
-
-function activeStepIndexFromStatus(status?: string): number {
-  const s = normalizeStatus(status);
-  if (!s) return 0;
-  if (s.includes("pending collection")) return 0;
-  const idx = TRACK_STEPS.findIndex((st) => st.match(s));
-  return idx >= 0 ? idx : 0;
-}
-
-function safeDate(value: unknown): Date | null {
-  if (!value) return null;
-  const d = new Date(String(value));
-  if (Number.isNaN(d.getTime())) return null;
-  return d;
-}
-
-function formatFriendlyDate(value: unknown) {
-  const d = safeDate(value);
-  if (!d) return value ? String(value) : "";
-  return d.toLocaleString(undefined, {
-    weekday: "short",
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatEtaText(eta?: unknown) {
-  if (!eta) return "";
-  const text = String(eta);
-
-  if (text.includes("–")) return text;
-  if (text.includes(" - ")) return text.replace(" - ", " – ");
-
-  const cleaned = text.replace(" ", "T"); // "2026-01-26 16:02:42+00:00"
-  const d = safeDate(cleaned);
-  if (d) {
-    return d.toLocaleDateString(undefined, {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    });
-  }
-
-  return text;
-}
-
-type NormalizedEvent = {
-  label: string;
-  timestamp: string;
-  location?: string;
+export type TrackingEventView = {
+  id: string;
+  iso: string;
+  dayKey: string;
+  day: string;
+  time: string;
+  title: string;
+  description: string;
+  location: string;
 };
 
 export type NormalizedTracking = {
   trackingRef: string;
-  status: string;
-  statusBadge: string;
-  etaText?: string;
-  lastUpdated?: string;
-  details?: {
-    orderNo?: string | number;
-    courier?: string;
-    serviceLevel?: string;
-    customer?: string;
-  };
-  events: NormalizedEvent[];
+  statusKey: StatusKey;
+  statusLabel: string;
+  tone: Tone;
+  isTerminal: boolean;
+  courier: string;
+  courierPhone: string;
+  serviceLevel: string;
+  orderNo: string;
+  createdAt: string;
+  deliveredAt: string;
+  lastUpdated: string;
+  estimated: string;
+  steps: TrackingStep[];
+  events: TrackingEventView[];
+  pickup: { header: string; instructions: string; provider: string } | null;
 };
 
-function pickNonEmptyString(v: unknown) {
-  return typeof v === "string" && v.trim() ? v.trim() : "";
+const MANUAL_SET = /^\s*manually set by\b.*$/i;
+
+/** Staff names are not for customers: "Manually set by <name>" → "Updated by Belims team". */
+const publicMessage = (message?: string | null) => {
+  const text = (message || "").trim();
+  if (!text) return "";
+  return MANUAL_SET.test(text) ? "Updated by Belims team" : text;
+};
+
+const clean = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+
+function eventLocation(cp: ShipmentCheckpoint) {
+  const parts = [clean(cp.location), clean(cp.city), clean(cp.zone), clean(cp.country)].filter(Boolean);
+  return [...new Set(parts)].join(", ");
 }
 
-function eventLabelFromCheckpoint(cp: ShipmentCheckpoint): string {
-  const anyCp = cp as Record<string, unknown>;
-  return (
-    pickNonEmptyString(anyCp.status_friendly) ||
-    pickNonEmptyString(anyCp.status_description) ||
-    pickNonEmptyString(anyCp.status) ||
-    pickNonEmptyString(anyCp.message) ||
-    "Tracking update"
-  );
-}
+const STEP_ALIASES: Record<string, string> = {
+  created: "created",
+  collected: "collected",
+  "in-transit": "in-transit",
+  "out-for-delivery": "out-for-delivery",
+  "ready-for-pickup": "ready-for-pickup",
+  delivered: "delivered",
+};
 
-function eventLocationFromCheckpoint(cp: ShipmentCheckpoint): string {
-  const anyCp = cp as Record<string, unknown>;
-  return (
-    pickNonEmptyString(anyCp.location) ||
-    pickNonEmptyString(anyCp.city) ||
-    pickNonEmptyString(anyCp.zone) ||
-    pickNonEmptyString(anyCp.country) ||
-    ""
-  );
-}
+function buildSteps(shipment: ShipmentRaw, statusKey: StatusKey): TrackingStep[] {
+  const movement = shipment.shipment_movement_events || {};
+  const fallbackTime: Record<string, unknown> = {
+    created: shipment.shipment_time_created,
+    collected: movement.collected_time,
+    "in-transit": movement.in_transit_time,
+    "out-for-delivery": movement.out_for_delivery_time,
+    "ready-for-pickup": movement.ready_for_pickup_time,
+    delivered: movement.delivered_time,
+  };
 
-function eventTimeFromCheckpoint(cp: ShipmentCheckpoint): string {
-  const anyCp = cp as Record<string, unknown>;
-  return (
-    pickNonEmptyString(anyCp.timestamp) ||
-    pickNonEmptyString(anyCp.time) ||
-    pickNonEmptyString(anyCp.created_at) ||
-    ""
-  );
-}
+  let source = Object.entries(shipment.tracking_steps || {})
+    .map(([key, step]) => ({
+      key: STEP_ALIASES[key] || key,
+      label: clean(step.label) || key,
+      stage: step.stage || "pending",
+      time: clean(step.time) || clean(fallbackTime[key]),
+      n: Number(step.step_number) || 99,
+    }))
+    .sort((a, b) => a.n - b.n);
 
-function badgeFromStatus(status?: string) {
-  const s = normalizeStatus(status);
-  if (s.includes("delivered") || s.includes("complete")) return "Delivered";
-  if (
-    s.includes("out for delivery") ||
-    s.includes("driver") ||
-    s.includes("on route")
-  )
-    return "Out for delivery";
-  if (
-    s.includes("transit") ||
-    s.includes("in transit") ||
-    s.includes("linehaul")
-  )
-    return "In transit";
-  if (s.includes("collected") || s.includes("collection")) return "Collected";
-  return "Pending collection";
-}
-
-function getStepTimestamps(events: NormalizedEvent[]): Record<StepKey, string | undefined> {
-  const timestamps: Partial<Record<StepKey, string>> = {};
-  const oldestFirst = [...events].reverse();
-
-  for (const ev of oldestFirst) {
-    const label = ev.label.toLowerCase();
-    for (const step of TRACK_STEPS) {
-      if (timestamps[step.key] === undefined && step.match(label)) {
-        timestamps[step.key] = ev.timestamp;
-        break;
-      }
-    }
+  if (source.length === 0) {
+    // No step data from Bob Go: derive from the status.
+    const order: [string, string][] = [
+      ["created", "Created"],
+      ["collected", "Collected"],
+      ["in-transit", "In transit"],
+      ["out-for-delivery", "Out for delivery"],
+      ["delivered", "Delivered"],
+    ];
+    const reached = { pending: 0, collected: 1, in_transit: 2, out_for_delivery: 3, ready_for_pickup: 3, delivered: 4, returned: 4, exception: 2, unknown: 0 }[statusKey];
+    source = order.map(([key, label], i) => ({
+      key,
+      label,
+      stage: i < reached ? "done" : i === reached ? "current" : "pending",
+      time: clean(fallbackTime[key]),
+      n: i + 1,
+    }));
   }
 
-  return timestamps as Record<StepKey, string | undefined>;
-}
+  const lastTimed = source.reduce((acc, s, i) => (s.time ? i : acc), -1);
+  const delivered = statusKey === "delivered";
 
-export function normalizeTrackingResult(data: TrackResponse): {
-  normalized: NormalizedTracking;
-  shipment: ShipmentRaw | null;
-  checkpoints: ShipmentCheckpoint[];
-} {
-  const trackingRef = (data?.trackingRef || "").toUpperCase();
-
-  const shipment =
-    Array.isArray(data.raw) && data.raw.length
-      ? (data.raw[0] as ShipmentRaw)
-      : null;
-
-  const status =
-    shipment?.current_status ||
-    shipment?.status ||
-    data?.status ||
-    "Pending collection";
-
-  const etaText = formatEtaText(
-    shipment?.expected_delivery_date || data?.etaText || (data as any)?.eta,
-  );
-
-  const checkpoints: ShipmentCheckpoint[] = Array.isArray(shipment?.checkpoints)
-    ? (shipment!.checkpoints as ShipmentCheckpoint[])
-    : [];
-
-  let events: NormalizedEvent[] = [];
-
-  if (checkpoints.length) {
-    events = checkpoints
-      .map((cp) => ({
-        label: eventLabelFromCheckpoint(cp),
-        timestamp: eventTimeFromCheckpoint(cp),
-        location: eventLocationFromCheckpoint(cp) || undefined,
-      }))
-      .filter((e) => e.label || e.timestamp);
-  } else if (Array.isArray(data.events)) {
-    events = data.events
-      .map((ev) => ({
-        label:
-          pickNonEmptyString((ev as any).label) ||
-          pickNonEmptyString((ev as any).status) ||
-          "Tracking update",
-        timestamp: String((ev as any).timestamp || (ev as any).time || ""),
-        location: pickNonEmptyString((ev as any).location) || undefined,
-      }))
-      .filter((e) => e.label || e.timestamp);
-  }
-
-  // newest first
-  events.sort((a, b) => {
-    const da = safeDate(a.timestamp)?.getTime() ?? 0;
-    const db = safeDate(b.timestamp)?.getTime() ?? 0;
-    return db - da;
+  return source.map((s, i) => {
+    const state: TrackingStep["state"] = delivered ? "done" : s.stage === "done" ? "done" : s.stage === "current" ? "current" : "pending";
+    return {
+      key: s.key,
+      label: s.label,
+      state,
+      at: formatTrackingDateTime(s.time),
+      implied: state === "done" && !s.time && i < lastTimed,
+    };
   });
-
-  const lastUpdated = events?.[0]?.timestamp
-    ? formatFriendlyDate(events[0].timestamp)
-    : "";
-
-  const details = {
-    orderNo:
-      shipment?.order_number ||
-      (shipment as any)?.channel_order_number ||
-      (shipment as any)?.custom_order_name,
-    courier:
-      shipment?.courier ||
-      (shipment as any)?.courier_name ||
-      (shipment as any)?.courier_slug,
-    serviceLevel: shipment?.service_level,
-    customer: shipment?.customer || undefined,
-  };
-
-  return {
-    normalized: {
-      trackingRef,
-      status,
-      statusBadge: badgeFromStatus(status),
-      etaText: etaText || undefined,
-      lastUpdated: lastUpdated || undefined,
-      details,
-      events,
-    },
-    shipment,
-    checkpoints,
-  };
 }
+
+function buildEvents(shipment: ShipmentRaw): TrackingEventView[] {
+  const checkpoints: ShipmentCheckpoint[] =
+    Array.isArray(shipment.checkpoints) && shipment.checkpoints.length
+      ? shipment.checkpoints
+      : (shipment.grouped_checkpoints || []).flatMap((g) => g.checkpoints || []);
+
+  return checkpoints
+    .map((cp, index) => {
+      const iso = clean(cp.time) || clean(cp.timestamp);
+      const key: StatusKey = statusKeyFrom(cp.status || cp.status_friendly);
+      return {
+        id: `${iso}-${index}`,
+        iso,
+        dayKey: trackingDayKey(iso),
+        day: formatTrackingDay(iso),
+        time: formatTrackingTime(iso) || clean(cp.time_string),
+        title: clean(cp.status_friendly) || clean(cp.status_description) || clean(cp.status) || STATUS_META[key].label,
+        description: publicMessage(cp.message),
+        location: eventLocation(cp),
+      };
+    })
+    .filter((e) => e.title || e.iso)
+    .sort((a, b) => (parseTrackingDate(b.iso)?.getTime() ?? 0) - (parseTrackingDate(a.iso)?.getTime() ?? 0));
+}
+
+function buildEstimate(shipment: ShipmentRaw, fallback?: string) {
+  const from = formatTrackingDate(shipment.shipment_estimated_delivery_date_from || shipment.shipment_earliest_delivery_date);
+  const to = formatTrackingDate(shipment.shipment_estimated_delivery_date_to);
+  if (from && to && from !== to) return `${from} – ${to}`;
+  return from || to || formatTrackingDate(shipment.expected_delivery_date) || clean(fallback);
+}
+
+/** One entry per shipment in the response. Empty array = the reference was not found. */
+export function normalizeTrackingResult(data: TrackResponse): { shipments: NormalizedTracking[] } {
+  const raw = Array.isArray(data?.raw) ? (data.raw as ShipmentRaw[]) : [];
+  const shipments = raw
+    .filter((s) => s && typeof s === "object")
+    .map((shipment) => {
+      const statusText = clean(shipment.status) || clean(shipment.current_status) || clean(data?.status);
+      const statusKey = statusKeyFrom(statusText);
+      const meta = STATUS_META[statusKey];
+      const steps = buildSteps(shipment, statusKey);
+      const events = buildEvents(shipment);
+      const delivery = steps.find((s) => s.key === "delivered");
+      const lastUpdated = formatTrackingDateTime(shipment.last_checkpoint_time) || (events[0] ? formatTrackingDateTime(events[0].iso) : "");
+      const ref = clean(shipment.shipment_tracking_reference) || clean(shipment.id) || clean(shipment.tracking_reference) || clean(data?.trackingRef);
+
+      return {
+        trackingRef: ref.toUpperCase(),
+        statusKey,
+        statusLabel: statusKey === "unknown" ? clean(shipment.status_friendly) || meta.label : meta.label,
+        tone: meta.tone,
+        isTerminal: meta.terminal,
+        courier: clean(shipment.courier_name) || clean(shipment.courier),
+        courierPhone: clean(shipment.courier_phone),
+        serviceLevel: clean(shipment.service_level),
+        orderNo: clean(shipment.order_number) || clean(shipment.channel_order_number) || clean(shipment.custom_order_name),
+        createdAt: formatTrackingDateTime(shipment.shipment_time_created),
+        deliveredAt: statusKey === "delivered" ? delivery?.at || (events[0] ? formatTrackingDateTime(events[0].iso) : "") : "",
+        lastUpdated,
+        estimated: statusKey === "delivered" || statusKey === "returned" ? "" : buildEstimate(shipment, data?.etaText as string | undefined),
+        steps,
+        events,
+        pickup: shipment.show_pickup_point_details
+          ? {
+              header: clean(shipment.pickup_point_header),
+              instructions: clean(shipment.pickup_point_instructions),
+              provider: clean(shipment.pickup_point_provider_name),
+            }
+          : null,
+      } as NormalizedTracking;
+    });
+  return { shipments };
+}
+
+/* ----------------------------------------------------------- presentation */
+
+const STEP_ICON: Record<string, React.ComponentType<{ size?: number; "aria-hidden"?: boolean }>> = {
+  created: Package,
+  collected: Truck,
+  "in-transit": RouteIcon,
+  "out-for-delivery": MapPin,
+  "ready-for-pickup": Store,
+  delivered: CheckCircle2,
+};
+
+const TONE_CLASS: Record<Tone, string> = {
+  ok: "text-success",
+  info: "text-belims-blue",
+  warn: "text-stock-low",
+  err: "text-error",
+  neutral: "text-text-secondary",
+};
+
+const SUPPORT_PHONE = { label: "039 974 2082", href: "tel:+27399742082" };
+const SUPPORT_EMAIL = "info@belims.co.za";
+
+const btn =
+  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border-2 border-belims-blue bg-white px-4 font-heading font-condensed text-button font-bold uppercase text-belims-blue transition-colors hover:bg-belims-blue hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none";
+
+export const StatusPill: React.FC<{ label: string; tone: Tone }> = ({ label, tone }) => (
+  <span
+    className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border border-current bg-white px-2 py-0.5 text-caption font-bold uppercase tracking-wide ${TONE_CLASS[tone]}`}
+  >
+    <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+    {label}
+  </span>
+);
+
+const Stepper: React.FC<{ steps: TrackingStep[]; delivered: boolean }> = ({ steps, delivered }) => (
+  <ol className="flex flex-col gap-4 sm:grid sm:auto-cols-fr sm:grid-flow-col sm:gap-0" aria-label="Shipment progress">
+    {steps.map((step, index) => {
+      const Icon = STEP_ICON[step.key] || Circle;
+      const reached = step.state !== "pending";
+      const isFinalDelivered = delivered && index === steps.length - 1;
+      return (
+        <li
+          key={step.key}
+          aria-current={step.state === "current" ? "step" : undefined}
+          className={`relative flex items-start gap-3 sm:flex-col sm:items-center sm:gap-2 sm:text-center ${
+            index > 0
+              ? "before:absolute before:-top-4 before:left-5 before:h-4 before:w-0.5 before:content-[''] sm:before:left-auto sm:before:right-1/2 sm:before:top-5 sm:before:h-0.5 sm:before:w-full"
+              : ""
+          } ${index > 0 ? (reached ? "before:bg-belims-blue" : "before:bg-border") : ""}`}
+        >
+          <span
+            className={`relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full motion-reduce:transition-none ${
+              isFinalDelivered
+                ? "bg-success text-white"
+                : step.state === "done"
+                  ? "bg-belims-blue text-white"
+                  : step.state === "current"
+                    ? "border-[3px] border-primary bg-white text-primary"
+                    : "border-2 border-border bg-white text-text-tertiary"
+            }`}
+          >
+            <Icon size={20} aria-hidden={true} />
+          </span>
+          <span className="min-w-0 pt-1 sm:pt-0">
+            <span className={`block text-caption font-bold uppercase tracking-wide ${step.state === "pending" ? "text-text-tertiary" : "text-text"}`}>
+              {step.label}
+              <span className="sr-only">
+                {" "}
+                ({step.state === "done" ? "complete" : step.state === "current" ? "current step" : "upcoming"}
+                {step.implied ? ", no scan recorded" : ""})
+              </span>
+            </span>
+            {step.at && <span className="block text-caption tabular-nums text-text-secondary">{step.at}</span>}
+          </span>
+        </li>
+      );
+    })}
+  </ol>
+);
 
 export const TrackingProgressCard = ({
   data,
-  shipment,
-  onRefresh,
+  order,
   isRefreshing,
   autoRefresh,
   onToggleAutoRefresh,
+  onRefresh,
+  onAnnounce,
+  headingRef,
 }: {
   data: NormalizedTracking;
-  shipment: ShipmentRaw | null;
-  checkpoints: ShipmentCheckpoint[];
-  onRefresh: () => void;
+  /** The signed-in customer's matching order, when there is one. */
+  order?: Order | null;
   isRefreshing: boolean;
   autoRefresh: boolean;
   onToggleAutoRefresh: (v: boolean) => void;
+  onRefresh: () => void;
+  onAnnounce: (message: string) => void;
+  headingRef?: React.Ref<HTMLHeadingElement>;
 }) => {
   const [newestFirst, setNewestFirst] = useState(true);
+  const copyFallbackRef = useRef<HTMLInputElement>(null);
+  const [copyFallback, setCopyFallback] = useState(false);
 
-  const activeIdx = activeStepIndexFromStatus(data.status);
-  const progressPct =
-    TRACK_STEPS.length === 1 ? 0 : (activeIdx / (TRACK_STEPS.length - 1)) * 100;
-
-  const badgeTone =
-    data.statusBadge === "Delivered"
-      ? "bg-green-50 text-green-700 border-green-200"
-      : data.statusBadge === "Out for delivery"
-        ? "bg-amber-50 text-amber-700 border-amber-200"
-        : data.statusBadge === "In transit"
-          ? "bg-blue-50 text-belims-blue border-blue-200"
-          : "bg-gray-50 text-gray-700 border-gray-200";
-
+  const link = `${window.location.origin}/track-order?order-number=${encodeURIComponent(data.trackingRef)}`;
   const copyLink = async () => {
-    const link = `${window.location.origin}/track-order?order-number=${encodeURIComponent(
-      data.trackingRef,
-    )}`;
     try {
       await navigator.clipboard.writeText(link);
-      alert("Tracking link copied ✅");
+      onAnnounce("Tracking link copied");
     } catch {
-      // eslint-disable-next-line no-alert
-      prompt("Copy this tracking link:", link);
+      setCopyFallback(true);
+      window.setTimeout(() => copyFallbackRef.current?.select(), 0);
     }
   };
 
-  const courier =
-    data.details?.courier ||
-    shipment?.courier ||
-    (shipment as any)?.courier_name ||
-    "—";
-  const serviceLevel =
-    data.details?.serviceLevel || shipment?.service_level || "—";
-  const orderNo = data.details?.orderNo || shipment?.order_number || "—";
-  const customer = data.details?.customer || shipment?.customer || "—";
-  const etaText = data.etaText || "—";
-
-  const orderedEvents = useMemo(() => {
-    const events = Array.isArray(data.events) ? data.events : [];
-    return newestFirst ? events : [...events].reverse();
+  const groups = useMemo(() => {
+    const sorted = newestFirst ? data.events : [...data.events].reverse();
+    const out: { dayKey: string; day: string; events: TrackingEventView[] }[] = [];
+    sorted.forEach((event) => {
+      const last = out[out.length - 1];
+      if (last && last.dayKey === event.dayKey) last.events.push(event);
+      else out.push({ dayKey: event.dayKey, day: event.day, events: [event] });
+    });
+    return out;
   }, [data.events, newestFirst]);
 
-  const stepTimestamps = useMemo(() => getStepTimestamps(data.events || []), [data.events]);
+  const delivered = data.statusKey === "delivered";
+  const problem = data.statusKey === "exception" || data.statusKey === "returned" || data.statusKey === "unknown";
+  const showProblem = data.statusKey === "exception" || data.statusKey === "returned";
+
+  const details: { label: string; value: React.ReactNode }[] = [
+    {
+      label: "Order",
+      value: order ? (
+        <Link to={`/account/orders/${encodeURIComponent(order.order_number)}`} className="inline-flex min-h-[44px] items-center font-bold text-belims-blue underline underline-offset-4 hover:text-primary">
+          #{order.order_number}
+        </Link>
+      ) : (
+        data.orderNo && `#${data.orderNo}`
+      ),
+    },
+    { label: "Courier", value: data.courier },
+    {
+      label: "Courier phone",
+      value: data.courierPhone ? (
+        <a href={`tel:${data.courierPhone.replace(/[^+\d]/g, "")}`} className="inline-flex min-h-[44px] items-center font-bold underline underline-offset-4 hover:text-primary">
+          {data.courierPhone}
+        </a>
+      ) : (
+        ""
+      ),
+    },
+    { label: "Service level", value: data.serviceLevel },
+    { label: "Created", value: data.createdAt },
+    { label: delivered ? "Delivered" : "Estimated delivery", value: delivered ? data.deliveredAt : data.estimated },
+  ].filter((row) => row.value);
+
+  const orderTotal = order ? parseFloat(order.total) || 0 : 0;
 
   return (
-    <div className="space-y-5">
-      {/* Header / Summary Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 md:px-6 md:py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-belims-blue">
-                <Package size={18} />
-              </div>
-
-              <div className="min-w-0">
-                <div className="text-xs text-gray-500">Tracking reference</div>
-                <div className="text-lg font-extrabold tracking-tight text-gray-900 font-heading truncate">
-                  {data.trackingRef}
-                </div>
-              </div>
-
-              <span
-                className={`ml-auto md:ml-0 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-bold ${badgeTone}`}
-              >
-                <Sparkles size={14} />
-                {data.statusBadge}
+    <div className="space-y-6">
+      {/* Header: reference once, status, courier + service, last update, actions */}
+      <section aria-labelledby="trk-ref" className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-caption font-bold uppercase tracking-wider text-text-tertiary">Tracking reference</p>
+          <h2
+            id="trk-ref"
+            ref={headingRef}
+            tabIndex={-1}
+            className="mt-0.5 break-all font-heading font-condensed text-h3 font-extrabold uppercase leading-none focus:outline-none"
+          >
+            {data.trackingRef}
+          </h2>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-caption text-text-secondary">
+            <StatusPill label={data.statusLabel} tone={data.tone} />
+            {data.courier && (
+              <span>
+                {data.courier}
+                {data.serviceLevel ? ` · ${data.serviceLevel}` : ""}
               </span>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-500">
-              {courier !== "—" ? (
-                <span className="inline-flex items-center rounded-full bg-gray-50 border border-gray-200 px-3 py-1">
-                  Courier: <span className="ml-1 font-bold">{courier}</span>
-                </span>
-              ) : null}
-
-              {serviceLevel !== "—" ? (
-                <span className="inline-flex items-center rounded-full bg-gray-50 border border-gray-200 px-3 py-1">
-                  Service:{" "}
-                  <span className="ml-1 font-bold">{serviceLevel}</span>
-                </span>
-              ) : null}
-
-              {data.etaText ? (
-                <span className="inline-flex items-center rounded-full bg-gray-50 border border-gray-200 px-3 py-1">
-                  ETA: <span className="ml-1 font-bold">{data.etaText}</span>
-                </span>
-              ) : null}
-
-              {data.lastUpdated ? (
-                <span className="inline-flex items-center rounded-full bg-gray-50 border border-gray-200 px-3 py-1">
-                  <TimerReset size={14} className="mr-1" />
-                  Updated:{" "}
-                  <span className="ml-1 font-bold">{data.lastUpdated}</span>
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 justify-end">
-            <button
-              onClick={copyLink}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 transition"
-            >
-              <Copy size={16} />
-              Copy link
-            </button>
-
-            <button
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 transition disabled:opacity-60"
-            >
-              <RefreshCcw
-                size={16}
-                className={isRefreshing ? "animate-spin" : ""}
-              />
-              {isRefreshing ? "Refreshing" : "Refresh"}
-            </button>
+            )}
+            {data.lastUpdated && <span className="tabular-nums">Updated {data.lastUpdated}</span>}
           </div>
         </div>
 
-        {/* Progress */}
-        <div className="px-5 pb-5 md:px-6 md:pb-6">
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Order tracking</span>
-
-            <label className="inline-flex items-center gap-2 select-none">
-              <span className="font-semibold text-gray-600">Auto-refresh</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" onClick={copyLink} className={btn}>
+            <Copy size={16} aria-hidden="true" /> Copy link
+          </button>
+          {!data.isTerminal && (
+            <>
+              <button type="button" onClick={onRefresh} disabled={isRefreshing} className={btn}>
+                <RefreshCcw size={16} aria-hidden="true" className={isRefreshing ? "animate-spin motion-reduce:animate-none" : ""} />
+                {isRefreshing ? "Refreshing" : "Refresh"}
+              </button>
               <button
                 type="button"
+                role="switch"
+                aria-checked={autoRefresh}
                 onClick={() => onToggleAutoRefresh(!autoRefresh)}
-                className={[
-                  "relative h-6 w-11 rounded-full border transition",
-                  autoRefresh
-                    ? "bg-belims-blue border-belims-blue"
-                    : "bg-gray-200 border-gray-300",
-                ].join(" ")}
+                className="inline-flex min-h-[44px] items-center gap-2 font-semibold text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue focus-visible:ring-offset-2"
               >
-                <span
-                  className={[
-                    "absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white shadow transition",
-                    autoRefresh ? "left-6" : "left-1",
-                  ].join(" ")}
-                />
+                <span className={`relative h-6 w-11 rounded-full border transition-colors motion-reduce:transition-none ${autoRefresh ? "border-belims-blue bg-belims-blue" : "border-border-strong bg-surface-muted"}`}>
+                  <span className={`absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white transition-all motion-reduce:transition-none ${autoRefresh ? "left-6" : "left-0.5"}`} />
+                </span>
+                Auto-refresh
               </button>
+            </>
+          )}
+        </div>
+        {copyFallback && (
+          <div className="w-full">
+            <label htmlFor="trk-link" className="mb-1 block text-caption font-bold uppercase tracking-wider text-text-secondary">
+              Copy this link
             </label>
+            <input id="trk-link" ref={copyFallbackRef} readOnly value={link} className="min-h-[44px] w-full rounded-md border border-border-strong px-3 text-base" onFocus={(e) => e.currentTarget.select()} />
           </div>
+        )}
+      </section>
 
-          <div className="relative mt-4">
-            <div className="h-[3px] bg-gray-200 rounded-full" />
-            <div
-              className="absolute top-0 left-0 h-[3px] bg-belims-blue rounded-full transition-[width] duration-800 ease-[cubic-bezier(0.22,1,0.36,1)]"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-
-          <div className="mt-6 grid grid-cols-5 gap-2 md:gap-4">
-            {TRACK_STEPS.map((step, idx) => {
-              const Icon = step.Icon;
-              const isDone = idx < activeIdx;
-              const isActive = idx === activeIdx;
-              const stepTimestamp = stepTimestamps[step.key];
-
-              return (
-                <div key={step.key} className="flex flex-col items-center">
-                  <div
-                    className={[
-                      "relative flex h-12 w-12 items-center justify-center rounded-full transition-all transition-transform duration-300",
-                      isDone
-                        ? "bg-belims-blue text-white shadow-md"
-                        : isActive
-                          ? "bg-white border-2 border-belims-blue text-belims-blue shadow-sm"
-                          : "bg-gray-100 text-gray-400",
-                    ].join(" ")}
-                    style={
-                      {
-                        transform: isDone ? "scale(1.06)" : "scale(1)",
-                        animation: isActive
-                          ? "softPulse 2.3s ease-in-out infinite"
-                          : undefined,
-                      } as React.CSSProperties
-                    }
-                  >
-                    <Icon size={20} />
-                  </div>
-
-                  <div className="mt-3 text-[11px] md:text-xs font-bold uppercase tracking-wide text-gray-600 text-center">
-                    {step.label}
-                  </div>
-
-                  {stepTimestamp ? (
-                    <div className="mt-1 text-[11px] text-gray-500 tabular-nums text-center">
-                      {formatFriendlyDate(stepTimestamp)}
-                    </div>
-                  ) : (
-                    <div className="mt-1 h-[14px]" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Shipping details */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 md:p-6">
-        <div className="flex items-start justify-between gap-4">
+      {delivered && (
+        <section aria-labelledby="trk-delivered" className="flex flex-wrap items-center justify-between gap-3 rounded-md border-l-4 border-success bg-surface-muted p-4">
           <div>
-            <div className="text-lg font-extrabold text-gray-900 font-heading">
-              Shipping details
-            </div>
-            <div className="mt-1 text-sm text-gray-600">
-              Live updates from Bob Go
-            </div>
+            <h2 id="trk-delivered" className="font-heading font-condensed text-h4 font-extrabold uppercase text-success">
+              {data.deliveredAt ? `Delivered on ${data.deliveredAt}` : "Delivered"}
+            </h2>
+            <p className="text-text-secondary">Your parcel has arrived. Something not right with it?</p>
           </div>
-
-          <div className="shrink-0">
-            <span
-              className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-bold ${badgeTone}`}
-            >
-              {data.statusBadge}
-            </span>
+          <div className="flex flex-wrap gap-3">
+            <a href={SUPPORT_PHONE.href} className={btn}>
+              <Phone size={16} aria-hidden="true" /> {SUPPORT_PHONE.label}
+            </a>
+            <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`Order ${data.orderNo || data.trackingRef}`)}`} className={btn}>
+              <Mail size={16} aria-hidden="true" /> Email us
+            </a>
           </div>
-        </div>
+        </section>
+      )}
 
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="rounded-xl border border-gray-100 p-4">
-            <div className="text-gray-500">Shipment</div>
-            <div className="font-bold text-gray-900">{data.trackingRef}</div>
-
-            <div className="mt-3 text-gray-500">Order</div>
-            <div className="font-bold text-gray-900">{String(orderNo)}</div>
-
-            {customer !== "—" ? (
-              <>
-                <div className="mt-3 text-gray-500">Customer</div>
-                <div className="font-bold text-gray-900">{customer}</div>
-              </>
-            ) : null}
-          </div>
-
-          <div className="rounded-xl border border-gray-100 p-4">
-            <div className="text-gray-500">Service level</div>
-            <div className="font-bold text-gray-900">{serviceLevel}</div>
-
-            <div className="mt-3 text-gray-500">Courier</div>
-            <div className="font-bold text-gray-900">{courier}</div>
-
-            <div className="mt-3 text-gray-500">Estimated Arrival</div>
-            <div className="font-bold text-gray-900 tabular-nums">
-              {etaText}
+      {showProblem && (
+        <section aria-labelledby="trk-problem" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border-l-4 border-error bg-surface-muted p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={22} aria-hidden="true" className="mt-0.5 shrink-0 text-error" />
+            <div>
+              <h2 id="trk-problem" className="font-heading font-condensed text-h4 font-extrabold uppercase text-error">
+                {data.statusKey === "returned" ? "This parcel is being returned" : "There's a problem with this delivery"}
+              </h2>
+              <p className="text-text-secondary">Please contact the Belims team and quote {data.orderNo ? `order #${data.orderNo}` : `reference ${data.trackingRef}`}.</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Events timeline */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 md:p-6">
-        <div className="flex items-center justify-between">
-          <div className="text-lg font-extrabold text-gray-900 font-heading">
-            Tracking events
+          <div className="flex flex-wrap gap-3">
+            <a href={SUPPORT_PHONE.href} className={btn}>
+              <Phone size={16} aria-hidden="true" /> {SUPPORT_PHONE.label}
+            </a>
+            <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`Delivery problem: ${data.trackingRef}`)}`} className={btn}>
+              <Mail size={16} aria-hidden="true" /> Email us
+            </a>
           </div>
-          <button
-            type="button"
-            onClick={() => setNewestFirst((v) => !v)}
-            className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50 transition"
-          >
-            {newestFirst ? "Newest first" : "Oldest first"}
-          </button>
-        </div>
+        </section>
+      )}
 
-        {orderedEvents.length > 0 ? (
-          <div className="mt-5 relative">
-            <div className="absolute left-[11px] top-1 bottom-1 w-[2px] bg-gray-100" />
+      {/* Stepper */}
+      <section aria-labelledby="trk-progress" className="border-y border-border py-6">
+        <h2 id="trk-progress" className="sr-only">
+          Shipment progress
+        </h2>
+        <Stepper steps={data.steps} delivered={delivered} />
+      </section>
 
-            <div className="space-y-4">
-              {orderedEvents.map((ev, idx) => (
-                <div
-                  key={idx}
-                  className="relative pl-10"
-                  style={{
-                    opacity: 1,
-                    transform: "translateY(0px)",
-                    transition: "all 250ms ease",
-                    transitionDelay: `${idx * 35}ms`,
-                  }}
-                >
-                  <div
-                    className={[
-                      "absolute left-[3px] top-[6px] h-5 w-5 rounded-full border-2 flex items-center justify-center",
-                      idx === 0
-                        ? "border-belims-blue bg-blue-50"
-                        : "border-gray-200 bg-white",
-                    ].join(" ")}
-                  >
-                    <div
-                      className={[
-                        "h-2.5 w-2.5 rounded-full",
-                        idx === 0 ? "bg-belims-blue" : "bg-gray-300",
-                      ].join(" ")}
-                    />
-                  </div>
+      {/* Events (left) + summary (right on desktop, first on mobile) */}
+      <div className="grid gap-8 lg:grid-cols-12">
+        <section aria-labelledby="trk-events" className="order-2 min-w-0 lg:order-1 lg:col-span-7">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 id="trk-events" className="font-heading font-condensed text-h4 font-extrabold uppercase">
+              Tracking events
+            </h2>
+            {data.events.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setNewestFirst((v) => !v)}
+                aria-label={`Sort order: ${newestFirst ? "newest first" : "oldest first"}. Activate to reverse.`}
+                className="inline-flex min-h-[44px] items-center rounded-md border border-border-strong bg-white px-3 text-caption font-bold uppercase tracking-wide text-text hover:border-belims-blue hover:text-belims-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue focus-visible:ring-offset-2"
+              >
+                {newestFirst ? "Newest first" : "Oldest first"}
+              </button>
+            )}
+          </div>
 
-                  <div className="rounded-xl border border-gray-100 bg-white p-4 hover:border-gray-200 hover:shadow-sm transition">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="font-bold text-gray-900">
-                        {ev.label?.trim() || "Status update"}
-                      </div>
-                      <div className="text-xs text-gray-500 tabular-nums">
-                        {ev.timestamp ? formatFriendlyDate(ev.timestamp) : "—"}
-                      </div>
-                    </div>
-
-                    <div className="mt-1 text-sm text-gray-600">
-                      {ev.location?.trim() || "—"}
-                    </div>
-                  </div>
+          {groups.length > 0 ? (
+            <div className="space-y-6">
+              {groups.map((group) => (
+                <div key={group.dayKey || group.day}>
+                  <h3 className="mb-3 font-heading text-base font-bold text-text">{group.day}</h3>
+                  <ol>
+                    {group.events.map((event, i) => (
+                      <li key={event.id} className="relative flex gap-4 pb-5 last:pb-0">
+                        {i < group.events.length - 1 && <span className="absolute bottom-0 left-[5px] top-4 w-px bg-border" aria-hidden="true" />}
+                        <span className={`relative z-10 mt-1.5 h-[11px] w-[11px] shrink-0 rounded-full ${i === 0 && group === groups[0] ? "bg-belims-blue" : "border-2 border-border-strong bg-white"}`} aria-hidden="true" />
+                        <div className="min-w-0">
+                          <p className="flex flex-wrap items-baseline gap-x-3">
+                            {event.time && <time dateTime={event.iso} className="font-semibold tabular-nums text-text-secondary">{event.time}</time>}
+                            <span className="font-bold text-text">{event.title}</span>
+                          </p>
+                          {event.description && <p className="text-text-secondary">{event.description}</p>}
+                          {event.location && (
+                            <p className="flex items-center gap-1 text-caption text-text-tertiary">
+                              <MapPin size={12} aria-hidden="true" /> {event.location}
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
               ))}
             </div>
-          </div>
-        ) : (
-          <div className="mt-4 rounded-xl border border-dashed border-gray-200 p-5 text-sm text-gray-600">
-            No tracking events yet. Your shipment will update once Bob Go
-            registers the first scan.
-          </div>
-        )}
-      </div>
+          ) : (
+            <p className="rounded-md border border-dashed border-border-strong p-5 text-text-secondary">
+              No courier scans yet. Updates appear here as soon as the courier registers the first scan.
+            </p>
+          )}
+        </section>
 
-      <style>{`
-        @keyframes softPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(30, 64, 175, .18); }
-          50% { box-shadow: 0 0 0 12px rgba(30, 64, 175, 0); }
-        }
-      `}</style>
+        <aside className="order-1 space-y-6 lg:order-2 lg:col-span-5" aria-label="Shipment summary">
+          <section aria-labelledby="trk-details">
+            <h2 id="trk-details" className="mb-3 font-heading font-condensed text-h4 font-extrabold uppercase">
+              Shipment details
+            </h2>
+            <dl className="divide-y divide-border border-y border-border">
+              {details.map((row) => (
+                <div key={row.label} className="flex items-baseline justify-between gap-4 py-2.5">
+                  <dt className="text-text-secondary">{row.label}</dt>
+                  <dd className="text-right font-semibold text-text">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+            {data.pickup && (data.pickup.header || data.pickup.instructions || data.pickup.provider) && (
+              <div className="mt-4 rounded-md border border-border p-4">
+                <p className="font-bold">{data.pickup.header || "Pickup point"}</p>
+                {data.pickup.provider && <p className="text-text-secondary">{data.pickup.provider}</p>}
+                {data.pickup.instructions && <p className="mt-1 text-text-secondary">{data.pickup.instructions}</p>}
+              </div>
+            )}
+          </section>
+
+          {order && (
+            <section aria-labelledby="trk-order">
+              <h2 id="trk-order" className="mb-3 font-heading font-condensed text-h4 font-extrabold uppercase">
+                Your order
+              </h2>
+              <ul className="divide-y divide-border border-y border-border">
+                {order.line_items.map((line) => (
+                  <li key={line.id} className="flex items-baseline justify-between gap-4 py-2.5">
+                    <span className="min-w-0">
+                      {line.name} <span className="text-text-secondary">× {line.quantity}</span>
+                    </span>
+                    <span className="font-semibold tabular-nums">{formatCurrency(parseFloat(line.total) || 0)}</span>
+                  </li>
+                ))}
+                <li className="flex items-baseline justify-between gap-4 py-2.5 font-bold">
+                  <span>Total</span>
+                  <span className="tabular-nums">{formatCurrency(orderTotal)}</span>
+                </li>
+              </ul>
+              <Link to={`/account/orders/${encodeURIComponent(order.order_number)}`} className="mt-3 inline-flex min-h-[44px] items-center font-bold text-belims-blue underline underline-offset-4 hover:text-primary">
+                View order #{order.order_number}
+              </Link>
+            </section>
+          )}
+        </aside>
+      </div>
     </div>
   );
 };
