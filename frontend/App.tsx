@@ -382,7 +382,8 @@ const HomePage = ({
       />
 
       <PopularCategories
-        categories={homeCategories.subcategories}
+        categories={[...homeCategories.departments, ...homeCategories.subcategories]}
+        fallback={homeCategories.subcategories}
         isLoading={homeCategories.isLoading}
       />
 

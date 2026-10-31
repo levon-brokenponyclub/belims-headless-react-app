@@ -6,6 +6,7 @@ export interface HomeCategory {
   slug: string;
   name: string;
   image?: string;
+  count: number;
 }
 
 const HIDDEN_SLUGS = new Set(["uncategorized"]);
@@ -59,6 +60,7 @@ export const useHomeCategories = (products: Product[]) => {
       slug: cat.slug,
       name: cat.name,
       image: imageFor(cat),
+      count: cat.count || 0,
     });
 
     const visible = categories.filter(

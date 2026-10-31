@@ -1,6 +1,6 @@
 # Global Site Settings — User Guide
 
-**Plugin version:** 2.10.13 · **For:** Belims Hardware store administrators
+**Plugin version:** 2.10.14 · **For:** Belims Hardware store administrators
 
 > Technical overview for developers: [README.md](README.md) · Project docs: [root README](../../../README.md)
 
@@ -94,11 +94,18 @@ Edit the storefront homepage. Changes go live about **1–2 minutes** after savi
 
 **Hero** (the large banner at the top):
 1. Under **Homepage Sections**, open the **Hero** section (or **Add Section → Hero** if none exists).
-2. Fill in **Title**, **Description**, **Button Text** and **Button Link** (e.g. `/shop`).
+2. Fill in the optional **Eyebrow** (small line above the title), **Title**, **Description**, **Button Text** and **Button Link** (e.g. `/shop`).
 3. Choose a **Desktop Image** (recommended 1600×800 WebP) and optionally a **Mobile Image** (800×800) for phones.
 4. Add **Image Alt Text** describing the picture.
 5. Untick **Show on homepage** to hide the hero without deleting it.
 6. Click **Save Homepage**.
+
+**Top Categories** (the two category cards below Shop by department):
+1. Under **Homepage Sections**, **Add Section → Top Categories** (one per page).
+2. Set the **Eyebrow** and **Heading**, then **Add Card** (up to 2).
+3. Per card pick a **Category** (the product count is always read live). Optionally set **Title**, **Description**, **Image** (square, 400×400+) and **Button Text**. Blank fields use the category name and a product image from the category.
+4. Leave the section out or the cards empty to show the 2 biggest categories automatically.
+5. Click **Save Homepage**.
 
 **Publishing** card:
 - Each storefront shows *Up to date*, *Publishing…*, *Out of date* or *Unreachable*; the one(s) a save rebuilds are marked *(rebuilds on save)*.

@@ -4,8 +4,6 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
   CheckCircle,
-  Zap,
-  ShoppingCart,
   Eye,
   Heart,
 } from "lucide-react";
@@ -30,7 +28,6 @@ interface ProductCardProps {
   isTradeApproved?: boolean;
   className?: string;
   showDealName?: boolean;
-  variant?: "default" | "flat" | "flat-horizontal";
   customizations?: ProductCardCustomizations;
 }
 
@@ -69,45 +66,30 @@ export interface ProductCardSlots {
 
 export interface ProductCardCustomizations {
   hiddenElements?: ProductCardElementKey[];
-  imageBlockClassName?: string;
-  imageClassName?: string;
   categoryText?: string | ((product: Product) => string);
   actions?: {
     quickViewIcon?: ProductCardActionOverride;
     quickViewButton?: ProductCardActionOverride;
   };
   slots?: ProductCardSlots;
-  /** Named card treatments keep archive and product-page rail styling scoped to their consumers. */
-  appearance?: "industrial" | "archive";
 }
 
 export const createProductCardCustomizations = (
   customizations: ProductCardCustomizations,
 ) => customizations;
 
+const brandOrCategory = (product: Product) => product.brand || product.category || "";
+
+// One card look everywhere; presets only choose which elements show.
 export const PRODUCT_CARD_PRESETS: Record<
   "compactCard" | "archiveCard" | "railCard" | "searchCard" | "perfectMatchCard",
   ProductCardCustomizations
 > = {
-  compactCard: createProductCardCustomizations({
-    imageBlockClassName: "aspect-square w-full",
-  }),
-  archiveCard: createProductCardCustomizations({
-    appearance: "archive",
-    categoryText: (product) => product.brand || product.category || "",
-  }),
-  railCard: createProductCardCustomizations({
-    appearance: "industrial",
-    categoryText: (product) => product.brand || product.category || "",
-  }),
-  searchCard: createProductCardCustomizations({
-    hiddenElements: ["category", "quickViewIcon"],
-    imageBlockClassName: "aspect-square w-full",
-  }),
-  perfectMatchCard: createProductCardCustomizations({
-    hiddenElements: ["category", "quickViewIcon"],
-    imageBlockClassName: "aspect-square w-full",
-  }),
+  compactCard: createProductCardCustomizations({}),
+  archiveCard: createProductCardCustomizations({ categoryText: brandOrCategory }),
+  railCard: createProductCardCustomizations({ categoryText: brandOrCategory }),
+  searchCard: createProductCardCustomizations({ hiddenElements: ["category"] }),
+  perfectMatchCard: createProductCardCustomizations({ hiddenElements: ["category"] }),
 };
 
 const formatMoney = (value: number) => formatCurrency(value);
@@ -133,11 +115,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onNotify,
   onBuyNow,
   className = "",
-  variant = "default",
   customizations,
 }) => {
-  const isFlatHorizontal = variant === "flat-horizontal";
-  const isArchive = customizations?.appearance === "archive";
   const navigate = useNavigate();
 
   const [notifyStatus, setNotifyStatus] = useState<
@@ -411,7 +390,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   }, [shouldRenderQuickView]);
 
   const productUrl = buildProductUrl(product);
-  const isIndustrial = customizations?.appearance === "industrial";
   const displayCategory =
     (typeof customizations?.categoryText === "function"
       ? customizations.categoryText(product)
@@ -424,30 +402,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     <>
       <article
         className={[
-          `group flex flex-col h-full ${
-            isIndustrial
-              ? "rounded-md border-2 border-border bg-white p-3 transition-colors hover:border-belims-blue"
-              : isArchive
-                ? "rounded-md border border-border bg-white transition-colors hover:border-border-strong"
-              : "rounded-2xl border border-border/70 bg-white p-3 sm:p-4 shadow-xs hover:shadow-md hover:border-border-strong transition-all duration-300"
-          } ${
-            isFlatHorizontal ? "sm:flex-row sm:gap-4" : ""
-          }`,
+          "group flex h-full flex-col overflow-hidden rounded-md border-2 border-border bg-white transition-colors hover:border-text",
           className,
         ].join(" ")}
       >
         {customizations?.slots?.beforeImage?.(product)}
 
-        {/* Image Container */}
-        <div
-          className={`relative aspect-square w-full ${isIndustrial || isArchive ? "bg-white" : "rounded-xl bg-[#F8F9FA]"} overflow-hidden flex items-center justify-center ${isArchive ? "p-3" : "p-3 mb-3"} ${
-            isFlatHorizontal ? "sm:w-48 sm:mb-0 sm:flex-shrink-0" : ""
-          }`}
-        >
-          {/* Main Product Image Link */}
+        {/* Image block: grey tile inset 12px, as in the home mockup */}
+        <div className="relative aspect-square w-full">
           <Link
             to={productUrl}
-            className="flex h-full w-full items-center justify-center"
+            className="absolute inset-3 flex items-center justify-center overflow-hidden rounded-sm bg-surface-muted p-3"
           >
             {product.image ? (
               <img
@@ -461,33 +426,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 className="max-h-full max-w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-xs text-text-tertiary">
-                No image
-              </div>
+              <span className="text-xs text-text-tertiary">No image</span>
             )}
           </Link>
 
-          {/* Wishlist stays available on touch and pointer layouts. */}
-          <button
-            type="button"
-            onClick={handleToggleWishlist}
-            className={`absolute right-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-white text-text transition-colors hover:border-primary hover:text-red-500 ${
-              isWishlisted
-                ? "text-red-500"
-                : ""
-            }`}
-            aria-label={
-              isWishlisted ? "Remove from wishlist" : "Add to wishlist"
-            }
-            title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-          >
-            <Heart
-              size={17}
-              className={isWishlisted ? "fill-red-500 text-red-500" : ""}
-            />
-          </button>
+          {badgeLabel && !isHidden("badge") && (
+            <span
+              className={`absolute left-5 top-5 z-10 rounded-sm px-2 py-1 text-sm font-bold uppercase tracking-wide ${badgeClass}`}
+            >
+              {badgeLabel}
+            </span>
+          )}
 
-          {isArchive && (
+          {/* Wishlist and quick view stay available on touch and pointer layouts. */}
+          <div className="absolute right-5 top-5 z-10 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleToggleWishlist}
+              className={`flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-white transition-colors hover:border-primary hover:text-red-500 ${
+                isWishlisted ? "text-red-500" : "text-text"
+              }`}
+              aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+              title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+            >
+              <Heart size={17} className={isWishlisted ? "fill-red-500 text-red-500" : ""} />
+            </button>
             <button
               type="button"
               onClick={(e) => {
@@ -495,27 +458,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 e.stopPropagation();
                 openQuickView();
               }}
-              className="absolute right-2.5 top-[3.25rem] z-10 grid h-9 w-9 place-items-center rounded-sm border border-border bg-white text-text transition-colors hover:border-primary hover:text-primary"
+              className="grid h-9 w-9 place-items-center rounded-sm border border-border bg-white text-text transition-colors hover:border-primary hover:text-primary"
               title="Quick view"
               aria-label={`Quick view ${product.name}`}
             >
               <Eye size={17} />
             </button>
-          )}
+          </div>
 
-          {/* Deal / Sale Badge (Top Left) */}
-          {badgeLabel && !isHidden("badge") && (
-          <span
-              className={`absolute left-2.5 top-2.5 z-10 rounded-sm px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}
-            >
-              {badgeLabel}
-            </span>
-          )}
-
-          {/* Daily Deal Timer Badge if active */}
-          {isDailyDeal && !isFlatHorizontal && !isHidden("dailyMarquee") && (
-            <div className="absolute left-2 right-2 bottom-2 z-10 px-1 py-1 rounded bg-white/95 border border-border text-center shadow-xs backdrop-blur-xs">
-              <span className="text-deal-sale font-semibold text-[11px]">
+          {isDailyDeal && !isHidden("dailyMarquee") && (
+            <div className="absolute inset-x-5 bottom-5 z-10 rounded-sm border border-border bg-white/95 px-1 py-1 text-center">
+              <span className="text-xs font-semibold text-deal-sale">
                 {formatTwo(dailyTimeLeft.hours)}h {formatTwo(dailyTimeLeft.minutes)}m {formatTwo(dailyTimeLeft.seconds)}s
               </span>
             </div>
@@ -524,108 +477,65 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {customizations?.slots?.afterImage?.(product)}
 
-        {/* Content */}
         {customizations?.slots?.beforeContent?.(product)}
-        <div className={`flex flex-1 flex-col justify-between ${isArchive ? "px-3.5 pb-3.5 pt-1" : ""}`}>
-          <div>
-            {/* Category above title */}
-            {!isHidden("category") && (
-              <p className={`${isIndustrial ? "text-caption" : isArchive ? "text-[11px]" : "text-[11px] sm:text-xs"} font-semibold uppercase tracking-wider text-text-tertiary mb-1 truncate`}>
-                {displayCategory}
-              </p>
-            )}
+        <div className="flex flex-1 flex-col gap-1.5 px-3.5 pb-3.5 pt-1">
+          {!isHidden("category") && (
+            <p className="truncate text-sm font-bold uppercase tracking-wider text-text-tertiary">
+              {displayCategory}
+            </p>
+          )}
 
-            {/* Product Title */}
-            <h3 className={`font-heading font-semibold text-text ${isArchive ? "text-sm min-h-[2.7em]" : "text-sm sm:text-[15px] min-h-[38px]"} line-clamp-2 leading-snug hover:text-belims-blue transition-colors mb-1`}>
-              <Link to={productUrl}>{product.name}</Link>
-            </h3>
-            {(isIndustrial || isArchive) && (
-              <p className={`mb-1 flex items-center gap-1.5 text-sm font-semibold ${
-                product.stock <= 0 ? "text-stock-out" : product.stock <= (isArchive ? 5 : 3) ? "text-stock-low" : "text-stock-ok"
-              }`}>
-                <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
-                {product.stock <= 0 ? "Out of stock" : product.stock <= 3 ? `Only ${product.stock} left` : "In stock"}
-              </p>
-            )}
-          </div>
+          <h3 className="line-clamp-2 min-h-[2.7em] font-heading text-base font-semibold leading-snug text-text transition-colors hover:text-belims-blue">
+            <Link to={productUrl}>{product.name}</Link>
+          </h3>
 
-          {/* Price Area: Dominant Price + Sale Price replacing stars */}
-          <div className="mt-auto pt-1">
-            <div className={`flex items-center gap-2 min-h-[26px] ${isArchive ? "justify-start" : "justify-between"}`}>
-              <span className={`font-heading text-lg font-extrabold ${hasConsumerStrike ? "text-primary" : "text-text"}`}>
-                {formatMoney(displayPrice)}
+          <p
+            className={`flex items-center gap-1.5 text-caption font-semibold ${
+              product.stock <= 0 ? "text-stock-out" : product.stock <= 3 ? "text-stock-low" : "text-stock-ok"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
+            {product.stock <= 0 ? "Out of stock" : product.stock <= 3 ? `Only ${product.stock} left` : "In stock"}
+          </p>
+
+          <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-1">
+            <span className={`font-heading text-xl font-extrabold ${hasConsumerStrike ? "text-primary" : "text-text"}`}>
+              {formatMoney(displayPrice)}
+            </span>
+            {hasConsumerStrike && consumerCompareAt ? (
+              <span className="text-caption text-deal-strike line-through">{formatMoney(consumerCompareAt)}</span>
+            ) : isTradeSpecial && tradePrice > 0 ? (
+              <span className="rounded bg-belims-accent/10 px-1.5 py-0.5 text-xs font-bold text-belims-accent">
+                Trade: {formatMoney(tradePrice)}
               </span>
-
-              {hasConsumerStrike && consumerCompareAt ? (
-                <span className="text-[13px] font-normal text-text-tertiary line-through">
-                  {formatMoney(consumerCompareAt)}
-                </span>
-              ) : isTradeSpecial && tradePrice > 0 ? (
-                <span className="text-xs font-bold text-belims-accent bg-belims-accent/10 px-1.5 py-0.5 rounded">
-                  Trade: {formatMoney(tradePrice)}
-                </span>
-              ) : null}
-            </div>
-
-            {/* Action Buttons: Add to cart + Quick View square button */}
-            <div className="mt-3 flex items-center gap-2">
-              {product.stock > 0 ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    addWithPriceMode(isTradeSpecial ? "trade" : "retail");
-                  }}
-                  className={
-                    isIndustrial
-                      ? "flex h-10 flex-1 items-center justify-center rounded-md bg-belims-blue px-3 font-heading font-condensed text-button font-bold uppercase text-white transition-colors hover:bg-primary"
-                      : isArchive
-                        ? "flex h-11 flex-1 items-center justify-center rounded-sm bg-secondary px-3 font-heading text-sm font-bold text-white transition-colors hover:bg-primary"
-                      : "flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-border bg-white px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold font-heading text-text shadow-2xs transition-all duration-200 hover:bg-belims-blue hover:border-belims-blue hover:text-white"
-                  }
-                >
-                  {!isIndustrial && <ShoppingCart size={15} />}
-                  <span className="truncate">Add to cart</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleNotify}
-                  disabled={notifyStatus === "pending" || notifyStatus === "sent"}
-                  className="flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-border bg-gray-50 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold font-heading text-text-tertiary shadow-2xs transition-colors hover:bg-gray-100"
-                >
-                  {notifyStatus === "sent" ? (
-                    <CheckCircle size={15} className="text-green-600" />
-                  ) : (
-                    <Bell size={15} />
-                  )}
-                  <span className="truncate">
-                    {notifyStatus === "sent"
-                      ? "Notified"
-                      : notifyStatus === "pending"
-                        ? "Setting..."
-                        : "Notify me"}
-                  </span>
-                </button>
-              )}
-
-              {/* Quick View Button (Square) */}
-              {!isIndustrial && !isArchive && <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  openQuickView();
-                }}
-                className="flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-white text-text shadow-2xs transition-all duration-200 hover:border-text hover:bg-surface-dark hover:text-white"
-                title="Quick View"
-                aria-label="Quick View"
-              >
-                <Eye size={17} />
-              </button>}
-            </div>
+            ) : null}
           </div>
+
+          {product.stock > 0 ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                addWithPriceMode(isTradeSpecial ? "trade" : "retail");
+              }}
+              className="mt-2 flex h-10 w-full items-center justify-center rounded-md bg-secondary px-3 font-heading font-condensed text-button font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary"
+            >
+              Add to cart
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleNotify}
+              disabled={notifyStatus === "pending" || notifyStatus === "sent"}
+              className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-white px-3 font-heading font-condensed text-button font-bold uppercase tracking-wide text-text-secondary transition-colors hover:bg-surface-muted"
+            >
+              {notifyStatus === "sent" ? <CheckCircle size={15} className="text-green-600" /> : <Bell size={15} />}
+              <span className="truncate">
+                {notifyStatus === "sent" ? "Notified" : notifyStatus === "pending" ? "Setting..." : "Notify me"}
+              </span>
+            </button>
+          )}
         </div>
 
         {customizations?.slots?.afterContent?.(product)}

@@ -16,6 +16,9 @@ export interface Product {
   weight?: number; // Weight in kg for shipping calculation
   isBundle?: boolean;
   isFeatured?: boolean; // WooCommerce featured product flag
+  total_sales?: number; // Archive sort: Best Sellers
+  date_created?: string; // Archive sort: New In (ISO 8601)
+  average_rating?: number; // Archive sort: Top Rated
   bundleSavings?: number;
   description?: string;
   colors?: string[];

@@ -89,11 +89,13 @@ class Belims_Homepage {
         $rows     = function_exists('get_field') ? get_field('homepage_sections', 'option') : array();
 
         foreach ((array) $rows as $row) {
-            if (($row['acf_fc_layout'] ?? '') === 'hero' && !empty($row['enabled'])) {
-                $hero = self::hero($row);
-                if ($hero) {
-                    $sections[] = $hero;
-                }
+            if (empty($row['enabled'])) {
+                continue;
+            }
+            $layout  = $row['acf_fc_layout'] ?? '';
+            $section = $layout === 'hero' ? self::hero($row) : ($layout === 'top_categories' ? self::top_categories($row) : null);
+            if ($section) {
+                $sections[] = $section;
             }
         }
 
@@ -111,6 +113,7 @@ class Belims_Homepage {
 
         return array(
             'type'         => 'hero',
+            'eyebrow'      => sanitize_text_field($row['eyebrow'] ?? ''),
             'title'        => sanitize_text_field($row['title']),
             'description'  => sanitize_text_field($row['description'] ?? ''),
             'button'       => array(
@@ -119,6 +122,31 @@ class Belims_Homepage {
             ),
             'image'        => $image,
             'image_mobile' => self::image((int) ($row['image_mobile'] ?? 0), $image['alt']),
+        );
+    }
+
+    /** Cards reference a product_cat by slug; the storefront reads the live count and fills any blank field. */
+    private static function top_categories(array $row) {
+        $cards = array();
+        foreach ((array) ($row['cards'] ?? array()) as $card) {
+            $term = get_term((int) ($card['category'] ?? 0), 'product_cat');
+            if (!$term || is_wp_error($term)) {
+                continue;
+            }
+            $cards[] = array(
+                'category'    => $term->slug,
+                'title'       => sanitize_text_field($card['title'] ?? ''),
+                'description' => sanitize_text_field($card['description'] ?? ''),
+                'button_text' => sanitize_text_field($card['button_text'] ?? '') ?: 'Shop now',
+                'image'       => self::image((int) ($card['image'] ?? 0), ''),
+            );
+        }
+
+        return array(
+            'type'    => 'top_categories',
+            'eyebrow' => sanitize_text_field($row['eyebrow'] ?? '') ?: 'Biggest ranges',
+            'title'   => sanitize_text_field($row['title'] ?? '') ?: 'Top categories',
+            'cards'   => array_slice($cards, 0, 2),
         );
     }
 

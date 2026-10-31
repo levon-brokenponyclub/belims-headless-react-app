@@ -33,19 +33,21 @@ const HeroBanner: React.FC = () => {
           decoding="async"
         />
       </picture>
-      <div className="absolute inset-0 bg-gradient-to-r from-belims-blue/90 via-belims-blue/50 to-transparent" />
+      {/* Brand scrim from the home mockup: solid blue on the copy side fading to clear. */}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(50,39,131,.92)_0%,rgba(50,39,131,.55)_45%,rgba(0,0,0,0)_80%)]" />
 
-      <div className="container relative z-10 mx-auto px-4 py-10 md:py-14">
+      <div className="container relative z-10 mx-auto px-4 py-14">
         <div className="max-w-[560px] text-white">
-          <h1 className="font-heading text-display-sm font-bold uppercase font-condensed md:text-display-lg">
+          {hero.eyebrow && (
+            <p className="text-eyebrow font-semibold uppercase tracking-[0.08em] text-white/80">{hero.eyebrow}</p>
+          )}
+          <h1 className="mb-4 mt-2 font-heading text-[44px] font-black uppercase leading-none tracking-[-0.02em] font-condensed md:text-[72px]">
             {hero.title}
           </h1>
-          {hero.description && (
-            <p className="mt-4 text-lg text-white/90">{hero.description}</p>
-          )}
+          {hero.description && <p className="mb-6 text-lg text-white/90">{hero.description}</p>}
           <a
             href={hero.button.link}
-            className="mt-6 inline-flex h-12 items-center justify-center rounded-md bg-primary px-6 font-heading text-button uppercase font-condensed tracking-wide text-primary-on transition-colors hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-6 font-heading text-button font-bold uppercase font-condensed tracking-wide text-primary-on transition-colors hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
           >
             {hero.button.text}
           </a>

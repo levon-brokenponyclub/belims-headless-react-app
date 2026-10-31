@@ -9,6 +9,7 @@ export interface HomepageImage {
 
 export interface HomepageHeroSection {
   type: "hero";
+  eyebrow?: string;
   title: string;
   description: string;
   button: { text: string; link: string };
@@ -16,9 +17,24 @@ export interface HomepageHeroSection {
   image_mobile: HomepageImage | null;
 }
 
+export interface HomepageTopCategoryCard {
+  category: string;
+  title: string;
+  description: string;
+  button_text: string;
+  image: HomepageImage | null;
+}
+
+export interface HomepageTopCategoriesSection {
+  type: "top_categories";
+  eyebrow: string;
+  title: string;
+  cards: HomepageTopCategoryCard[];
+}
+
 export interface HomepagePayload {
   version: string;
-  sections: HomepageHeroSection[];
+  sections: (HomepageHeroSection | HomepageTopCategoriesSection)[];
 }
 
 /** Image with responsive attributes resolved at build time (identical to the preload tags). */
@@ -36,8 +52,15 @@ export interface ResolvedHero extends Omit<HomepageHeroSection, "image" | "image
   imageMobile: ResolvedImage | null;
 }
 
+export interface ResolvedTopCategories {
+  eyebrow: string;
+  title: string;
+  cards: { category: string; title: string; description: string; buttonText: string; image: string | null }[];
+}
+
 export interface HomepageModule {
   version: string;
   source: "cms" | "fallback";
   hero: ResolvedHero | null;
+  topCategories: ResolvedTopCategories | null;
 }

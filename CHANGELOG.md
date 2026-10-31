@@ -192,6 +192,33 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-10-31 — Home/Archive restyle, Top Categories CMS cards, Global Site Settings 2.10.14
+
+Why: match the approved home mockup (hero, product card, Top categories) and the new Archive sort list.
+
+### frontend/components/ProductCard.tsx
+- One card look for every preset (mockup card: 2px border, grey inset image tile, top-left badge, uppercase brand, 2-line title, stock dot, price + struck price, full-width Add to cart / Notify me). Wishlist and quick view are overlay buttons on every card. Removed the `variant` and `appearance` props and the `imageBlockClassName`/`imageClassName` options (no consumers); presets now only set `categoryText` / `hiddenElements`.
+- Deleted unused `NexvoProductCard.tsx` and `NexvoProductSlider.tsx` (no importers).
+
+### frontend/components/Archive.tsx, types.ts, services/wooCommerceService.ts
+- Sort By is now Relevance, Best Sellers, New In, Price Low-High, Price High-Low, Name A-Z, Name Z-A, Top Rated (`featured` removed; an old `?sort=featured` falls back to Relevance). Product gains `total_sales`, `date_created`, `average_rating`, requested in the listing fields.
+
+### frontend/components/HeroBanner.tsx, build/homepage*.ts
+- Hero restyled to the mockup (brand blue scrim, 72px / 44px mobile condensed uppercase title, optional eyebrow). `virtual:homepage` now also carries `topCategories`.
+
+### frontend/components/PopularCategories.tsx, hooks/useHomeCategories.ts, App.tsx
+- Top categories on `bg-surface-muted` with white cards: live product count, title, description, outlined button, image. Cards come from Site Settings → Homepage → Top Categories; with none configured it shows the 2 biggest second-level categories as before. `HomeCategory` gains `count`.
+
+### Global Site Settings 2.10.14
+- `class-products-endpoint.php`: listing rows add `total_sales`, `date_created`, `average_rating`.
+- `acf-field-groups.php` / `class-homepage.php`: hero **Eyebrow** field; new `top_categories` homepage layout (eyebrow, heading, up to 2 cards by `product_cat` with title/description/image/button overrides) in `GET /homepage`.
+- README, USERGUIDE, version 2.10.14.
+
+### Verified
+- `npm run build`; `tsc` (scratch copy) shows no errors in changed files (12 pre-existing, was 16); `php -l` on the three plugin files; `localhost:4173`: sort list, hero h1 72px, muted section background, cards render with 2px border, quick view and wishlist on all 24 listing cards.
+### Deployed — staging then production 2.10.13 → 2.10.14 (2026-10-31, approved)
+- Backups `~/backups/xnmtexmyyf-gss-2.10.13-20261031-205111.tgz` and `~/backups/uhkkwupuum-gss-2.10.13-20261031-205154.tgz`; the 6 server files matched git `HEAD` on both apps before overwrite; uploaded `global-site-settings.php`, `includes/class-products-endpoint.php`, `includes/acf-field-groups.php`, `includes/class-homepage.php`, `README.md`, `USERGUIDE.md`; `php -l` OK; GSS 2.10.14 active on both. `/products` returns `total_sales`, `date_created`, `average_rating`; `/homepage` 200.
+
 ## 2026-10-31 — Header: fix flicker while scrolling
 
 ### frontend/components/Header.tsx

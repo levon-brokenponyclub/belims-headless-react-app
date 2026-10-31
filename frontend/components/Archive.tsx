@@ -33,15 +33,25 @@ interface ArchiveProps {
   isTradeApproved?: boolean;
 }
 
-type SortKey = "recommended" | "featured" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
+type SortKey =
+  | "recommended"
+  | "best-sellers"
+  | "new-in"
+  | "price-asc"
+  | "price-desc"
+  | "name-asc"
+  | "name-desc"
+  | "top-rated";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "recommended", label: "Recommended" },
-  { value: "featured", label: "Featured" },
-  { value: "price-asc", label: "Price, low to high" },
-  { value: "price-desc", label: "Price, high to low" },
-  { value: "name-asc", label: "Alphabetically, A–Z" },
-  { value: "name-desc", label: "Alphabetically, Z–A" },
+  { value: "recommended", label: "Relevance" },
+  { value: "best-sellers", label: "Best Sellers" },
+  { value: "new-in", label: "New In" },
+  { value: "price-asc", label: "Price Low-High" },
+  { value: "price-desc", label: "Price High-Low" },
+  { value: "name-asc", label: "Name A-Z" },
+  { value: "name-desc", label: "Name Z-A" },
+  { value: "top-rated", label: "Top Rated" },
 ];
 
 const OFFER_LABELS: Record<string, string> = {
@@ -387,8 +397,14 @@ export const Archive: React.FC<ArchiveProps> = ({
       case "name-desc":
         sorted.sort((a, b) => b.name.localeCompare(a.name));
         break;
-      case "featured":
-        sorted.sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0));
+      case "best-sellers":
+        sorted.sort((a, b) => (b.total_sales ?? 0) - (a.total_sales ?? 0));
+        break;
+      case "new-in":
+        sorted.sort((a, b) => Date.parse(b.date_created ?? "") - Date.parse(a.date_created ?? "") || 0);
+        break;
+      case "top-rated":
+        sorted.sort((a, b) => (b.average_rating ?? 0) - (a.average_rating ?? 0));
         break;
     }
     return sorted;

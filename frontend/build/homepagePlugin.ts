@@ -10,7 +10,14 @@ import fs from "fs";
 import path from "path";
 import type { HtmlTagDescriptor, Plugin } from "vite";
 import { cmsTransformUrl } from "../utils/cmsImageUrl";
-import type { HomepageImage, HomepageModule, HomepagePayload, ResolvedImage } from "./homepageTypes";
+import type {
+  HomepageHeroSection,
+  HomepageImage,
+  HomepageModule,
+  HomepagePayload,
+  HomepageTopCategoriesSection,
+  ResolvedImage,
+} from "./homepageTypes";
 
 const VIRTUAL_ID = "virtual:homepage";
 const RESOLVED_ID = "\0" + VIRTUAL_ID;
@@ -48,13 +55,15 @@ const resolveImage = (img: HomepageImage, opts: Options, set: typeof DESKTOP): R
 };
 
 const toModule = (payload: HomepagePayload, source: HomepageModule["source"], opts: Options): HomepageModule => {
-  const hero = payload.sections.find((s) => s.type === "hero");
+  const hero = payload.sections.find((s): s is HomepageHeroSection => s.type === "hero");
+  const topCategories = payload.sections.find((s): s is HomepageTopCategoriesSection => s.type === "top_categories");
   return {
     version: payload.version,
     source,
     hero: hero
       ? {
           type: "hero",
+          eyebrow: hero.eyebrow ?? "",
           title: hero.title,
           description: hero.description,
           button: hero.button,
@@ -62,6 +71,20 @@ const toModule = (payload: HomepagePayload, source: HomepageModule["source"], op
           imageMobile: isImage(hero.image_mobile) ? resolveImage(hero.image_mobile, opts, MOBILE) : null,
         }
       : null,
+    topCategories:
+      topCategories && Array.isArray(topCategories.cards)
+        ? {
+            eyebrow: topCategories.eyebrow,
+            title: topCategories.title,
+            cards: topCategories.cards.map((c) => ({
+              category: c.category,
+              title: c.title,
+              description: c.description,
+              buttonText: c.button_text,
+              image: isImage(c.image) ? (opts.transforms ? cmsTransformUrl(c.image.url, 480) ?? c.image.url : c.image.url) : null,
+            })),
+          }
+        : null,
   };
 };
 

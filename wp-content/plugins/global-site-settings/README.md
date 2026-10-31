@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.10.13  
+**Version:** 2.10.14  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -162,7 +162,7 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/products` | Public | Product listing (`view=listing\|detail`, `fields`, `featured`, `category`, `search`, `page`, `per_page`, `brand` = `product_brand` slug). Listing fields include `brand` + `brand_slug` (2.10.8 — search Brands, `/brands/:slug`, sidebar Brand filter). Only sellable products (2.9.1): in stock, `_price` > 0, a category other than Uncategorized — `Belims_Products_Endpoint::is_sellable()`. Sends `Cache-Control: public, s-maxage=300` + ETag |
+| `GET` | `/products` | Public | Product listing (`view=listing\|detail`, `fields`, `featured`, `category`, `search`, `page`, `per_page`, `brand` = `product_brand` slug). Listing fields include `brand` + `brand_slug` (2.10.8 — search Brands, `/brands/:slug`, sidebar Brand filter) and `total_sales`, `date_created` (ISO 8601), `average_rating` (2.10.14 — Archive sort: Best Sellers, New In, Top Rated). Only sellable products (2.9.1): in stock, `_price` > 0, a category other than Uncategorized — `Belims_Products_Endpoint::is_sellable()`. Sends `Cache-Control: public, s-maxage=300` + ETag |
 | `GET` | `/products/home` | Public | Homepage rail set (newest, best-stocked, deals, on sale, featured, Hand Tools), in stock, de-duplicated, listing fields. `Cache-Control: public, s-maxage=300` |
 | `GET` | `/products/:id` | Public | Single product (`view=detail` default) — includes `stock` (quantity) and `stock_status` like listings (2.10.7; the product page's pickup/delivery tiles need `stock > 0`) |
 | `GET` | `/products/filters` | Public | Archive filter options (registered in `ftg-sync/class-ftg-sync-endpoint.php`) |
@@ -351,8 +351,8 @@ Homepage content is edited in **Site Settings → Homepage** and baked into the 
 
 | Piece | Detail |
 |-------|--------|
-| ACF | `group_belims_homepage` → Flexible Content `homepage_sections` (options). Layout `hero` (max 1): enabled, title, description, button_text, button_link, image (ID), image_mobile (ID, optional), alt |
-| Endpoint | `GET /belims/v1/homepage` → `{ version, sections: [{ type: "hero", title, description, button:{text,link}, image:{url,width,height,alt}, image_mobile }] }`. Disabled/incomplete sections omitted. `Cache-Control: public, max-age=60` |
+| ACF | `group_belims_homepage` → Flexible Content `homepage_sections` (options). Layouts (each max 1): `hero` — enabled, eyebrow (optional, 2.10.14), title, description, button_text, button_link, image (ID), image_mobile (ID, optional), alt; `top_categories` (2.10.14) — enabled, eyebrow, title, `cards` repeater (max 2: category (`product_cat` ID), title/description/image overrides, button_text) |
+| Endpoint | `GET /belims/v1/homepage` → `{ version, sections: [{ type: "hero", eyebrow, title, description, button:{text,link}, image:{url,width,height,alt}, image_mobile }, { type: "top_categories", eyebrow, title, cards: [{ category (slug), title, description, button_text, image }] }] }`. Disabled/incomplete sections omitted; the storefront reads each card's live product count from the category list. `Cache-Control: public, max-age=60` |
 | Rebuild on save | `acf/save_post` (options) compares payload `version` with option `belims_homepage_version`; when changed, schedules Action Scheduler `belims_homepage_deploy` (group `belims-homepage`) 60s out — rapid saves coalesce into one build |
 | Rebuild target | Option `belims_homepage_deploy_target` = `preview` (default) / `production` / `both` — *Saving rebuilds* radio. `Belims_Homepage::TARGETS`: preview → `belims.vercel.app` (`main`), production → `www.belims.co.za` (`vercel`) |
 | Deploy hooks | Options `belims_vercel_deploy_hook_preview` / `_production` (must start `https://api.vercel.com/v1/integrations/deploy/`), masked in UI. A legacy `belims_vercel_deploy_hook` migrates into the preview slot on `admin_init`. Last result in `belims_homepage_deploy_log` |
