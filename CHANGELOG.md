@@ -192,6 +192,13 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Fix "Use my location" on add-address
+
+### frontend/components/DeliveryDetailsAddAddress.tsx
+- Every geolocation error was reported as "Location access was denied". macOS CoreLocation `kCLErrorLocationUnknown` is `POSITION_UNAVAILABLE` (code 2), not a permission denial.
+- Now tries a network/Wi-Fi fix first (`enableHighAccuracy: false`, 5 min cache), retries once with GPS if the OS can't produce a position, and shows a message per error code (blocked / couldn't work out where you are / timed out).
+- Verified: `npm run build`. Real geolocation needs a manual check in a browser with location enabled.
+
 ## 2026-11-01 — Google reviews: hide below 4 stars
 
 ### frontend/components/BelimsReviews.tsx

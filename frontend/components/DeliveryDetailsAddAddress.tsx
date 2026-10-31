@@ -26,6 +26,15 @@ import {
 } from "../services/authService";
 import { fetchEcommercePolicies } from "../services/wooCommerceService";
 
+const GEO_PERMISSION_DENIED = 1;
+const GEO_POSITION_UNAVAILABLE = 2;
+const GEO_TIMEOUT = 3;
+
+const getPosition = (options: PositionOptions) =>
+  new Promise<GeolocationPosition>((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(resolve, reject, options),
+  );
+
 type Step = "address" | "option";
 type Option = "delivery" | "collection";
 
@@ -314,43 +323,53 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
     applyAddress(enriched);
   };
 
-  const handleUseMyLocation = () => {
+  const handleUseMyLocation = async () => {
+    if (isLocating) return;
     if (!navigator.geolocation) {
       setError("Location isn't available on this device. Search for your address instead.");
       return;
     }
     setIsLocating(true);
     setError(null);
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&zoom=18&lat=${coords.latitude}&lon=${coords.longitude}`,
-          );
-          const data = response.ok ? await response.json() : null;
-          const mapped = data ? mapNominatimAddress(data) : null;
-          if (!mapped) {
-            setError("Couldn't find an address for your location. Search for it instead.");
-            return;
-          }
-          const houseNumber = data.address?.house_number || "";
-          const street =
-            houseNumber && !mapped.street.startsWith(houseNumber)
-              ? `${houseNumber} ${mapped.street}`.trim()
-              : mapped.street;
-          applyAddress({ ...mapped, street, label: buildAddressLabel({ ...mapped, street }) });
-        } catch {
-          setError("Couldn't look up your location. Search for your address instead.");
-        } finally {
-          setIsLocating(false);
-        }
-      },
-      () => {
-        setIsLocating(false);
-        setError("Location access was denied. Search for your address instead.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
+    try {
+      // Network/Wi-Fi fix first (fast, reliable on desktop). If the OS can't produce a position
+      // (e.g. CoreLocation kCLErrorLocationUnknown), retry once with GPS before giving up.
+      const position = await getPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }).catch(
+        (err: GeolocationPositionError) => {
+          if (err.code === GEO_PERMISSION_DENIED) throw err;
+          return getPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+        },
+      );
+      const { latitude, longitude } = position.coords;
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&zoom=18&lat=${latitude}&lon=${longitude}`,
+      );
+      const data = response.ok ? await response.json() : null;
+      const mapped = data ? mapNominatimAddress(data) : null;
+      if (!mapped) {
+        setError("Couldn't find an address for your location. Search for it instead.");
+        return;
+      }
+      const houseNumber = data.address?.house_number || "";
+      const street =
+        houseNumber && !mapped.street.startsWith(houseNumber)
+          ? `${houseNumber} ${mapped.street}`.trim()
+          : mapped.street;
+      applyAddress({ ...mapped, street, label: buildAddressLabel({ ...mapped, street }) });
+    } catch (err) {
+      const code = (err as GeolocationPositionError)?.code;
+      setError(
+        code === GEO_PERMISSION_DENIED
+          ? "Location access is blocked. Allow it in your browser's site settings, or search for your address."
+          : code === GEO_TIMEOUT
+            ? "Finding your location timed out. Try again, or search for your address."
+            : code === GEO_POSITION_UNAVAILABLE
+              ? "We couldn't work out where you are. Check your Wi-Fi or connection and try again, or search for your address."
+              : "Couldn't look up your location. Search for your address instead.",
+      );
+    } finally {
+      setIsLocating(false);
+    }
   };
 
   const handleClearAddress = () => {
