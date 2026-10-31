@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { AuthPage } from "./AuthPage";
 import { UserData } from "../services/authService";
 
@@ -10,6 +11,9 @@ interface AuthModalProps {
   showToast: (message: string, type: "success" | "error") => void;
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   initialMode = "login",
@@ -18,56 +22,71 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   showToast,
 }) => {
   const [mode, setMode] = useState<"login" | "register">(initialMode);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+
+  // Start on the requested tab every time the modal opens.
+  useEffect(() => {
+    if (isOpen) setMode(initialMode);
+  }, [isOpen, initialMode]);
+
+  // Escape closes, Tab stays inside the dialog, focus returns to the trigger, page scroll locks.
+  useEffect(() => {
+    if (!isOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus?.();
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
-      />
+    <div className="fixed inset-0 z-[2000] flex items-end justify-center sm:items-center sm:p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
 
-      <div className="relative w-full max-w-md rounded-xl bg-white shadow-2xl overflow-hidden">
-        {/* Tabs */}
-        <div className="flex border-b border-neutral-200">
-          <button
-            type="button"
-            onClick={() => setMode("login")}
-            className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${
-              mode === "login"
-                ? "border-b-2 border-neutral-950 text-neutral-950"
-                : "text-neutral-400 hover:text-neutral-700"
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("register")}
-            className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${
-              mode === "register"
-                ? "border-b-2 border-neutral-950 text-neutral-950"
-                : "text-neutral-400 hover:text-neutral-700"
-            }`}
-          >
-            Create Account
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="px-4 text-neutral-400 transition-colors hover:text-neutral-700"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M6.75 17.25L17.25 6.75M6.75 6.75L17.25 17.25" />
-            </svg>
-          </button>
-        </div>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={mode === "login" ? "Sign in" : "Create account"}
+        className="relative flex max-h-[92vh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-lg border-2 border-border bg-white sm:rounded-lg"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-3 top-3 z-10 grid h-10 w-10 place-items-center rounded-md text-text-secondary transition-colors hover:text-text"
+        >
+          <X size={22} aria-hidden />
+        </button>
 
         {/* Form */}
-        <div className="max-h-[80vh] overflow-y-auto p-6">
+        <div className="overflow-y-auto p-6 pt-0">
           <AuthPage
             key={mode}
             mode={mode}

@@ -192,6 +192,16 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Auth modal and form refactor
+
+### frontend/components/auth/authFields.tsx (new), AuthPage.tsx, AuthModal.tsx
+- Shared auth form styles and components in one module: `inputClass`, button and link classes, `Field` (label tied to input via `htmlFor`), `PasswordInput` (show/hide), `PhoneInput` (flat dial-code select + number, replaces two copies), `OrDivider`.
+- Brand tokens instead of raw `neutral-*`: 2px `border-border` inputs, `belims-blue` focus, 15px text, condensed uppercase primary button with brand hover, no shadow or blur on the modal.
+- Modal: no tabs (switch via the "Create an account" / "Sign in" links), close icon top-right, `role="dialog"` + `aria-modal`, Escape to close, focus trap and restore, body scroll lock, resets to the requested tab on open, bottom sheet on mobile.
+- Forms: heading "Welcome back" / "Create your account" with a one-line subtitle; sign in has email → password (show/hide) → Sign in, then Google / Facebook and one-time code below; register keeps Google / Facebook on top and has a Create account button pinned to the bottom of the modal (`-bottom-6` offsets the scroll container's padding so fields no longer show below it); spinner "Signing in..." / "Creating account..." states; errors use `role="alert"`; autocomplete attributes added; duplicate `type="tel"` attribute removed.
+- `/login` and `/register` pages share the same form and pick up the new styles.
+- Verified: `npm run build`; modal sign in and register checked on `localhost:4173`. Standalone pages, forgot-password and OTP steps not exercised.
+
 ## 2026-11-01 — Toasts polish, add-to-cart toast, card "Adding..." state
 
 ### frontend/utils/toast.ts (new), components/Toast.tsx, App.tsx, index.css
