@@ -192,6 +192,12 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — "All deals" tab in Shop deals
+
+### frontend/components/DealsSection.tsx
+- New first tab **All deals** (now the default): every product with an active daily, weekly or trade deal, or on sale — up to 6. Its fallback no longer pulls in merely featured products.
+- Verified: `npm run build`.
+
 ## 2026-11-01 — Quick view redesign (shadcnblocks product-quick-view4)
 
 ### frontend/components/QuickView.tsx, ProductCard.tsx; StockBar.tsx deleted

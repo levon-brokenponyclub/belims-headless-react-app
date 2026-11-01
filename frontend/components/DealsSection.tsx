@@ -8,9 +8,14 @@ import { SkeletonProductCard } from "./Skeleton";
 import { SectionHeading } from "./SectionHeading";
 import { CategoryFeature, CategoryFeatureConfig } from "./CategoryFeature";
 
-type DealTabKey = "deal_of_day" | "weekly" | "trade_deals";
+type DealTabKey = "all" | "deal_of_day" | "weekly" | "trade_deals";
 
 const DEAL_TABS: { key: DealTabKey; label: string; description: string }[] = [
+  {
+    key: "all",
+    label: "All deals",
+    description: "Every daily, weekly and trade deal in one place.",
+  },
   {
     key: "deal_of_day",
     label: "Daily deals",
@@ -58,7 +63,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
   isTradeApproved = false,
 }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<DealTabKey>("deal_of_day");
+  const [activeTab, setActiveTab] = useState<DealTabKey>("all");
   const activeTabConfig = DEAL_TABS.find((tab) => tab.key === activeTab)!;
 
   const tabProducts = useMemo(() => {
@@ -81,12 +86,9 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
         return tradeType === "trade_special";
       }
 
+      // All deals: any active deal, or a product on sale.
       if (tradeType || consumerType) return true;
-
-      return (
-        (product.sale_price && parseFloat(String(product.sale_price)) > 0) ||
-        product.isFeatured
-      );
+      return Boolean(product.sale_price && parseFloat(String(product.sale_price)) > 0);
     });
 
     return filtered.slice(0, MAX_DEALS);
