@@ -51,6 +51,18 @@ export interface LoginParams {
 /**
  * JWT token management
  */
+/** Ask the app shell to open the sign-in modal (from services or components without modal access). */
+export const AUTH_REQUEST_EVENT = "belims:request-auth";
+export interface AuthRequest {
+  mode?: "login" | "register";
+  /** Where to go after signing in; stays on the current page when omitted. */
+  redirectTo?: string;
+}
+export const requestSignIn = (request: AuthRequest = {}) => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<AuthRequest>(AUTH_REQUEST_EVENT, { detail: request }));
+};
+
 export const getAuthToken = (): string | null => {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(TOKEN_KEY);

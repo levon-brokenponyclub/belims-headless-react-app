@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
+import { outlineButtonClass, pageTitleClass, primaryButtonClass } from "./ui/classes";
 
 interface OrderItem {
   id: string | number;
@@ -51,20 +52,20 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
   const Root = summaryOnly ? "div" : "main";
 
   return (
-    <Root className={summaryOnly ? "" : "bg-gray-50"}>
+    <Root className={summaryOnly ? "" : "bg-surface-muted"}>
       <div className={summaryOnly ? "" : "container mx-auto px-4 py-10 lg:py-16"}>
         <div className={summaryOnly ? "" : "grid gap-8 lg:grid-cols-[1.1fr_1fr]"}>
           {!summaryOnly && (
-          <section className="bg-white rounded-lg border border-black/10 p-8 flex flex-col items-center text-center shadow-sm">
-            <div className="h-16 w-16 rounded-full bg-green-50 border border-green-200 flex items-center justify-center">
-              <div className="h-12 w-12 rounded-full bg-green-500 flex items-center justify-center text-white">
+          <section className="bg-white rounded-lg border border-black/10 p-8 flex flex-col items-center text-center">
+            <div className="h-16 w-16 rounded-full bg-stock-ok-bg border-2 border-success flex items-center justify-center">
+              <div className="h-12 w-12 rounded-full bg-success flex items-center justify-center text-white">
                 <Check size={28} strokeWidth={3} />
               </div>
             </div>
-            <h1 className="mt-6 text-2xl font-semibold text-gray-900">
-              Thank You For Your Order!
+            <h1 className={`mt-6 ${pageTitleClass}`}>
+              Thank you for your order
             </h1>
-            <p className="mt-2 text-sm text-gray-600 max-w-sm">
+            <p className="mt-2 text-sm text-text-secondary max-w-sm">
               Your order has been successfully placed. We have sent a
               confirmation to your email.
             </p>
@@ -72,14 +73,14 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
               <button
                 type="button"
                 onClick={() => navigate("/shop")}
-                className="w-full rounded bg-belims-blue px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-belims-blue/90 transition-colors"
+                className={`${primaryButtonClass} w-full`}
               >
-                Continue Shopping
+                Continue shopping
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="w-full rounded border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                className={`${outlineButtonClass} w-full`}
               >
                 Back to home
               </button>
@@ -88,21 +89,21 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
           )}
 
           <section className="space-y-5">
-            <div className="bg-white rounded-lg border border-black/10 p-6 shadow-sm">
+            <div className="bg-white rounded-lg border border-black/10 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Order Summary
+                  <h2 className="text-lg font-semibold text-text">
+                    Order summary
                   </h2>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-text-secondary mt-1">
                     Your Order ID:{" "}
-                    <span className="text-gray-900">#{orderNumber}</span>
+                    <span className="text-text">#{orderNumber}</span>
                   </p>
                 </div>
-                <p className="text-xs text-gray-500">{date}</p>
+                <p className="text-xs text-text-secondary">{date}</p>
               </div>
 
-              <ul className="mt-5 divide-y divide-gray-100">
+              <ul className="mt-5 divide-y divide-border">
                 {items.map((item) => (
                   <li key={item.id} className="flex items-center gap-4 py-4">
                     <img
@@ -110,16 +111,16 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
                       alt={item.name}
                       loading="lazy"
                       decoding="async"
-                      className="h-14 w-14 rounded-lg object-cover bg-gray-100"
+                      className="h-14 w-14 rounded-lg object-cover bg-surface-muted"
                     />
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-gray-900 line-clamp-1">
+                      <h3 className="text-base font-semibold text-text line-clamp-1">
                         {item.name}
                       </h3>
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                      <p className="text-xs text-text-secondary mt-0.5 line-clamp-1">
                         {item.category || "Uncategorized"}
                       </p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
+                      <p className="text-sm font-semibold text-text mt-1">
                         {item.price}
                       </p>
                     </div>
@@ -128,34 +129,34 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
               </ul>
             </div>
 
-            <div className="bg-white rounded-lg border border-black/10 p-6 shadow-sm">
-              <ul className="space-y-3 text-sm text-gray-600">
+            <div className="bg-white rounded-lg border border-black/10 p-6">
+              <ul className="space-y-3 text-sm text-text-secondary">
                 <li className="flex items-center justify-between">
                   <span>Subtotal</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-text">
                     {subtotal}
                   </span>
                 </li>
                 <li className="flex items-center justify-between">
                   <span>Shipping</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-text">
                     {shipping}
                   </span>
                 </li>
               </ul>
-              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-900">
+              <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                <span className="text-sm font-semibold text-text">
                   Total
                 </span>
-                <span className="text-base font-semibold text-gray-900">
+                <span className="text-base font-semibold text-text">
                   {total}
                 </span>
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="bg-white rounded-lg border border-black/10 p-5 shadow-sm">
-                <div className="h-9 w-9 rounded-lg bg-gray-100 text-gray-700 flex items-center justify-center">
+              <div className="bg-white rounded-lg border border-black/10 p-5">
+                <div className="h-9 w-9 rounded-lg bg-surface-muted text-text-secondary flex items-center justify-center">
                   <svg
                     width="20"
                     height="20"
@@ -180,15 +181,15 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
                     />
                   </svg>
                 </div>
-                <h4 className="mt-3 text-sm font-semibold text-gray-900">
+                <h4 className="mt-3 text-sm font-semibold text-text">
                   Shipping Address
                 </h4>
-                <p className="mt-2 text-xs text-gray-600">
+                <p className="mt-2 text-xs text-text-secondary">
                   {billingAddress.filter(Boolean).join(" ")}
                 </p>
               </div>
-              <div className="bg-white rounded-lg border border-black/10 p-5 shadow-sm">
-                <div className="h-9 w-9 rounded-lg bg-gray-100 text-gray-700 flex items-center justify-center">
+              <div className="bg-white rounded-lg border border-black/10 p-5">
+                <div className="h-9 w-9 rounded-lg bg-surface-muted text-text-secondary flex items-center justify-center">
                   <svg
                     width="20"
                     height="20"
@@ -206,10 +207,10 @@ export const OrderDetailsView: React.FC<OrderDetailsProps> = ({
                     />
                   </svg>
                 </div>
-                <h4 className="mt-3 text-sm font-semibold text-gray-900">
+                <h4 className="mt-3 text-sm font-semibold text-text">
                   Payment Info
                 </h4>
-                <p className="mt-2 text-xs text-gray-600">
+                <p className="mt-2 text-xs text-text-secondary">
                   {payment.type} Ending {payment.last4}
                   <br />
                   Expires {payment.expires}

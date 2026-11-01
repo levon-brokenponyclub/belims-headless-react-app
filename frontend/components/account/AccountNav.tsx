@@ -45,7 +45,7 @@ export const AccountNav: React.FC<AccountNavProps> = ({ active, wishlistCount, o
         <span>{label}</span>
         {id === "wishlist" && wishlistCount > 0 && (
           <span
-            className={`${rail ? "ml-auto" : ""} grid h-5 min-w-5 place-items-center rounded-sm px-1 text-[11px] font-bold ${
+            className={`${rail ? "ml-auto" : ""} grid h-5 min-w-5 place-items-center rounded-sm px-1 text-xs font-bold ${
               rail ? "bg-belims-blue text-white" : "bg-white text-belims-blue"
             }`}
           >

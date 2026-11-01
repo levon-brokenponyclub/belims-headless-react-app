@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getApiBaseUrl } from "../services/wooCommerceService";
 import { OrderDetailsView } from "./OrderDetailsView";
+import { pageTitleClass, primaryButtonClass } from "./ui/classes";
 import { formatNumberWithSeparators } from "../utils/price";
 import {
   registerUser,
@@ -238,7 +239,7 @@ export const OrderConfirmation: React.FC = () => {
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         />
-        <p className="text-gray-600">Loading order details...</p>
+        <p className="text-text-secondary">Loading order details...</p>
       </div>
     );
   }
@@ -248,36 +249,36 @@ export const OrderConfirmation: React.FC = () => {
     // the detailed order API call fails.
     return (
       <div className="py-12 flex flex-col items-center">
-        <div className="mb-8 p-6 rounded-lg border-2 bg-yellow-50 border-yellow-200 max-w-xl w-full">
+        <div className="mb-8 p-6 rounded-lg border-2 bg-stock-low-bg border-warning max-w-xl w-full">
           <div className="flex items-start gap-4">
-            <AlertCircle className="text-yellow-600 flex-shrink-0" size={32} />
+            <AlertCircle className="text-warning flex-shrink-0" size={32} />
             <div>
-              <h1 className="text-2xl font-bold mb-2 text-yellow-900">
-                Order Received
+              <h1 className="mb-2 text-h4 font-bold text-text">
+                Order received
               </h1>
-              <p className="text-yellow-700 mb-2">
+              <p className="text-text-secondary mb-2">
                 Thank you for your order. We couldn't load full order details
                 right now, but your order has been recorded.
               </p>
               {orderId && (
-                <p className="text-sm text-yellow-800">
+                <p className="text-sm text-text">
                   <span className="font-semibold">Reference:</span> #{orderId}
                 </p>
               )}
               {paymentStatus && (
-                <p className="text-sm text-yellow-800">
+                <p className="text-sm text-text">
                   <span className="font-semibold">Payment status:</span>{" "}
                   {paymentStatus}
                 </p>
               )}
               {timestamp && (
-                <p className="text-xs text-yellow-800 mt-1">
+                <p className="text-xs text-text mt-1">
                   <span className="font-semibold">Time:</span>{" "}
                   {new Date(parseInt(timestamp) * 1000).toLocaleString()}
                 </p>
               )}
               {error && (
-                <p className="text-xs text-yellow-800 mt-3">
+                <p className="text-xs text-text mt-3">
                   <span className="font-semibold">Note:</span> {error}
                 </p>
               )}
@@ -287,9 +288,9 @@ export const OrderConfirmation: React.FC = () => {
 
         <button
           onClick={() => navigate("/")}
-          className="bg-belims-blue text-white px-6 py-2 rounded hover:bg-belims-blue/90 transition-colors"
+          className={`${primaryButtonClass} px-6`}
         >
-          Return Home
+          Return home
         </button>
       </div>
     );
@@ -417,7 +418,7 @@ export const OrderConfirmation: React.FC = () => {
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 lg:py-16">
       {accountCreationMessage && (
-        <div className="mb-8 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+        <div className="mb-8 rounded-lg border border-green-200 bg-stock-ok-bg p-4 text-success">
           {accountCreationMessage}
         </div>
       )}
@@ -426,8 +427,8 @@ export const OrderConfirmation: React.FC = () => {
         <div className={`flex h-20 w-20 items-center justify-center rounded-full ${PRIMARY_TINT} text-primary`}>
           <Check size={36} strokeWidth={2.5} />
         </div>
-        <h1 className="mt-6 font-heading text-3xl font-bold text-text md:text-4xl">
-          Order Confirmed!
+        <h1 className={`mt-6 ${pageTitleClass}`}>
+          Order confirmed
         </h1>
         <p className="mt-3 text-base text-text-secondary md:text-lg">
           Thank you for your purchase. Your order has been received and is
@@ -435,7 +436,7 @@ export const OrderConfirmation: React.FC = () => {
         </p>
       </header>
 
-      <section className="mt-10 rounded-xl border border-border bg-surface p-6 md:p-8">
+      <section className="mt-10 rounded-md border border-border bg-surface p-6 md:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-heading text-lg font-bold text-text md:text-xl">

@@ -59,7 +59,7 @@ Defined in [`App.tsx`](../frontend/App.tsx):
 | `/order-confirmation` | `OrderConfirmation` (PayFast return; needs `order_id` + `order_key`) |
 | `/login`, `/register` | `AuthPage` |
 | `/account`, `/account/:tab` | `AccountPage` (dashboard, orders, addresses, payment, details, wishlist) |
-| `/wishlist` | `WishlistPage` |
+| `/wishlist` | Redirects to `/account/wishlist` (sign-in required) |
 | `/track-order` | `TrackOrderPage` |
 | `/delivery-details/add-address` | `DeliveryDetailsAddAddress` |
 | `/admin/order-preview`, `/admin/account-preview` | Internal previews |

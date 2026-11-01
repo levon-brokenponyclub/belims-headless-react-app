@@ -20,14 +20,14 @@ export const OrderStatusTracker: React.FC<{ status: Order["status"] }> = ({ stat
           <li
             key={label}
             aria-current={state === "current" ? "step" : undefined}
-            className={`relative flex flex-col items-center gap-1.5 px-0.5 text-center text-[12px] ${
+            className={`relative flex flex-col items-center gap-1.5 px-0.5 text-center text-xs ${
               state === "todo" ? "font-semibold text-text-tertiary" : state === "current" ? "font-extrabold text-text" : "font-semibold text-text"
             } ${index > 0 ? "before:absolute before:right-1/2 before:top-[13px] before:h-0.5 before:w-full before:content-['']" : ""} ${
               state === "todo" ? "before:bg-border" : "before:bg-belims-blue"
             }`}
           >
             <span
-              className={`relative z-10 grid h-7 w-7 place-items-center rounded-full border-2 bg-white text-[12px] font-bold ${
+              className={`relative z-10 grid h-7 w-7 place-items-center rounded-full border-2 bg-white text-xs font-bold ${
                 state === "done"
                   ? "border-belims-blue bg-belims-blue text-white"
                   : state === "current"

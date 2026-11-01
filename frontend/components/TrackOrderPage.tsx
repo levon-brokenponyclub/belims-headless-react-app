@@ -5,6 +5,7 @@ import { Mail, Phone, RefreshCcw, Search } from "lucide-react";
 import type { TrackResponse } from "../services/tracking";
 import { getAuthToken } from "../services/authService";
 import { getApiBaseUrl } from "../services/wooCommerceService";
+import { inputClass, pageTitleClass, primaryButtonClass } from "./ui/classes";
 import { useCustomerOrders } from "../hooks/useCustomerOrders";
 import { TrackingProgressCard, normalizeTrackingResult, StatusPill } from "./TrackingProgressCard";
 import type { NormalizedTracking } from "./TrackingProgressCard";
@@ -206,7 +207,7 @@ export const TrackOrderPage: React.FC = () => {
 
   return (
     <div className="container mx-auto min-h-[60vh] max-w-[1100px] px-4 py-8 md:py-12">
-      <h1 className="font-heading font-condensed text-h2 font-extrabold uppercase leading-none md:text-display-sm">Track your order</h1>
+      <h1 className={pageTitleClass}>Track your order</h1>
       <p className="mt-2 max-w-xl text-base text-text-secondary">Enter your tracking reference to see live updates from the courier.</p>
 
       <p role="status" aria-live="polite" className="sr-only">
@@ -229,12 +230,12 @@ export const TrackOrderPage: React.FC = () => {
             spellCheck={false}
             aria-invalid={inputError ? true : undefined}
             aria-describedby={inputError ? "tracking-ref-error" : "tracking-ref-hint"}
-            className="min-h-[48px] flex-1 rounded-md border border-border-strong bg-white px-3 text-base font-semibold uppercase tracking-wide text-text placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue"
+            className={`${inputClass} flex-1 font-semibold uppercase tracking-wide placeholder:font-normal placeholder:normal-case placeholder:tracking-normal`}
           />
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-md bg-primary px-6 font-heading font-condensed text-button font-bold uppercase text-white transition-colors hover:bg-belims-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue focus-visible:ring-offset-2 disabled:opacity-60 motion-reduce:transition-none"
+            className={`${primaryButtonClass} px-6 motion-reduce:transition-none`}
           >
             {loading ? (
               <>

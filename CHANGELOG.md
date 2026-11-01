@@ -192,6 +192,45 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Account wishlist: 4 columns, Remove with confirm
+
+### frontend/components/account/WishlistView.tsx, ui/ConfirmDialog.tsx (new)
+- Wishlist grid is 2 / 3 / 4 columns (sm / lg / xl).
+- Card actions: red "Add to cart" without the cart icon, and a text "Remove" button (replaces the heart icon button) that opens a confirm dialog ("Remove from wishlist?" — Cancel / Remove). The inline "removed" message is gone; the existing toast with Undo covers it.
+- New reusable `ConfirmDialog` (portal, `role="alertdialog"`, Escape/backdrop cancel, focus starts on Cancel and returns afterwards).
+- Verified: `npm run build`. The signed-in wishlist wasn't viewable locally (needs a login).
+
+## 2026-11-01 — Account, Track order and order confirmation on the shared styles
+
+Follow-up audit after the global type change (desktop + 375px): no overflow and nothing under 12px; fixes below.
+
+### frontend/components/account/ui.ts and account views
+- `btnPrimary` is now the shared blue button (Save changes, Track shipment, Start shopping); new `btnBuy` (red) for "Reorder all", which adds to the cart. `btnOutline`, `labelClass` and `fieldClass` reuse the shared outline button, label and 2px / 16px-on-mobile input; `cardClass` has a 2px border.
+- Account page title 30/36px bold (was up to 44px extra-bold). 16 hard-coded sizes (`text-[11–18px]`) mapped to type tokens.
+
+### frontend/components/TrackOrderPage.tsx
+- Shared page title, 2px reference field (16px on mobile so iOS doesn't zoom), blue "Track" button (tracking isn't a purchase).
+
+### frontend/components/OrderDetailsView.tsx, OrderConfirmation.tsx
+- Grey and yellow raw colours mapped to tokens; shared page title and buttons; sentence case ("Thank you for your order", "Order summary", "Continue shopping", "Order confirmed", "Order received", "Return home"); item names 15px.
+- Verified: `npm run build`; `/admin/account-preview`, `/track-order`, `/admin/order-preview` and `/order-confirmation` at 1440px and 375px. Signed-in Orders, Addresses, Details and Wishlist tabs changed from the code only — not seen.
+
+## 2026-11-01 — Wishlist is for signed-in customers; account sign-in screen
+
+### frontend/services/wishlistService.ts, authService.ts, App.tsx
+- Signed out, the wishlist reads as empty and hearts can't add: tapping one shows "Sign in to use your wishlist" with a **Sign in** action (previously guests got "Added to wishlist"). Hearts and counts refresh when the user signs in or out.
+- New `requestSignIn({ mode?, redirectTo? })` / `belims:request-auth` event opens the app's sign-in modal from anywhere. Checkout keeps going to `/checkout` after sign-in; other requests stay on the page.
+
+### frontend/components/AccountPage.tsx
+- Signed-out `/account/*` screen restyled: bordered card on the muted background, page-title heading ("Your account", or "Your wishlist" on `/account/wishlist`), short copy, **Sign in** (opens the modal) and **Create an account** (opens it on the register form). Replaces the grey "My Account" block that reloaded the page via `/login`.
+- Verified: `npm run build`; signed-out heart tap and the account screen on `localhost:4173`.
+
+## 2026-11-01 — Wishlist links go to the account wishlist
+
+### frontend/components/Footer.tsx, Header.tsx
+- Footer "Wishlist" and the menu bar's Other services → Wishlist now link to `/account/wishlist` (was `/wishlist`). `/wishlist` now redirects to `/account/wishlist` and `WishlistPage.tsx` is deleted, so guests sign in to see their wishlist (they can still add to it; items stay in the browser).
+- Verified: `npm run build`.
+
 ## 2026-11-01 — Cart and Checkout share one order summary
 
 ### frontend/components/OrderSummaryParts.tsx (new), CartPage.tsx, Checkout.tsx

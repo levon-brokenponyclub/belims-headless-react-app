@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useParams, Navigate } from "react-router-dom";
 import { User } from "lucide-react";
-import { UserData } from "../services/authService";
+import { requestSignIn, UserData } from "../services/authService";
 import { saveStoredAddress } from "../services/shippingAddress";
 import { useCustomerOrders } from "../hooks/useCustomerOrders";
 import { useWishlist } from "../hooks/useWishlist";
@@ -14,6 +14,7 @@ import { OrderDetailView } from "./account/OrderDetailView";
 import { AddressesView } from "./account/AddressesView";
 import { DetailsView } from "./account/DetailsView";
 import { WishlistView } from "./account/WishlistView";
+import { outlineButtonClass, pageTitleClass, primaryButtonClass } from "./ui/classes";
 
 interface AccountPageProps {
   user: UserData | null;
@@ -70,14 +71,33 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, addToC
 
   if (!user) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4 text-center">
-        <User size={48} className="text-gray-300 mb-4" />
-        <h2 className="text-xl font-bold text-gray-900 mb-2">My Account</h2>
-        <p className="text-gray-600 mb-6">Please log in to view your account details.</p>
-        <a href="/login" className="bg-belims-blue text-white px-8 py-3 rounded font-bold hover:bg-belims-light transition-all">
-          Log In
-        </a>
-      </div>
+      <section className="flex min-h-[60vh] items-center justify-center bg-surface-muted px-4 py-12">
+        <div className="w-full max-w-md rounded-lg border-2 border-border bg-white p-8 text-center">
+          <span className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-full bg-surface-muted text-belims-blue">
+            <User size={26} aria-hidden />
+          </span>
+          <h1 className={pageTitleClass}>
+            {tabParam === "wishlist" ? "Your wishlist" : "Your account"}
+          </h1>
+          <p className="mt-3 text-base text-text-secondary">
+            {tabParam === "wishlist"
+              ? "Sign in to save products and see your wishlist."
+              : "Sign in to track orders, manage addresses and see your wishlist."}
+          </p>
+          <div className="mt-8 grid gap-3">
+            <button type="button" onClick={() => requestSignIn()} className={`${primaryButtonClass} w-full`}>
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => requestSignIn({ mode: "register" })}
+              className={`${outlineButtonClass} w-full`}
+            >
+              Create an account
+            </button>
+          </div>
+        </div>
+      </section>
     );
   }
 

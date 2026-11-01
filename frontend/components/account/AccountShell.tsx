@@ -45,18 +45,18 @@ export const AccountShell: React.FC<AccountShellProps> = ({
         <div className="container mx-auto max-w-[1380px] px-4 pt-6 md:pt-9">
           <div className="flex flex-wrap items-end justify-between gap-4 pb-6">
             <div>
-              <p className="text-[12px] font-bold uppercase tracking-[.1em] text-white/80">My account</p>
+              <p className="text-xs font-bold uppercase tracking-[.1em] text-white/80">My account</p>
               <h1
                 ref={headingRef}
                 tabIndex={-1}
-                className="mt-1 font-heading font-condensed text-h1 font-extrabold uppercase leading-none focus:outline-none md:text-display-md"
+                className="mt-1 font-heading font-condensed text-h2 font-bold uppercase leading-none focus:outline-none md:text-h1"
               >
                 {title}
               </h1>
               {subtitle && <p className="mt-2 text-white/85">{subtitle}</p>}
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 rounded-sm border border-white px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide">
+              <span className="inline-flex items-center gap-1.5 rounded-sm border border-white px-2 py-0.5 text-xs font-bold uppercase tracking-wide">
                 {isTrade ? <Wrench size={14} aria-hidden="true" /> : <User size={14} aria-hidden="true" />}
                 {isTrade ? "Trade account" : "Standard account"}
               </span>

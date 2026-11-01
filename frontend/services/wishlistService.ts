@@ -1,4 +1,5 @@
 import { pushToast } from "../utils/toast";
+import { getAuthToken, requestSignIn } from "./authService";
 
 const STORAGE_KEY = "belims_wishlist";
 
@@ -13,7 +14,11 @@ export interface WishlistItem {
   category?: string;
 }
 
+// The wishlist belongs to signed-in customers: signed out it reads as empty and can't be added to.
+const isSignedIn = () => Boolean(getAuthToken());
+
 export const getWishlist = (): WishlistItem[] => {
+  if (!isSignedIn()) return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? (JSON.parse(raw) as WishlistItem[]) : [];
@@ -26,6 +31,13 @@ export const isInWishlist = (productId: number): boolean =>
   getWishlist().some((item) => item.id === productId);
 
 export const addToWishlist = (item: WishlistItem, options: { silent?: boolean } = {}): void => {
+  if (!isSignedIn()) {
+    pushToast("Sign in to use your wishlist", "info", {
+      detail: "Save products and find them in your account.",
+      action: { label: "Sign in", onClick: () => requestSignIn() },
+    });
+    return;
+  }
   const list = getWishlist();
   if (!list.some((i) => i.id === item.id)) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...list, item]));
@@ -53,7 +65,7 @@ export const toggleWishlist = (item: WishlistItem): boolean => {
     return false;
   }
   addToWishlist(item);
-  return true;
+  return isInWishlist(item.id);
 };
 
 export const getWishlistCount = (): number => getWishlist().length;

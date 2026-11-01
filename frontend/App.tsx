@@ -10,6 +10,7 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
+  Navigate,
   useNavigate,
   useParams,
   useSearchParams,
@@ -48,7 +49,6 @@ import { BelimsReviews } from "./components/BelimsReviews";
 import { AuthPage } from "./components/AuthPage";
 import { DeliveryDetailsAddAddress } from "./components/DeliveryDetailsAddAddress";
 import { AccountPage } from "./components/AccountPage";
-import { WishlistPage } from "./components/WishlistPage";
 import { CartPage } from "./components/CartPage";
 import { AuthModal } from "./components/AuthModal";
 import { ToastStack } from "./components/Toast";
@@ -64,7 +64,7 @@ import { ComingSoon } from "./components/ComingSoon";
 
 const SHOW_COMING_SOON =
   import.meta.env.VITE_COMING_SOON === "true";
-import { getCurrentUser, UserData, logoutUser } from "./services/authService";
+import { AUTH_REQUEST_EVENT, AuthRequest, getCurrentUser, UserData, logoutUser } from "./services/authService";
 import { saveStoredAddress } from "./services/shippingAddress";
 
 import { Product, CartItem, Store } from "./types";
@@ -1239,9 +1239,26 @@ function MainApp(props) {
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [isCookieConsentOpen, setIsCookieConsentOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authRequest, setAuthRequest] = useState<AuthRequest>({});
   const isCheckoutRoute = ["/checkout", "/login", "/register"].includes(displayLocation.pathname);
 
-  const openAuthForCheckout = () => setIsAuthModalOpen(true);
+  const openAuth = (request: AuthRequest) => {
+    setAuthRequest(request);
+    setIsAuthModalOpen(true);
+  };
+  const openAuthForCheckout = () => openAuth({ redirectTo: "/checkout" });
+
+  // Anything can ask for the sign-in modal via requestSignIn() (wishlist, account page).
+  useEffect(() => {
+    const onRequest = (e: Event) => openAuth((e as CustomEvent<AuthRequest>).detail || {});
+    window.addEventListener(AUTH_REQUEST_EVENT, onRequest);
+    return () => window.removeEventListener(AUTH_REQUEST_EVENT, onRequest);
+  }, []);
+
+  // Wishlist hearts and counts depend on being signed in.
+  useEffect(() => {
+    window.dispatchEvent(new Event("belims:wishlist-updated"));
+  }, [props.currentUser]);
 
   useEffect(() => {
     const isSameLocation =
@@ -1462,7 +1479,7 @@ function MainApp(props) {
             />
             <Route
               path="/wishlist"
-              element={<WishlistPage addToCart={props.addToCart} />}
+              element={<Navigate to="/account/wishlist" replace />}
             />
             <Route
               path="/delivery-details/add-address"
@@ -1524,11 +1541,12 @@ function MainApp(props) {
 
       <AuthModal
         isOpen={isAuthModalOpen}
+        initialMode={authRequest.mode}
         onClose={() => setIsAuthModalOpen(false)}
         onSuccess={(user) => {
           props.handleLogin(user);
           setIsAuthModalOpen(false);
-          navigate("/checkout");
+          if (authRequest.redirectTo) navigate(authRequest.redirectTo);
         }}
         showToast={props.showToast}
       />

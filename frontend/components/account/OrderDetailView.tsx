@@ -5,7 +5,7 @@ import type { Order, OrderLineItem, Product } from "../../types";
 import { formatCurrency } from "../../utils/price";
 import { formatDate } from "../../utils/date";
 import { StatusBadge } from "./StatusBadge";
-import { btnOutline, btnPrimary } from "./ui";
+import { btnOutline, btnBuy, btnPrimary } from "./ui";
 import { OrderStatusTracker } from "./OrderStatusTracker";
 import { describeReorder, reorderLines } from "./reorder";
 
@@ -73,7 +73,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({ order, loading
       <section aria-labelledby="order-summary" className="overflow-hidden rounded-md border border-border bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
           <div>
-            <p className="text-[12px] font-bold uppercase tracking-[.08em] text-primary">Order</p>
+            <p className="text-xs font-bold uppercase tracking-[.08em] text-primary">Order</p>
             <h2 id="order-summary" className="mt-1 font-heading font-condensed text-h3 font-extrabold uppercase leading-none">
               #{order.order_number}
             </h2>
@@ -85,7 +85,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({ order, loading
           <div className="flex flex-wrap items-center gap-3">
             <StatusBadge status={order.status} />
             {addToCart && (
-              <button type="button" className={btnPrimary} onClick={() => reorder(order.line_items)}>
+              <button type="button" className={btnBuy} onClick={() => reorder(order.line_items)}>
                 <RefreshCw size={18} aria-hidden="true" /> Reorder all
               </button>
             )}
@@ -163,7 +163,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({ order, loading
               <div className="flex justify-between"><dt>Discount</dt><dd>−{money(discount)}</dd></div>
             )}
             <div className="flex justify-between"><dt>Delivery</dt><dd>{shipping === 0 ? "Free" : money(shipping)}</dd></div>
-            <div className="flex justify-between text-[18px] font-bold"><dt>Total</dt><dd>{money(total)}</dd></div>
+            <div className="flex justify-between text-xl font-bold"><dt>Total</dt><dd>{money(total)}</dd></div>
           </dl>
         </section>
 

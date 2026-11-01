@@ -15,7 +15,7 @@ export const StatusBadge: React.FC<{ status: Order["status"] | string }> = ({ st
   const meta = STATUS_META[status as Order["status"]] ?? { label: String(status), tone: "neutral" as StatusTone };
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border border-current bg-white px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide ${TONE_CLASS[meta.tone]}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border border-current bg-white px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${TONE_CLASS[meta.tone]}`}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
       {meta.label}

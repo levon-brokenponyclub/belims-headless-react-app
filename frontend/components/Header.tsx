@@ -1148,7 +1148,7 @@ export const Header: React.FC<HeaderProps> = ({
                       Store locator &amp; leaflets
                     </button>
                     <Link
-                      to="/wishlist"
+                      to="/account/wishlist"
                       role="menuitem"
                       onClick={() => setIsOtherServicesOpen(false)}
                       className="block px-4 py-2.5 text-[14px] font-semibold hover:bg-surface-muted"

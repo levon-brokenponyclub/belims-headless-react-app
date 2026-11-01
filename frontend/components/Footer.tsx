@@ -23,7 +23,7 @@ const shopLinks = [
 const accountLinks = [
   { label: "Track an order", to: "/track-order" },
   { label: "My account", to: "/account" },
-  { label: "Wishlist", to: "/wishlist" },
+  { label: "Wishlist", to: "/account/wishlist" },
   { label: "Cart", to: "/cart" },
 ];
 

@@ -67,7 +67,7 @@ export const AddressesView: React.FC<AddressesViewProps> = ({ user, defaultKey, 
             {title}
           </h2>
           {isDefault && (
-            <span className="inline-flex items-center gap-1.5 rounded-sm border border-current bg-white px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-belims-blue">
+            <span className="inline-flex items-center gap-1.5 rounded-sm border border-current bg-white px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-belims-blue">
               <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
               Default
             </span>

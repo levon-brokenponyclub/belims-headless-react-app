@@ -89,7 +89,7 @@ export const DetailsView: React.FC<{ user: UserData }> = ({ user }) => {
             <div className="md:col-span-2">
               <label htmlFor="acct-email" className={labelClass}>Email address</label>
               <input id="acct-email" autoComplete="email" type="email" value={user.email || ""} readOnly aria-describedby="acct-email-hint" className={fieldClass} />
-              <p id="acct-email-hint" className="mt-1 text-[13px] text-text-tertiary">Your email is your sign-in and can't be changed here.</p>
+              <p id="acct-email-hint" className="mt-1 text-caption text-text-tertiary">Your email is your sign-in and can't be changed here.</p>
             </div>
           </div>
           <div className="border-t border-border p-5">
@@ -120,7 +120,7 @@ export const DetailsView: React.FC<{ user: UserData }> = ({ user }) => {
           <h2 id="type-heading" className={h2Class}>
             Account type
           </h2>
-          <span className="inline-flex items-center gap-1.5 rounded-sm border border-current bg-white px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-belims-blue">
+          <span className="inline-flex items-center gap-1.5 rounded-sm border border-current bg-white px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-belims-blue">
             {isTrade ? <Wrench size={14} aria-hidden="true" /> : <User size={14} aria-hidden="true" />}
             {isTrade ? "Trade account" : "Standard account"}
           </span>

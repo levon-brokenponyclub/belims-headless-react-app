@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart } from "lucide-react";
 import type { Product } from "../../types";
 import { removeFromWishlist } from "../../services/wishlistService";
 import { useWishlist } from "../../hooks/useWishlist";
 import { buildProductUrl } from "../../utils/product";
 import { formatCurrency, isProductPurchasable } from "../../utils/price";
-import { btnPrimary, btnOutline, cardClass } from "./ui";
+import { btnBuy, btnPrimary, cardClass } from "./ui";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 interface WishlistViewProps {
   products?: Product[];
@@ -15,7 +16,7 @@ interface WishlistViewProps {
 
 export const WishlistView: React.FC<WishlistViewProps> = ({ products, addToCart }) => {
   const items = useWishlist();
-  const [message, setMessage] = useState("");
+  const [pendingRemoval, setPendingRemoval] = useState<{ id: number; name: string } | null>(null);
 
   if (items.length === 0) {
     return (
@@ -36,11 +37,8 @@ export const WishlistView: React.FC<WishlistViewProps> = ({ products, addToCart 
 
   return (
     <div className="space-y-4">
-      <p role="status" aria-live="polite" className={message ? "rounded-md border-l-4 border-success bg-surface-muted p-3 font-semibold" : "sr-only"}>
-        {message}
-      </p>
       <h2 className="sr-only">Saved products ({items.length})</h2>
-      <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((item) => {
           // Resolve against the live catalogue: real stock, real (deal) price and image.
           const live = products?.find((p) => String(p.id) === String(item.id));
@@ -60,36 +58,44 @@ export const WishlistView: React.FC<WishlistViewProps> = ({ products, addToCart 
                   <Heart size={32} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-text-tertiary" aria-hidden="true" />
                 )}
               </Link>
-              <p className="mt-3 min-h-[18px] text-[12px] font-bold uppercase tracking-wider text-text-tertiary">{item.brand}</p>
+              <p className="mt-3 min-h-[18px] text-xs font-bold uppercase tracking-wider text-text-tertiary">{item.brand}</p>
               <h3 className="-mt-2 min-h-[2.75rem] text-base font-bold leading-snug">
                 <Link to={url} className="inline-flex min-h-[44px] items-center hover:text-belims-blue hover:underline">
                   {item.name}
                 </Link>
               </h3>
-              <p className="mt-1 min-h-[28px] text-[18px] font-bold">{price > 0 ? formatCurrency(price) : ""}</p>
+              <p className="mt-1 min-h-[28px] text-xl font-bold">{price > 0 ? formatCurrency(price) : ""}</p>
               <p className={`text-base font-semibold ${stockTone}`}>{stock}</p>
               <div className="mt-auto flex gap-3 pt-4">
                 {addToCart && (
-                  <button type="button" onClick={() => live && addToCart(live)} disabled={!canAdd} className={`${btnPrimary} flex-1`}>
-                    <ShoppingCart size={16} aria-hidden="true" /> Add to cart
+                  <button type="button" onClick={() => live && addToCart(live)} disabled={!canAdd} className={`${btnBuy} min-w-0 flex-1 px-3`}>
+                    Add to cart
                   </button>
                 )}
                 <button
                   type="button"
-                  onClick={() => {
-                    removeFromWishlist(item.id);
-                    setMessage(`${item.name} removed from your wishlist.`);
-                  }}
+                  onClick={() => setPendingRemoval({ id: item.id, name: item.name })}
                   aria-label={`Remove ${item.name} from wishlist`}
-                  className={btnOutline}
+                  className="inline-flex min-h-[44px] shrink-0 items-center px-2 font-heading font-condensed text-button font-bold uppercase tracking-wide text-belims-blue transition-colors hover:text-primary"
                 >
-                  <Heart size={18} aria-hidden="true" className="fill-current" />
+                  Remove
                 </button>
               </div>
             </li>
           );
         })}
       </ul>
+      <ConfirmDialog
+        open={pendingRemoval !== null}
+        title="Remove from wishlist?"
+        message={pendingRemoval ? `${pendingRemoval.name} will be removed from your wishlist.` : undefined}
+        confirmLabel="Remove"
+        onCancel={() => setPendingRemoval(null)}
+        onConfirm={() => {
+          if (pendingRemoval) removeFromWishlist(pendingRemoval.id);
+          setPendingRemoval(null);
+        }}
+      />
     </div>
   );
 };

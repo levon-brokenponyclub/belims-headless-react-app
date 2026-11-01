@@ -104,7 +104,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ orders, loading, product
               }`}
             >
               {f.label}
-              <span className="text-[12px] opacity-80">{orders.filter(f.match).length}</span>
+              <span className="text-xs opacity-80">{orders.filter(f.match).length}</span>
             </button>
           );
         })}
@@ -131,7 +131,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ orders, loading, product
             <div className="hidden overflow-x-auto lg:block">
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-border bg-surface-muted text-[12px] uppercase tracking-wider text-text-tertiary">
+                  <tr className="border-b border-border bg-surface-muted text-xs uppercase tracking-wider text-text-tertiary">
                     <th scope="col" className="px-4 py-2.5 font-bold">Order</th>
                     <th scope="col" className="px-4 py-2.5 font-bold">Date</th>
                     <th scope="col" className="hidden px-4 py-2.5 font-bold xl:table-cell">Items</th>

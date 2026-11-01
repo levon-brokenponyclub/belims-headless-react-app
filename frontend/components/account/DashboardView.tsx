@@ -34,7 +34,7 @@ const LatestOrder: React.FC<{ order: Order }> = ({ order }) => {
     <section aria-labelledby="latest-order" className="overflow-hidden rounded-md border border-border bg-white">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
         <div>
-          <p className="text-[12px] font-bold uppercase tracking-[.08em] text-primary">{live ? "Latest active order" : "Latest order"}</p>
+          <p className="text-xs font-bold uppercase tracking-[.08em] text-primary">{live ? "Latest active order" : "Latest order"}</p>
           <h2 id="latest-order" className="mt-1 font-heading font-condensed text-h3 font-extrabold uppercase leading-none">
             Order #{order.order_number}
           </h2>
@@ -45,7 +45,7 @@ const LatestOrder: React.FC<{ order: Order }> = ({ order }) => {
         </div>
       </div>
       <div className="p-5 md:p-6">
-        <p className="text-[17px] font-semibold text-text">{itemsSummary(order)}</p>
+        <p className="text-lg font-semibold text-text">{itemsSummary(order)}</p>
         <p className="text-base text-text-secondary">
           {itemCount(order)} item{itemCount(order) === 1 ? "" : "s"} · {total(order)}
           {delivery ? ` · ${delivery}` : ""}
@@ -129,7 +129,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ orders, loading, w
         <LatestOrder order={latest} />
       ) : (
         <section aria-labelledby="no-orders" className="rounded-md border border-border bg-white p-6 md:p-8">
-          <p className="text-[12px] font-bold uppercase tracking-[.08em] text-primary">Latest order</p>
+          <p className="text-xs font-bold uppercase tracking-[.08em] text-primary">Latest order</p>
           <h2 id="no-orders" className="mt-1 font-heading font-condensed text-h3 font-extrabold uppercase leading-none">
             No orders yet
           </h2>
@@ -150,7 +150,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ orders, loading, w
       <dl className="grid grid-cols-3 divide-x divide-border rounded-md border border-border bg-white" aria-label="Account summary">
         {stats.map(({ label, value }) => (
           <div key={label} className="px-4 py-4 md:px-6">
-            <dt className="text-[12px] font-bold uppercase tracking-wider text-text-tertiary">{label}</dt>
+            <dt className="text-xs font-bold uppercase tracking-wider text-text-tertiary">{label}</dt>
             <dd className="font-heading font-condensed text-display-sm font-extrabold uppercase leading-tight text-belims-blue">{value}</dd>
           </div>
         ))}
