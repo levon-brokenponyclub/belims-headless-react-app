@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.11.1  
+**Version:** 2.11.2  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -172,7 +172,7 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/ecommerce-policies` | Public | Policies, `store_locations`, `expert_contact` (`class-ecommerce-settings.php`; `Cache-Control: public, s-maxage=300` since 2.8.1) |
 | `GET` | `/coupons?code=` | Public | Validate a coupon |
 | `GET` | `/ai/config` | Public | AI feature config |
-| `POST` | `/orders` | Public (send the JWT when signed in so the order is linked to the customer) | Create WooCommerce order from headless checkout; saves an allowed `frontend_origin` as `_belims_frontend_origin`; province name → WooCommerce ZA state code (`KwaZulu-Natal` → `KZN`, 2.10.12); an optional `cart_id` is saved as `_belims_cart_id` so the cart's stock holds are released when WooCommerce reduces stock (2.11.0) |
+| `POST` | `/orders` | Public (send the JWT when signed in so the order is linked to the customer) | Create WooCommerce order from headless checkout; saves an allowed `frontend_origin` as `_belims_frontend_origin`; province name → WooCommerce ZA state code (`KwaZulu-Natal` → `KZN`, 2.10.12); an optional `cart_id` is saved as `_belims_cart_id` so the cart's stock holds are released when WooCommerce reduces stock (2.11.0); `coupon_lines: [{ code }]` are applied with WooCommerce's `apply_coupon()` (an invalid coupon deletes the order and returns 400 with WooCommerce's reason), and an order totalling R0 is completed straight away (`payment_complete()`, response `paid: true`) since PayFast can't take R0 (2.11.2) |
 | `POST` | `/cart/hold` | Public | Replace a cart's 30-minute stock holds: `{ cart_id, items: [{ product_id, quantity }] }` → `{ expires_at, items: [{ product_id, requested, held, available }] }`. Never holds more than stock minus other carts' holds; an empty `items` releases the cart (2.11.0, `includes/class-cart-holds.php`) |
 | `GET` | `/orders` | Logged in | Customer order history (statuses incl. Bob Go's `shipped` / `partially-shipped` since 2.10.12; `province` returned as the name); each order has `tracking: [{courier, tracking_number, tracking_url, status, estimated_delivery}]` from Bob Go's `_bobgo_shipments` meta (2.10.11, also on `/orders/:id`) |
 | `GET` | `/orders/:id?key=` | Order key, owning customer or shop manager | Single order details (404 otherwise) — `Belims_Orders_Endpoint::can_access_order()` |

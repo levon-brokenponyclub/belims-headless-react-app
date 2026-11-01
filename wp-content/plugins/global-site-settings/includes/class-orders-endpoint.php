@@ -248,6 +248,20 @@ class Belims_Orders_Endpoint {
             // Calculate totals (this will apply VAT fees from functions.php)
             $order->calculate_totals();
 
+            // Coupons from checkout (2.11.2). WooCommerce validates each one against this order
+            // (expiry, usage limits, minimum spend, allowed emails) and recalculates the totals.
+            foreach ((array) ($params['coupon_lines'] ?? array()) as $line) {
+                $code = wc_format_coupon_code((string) ($line['code'] ?? ''));
+                if ($code === '') {
+                    continue;
+                }
+                $applied = $order->apply_coupon($code);
+                if (is_wp_error($applied)) {
+                    $order->delete(true);
+                    return new WP_Error('coupon_invalid', html_entity_decode(wp_strip_all_tags($applied->get_error_message()), ENT_QUOTES), array('status' => 400));
+                }
+            }
+
             // Set order status
             $order->set_status('pending'); // Will be updated after payment
 
@@ -268,11 +282,21 @@ class Belims_Orders_Endpoint {
             // Save the order
             $order->save();
 
+            // Nothing to pay (e.g. a 100% coupon): PayFast can't take R0, so complete it here.
+            // payment_complete() reduces stock (releasing cart holds) and counts coupon usage.
+            $paid = false;
+            if ((float) $order->get_total() <= 0) {
+                $order->add_order_note('Paid in full with coupon — no payment required.');
+                $order->payment_complete();
+                $paid = true;
+            }
+
             return rest_ensure_response(array(
                 'success' => true,
                 'order_id' => $order->get_id(),
                 'order_key' => $order->get_order_key(),
                 'total' => $order->get_total(),
+                'paid' => $paid,
             ));
 
         } catch (Exception $e) {

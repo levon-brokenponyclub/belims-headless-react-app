@@ -32,6 +32,8 @@ interface PayFastOrder {
   id: string;
   order_key: string;
   total: number;
+  /** Completed by the CMS with nothing to pay (R0 after coupons) — skip PayFast. */
+  paid: boolean;
   customer_email: string;
   line_items: Array<{
     product_id: number;
@@ -89,7 +91,8 @@ export const createWooOrder = async (
       return {
         id: result.order_id.toString(),
         order_key: result.order_key,
-        total: orderData.total || 0,
+        total: Number(result.total) || 0,
+        paid: Boolean(result.paid),
         customer_email: orderData.customer?.email || "",
         line_items:
           orderData.items?.map((item: any) => ({
@@ -104,7 +107,8 @@ export const createWooOrder = async (
     return null;
   } catch (error) {
     console.error("Order creation error:", error);
-    return null;
+    // Let checkout show the reason (e.g. "Coupon usage limit has been reached").
+    throw error;
   }
 };
 

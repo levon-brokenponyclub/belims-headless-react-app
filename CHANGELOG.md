@@ -192,6 +192,17 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Coupons apply to the real order, Global Site Settings 2.11.2
+
+### wp-content/plugins/global-site-settings/includes/class-orders-endpoint.php — deployed to staging 2026-11-01 (backup `~/backups/xnmtexmyyf-gss-2.11.1-20261101-085152.tgz`); production pending
+- Bug: checkout sent `coupon_lines` but `create_order` never applied them, so PayFast charged the undiscounted total (R174 instead of R0 with a 100% coupon). Coupons are now applied with WooCommerce's `apply_coupon()` (its own rules: expiry, usage limits, minimum spend, allowed emails); a rejected coupon deletes the order and returns 400 with WooCommerce's message.
+- Orders that total R0 after coupons are completed straight away (`payment_complete()` — stock reduced, cart holds released, coupon usage counted; note "Paid in full with coupon") and the response says `paid: true`.
+
+### frontend/components/Checkout.tsx, services/paymentService.ts, services/wooCommerceService.ts
+- A `paid` order skips PayFast: cart cleared, straight to `/order-confirmation`. Order-creation errors show the CMS's reason instead of "Order creation failed". The order total used afterwards comes from the CMS, not the browser.
+- Staging test (temporary 10% and 100% coupons, emails blocked): 10% → order #5604 total R2,421.00 (was R2,690), pending for PayFast; 100% → order #5605 total R0.00, `paid: true`, Processing, stock 2 → 1; unknown code → 400 "Coupon \"nosuchcode123\" cannot be applied because it does not exist." (HTML entities decoded). Cleanup: #5605 refunded (stock back to 2), #5604 cancelled, test coupons deleted.
+- Verified: `npm run build`; `php -l`.
+
 ## 2026-11-01 — "All deals" tab in Shop deals
 
 ### frontend/components/DealsSection.tsx

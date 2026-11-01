@@ -416,7 +416,11 @@ export const createOrder = async (orderData: any) => {
       response = await send(false);
     }
 
-    if (!response.ok) throw new Error("Failed to create order");
+    if (!response.ok) {
+      // Show the CMS's reason (e.g. a coupon WooCommerce rejected) rather than a generic error
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.message || "Failed to create order");
+    }
     return await response.json();
   } catch (error) {
     console.error("Create Order Error:", error);

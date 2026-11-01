@@ -995,7 +995,17 @@ export const Checkout: React.FC<CheckoutProps> = ({
         );
       }
 
-      // 3. Initialize PayFast Payment - Redirect to PayFast
+      // 3. Nothing left to pay (100% coupon): the CMS already completed the order.
+      if (order.paid) {
+        onClearCart();
+        navigate(
+          `/order-confirmation?order_id=${encodeURIComponent(order.id)}&order_key=${encodeURIComponent(order.order_key)}&payment_status=complete&timestamp=${Math.floor(Date.now() / 1000)}`,
+          { replace: true },
+        );
+        return;
+      }
+
+      // 4. Initialize PayFast Payment - Redirect to PayFast
       const paymentUrl = await initializePayment({
         orderId: order.id,
         orderKey: order.order_key,
