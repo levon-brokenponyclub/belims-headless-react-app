@@ -1,22 +1,23 @@
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
-// Shared form styles for AuthPage (page + modal layouts).
-export const inputClass =
-  "flex h-12 w-full rounded-md border-2 border-border bg-white px-3 text-base text-text outline-none transition-colors placeholder:text-text-tertiary focus:border-belims-blue disabled:cursor-not-allowed disabled:opacity-50";
-export const labelClass = "text-base font-bold text-text";
-export const primaryButtonClass =
-  "inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-belims-blue px-4 font-heading font-condensed text-button font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
-export const outlineButtonClass =
-  "inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-md border-2 border-border bg-white px-4 text-base font-bold text-text transition-colors hover:border-text disabled:pointer-events-none disabled:opacity-50";
+import {
+  errorClass,
+  inputClass,
+  labelClass,
+  outlineButtonClass as baseOutlineButtonClass,
+  primaryButtonClass as basePrimaryButtonClass,
+  successClass,
+} from "../ui/classes";
+
+// Auth form styles build on the shared control styles; auth buttons are full width.
+export { errorClass, inputClass, labelClass, successClass };
+export const primaryButtonClass = `${basePrimaryButtonClass} w-full`;
+export const outlineButtonClass = `${baseOutlineButtonClass} w-full`;
 export const linkClass =
   "font-bold text-belims-blue underline underline-offset-4 transition-colors hover:text-primary";
 export const subtleLinkClass =
   "flex w-full items-center justify-center text-base font-bold text-text-secondary transition-colors hover:text-text";
-export const errorClass =
-  "rounded-md border-2 border-primary/40 bg-primary/5 px-3 py-2.5 text-base text-primary";
-export const successClass =
-  "rounded-md border-2 border-stock-ok/40 bg-stock-ok/5 px-3 py-2.5 text-base text-stock-ok";
 
 export const OrDivider: React.FC = () => (
   <div className="flex items-center gap-4" aria-hidden>
@@ -83,7 +84,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       value={dialCode}
       onChange={(e) => onDialCodeChange(e.target.value)}
       aria-label="Country code"
-      className="shrink-0 cursor-pointer border-r-2 border-border bg-surface-muted px-2 text-base text-text outline-none"
+      className="shrink-0 cursor-pointer border-r-2 border-border bg-surface-muted px-2 text-lg text-text md:text-base outline-none"
     >
       {dialCodes.map(({ code, flag }) => (
         <option key={code} value={code}>
@@ -101,7 +102,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       placeholder="82 123 4567"
       value={value}
       onChange={(e) => onChange(e.target.value.replace(/[^\d\s]/g, ""))}
-      className="min-w-0 flex-1 bg-transparent px-3 text-base text-text outline-none placeholder:text-text-tertiary"
+      className="min-w-0 flex-1 bg-transparent px-3 text-lg text-text md:text-base outline-none placeholder:text-text-tertiary"
     />
   </div>
 );

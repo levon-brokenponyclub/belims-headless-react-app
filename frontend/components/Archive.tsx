@@ -638,7 +638,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                     inputMode="numeric"
                     value={priceDraft[index]}
                     onChange={(e) => setDraftBound(index, e.target.value)}
-                    className="h-12 w-full rounded-md border border-border px-3 text-base text-text focus:outline-none focus:ring-2 focus:ring-belims-blue"
+                    className="h-12 w-full rounded-md border-2 border-border px-3 text-lg text-text focus:border-belims-blue focus:outline-none md:text-base"
                   />
                 </div>
               </React.Fragment>
@@ -773,6 +773,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <h2 className="sr-only">Products</h2>
                 <label htmlFor="archive-sort" className="hidden text-sm font-semibold text-text-secondary sm:block">
                   Sort by
                 </label>
@@ -783,7 +784,7 @@ export const Archive: React.FC<ArchiveProps> = ({
                     onChange={(e) =>
                       updateParams({ sort: e.target.value === "recommended" ? null : e.target.value })
                     }
-                    className="h-10 cursor-pointer appearance-none rounded-md border border-border-strong bg-white pl-3 pr-8 text-base text-text focus:outline-none focus:ring-2 focus:ring-belims-blue"
+                    className="h-10 cursor-pointer appearance-none rounded-md border-2 border-border bg-white pl-3 pr-8 text-lg text-text focus:border-belims-blue focus:outline-none md:text-base"
                   >
                     {SORT_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>

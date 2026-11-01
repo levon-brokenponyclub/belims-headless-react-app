@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { CartItem, Product, ShippingAddress, Store } from "../types";
 import { CURRENCY_SYMBOL, FREE_SHIPPING_THRESHOLD, STORES } from "../constants";
+import { buyButtonClass, inputClass, labelClass, pageTitleClass, primaryButtonClass } from "./ui/classes";
+import { CouponField, SummaryHeading, SummaryTotals, TrustTiles, summaryCardClass } from "./OrderSummaryParts";
 import { formatCurrency } from "../utils/price";
 import {
   getShippingRates,
@@ -28,10 +30,7 @@ import {
   Mail,
   MapPin,
   Phone,
-  RotateCcw,
-  ShieldCheck,
   Store as StoreIcon,
-  Tag,
   Truck,
   User,
   Zap,
@@ -417,10 +416,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
     ? formatScheduledPickup(pickupSchedule.date, pickupSchedule.time)
     : null;
   const pickupTone = pickupStatus?.isOpen
-    ? "text-green-600"
+    ? "text-success"
     : pickupStatus?.isOpen === false
-      ? "text-red-600"
-      : "text-gray-500";
+      ? "text-error"
+      : "text-text-secondary";
   const pickupDistance =
     pickupStore?.distance ?? getStoredPickupDistance(pickupStore?.id);
 
@@ -1024,7 +1023,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
     return (
       <div className="p-10 text-center">
         Your cart is empty.{" "}
-        <button onClick={handleBack} className="text-blue-600 underline">
+        <button onClick={handleBack} className="text-belims-blue underline">
           Go Back
         </button>
       </div>
@@ -1042,19 +1041,14 @@ export const Checkout: React.FC<CheckoutProps> = ({
   const currentStepIndex = step === "details" ? 1 : step === "shipping" ? 2 : 3;
   const currentStepLabel =
     step === "details"
-      ? "Personal Details"
+      ? "Personal details"
       : step === "shipping"
-        ? "Shipping Address"
-        : "Review & Payment";
+        ? "Shipping address"
+        : "Review & payment";
   const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-  const inputClass =
-    "flex h-12 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-950 outline-none transition-colors placeholder:text-neutral-400 focus:border-neutral-950 focus:ring-2 focus:ring-neutral-950/10 disabled:cursor-not-allowed disabled:opacity-50";
   const inputWithIconClass = `${inputClass} pl-10`;
-  const labelClass = "text-[14px] font-medium text-neutral-950";
-  const primaryButtonClass =
-    "group inline-flex items-center justify-center gap-2 rounded-md bg-belims-blue px-4 text-base font-medium text-white transition-colors hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
   const secondaryButtonClass =
-    "inline-flex items-center justify-center gap-1 text-sm text-neutral-500 transition-colors hover:text-neutral-950";
+    "inline-flex items-center justify-center gap-1 text-sm text-text-secondary transition-colors hover:text-text";
   const summaryTotal = total;
 
   const goToDetails = () => setStep("details");
@@ -1072,7 +1066,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
   };
 
   const OrderSummary = ({ mobile = false }: { mobile?: boolean }) => (
-    <article className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+    <article className={summaryCardClass}>
       {mobile ? (
         <button
           type="button"
@@ -1086,7 +1080,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
               {cartItems.slice(0, 3).map((item, index) => (
                 <div
                   key={item.id}
-                  className={`relative h-8 w-8 shrink-0 overflow-hidden rounded-md border-2 border-white bg-neutral-100 ${
+                  className={`relative h-8 w-8 shrink-0 overflow-hidden rounded-md border-2 border-white bg-surface-muted ${
                     index > 0 ? "-ml-3" : ""
                   }`}
                   style={{ zIndex: index + 1 }}
@@ -1102,49 +1096,42 @@ export const Checkout: React.FC<CheckoutProps> = ({
               ))}
             </div>
             <div className="flex flex-col items-start">
-              <span className="text-[14px] font-medium leading-5 tracking-normal text-[#060606]">
+              <span className="text-base font-medium leading-5 tracking-normal text-text">
                 Show order summary
               </span>
-              <span className="text-[12px] font-normal leading-4 tracking-normal text-[#555555]">
+              <span className="text-xs font-normal leading-4 tracking-normal text-text-secondary">
                 {itemCount} {itemCount === 1 ? "item" : "items"}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[16px] font-semibold leading-6 tracking-normal text-[#060606]">
+            <span className="text-lg font-semibold leading-6 tracking-normal text-text">
               {formatCurrency(summaryTotal)}
             </span>
             <ChevronDown
-              className={`h-5 w-5 text-neutral-500 transition-transform duration-200 ${
+              className={`h-5 w-5 text-text-secondary transition-transform duration-200 ${
                 orderSummaryOpen ? "rotate-180" : ""
               }`}
             />
           </div>
         </button>
       ) : (
-        <header className="hidden items-center gap-2 bg-neutral-50 px-5 py-4 md:flex">
-          <h2 className="text-[18px] font-semibold leading-7 tracking-normal text-[#060606]">
-            Order Summary
-          </h2>
-          <span className="text-[14px] font-normal leading-5 tracking-normal text-[#555555]">
-            ({itemCount} {itemCount === 1 ? "item" : "items"})
-          </span>
-        </header>
+        <SummaryHeading itemCount={itemCount} className="hidden md:flex" />
       )}
 
       <div
         id={mobile ? "order-summary-content" : undefined}
         className={`${mobile && !orderSummaryOpen ? "hidden" : "block"} md:block`}
       >
-        <section className="border-t border-neutral-200">
+        <section className="border-t border-border">
           <ul className="max-h-[280px] space-y-1 overflow-y-auto px-5 py-4 [scrollbar-gutter:stable]">
             {cartItems.map((item) => (
               <li key={item.id} className="flex gap-4 py-2">
                 <figure className="relative shrink-0">
-                  <span className="absolute -right-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-neutral-950 text-[10px] font-medium text-white shadow-sm">
+                  <span className="absolute -right-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-text text-xs font-medium text-white">
                     {item.quantity}
                   </span>
-                  <div className="h-14 w-14 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100">
+                  <div className="h-14 w-14 overflow-hidden rounded-lg border border-border bg-surface-muted">
                     <img
                       src={item.image || "/placeholder.png"}
                       alt={item.name}
@@ -1155,16 +1142,16 @@ export const Checkout: React.FC<CheckoutProps> = ({
                   </div>
                 </figure>
                 <div className="flex min-w-0 flex-1 flex-col justify-center">
-                  <p className="truncate text-[14px] font-semibold leading-5 tracking-normal text-[#060606]">
+                  <p className="truncate text-base font-semibold leading-5 tracking-normal text-text">
                     {item.name}
                   </p>
-                  <p className="mt-0.5 truncate text-[12px] font-normal leading-4 tracking-normal text-[#555555]">
+                  <p className="mt-0.5 truncate text-xs font-normal leading-4 tracking-normal text-text-secondary">
                     {item.sku || item.category || "Product"}
                   </p>
                 </div>
                 <data
                   value={item.price * item.quantity}
-                  className="flex flex-col justify-center text-[14px] font-medium leading-5 tracking-normal text-[#060606] tabular-nums"
+                  className="flex flex-col justify-center text-base font-medium leading-5 tracking-normal text-text tabular-nums"
                 >
                   {formatCurrency(item.price * item.quantity)}
                 </data>
@@ -1173,121 +1160,53 @@ export const Checkout: React.FC<CheckoutProps> = ({
           </ul>
         </section>
 
-        <section className="border-t border-neutral-200 px-5 py-4">
-          <form
-            className="flex gap-2"
-            onSubmit={(event) => event.preventDefault()}
-          >
-            <div className="relative flex-1">
-              <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-              <input
-                className="h-10 w-full rounded-md border border-neutral-200 bg-white pl-10 pr-3 text-sm outline-none transition-colors placeholder:text-neutral-400 focus:border-neutral-950 focus:ring-2 focus:ring-neutral-950/10"
-                placeholder="Discount code"
-                value={promoCode}
-                onChange={(event) => setPromoCode(event.target.value)}
-              />
-            </div>
-            <button
-              className="h-10 rounded-md border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-50 disabled:pointer-events-none disabled:opacity-50"
-              type="button"
-              disabled={!promoCode.trim()}
-              onClick={async () => {
-                setCouponError(null);
-                try {
-                  const result = await validateCoupon(promoCode.trim());
-                  setValidatedCoupon(result);
-                } catch (err: any) {
-                  setCouponError(err?.message ?? "Invalid coupon code.");
-                  setValidatedCoupon(null);
-                }
-              }}
-            >
-              Apply
-            </button>
-          </form>
-          {couponError ? (
-            <p className="mt-2 text-sm text-red-600">{couponError}</p>
-          ) : null}
-          {validatedCoupon ? (
-            <p className="mt-2 text-sm text-green-700">
-              {validatedCoupon.code} applied
-            </p>
-          ) : null}
-        </section>
+        <CouponField
+          value={promoCode}
+          onChange={setPromoCode}
+          appliedCode={validatedCoupon?.code}
+          error={couponError}
+          onApply={async () => {
+            setCouponError(null);
+            try {
+              setValidatedCoupon(await validateCoupon(promoCode.trim()));
+            } catch (err: any) {
+              setCouponError(err?.message ?? "Invalid coupon code.");
+              setValidatedCoupon(null);
+            }
+          }}
+        />
 
         {orderNote.trim() ? (
-          <section className="border-t border-neutral-200 px-5 py-4">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+          <section className="border-t border-border px-5 py-4">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-text-tertiary">
               Order note
             </p>
-            <p className="text-sm text-neutral-600">{orderNote.trim()}</p>
+            <p className="text-sm text-text-secondary">{orderNote.trim()}</p>
           </section>
         ) : null}
 
-        <section className="border-t border-neutral-200 px-5 py-4">
-          <dl className="space-y-2 text-[14px] font-normal leading-5 tracking-normal text-[#060606] tabular-nums">
-            <div className="flex justify-between">
-              <dt>Subtotal</dt>
-              <dd>{formatCurrency(subtotal)}</dd>
-            </div>
-            {couponDiscount > 0 ? (
-              <div className="flex justify-between text-green-700">
-                <dt>Discount</dt>
-                <dd>-{formatCurrency(couponDiscount)}</dd>
-              </div>
-            ) : null}
-            <div className="flex justify-between">
-              <dt>{deliveryType === "pickup" ? "Pickup" : "Shipping"}</dt>
-              <dd>
-                {deliveryType === "pickup"
+        <SummaryTotals
+          total={summaryTotal}
+          rows={[
+            { label: "Subtotal", value: formatCurrency(subtotal) },
+            ...(couponDiscount > 0
+              ? [{ label: "Discount", value: `-${formatCurrency(couponDiscount)}`, tone: "success" as const }]
+              : []),
+            {
+              label: deliveryType === "pickup" ? "Pickup" : "Shipping",
+              value:
+                deliveryType === "pickup"
                   ? formatCurrency(0)
                   : selectedShipping
                     ? shippingCost === 0
                       ? "Free"
                       : formatCurrency(shippingCost)
-                    : "Calculated at checkout"}
-              </dd>
-            </div>
-          </dl>
-          <div className="mt-4 flex items-baseline justify-between border-t border-neutral-200 pt-4 text-[#060606]">
-            <span className="text-[16px] font-semibold leading-6 tracking-normal">
-              Total
-            </span>
-            <data
-              value={summaryTotal}
-              className="text-[16px] font-semibold leading-6 tracking-normal tabular-nums"
-            >
-              {formatCurrency(summaryTotal)}
-            </data>
-          </div>
-        </section>
+                    : "Calculated at checkout",
+            },
+          ]}
+        />
 
-        <footer className="grid grid-cols-3 gap-2 border-t border-neutral-200 bg-neutral-50 px-5 py-4">
-          <div className="flex flex-col items-center rounded-lg bg-neutral-100 p-2.5 text-center">
-            <ShieldCheck className="mb-1 h-4 w-4 text-neutral-500" />
-            <span className="text-[12px] font-normal leading-4 tracking-normal text-[#060606]">
-              Secure
-              <br />
-              checkout
-            </span>
-          </div>
-          <div className="flex flex-col items-center rounded-lg bg-neutral-100 p-2.5 text-center">
-            <RotateCcw className="mb-1 h-4 w-4 text-neutral-500" />
-            <span className="text-[12px] font-normal leading-4 tracking-normal text-[#060606]">
-              30-day
-              <br />
-              returns
-            </span>
-          </div>
-          <div className="flex flex-col items-center rounded-lg bg-neutral-100 p-2.5 text-center">
-            <Truck className="mb-1 h-4 w-4 text-neutral-500" />
-            <span className="text-[12px] font-normal leading-4 tracking-normal text-[#060606]">
-              Free
-              <br />
-              shipping
-            </span>
-          </div>
-        </footer>
+        <TrustTiles />
       </div>
     </article>
   );
@@ -1297,9 +1216,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
   }: {
     includeMethod?: boolean;
   }) => (
-    <section className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 text-sm">
+    <section className="divide-y divide-border rounded-lg border border-border text-sm">
       <div className="flex items-start gap-4 p-4">
-        <span className="w-16 shrink-0 pt-0.5 text-neutral-500">Contact</span>
+        <span className="w-16 shrink-0 pt-0.5 text-text-secondary">Contact</span>
         <span className="min-w-0 flex-1 break-words">
           {customer.email || "No email added"}
         </span>
@@ -1312,7 +1231,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
         </button>
       </div>
       <div className="flex items-start gap-4 p-4">
-        <span className="w-16 shrink-0 pt-0.5 text-neutral-500">
+        <span className="w-16 shrink-0 pt-0.5 text-text-secondary">
           {deliveryType === "pickup" ? "Pickup" : "Ship to"}
         </span>
         <span className="min-w-0 flex-1 break-words">
@@ -1330,7 +1249,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
       </div>
       {includeMethod ? (
         <div className="flex items-start gap-4 p-4">
-          <span className="w-16 shrink-0 pt-0.5 text-neutral-500">Method</span>
+          <span className="w-16 shrink-0 pt-0.5 text-text-secondary">Method</span>
           <span className="min-w-0 flex-1 break-words">
             {deliveryType === "pickup"
               ? "Pickup"
@@ -1351,8 +1270,8 @@ export const Checkout: React.FC<CheckoutProps> = ({
   );
 
   return (
-    <div className="min-h-screen overscroll-none bg-neutral-100">
-      <header className="bg-white md:border-b md:border-neutral-200">
+    <div className="min-h-screen overscroll-none bg-surface-muted">
+      <header className="bg-white md:border-b md:border-border">
         <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 md:pb-4 md:pt-4 lg:px-8">
           <div className="flex items-center justify-between">
             <button
@@ -1376,9 +1295,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
                 aria-label="Checkout steps"
               >
                 {[
-                  { index: 1, label: "Personal Details" },
-                  { index: 2, label: "Shipping Address" },
-                  { index: 3, label: "Review & Payment" },
+                  { index: 1, label: "Personal details" },
+                  { index: 2, label: "Shipping address" },
+                  { index: 3, label: "Review & payment" },
                 ].map((checkoutStep, index, steps) => {
                   const isActive = checkoutStep.index === currentStepIndex;
                   const isComplete = checkoutStep.index < currentStepIndex;
@@ -1397,8 +1316,8 @@ export const Checkout: React.FC<CheckoutProps> = ({
                         <span
                           className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium transition-colors ${
                             isActive || isComplete
-                              ? "bg-neutral-950 text-white"
-                              : "bg-neutral-200 text-neutral-500"
+                              ? "bg-text text-white"
+                              : "bg-border text-text-secondary"
                           }`}
                         >
                           {checkoutStep.index}
@@ -1406,15 +1325,15 @@ export const Checkout: React.FC<CheckoutProps> = ({
                         <span
                           className={`text-sm ${
                             isActive || isComplete
-                              ? "text-neutral-950"
-                              : "text-neutral-500"
+                              ? "text-text"
+                              : "text-text-secondary"
                           }`}
                         >
                           {checkoutStep.label}
                         </span>
                       </button>
                       {index < steps.length - 1 ? (
-                        <div className="mx-4 h-px w-8 bg-neutral-200" />
+                        <div className="mx-4 h-px w-8 bg-border" />
                       ) : null}
                     </div>
                   );
@@ -1422,7 +1341,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
               </nav>
             ) : null}
 
-            <div className="flex items-center gap-1.5 text-neutral-500">
+            <div className="flex items-center gap-1.5 text-text-secondary">
               <Lock className="h-3.5 w-3.5" />
               <span className="text-xs">Secure checkout</span>
             </div>
@@ -1430,19 +1349,19 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
           {step !== "success" ? (
             <div className="mt-3 md:hidden">
-              <div className="mb-2 flex items-center justify-between text-xs text-neutral-500">
+              <div className="mb-2 flex items-center justify-between text-xs text-text-secondary">
                 <span>Step {currentStepIndex} of 3</span>
                 <span>{currentStepLabel}</span>
               </div>
               <div
-                className="h-1 overflow-hidden rounded-full bg-neutral-200"
+                className="h-1 overflow-hidden rounded-full bg-border"
                 role="progressbar"
                 aria-valuenow={(currentStepIndex / 3) * 100}
                 aria-valuemin={0}
                 aria-valuemax={100}
               >
                 <div
-                  className="h-full bg-neutral-950 transition-all duration-300"
+                  className="h-full bg-text transition-all duration-300"
                   style={{ width: `${(currentStepIndex / 3) * 100}%` }}
                 />
               </div>
@@ -1452,34 +1371,35 @@ export const Checkout: React.FC<CheckoutProps> = ({
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 md:py-8 md:pb-8 lg:px-8">
+        {step !== "success" && <h1 className="sr-only">Checkout</h1>}
         {step === "success" ? (
-          <div className="mx-auto max-w-2xl rounded-lg border border-neutral-200 bg-white p-8 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-700">
+          <div className="mx-auto max-w-2xl rounded-lg border-2 border-border bg-white p-8 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-stock-ok-bg text-success">
               <Check size={34} />
             </div>
-            <h1 className="mt-6 text-2xl font-semibold text-neutral-950">
-              Order Placed Successfully
+            <h1 className={`mt-6 ${pageTitleClass}`}>
+              Order placed
             </h1>
-            <p className="mt-2 text-sm text-neutral-500">
+            <p className="mt-2 text-sm text-text-secondary">
               Thank you for your purchase. A confirmation email has been sent to{" "}
               <strong>{customer.email}</strong>.
             </p>
             <button
               onClick={onBack}
-              className={`${primaryButtonClass} mt-6 h-12 px-8`}
+              className={`${primaryButtonClass} mt-6 px-8`}
             >
-              Return to Store
+              Return to store
             </button>
           </div>
         ) : (
           <div className="flex flex-col gap-8 md:flex-row">
             <div className="min-w-0 flex-1">
               <div className="mb-4 md:hidden">
-                <OrderSummary mobile />
+                {OrderSummary({ mobile: true })}
               </div>
 
               {step === "details" ? (
-                <div className="rounded-lg border border-neutral-200 bg-white p-6 md:p-8 space-y-8">
+                <div className="rounded-lg border-2 border-border bg-white p-6 md:p-8 space-y-8">
                   {/* Sign In trigger — outside the checkout form */}
                   {!isUserLoggedIn && (
                     <section className="flex items-center justify-end">
@@ -1495,17 +1415,17 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
                   {/* Login card — standalone form, outside the checkout form */}
                   {!isUserLoggedIn && loginPanelOpen && (
-                    <section className="rounded-lg border border-neutral-200 bg-neutral-50 p-5 space-y-4">
+                    <section className="rounded-lg border border-border bg-surface-muted p-5 space-y-4">
                       <div>
-                        <h3 className="text-base font-semibold text-neutral-950">Sign in for faster checkout</h3>
-                        <p className="text-sm text-neutral-500 mt-0.5">Your saved details and addresses will be auto-filled.</p>
+                        <h3 className="text-base font-semibold text-text">Sign in for faster checkout</h3>
+                        <p className="text-sm text-text-secondary mt-0.5">Your saved details and addresses will be auto-filled.</p>
                       </div>
                       <form onSubmit={handleCheckoutLogin} className="space-y-3">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-1.5">
                             <label className={labelClass} htmlFor="login-email">Email</label>
                             <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
                               <input
                                 id="login-email"
                                 type="email"
@@ -1521,7 +1441,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           <div className="space-y-1.5">
                             <label className={labelClass} htmlFor="login-password">Password</label>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
                               <input
                                 id="login-password"
                                 type={showLoginPassword ? "text" : "password"}
@@ -1535,7 +1455,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setShowLoginPassword((p) => !p)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
                               >
                                 {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                               </button>
@@ -1543,28 +1463,28 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           </div>
                         </div>
                         {loginError && (
-                          <p className="text-sm text-red-600">{loginError}</p>
+                          <p className="text-sm text-error">{loginError}</p>
                         )}
                         <div className="flex items-center gap-4">
                           <button
                             type="submit"
                             disabled={loginLoading}
-                            className={`${primaryButtonClass} h-10 px-6`}
+                            className={`${primaryButtonClass} px-6`}
                           >
                             {loginLoading && <Loader2 size={15} className="animate-spin" />}
                             {loginLoading ? "Signing in..." : "Sign in"}
                           </button>
                           <Link
                             to="/login?redirect=/checkout"
-                            className="text-sm text-neutral-500 hover:text-neutral-950 hover:underline"
+                            className="text-sm text-text-secondary hover:text-text hover:underline"
                           >
                             Forgot password?
                           </Link>
                         </div>
                       </form>
-                      <p className="text-xs text-neutral-400">
+                      <p className="text-xs text-text-tertiary">
                         New customer?{" "}
-                        <Link to="/register" className="underline hover:text-neutral-700">
+                        <Link to="/register" className="underline hover:text-text-secondary">
                           Create an account
                         </Link>{" "}
                         or continue as a guest below.
@@ -1574,28 +1494,28 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
                   <form onSubmit={handleDetailsSubmit} className="space-y-8">
                     <section className="space-y-4">
-                      <h2 className="text-xl font-semibold text-neutral-950">
-                        Personal Details
+                      <h2 className="text-xl font-semibold text-text">
+                        Personal details
                       </h2>
                       {isInitializingCheckout ? (
                         <div className="space-y-4" aria-busy="true" aria-live="polite">
                           <div className="space-y-1.5">
-                            <div className="h-4 w-24 rounded bg-neutral-200 animate-pulse" />
-                            <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                            <div className="h-4 w-24 rounded bg-border animate-pulse" />
+                            <div className="h-11 w-full rounded-md bg-surface-muted animate-pulse" />
                           </div>
                           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                              <div className="h-4 w-20 rounded bg-neutral-200 animate-pulse" />
-                              <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                              <div className="h-4 w-20 rounded bg-border animate-pulse" />
+                              <div className="h-11 w-full rounded-md bg-surface-muted animate-pulse" />
                             </div>
                             <div className="space-y-1.5">
-                              <div className="h-4 w-20 rounded bg-neutral-200 animate-pulse" />
-                              <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                              <div className="h-4 w-20 rounded bg-border animate-pulse" />
+                              <div className="h-11 w-full rounded-md bg-surface-muted animate-pulse" />
                             </div>
                           </div>
                           <div className="space-y-1.5">
-                            <div className="h-4 w-24 rounded bg-neutral-200 animate-pulse" />
-                            <div className="h-11 w-full rounded-md bg-neutral-100 animate-pulse" />
+                            <div className="h-4 w-24 rounded bg-border animate-pulse" />
+                            <div className="h-11 w-full rounded-md bg-surface-muted animate-pulse" />
                           </div>
                           <span className="sr-only">Loading your saved details…</span>
                         </div>
@@ -1606,7 +1526,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           Email address
                         </label>
                         <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                          <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
                           <input
                             id="email"
                             required
@@ -1631,7 +1551,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                             First name
                           </label>
                           <div className="relative">
-                            <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                            <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
                             <input
                               id="firstName"
                               required
@@ -1674,7 +1594,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                           Phone number
                         </label>
                         <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                          <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
                           <input
                             id="phone"
                             required
@@ -1702,10 +1622,10 @@ export const Checkout: React.FC<CheckoutProps> = ({
                             type="checkbox"
                             checked={createAccount}
                             onChange={(e) => setCreateAccount(e.target.checked)}
-                            className="h-5 w-5 rounded border-neutral-300 text-neutral-950 focus:ring-neutral-950"
+                            className="h-5 w-5 rounded border-border text-text focus:ring-belims-blue"
                           />
                           <label
-                            className="cursor-pointer text-sm font-medium text-neutral-500"
+                            className="cursor-pointer text-sm font-medium text-text-secondary"
                             htmlFor="createAccount"
                           >
                             Create an account for faster checkout next time
@@ -1714,7 +1634,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       )}
 
                       {!isInitializingCheckout && !isUserLoggedIn && createAccount ? (
-                        <div className="grid grid-cols-1 gap-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface-muted p-4 sm:grid-cols-2">
                           <div className="space-y-1.5">
                             <label
                               className={labelClass}
@@ -1760,7 +1680,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     <button
                       disabled={loading}
                       type="submit"
-                      className={`${primaryButtonClass} hidden h-12 w-full md:flex`}
+                      className={`${buyButtonClass} hidden w-full md:flex`}
                     >
                       {loading ? (
                         <>
@@ -1772,11 +1692,11 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       )}
                     </button>
 
-                    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white p-4 md:hidden">
+                    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-white p-4 md:hidden">
                       <button
                         disabled={loading}
                         type="submit"
-                        className={`${primaryButtonClass} h-12 w-full`}
+                        className={`${buyButtonClass} w-full`}
                       >
                         <span className="flex items-center gap-2">
                           Continue to shipping
@@ -1789,12 +1709,12 @@ export const Checkout: React.FC<CheckoutProps> = ({
               ) : null}
 
               {step === "shipping" ? (
-                <div className="rounded-lg border border-neutral-200 bg-white p-6 md:p-8">
+                <div className="rounded-lg border-2 border-border bg-white p-6 md:p-8">
                   <form onSubmit={handleShippingSubmit} className="space-y-8">
 
                     {/* Fulfilment type selector */}
                     <section className="space-y-4">
-                      <h2 className="text-xl font-semibold text-neutral-950">
+                      <h2 className="text-xl font-semibold text-text">
                         How would you like to receive your order?
                       </h2>
                       <div className="space-y-3">
@@ -1805,30 +1725,30 @@ export const Checkout: React.FC<CheckoutProps> = ({
                               key={type}
                               type="button"
                               onClick={() => setDeliveryType(type)}
-                              className={`flex w-full items-center gap-4 rounded-xl border-2 p-4 text-left transition-colors ${
+                              className={`flex w-full items-center gap-4 rounded-md border-2 p-4 text-left transition-colors ${
                                 isSelected
-                                  ? "border-belims-blue bg-blue-50"
-                                  : "border-neutral-200 bg-white hover:border-neutral-300"
+                                  ? "border-belims-blue bg-surface-muted"
+                                  : "border-border bg-white hover:border-border"
                               }`}
                             >
                               <div
                                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                                   isSelected
                                     ? "border-belims-blue"
-                                    : "border-neutral-300"
+                                    : "border-border"
                                 }`}
                               >
                                 {isSelected && (
                                   <div className="h-3 w-3 rounded-full bg-belims-blue" />
                                 )}
                               </div>
-                              <span className="flex-1 text-base font-semibold capitalize text-neutral-950">
+                              <span className="flex-1 text-base font-semibold capitalize text-text">
                                 {type === "pickup" ? "Pick up" : "Delivery"}
                               </span>
                               {type === "delivery" ? (
-                                <Truck className="h-6 w-6 text-neutral-400" />
+                                <Truck className="h-6 w-6 text-text-tertiary" />
                               ) : (
-                                <StoreIcon className="h-6 w-6 text-neutral-400" />
+                                <StoreIcon className="h-6 w-6 text-text-tertiary" />
                               )}
                             </button>
                           );
@@ -1839,34 +1759,34 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     {/* Delivery address form */}
                     {deliveryType === "delivery" && (
                       <section className="space-y-4">
-                        <h2 className="text-xl font-semibold text-neutral-950">
-                          Delivery Details
+                        <h2 className="text-xl font-semibold text-text">
+                          Delivery details
                         </h2>
 
                         {/* Saved address pill — returning user */}
                         {addressAutoPopulated && !editingAddress && (
-                          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-3">
+                          <div className="rounded-lg border border-border bg-surface-muted p-4 space-y-3">
                             <div className="flex items-center justify-between">
-                              <div className="text-sm text-neutral-500">
+                              <div className="text-sm text-text-secondary">
                                 {customer.addressLabel && (
-                                  <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-0.5">
+                                  <p className="text-xs font-semibold uppercase tracking-wider text-text-tertiary mb-0.5">
                                     {customer.addressLabel}
                                   </p>
                                 )}
-                                <p className="font-medium text-neutral-950">{customer.address}</p>
+                                <p className="font-medium text-text">{customer.address}</p>
                                 {customer.address2 && <p>{customer.address2}</p>}
                                 <p>{customer.city}, {customer.province} {customer.postalCode}</p>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => setEditingAddress(true)}
-                                className="shrink-0 text-sm font-medium text-neutral-950 underline underline-offset-2"
+                                className="shrink-0 text-sm font-medium text-text underline underline-offset-2"
                               >
                                 Edit
                               </button>
                             </div>
                             {savedAddresses.length > 1 && (
-                              <div className="flex flex-wrap gap-1.5 pt-1 border-t border-neutral-200">
+                              <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border">
                                 {savedAddresses.map((saved, i) => {
                                   const isActive = customer.address === saved.address.street && customer.city === saved.address.city;
                                   return (
@@ -1884,7 +1804,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                       className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
                                         isActive
                                           ? "border-belims-blue bg-belims-blue text-white"
-                                          : "border-neutral-200 bg-white text-neutral-600 hover:border-belims-blue hover:text-belims-blue"
+                                          : "border-border bg-white text-text-secondary hover:border-belims-blue hover:text-belims-blue"
                                       }`}
                                     >
                                       <MapPin size={10} />
@@ -1903,7 +1823,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                             {/* Saved address chips (returning user editing) */}
                             {savedAddresses.length > 0 && editingAddress && (
                               <div className="space-y-2">
-                                <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Saved addresses</p>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Saved addresses</p>
                                 <div className="flex flex-wrap gap-2">
                                   {savedAddresses.map((saved, i) => {
                                     const isActive = customer.address === saved.address.street && customer.city === saved.address.city;
@@ -1926,7 +1846,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                         className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
                                           isActive
                                             ? "border-belims-blue bg-belims-blue text-white"
-                                            : "border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-belims-blue hover:text-belims-blue"
+                                            : "border-border bg-surface-muted text-text-secondary hover:border-belims-blue hover:text-belims-blue"
                                         }`}
                                       >
                                         <MapPin size={11} />
@@ -1938,17 +1858,17 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                     );
                                   })}
                                 </div>
-                                <hr className="border-neutral-100" />
+                                <hr className="border-border" />
                               </div>
                             )}
 
                             {/* Street Address */}
                             <div className="space-y-1.5">
                               <label className={labelClass} htmlFor="streetAddress">
-                                Street Address <span className="text-red-500">*</span>
+                                Street Address <span className="text-error">*</span>
                               </label>
                               {locationError && (
-                                <p className="text-xs text-red-600">{locationError}</p>
+                                <p className="text-xs text-error">{locationError}</p>
                               )}
                               <input
                                 id="streetAddress"
@@ -1980,7 +1900,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                             {/* Postal Code / Suburb */}
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-1.5">
-                                <label className={labelClass} htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></label>
+                                <label className={labelClass} htmlFor="postalCode">Postal Code <span className="text-error">*</span></label>
                                 <input
                                   id="postalCode"
                                   required
@@ -1992,7 +1912,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                 />
                               </div>
                               <div className="space-y-1.5">
-                                <label className={labelClass} htmlFor="suburb">Suburb <span className="text-red-500">*</span></label>
+                                <label className={labelClass} htmlFor="suburb">Suburb <span className="text-error">*</span></label>
                                 <input
                                   id="suburb"
                                   required
@@ -2007,7 +1927,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                             {/* City / Province */}
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-1.5">
-                                <label className={labelClass} htmlFor="city">City/Town <span className="text-red-500">*</span></label>
+                                <label className={labelClass} htmlFor="city">City/Town <span className="text-error">*</span></label>
                                 <input
                                   id="city"
                                   required
@@ -2019,7 +1939,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                 />
                               </div>
                               <div className="space-y-1.5">
-                                <label className={labelClass} htmlFor="province">Province <span className="text-red-500">*</span></label>
+                                <label className={labelClass} htmlFor="province">Province <span className="text-error">*</span></label>
                                 <select
                                   id="province"
                                   required
@@ -2049,11 +1969,11 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                   <label key={type} className="flex cursor-pointer items-center gap-2">
                                     <div
                                       className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
-                                        customer.addressType === type ? "border-neutral-950" : "border-neutral-300"
+                                        customer.addressType === type ? "border-text" : "border-border"
                                       }`}
                                     >
                                       {customer.addressType === type && (
-                                        <div className="h-2.5 w-2.5 rounded-full bg-neutral-950" />
+                                        <div className="h-2.5 w-2.5 rounded-full bg-text" />
                                       )}
                                     </div>
                                     <input
@@ -2064,7 +1984,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                       checked={customer.addressType === type}
                                       onChange={() => setCustomer({ ...customer, addressType: type })}
                                     />
-                                    <span className="text-sm text-neutral-700">
+                                    <span className="text-sm text-text-secondary">
                                       {type === "home" ? "Home (All day delivery)" : "Work (Delivery between 10 AM – 5 PM)"}
                                     </span>
                                   </label>
@@ -2078,7 +1998,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                 type="button"
                                 onClick={handleUseCurrentLocation}
                                 disabled={locatingAddress}
-                                className="flex h-12 items-center justify-center gap-2 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-700 transition-colors hover:border-neutral-400 hover:bg-neutral-50 disabled:opacity-50"
+                                className="flex h-12 items-center justify-center gap-2 rounded-lg border border-border text-sm font-semibold text-text-secondary transition-colors hover:border-border-strong hover:bg-surface-muted disabled:opacity-50"
                               >
                                 <MapPin size={16} />
                                 {locatingAddress ? "Detecting..." : "Use my location"}
@@ -2087,9 +2007,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                 type="button"
                                 onClick={handleSaveAddress}
                                 disabled={!customer.address || !customer.city || !customer.province || !customer.postalCode}
-                                className={`${primaryButtonClass} h-12`}
+                                className={primaryButtonClass}
                               >
-                                Save and Deliver Here
+                                Save and deliver here
                               </button>
                             </div>
                           </div>
@@ -2100,19 +2020,19 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     {/* Pick up info */}
                     {deliveryType === "pickup" && (
                       <section className="space-y-4">
-                        <h2 className="text-xl font-semibold text-neutral-950">
+                        <h2 className="text-xl font-semibold text-text">
                           Pick Up Details
                         </h2>
-                        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+                        <div className="rounded-lg border border-border bg-surface-muted p-4">
                           <div className="flex items-start justify-between gap-4">
                             <div>
-                              <p className="text-sm text-neutral-950">
+                              <p className="text-sm text-text">
                                 Pickup at:{" "}
                                 <span className="font-semibold">
                                   {pickupStore?.name || "Select a store"}
                                 </span>
                               </p>
-                              <p className="mt-1 text-sm text-neutral-500">
+                              <p className="mt-1 text-sm text-text-secondary">
                                 {scheduledLabel ? (
                                   <>Scheduled: {scheduledLabel}</>
                                 ) : pickupStatus ? (
@@ -2124,7 +2044,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                   "Check hours"
                                 )}
                               </p>
-                              <p className="mt-1 text-sm text-neutral-500">
+                              <p className="mt-1 text-sm text-text-secondary">
                                 Distance:{" "}
                                 {pickupDistance !== null && pickupDistance !== undefined
                                   ? `${pickupDistance} km away from you`
@@ -2134,7 +2054,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                             <button
                               type="button"
                               onClick={() => onSchedulePickup?.()}
-                              className="shrink-0 text-sm font-medium text-neutral-950 underline underline-offset-2"
+                              className="shrink-0 text-sm font-medium text-text underline underline-offset-2"
                             >
                               {scheduledLabel ? "Change" : "Schedule"}
                             </button>
@@ -2146,12 +2066,12 @@ export const Checkout: React.FC<CheckoutProps> = ({
                     {/* Shipping method — delivery only, after address saved */}
                     {deliveryType === "delivery" && addressAutoPopulated && !editingAddress && (
                       <section className="space-y-4">
-                        <h2 className="text-xl font-semibold text-neutral-950">
+                        <h2 className="text-xl font-semibold text-text">
                           Shipping method
                         </h2>
                         {loadingSavedRates ? (
-                          <div className="flex items-center justify-center rounded-lg border border-neutral-200 py-10">
-                            <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+                          <div className="flex items-center justify-center rounded-lg border border-border py-10">
+                            <Loader2 className="h-5 w-5 animate-spin text-text-secondary" />
                           </div>
                         ) : activeRates.length > 0 ? (
                           <div className="space-y-3">
@@ -2162,30 +2082,37 @@ export const Checkout: React.FC<CheckoutProps> = ({
                               return (
                                 <label
                                   key={`${rate.service_name}-${idx}`}
-                                  className={`flex cursor-pointer items-center gap-4 rounded-lg border p-4 transition-colors focus-within:ring-2 focus-within:ring-neutral-950 focus-within:ring-offset-2 ${
-                                    isSelected ? "border-neutral-950 bg-neutral-50" : "border-neutral-200 hover:border-neutral-400"
+                                  className={`flex cursor-pointer items-center gap-4 rounded-lg border p-4 transition-colors focus-within:ring-2 focus-within:ring-belims-blue focus-within:ring-offset-2 ${
+                                    isSelected ? "border-text bg-surface-muted" : "border-border hover:border-border-strong"
                                   }`}
                                 >
                                   <input className="sr-only" type="radio" name="shipping" checked={isSelected} onChange={() => handleShippingSelect(rate)} />
-                                  <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? "border-neutral-950" : "border-neutral-300"}`}>
-                                    {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-neutral-950" />}
+                                  <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? "border-text" : "border-border"}`}>
+                                    {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-text" />}
                                   </div>
-                                  <Truck className="h-5 w-5 text-neutral-500" />
+                                  <Truck className="h-5 w-5 text-text-secondary" />
                                   <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                       <span className="font-medium">{rate.service_name}</span>
                                       {tier === "Express" || isFastest ? <Pill tone="warning" icon={<Zap size={12} />}>Faster</Pill> : null}
                                       {tier === "Economy" ? <Pill tone="success">Budget</Pill> : null}
                                     </div>
-                                    <p className="mt-0.5 text-xs text-neutral-500">{formatEta(rate.expected_delivery_date)}</p>
+                                    <p className="mt-0.5 text-xs text-text-secondary">{formatEta(rate.expected_delivery_date)}</p>
                                   </div>
-                                  <span className="font-medium">{formatCurrency(rate.total_price)}</span>
+                                  {subtotal >= FREE_SHIPPING_THRESHOLD ? (
+                                    <span className="text-right">
+                                      <span className="block font-bold text-success">Free</span>
+                                      <span className="block text-xs text-deal-strike line-through">{formatCurrency(rate.total_price)}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="font-medium">{formatCurrency(rate.total_price)}</span>
+                                  )}
                                 </label>
                               );
                             })}
                           </div>
                         ) : (
-                          <p className="rounded-lg border border-neutral-200 py-8 text-center text-sm text-neutral-500">
+                          <p className="rounded-lg border border-border py-8 text-center text-sm text-text-secondary">
                             No delivery options available yet. Enter your address above — if none appear, please contact us to complete your order.
                           </p>
                         )}
@@ -2200,17 +2127,17 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       </button>
                       <button
                         disabled={deliveryType === "delivery" ? !selectedShipping : false}
-                        className={`${primaryButtonClass} hidden h-12 px-8 md:flex`}
+                        className={`${buyButtonClass} hidden px-8 md:flex`}
                         type="submit"
                       >
                         Continue to payment
                       </button>
                     </div>
 
-                    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white p-4 md:hidden">
+                    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-white p-4 md:hidden">
                       <button
                         disabled={deliveryType === "delivery" ? !selectedShipping : false}
-                        className={`${primaryButtonClass} h-12 w-full`}
+                        className={`${buyButtonClass} w-full`}
                         type="submit"
                       >
                         <span className="flex items-center gap-2">
@@ -2225,30 +2152,30 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
               {step === "payment" ? (
                 isReturnFlow ? (
-                  <div className="rounded-lg border border-neutral-200 bg-white p-6 md:p-8">
-                    <h2 className="text-xl font-semibold text-neutral-950">
+                  <div className="rounded-lg border-2 border-border bg-white p-6 md:p-8">
+                    <h2 className="text-xl font-semibold text-text">
                       Verifying Payment
                     </h2>
-                    <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-                      <p className="mb-2 text-sm text-neutral-700">
+                    <div className="mt-4 rounded-lg border border-border bg-surface-muted p-4">
+                      <p className="mb-2 text-sm text-text-secondary">
                         {loading
                           ? `We're confirming your payment with ${paymentProviderLabel}.`
                           : verificationMessage ||
                             "Payment is still pending. Please check back in a few minutes."}
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-text-secondary">
                         Order ID: {returnOrderId}
                       </p>
                     </div>
                     {loading ? (
-                      <div className="mt-4 flex items-center gap-2 text-sm text-neutral-500">
+                      <div className="mt-4 flex items-center gap-2 text-sm text-text-secondary">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Checking payment status...
                       </div>
                     ) : null}
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-neutral-200 bg-white p-6 md:p-8">
+                  <div className="rounded-lg border-2 border-border bg-white p-6 md:p-8">
                     <form
                       className="space-y-8"
                       onSubmit={(event) => {
@@ -2259,14 +2186,14 @@ export const Checkout: React.FC<CheckoutProps> = ({
                       <ContextSummary includeMethod />
 
                       <section className="space-y-4">
-                        <h2 className="text-xl font-semibold text-neutral-950">
-                          Review & Payment
+                        <h2 className="text-xl font-semibold text-text">
+                          Review & payment
                         </h2>
-                        {/* <p className="text-[14px] font-medium text-neutral-600">
+                        {/* <p className="text-base font-medium text-text-secondary">
                           All transactions are secure and encrypted.
                         </p> */}
                         <div className="space-y-3">
-                          <div className="overflow-hidden rounded-lg border border-neutral-950">
+                          <div className="overflow-hidden rounded-lg border border-text">
                             <label className="flex cursor-pointer items-center gap-4 p-4">
                               <input
                                 className="sr-only"
@@ -2276,21 +2203,21 @@ export const Checkout: React.FC<CheckoutProps> = ({
                                 readOnly
                                 name="payment"
                               />
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-neutral-950">
-                                <div className="h-2.5 w-2.5 rounded-full bg-neutral-950" />
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-text">
+                                <div className="h-2.5 w-2.5 rounded-full bg-text" />
                               </div>
-                              <CreditCard className="h-5 w-5 text-neutral-500" />
+                              <CreditCard className="h-5 w-5 text-text-secondary" />
                               <span className="font-medium">Payfast</span>
 
                             </label>
-                            {/* <div className="space-y-4 border-t border-neutral-200 bg-neutral-50 p-4">
+                            {/* <div className="space-y-4 border-t border-border bg-surface-muted p-4">
                               <div className="relative">
                                 <input
                                   className={`${inputClass} h-10 pr-12`}
                                   placeholder="Card number"
                                   maxLength={19}
                                 />
-                                <Lock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+                                <Lock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <input
@@ -2311,19 +2238,19 @@ export const Checkout: React.FC<CheckoutProps> = ({
                             </div> */}
                           </div>
 
-                          {/* <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-neutral-200 p-4 transition-colors hover:border-neutral-400">
+                          {/* <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-border p-4 transition-colors hover:border-border-strong">
                             <input
                               className="sr-only"
                               type="radio"
                               value="paypal"
                               name="payment"
                             />
-                            <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-neutral-300" />
+                            <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-border" />
                             <span>
-                              <span className="font-bold text-blue-600">
+                              <span className="font-bold text-belims-blue">
                                 Pay
                               </span>
-                              <span className="font-bold text-blue-900">
+                              <span className="font-bold text-belims-blue">
                                 Pal
                               </span>
                             </span>
@@ -2347,7 +2274,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
                             : "Return to shipping"}
                         </button>
                         <button
-                          className={`${primaryButtonClass} hidden h-12 min-w-[200px] px-8 md:flex`}
+                          className={`${buyButtonClass} hidden min-w-[200px] px-8 md:flex`}
                           type="submit"
                           disabled={loading || !selectedShipping}
                         >
@@ -2362,9 +2289,9 @@ export const Checkout: React.FC<CheckoutProps> = ({
                         </button>
                       </div>
 
-                      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white p-4 md:hidden">
+                      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-white p-4 md:hidden">
                         <button
-                          className={`${primaryButtonClass} h-12 w-full`}
+                          className={`${buyButtonClass} w-full`}
                           type="submit"
                           disabled={loading || !selectedShipping}
                         >
@@ -2382,7 +2309,7 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
             <div className="hidden md:block md:shrink-0 md:basis-[30%]">
               <div className="md:sticky md:top-8">
-                <OrderSummary />
+                {OrderSummary({})}
               </div>
             </div>
           </div>

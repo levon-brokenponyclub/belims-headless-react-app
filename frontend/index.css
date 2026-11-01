@@ -112,8 +112,8 @@
   --font-section-title-stretch: 87.5%;
 
   /* ── Utility text scale — px only ── */
-  --text-xs:   10px;
-  --text-sm:   11px;
+  --text-xs:   12px;
+  --text-sm:   13px;
   --text-caption: 13px; /* meta / captions / uppercase labels on content pages (readable step between sm 11 and base 15) */
   --text-base: 15px;
   --text-lg:   16px;

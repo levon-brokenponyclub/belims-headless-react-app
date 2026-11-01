@@ -309,10 +309,10 @@ export const QuickView: React.FC<QuickViewProps> = ({
                         isAddToCartLoading ||
                         isBuyNowLoading
                       }
-                      className="group relative h-11 w-full overflow-hidden rounded-pill bg-belims-blue text-white transition-colors disabled:opacity-50"
+                      className="group relative h-12 w-full overflow-hidden rounded-md bg-primary text-white transition-colors disabled:opacity-50"
                     >
-                      <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                      <span className="relative z-10 flex items-center justify-center gap-2 [&>[data-icon=inline-start]]:-ml-0.5 [&>[data-icon=inline-end]]:-mr-0.5 font-heading font-bold transition-colors group-hover:text-white">
+                      <span className="absolute inset-0 origin-left scale-x-0 bg-belims-blue transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                      <span className="relative z-10 flex items-center justify-center gap-2 [&>[data-icon=inline-start]]:-ml-0.5 [&>[data-icon=inline-end]]:-mr-0.5 font-heading font-condensed text-button font-bold uppercase tracking-wide transition-colors group-hover:text-white">
                         {isAddToCartLoading ? (
                           <>
                             <Spinner data-icon="inline-start" />
@@ -321,7 +321,7 @@ export const QuickView: React.FC<QuickViewProps> = ({
                         ) : product.stock > 0 ? (
                           "Add to cart"
                         ) : (
-                          "Out of Stock"
+                          "Out of stock"
                         )}
                       </span>
                     </button>
@@ -336,17 +336,17 @@ export const QuickView: React.FC<QuickViewProps> = ({
                     isAddToCartLoading ||
                     isBuyNowLoading
                   }
-                  className="group relative h-11 w-full overflow-hidden rounded-pill bg-surface-dark text-white transition-colors disabled:opacity-50"
+                  className="group relative h-12 w-full overflow-hidden rounded-md bg-surface-dark text-white transition-colors disabled:opacity-50"
                 >
-                  <span className="absolute inset-0 origin-left scale-x-0 bg-deal-sale transition-transform duration-300 ease-out group-hover:scale-x-100" />
-                  <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-bold transition-colors">
+                  <span className="absolute inset-0 origin-left scale-x-0 bg-primary transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                  <span className="relative z-10 flex items-center justify-center gap-2 font-heading font-condensed text-button font-bold uppercase tracking-wide transition-colors">
                     {isBuyNowLoading ? (
                       <>
                         <Loader2 size={16} className="animate-spin" />
                         Processing...
                       </>
                     ) : (
-                      "Buy Now"
+                      "Buy now"
                     )}
                   </span>
                 </button>

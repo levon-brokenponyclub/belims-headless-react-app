@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { ConfirmationResult } from "firebase/auth";
-import { loginUser, registerUser, loginWithFirebasePhone, requestPasswordReset, saveBillingAddress, UserData } from "../services/authService";
+import { loginUser, registerUser, loginWithFirebasePhone, requestPasswordReset, UserData } from "../services/authService";
 import { sendPhoneOTP, getFirebaseIdToken, clearRecaptcha, isFirebaseConfigured, signInWithGoogle, signInWithFacebook } from "../services/firebaseService";
 import { loginWithFirebaseGoogle } from "../services/authService";
-import { ShippingAddress } from "../types";
 import { Spinner } from "./Spinner";
 import {
   errorClass,
@@ -53,6 +52,8 @@ function parsePhoneIdentifier(val: string): { dialCode: string; local: string } 
   return { dialCode: "+27", local: digits.startsWith("0") ? digits.slice(1) : digits };
 }
 
+const SIGNUP_ADDRESS_PATH = "/delivery-details/add-address?context=signup";
+
 const welcomeDetail = (user: { first_name?: string; display_name?: string } | undefined, greeting: string) => {
   const name = user?.first_name || user?.display_name;
   return name ? `${greeting}, ${name}` : undefined;
@@ -77,11 +78,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Register (single step)
-  const [addressStreet, setAddressStreet] = useState("");
-  const [addressCity, setAddressCity] = useState("");
-  const [addressProvince, setAddressProvince] = useState("");
-  const [addressPostcode, setAddressPostcode] = useState("");
 
   // Register: international phone
   const [regDialCode, setRegDialCode] = useState("+27");
@@ -193,7 +189,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
   };
 
   // --- Register: single-step submission ---
-  const handleRegisterComplete = async (includeAddress: boolean) => {
+  // New accounts go straight to the address step; the address is saved to the account there.
+  const handleRegisterComplete = async () => {
     setError(null);
     setIsSubmitting(true);
     try {
@@ -205,20 +202,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
         phone: buildRegPhone() || undefined,
         role: "customer",
       });
-      if (includeAddress && addressStreet.trim()) {
-        try {
-          await saveBillingAddress({
-            street: addressStreet,
-            city: addressCity,
-            province: addressProvince,
-            postalCode: addressPostcode,
-            country: "ZA",
-          } as ShippingAddress);
-        } catch { /* non-fatal — account still created */ }
-      }
+      navigate(SIGNUP_ADDRESS_PATH);
       onSuccess(result.user);
-      showToast("Account created", "success", { detail: welcomeDetail(result.user, "Welcome to Belims") });
-      postSuccess();
+      showToast("Account created", "success", { detail: "Now add your delivery address" });
+      if (isModal) onClose?.();
     } catch (err: any) {
       const msg = err?.message || "Something went wrong. Please try again.";
       setError(msg);
@@ -558,7 +545,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
 
       {/* ── REGISTER FLOW ── */}
       {isRegisterMode && (
-        <form onSubmit={(e) => { e.preventDefault(); handleRegisterComplete(false); }} className="space-y-5">
+        <form onSubmit={(e) => { e.preventDefault(); handleRegisterComplete(); }} className="space-y-5">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-3">
             <Field label="First name" htmlFor="auth-first-name">
               <input

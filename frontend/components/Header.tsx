@@ -1006,7 +1006,7 @@ export const Header: React.FC<HeaderProps> = ({
                 placeholder="Search products and brands"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-base text-text placeholder:text-text-tertiary focus:outline-none focus:ring-0"
+                className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-lg text-text placeholder:text-text-tertiary focus:outline-none focus:ring-0"
                 aria-label="Search products"
               />
               {searchQuery && (

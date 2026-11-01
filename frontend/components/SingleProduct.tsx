@@ -1561,7 +1561,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                       )}
                     </div>
                     <div className="mb-2 flex items-start justify-between gap-4">
-                      <h1 className="font-heading font-condensed text-h2 font-extrabold uppercase leading-none text-text">
+                      <h1 className="font-heading font-condensed text-h2 font-bold uppercase leading-none text-text">
                         {product.name}
                       </h1>
                       <button

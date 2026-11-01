@@ -192,6 +192,51 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Cart and Checkout share one order summary
+
+### frontend/components/OrderSummaryParts.tsx (new), CartPage.tsx, Checkout.tsx
+- Shared summary building blocks: `summaryCardClass` (2px border, 6px radius), `SummaryHeading` ("Order summary (n items)"), `CouponField` (tag icon, outline Apply / Remove, Enter submits), `SummaryTotals`, `TrustTiles` (secure checkout, 15-day returns, free delivery over R1,000). Checkout's summary and the cart sidebar now both render them.
+- Cart: one summary card (coupon, totals, Checkout + Continue shopping, trust tiles) instead of separate coupon and summary cards; payment logos removed (the footer shows them). Shipping shows "Free" or "Calculated at checkout" like checkout — it previously added a hard-coded R150 to the cart total below the free-delivery threshold. Line items 15px names, 13px labels/meta, 2px quantity stepper.
+- Checkout: step cards 2px borders; "Delivery details" in sentence case. Fixed the discount field losing focus after every keystroke (`OrderSummary` was declared inside the render and mounted as `<OrderSummary />`, so it remounted on each change; now called as a function).
+- Verified: `npm run build`; desktop screenshots of both pages; typing in the checkout discount field keeps focus; invalid coupon shows the error on both pages. A valid coupon wasn't tested (coupon API isn't reachable from the local preview).
+
+## 2026-11-01 — Sign-up continues to the address step
+
+### frontend/components/AuthPage.tsx, DeliveryDetailsAddAddress.tsx
+- After "Create account" succeeds (modal or `/register`), the customer goes to `/delivery-details/add-address?context=signup` ("Add your delivery address") with a toast "Account created — Now add your delivery address".
+- In the signup context the confirmed address is saved to the new account as both shipping and billing (then `user-updated` refreshes the header's saved addresses), on top of the usual local delivery/collection setting. If the save fails the step shows the error and stays put. Closing the step goes home.
+- Removed the unused register-time address fields (`addressStreet` etc. were never shown or filled). Default add-address subtitle no longer mentions saved addresses ("select one below").
+- Verified: `npm run build`. The real sign-up → save flow needs a test account on the staging CMS.
+
+## 2026-11-01 — Frontend polish: tokens, buy buttons, Cart + Checkout consistency
+
+Audit of Home, Shop, Product, Cart and Checkout (desktop + 375px) against the mockups and design tokens; decisions: red for buying actions, raise small type tokens globally, 15-day returns, tokenise Checkout this round.
+
+### frontend/index.css, docs/design/belims-design-tokens.md
+- `--text-xs` 10 → **12px**, `--text-sm` 11 → **13px** (global; smallest storefront text is now 12px).
+
+### frontend/components/ui/classes.ts (new), auth/authFields.tsx
+- Shared `buyButtonClass` (red), `primaryButtonClass` (blue), `outlineButtonClass`, `inputClass` (2px border, 16px on mobile), `labelClass`, `errorClass`, `successClass`, `pageTitleClass`. Auth form styles now build on these. Error/success boxes previously used opacity modifiers on CSS-var colours, which Tailwind doesn't compile; now use `bg-stock-out-bg` / `bg-stock-ok-bg`.
+
+### Buying actions are red (S1)
+- `ProductCard` and `QuickView` Add to cart, `CartDrawer` and `CartPage` Checkout, Checkout "Continue to shipping/payment" and "Pay". Product page Add to cart was already red. Quick view "Buy now" stays dark.
+
+### frontend/components/Checkout.tsx (S5)
+- 219 raw neutral/grey/green/red/blue classes, hex colours and pixel sizes mapped to tokens; constants replaced with the shared classes; 2px inputs; visually hidden `<h1>Checkout</h1>`; success heading uses the page-title style ("Order placed").
+- Step labels and buttons in sentence case ("Personal details", "Shipping address", "Review & payment", "Save and deliver here", "Return to store").
+- Shipping method cards show **Free** with the struck-through rate when the order is over the free-delivery threshold (they showed R75.00 while the summary said Free). Trust tiles read "15-day returns" and "Free delivery over R1,000.00".
+- Discount code field has an accessible label.
+
+### frontend/components/CartPage.tsx, CartDrawer.tsx
+- Cart page: `<h1>Cart</h1>` in the page-title style (was an `<h2>` "My Shopping Cart"), 2px card borders, `bg-surface-muted` instead of a hex colour, labelled coupon field, buttons "Checkout" (red) and "Continue shopping" (outline), sentence-case headings.
+- Drawer: "Your cart" (was "Your Bag"), "View cart", "15-day returns" (was 30-day; matches the footer `TrustStrip`). Raw sizes and colours mapped to tokens.
+
+### Shop, product, cards, header
+- Product cards: wishlist and quick view buttons 40px with 2px borders (were 36px / 1px); Notify me 2px border.
+- Shop: price and sort fields 2px / 16px on mobile; visually hidden "Products" heading so the page goes h1 → h2 → h3.
+- Product title `font-bold` (was extra-bold). Mobile header search 16px.
+- Verified: `npm run build`; type-check (same 12 pre-existing errors elsewhere); all five pages at 1440px and 375px: an `<h1>` on every page, no text under 12px, buy buttons red and uppercase, inputs 2px, no unlabelled fields, no horizontal overflow, no input under 16px on mobile. Signed-in checkout steps (shipping, payment) not seen — guest only.
+
 ## 2026-11-01 — Fix "Use my location" on add-address
 
 ### frontend/components/DeliveryDetailsAddAddress.tsx

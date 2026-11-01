@@ -127,6 +127,8 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isAccountContext = searchParams.get("context") === "account";
+  // Straight after sign-up: the confirmed address is also saved to the new account.
+  const isSignupContext = searchParams.get("context") === "signup";
   const profileType =
     searchParams.get("type") === "shipping"
       ? "shipping"
@@ -418,9 +420,20 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
     return true;
   }, [selectedAddress, option, selectedStoreId]);
 
-  const handleFinalConfirm = () => {
+  const handleFinalConfirm = async () => {
     if (!selectedAddress) return;
     setIsSaving(true);
+
+    if (isSignupContext) {
+      try {
+        await Promise.all([saveShippingAddress(selectedAddress), saveBillingAddress(selectedAddress)]);
+        window.dispatchEvent(new Event("user-updated"));
+      } catch (e: any) {
+        setError(e?.message || "Couldn't save the address to your account. Please try again.");
+        setIsSaving(false);
+        return;
+      }
+    }
 
     saveStoredAddress(selectedAddress);
     try {
@@ -460,6 +473,8 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
   const handleClose = () => {
     if (isAccountContext) {
       navigate("/account/addresses");
+    } else if (isSignupContext) {
+      navigate("/");
     } else {
       navigate(-1);
     }
@@ -511,12 +526,16 @@ export const DeliveryDetailsAddAddress: React.FC = () => {
                 ? isEditMode
                   ? `Edit ${profileType === "shipping" ? "shipping" : "billing"} address`
                   : `Add ${profileType === "shipping" ? "shipping" : "billing"} address`
-                : "Confirm your address"}
+                : isSignupContext
+                  ? "Add your delivery address"
+                  : "Confirm your address"}
             </h1>
             <p className="mt-3 text-center text-base text-text-secondary max-w-lg mx-auto">
               {isAccountContext
                 ? "Enter or search for an address to save to your profile."
-                : "Enter your address or select one below to customize your shopping experience. This way, you'll only see what's available in your area."}
+                : isSignupContext
+                  ? "Your account is ready. Add your address to save it to your account and see what's available in your area."
+                  : "Enter your address so you only see what's available in your area."}
             </p>
 
             <div className="mt-8" ref={suggestionsBoxRef}>

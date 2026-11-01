@@ -465,7 +465,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <button
               type="button"
               onClick={handleToggleWishlist}
-              className={`flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-white transition-colors hover:border-primary hover:text-red-500 ${
+              className={`flex h-10 w-10 items-center justify-center rounded-md border-2 border-border bg-white transition-colors hover:border-primary hover:text-red-500 ${
                 isWishlisted ? "text-red-500" : "text-text"
               }`}
               aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -480,7 +480,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 e.stopPropagation();
                 openQuickView();
               }}
-              className="grid h-9 w-9 place-items-center rounded-sm border border-border bg-white text-text transition-colors hover:border-primary hover:text-primary"
+              className="grid h-10 w-10 place-items-center rounded-md border-2 border-border bg-white text-text transition-colors hover:border-primary hover:text-primary"
               title="Quick view"
               aria-label={`Quick view ${product.name}`}
             >
@@ -538,7 +538,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               type="button"
               onClick={handleAddToCartClick}
               disabled={isAdding}
-              className="mt-2 flex h-10 w-full items-center justify-center rounded-md bg-secondary px-3 font-heading font-condensed text-button font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary disabled:opacity-50"
+              className="mt-2 flex h-10 w-full items-center justify-center rounded-md bg-primary px-3 font-heading font-condensed text-button font-bold uppercase tracking-wide text-white transition-colors hover:bg-belims-blue disabled:opacity-50"
             >
               <span className="flex items-center justify-center gap-2 [&>[data-icon=inline-start]]:-ml-0.5">
                 {isAdding ? (
@@ -556,7 +556,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               type="button"
               onClick={handleNotify}
               disabled={notifyStatus === "pending" || notifyStatus === "sent"}
-              className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-white px-3 font-heading font-condensed text-button font-bold uppercase tracking-wide text-text-secondary transition-colors hover:bg-surface-muted"
+              className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-md border-2 border-border-strong bg-white px-3 font-heading font-condensed text-button font-bold uppercase tracking-wide text-text-secondary transition-colors hover:bg-surface-muted"
             >
               {notifyStatus === "sent" ? <CheckCircle size={15} className="text-green-600" /> : <Bell size={15} />}
               <span className="truncate">

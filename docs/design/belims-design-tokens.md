@@ -69,6 +69,8 @@ All five were removed on 2026-10-31.
 
 **Added 2026-10-31 — `caption` size (13px).** `--text-caption` / Tailwind `text-caption` (line-height 1.5, +0.01em). The scale had no step between `text-sm` (11px) and `text-base` (15px), so content pages used arbitrary `text-[12px]` / `text-[13px]` / `text-[14px]` or fell to the 11px `text-sm` for real content. 11px (`text-sm`) and 10px (`text-xs`) are now for chrome only (header pills, footer, cookie bar, badges on cards).
 
+**Changed 2026-11-01 — small sizes raised, shared controls.** `--text-xs` is now **12px** and `--text-sm` **13px** (was 10 / 11px) for readability; nothing on the storefront renders below 12px. Buttons, fields, error/success boxes and the page `<h1>` style live in `components/ui/classes.ts`: `buyButtonClass` (red, `bg-primary`) is for buying actions only — add to cart, checkout, continue/pay in checkout; `primaryButtonClass` (blue) for every other primary action; all buttons are condensed, uppercase, bold, `rounded-md`, 48px. Inputs are 2px `border-border`, `belims-blue` focus, and 16px on mobile (15px from `md`) so iOS Safari doesn't zoom. Colours are CSS-var tokens, so Tailwind opacity modifiers (`bg-primary/5`) don't compile — use the `*-bg` tokens (`bg-stock-out-bg`, `bg-stock-ok-bg`) instead.
+
 **Product page type spec** (`SingleProduct`, `FulfilmentChooser`, `ProductPriceDisplay`):
 | Role | Class | Size / weight |
 |---|---|---|
