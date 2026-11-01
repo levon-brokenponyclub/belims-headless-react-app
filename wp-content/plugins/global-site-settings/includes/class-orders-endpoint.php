@@ -423,3 +423,12 @@ class Belims_Orders_Endpoint {
         return is_array($states) && isset($states[$code]) ? html_entity_decode($states[$code]) : $code;
     }
 }
+
+/**
+ * Refunded orders give their stock back (2.11.1). WooCommerce already restores stock when a
+ * stock-reduced order is cancelled, fails or goes back to pending, but not when it's marked
+ * Refunded. wc_maybe_increase_stock_levels() only returns what the order actually took (per-item
+ * `_reduced_stock`, which manual "Restock refunded items" refunds already lower) and skips orders
+ * that never reduced stock.
+ */
+add_action('woocommerce_order_status_refunded', 'wc_maybe_increase_stock_levels');

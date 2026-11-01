@@ -192,6 +192,13 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Refunded orders restore stock, Global Site Settings 2.11.1
+
+### wp-content/plugins/global-site-settings — deployed to staging (backup `~/backups/xnmtexmyyf-gss-2.11.0-20261101-062353.tgz`) and production (backup `~/backups/uhkkwupuum-gss-2.11.0-20261101-062428.tgz`) 2026-11-01
+- `class-orders-endpoint.php`: `woocommerce_order_status_refunded` → `wc_maybe_increase_stock_levels`, so marking a paid order Refunded returns its stock like Cancelled already does (WooCommerce 11.2.1 restores on cancelled / failed / pending, not refunded). Only stock the order actually took is returned; manual "Restock refunded items" refunds aren't double counted; unpaid orders are skipped.
+- README / USERGUIDE documented; version 2.11.1.
+- Staging test (emails off): order #5590 for product 296 — stock 2 → processing 1 → refunded 2. Production: no drift, checksums match, `php -l` clean, active 2.11.1, refund hook registered. The first `products/home` request straight after the production deploy timed out (30s); repeat requests returned 200 in ~1.3s.
+
 ## 2026-11-01 — Stock labels follow cart holds everywhere
 
 ### Cart quantity can't exceed stock (frontend/App.tsx, utils/liveStock.ts, CartDrawer.tsx, CartPage.tsx)

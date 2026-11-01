@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.11.0  
+**Version:** 2.11.1  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -198,6 +198,10 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 - The storefront sends the whole cart on every change (signed in or guest; random cart ID stored in the browser), which replaces the cart's holds and restarts the 30 minutes. `GET_LOCK('belims_cart_holds')` serialises carts so two shoppers can't both hold the last unit. Products that don't manage stock are never limited.
 - Product responses subtract active holds from `stock` (and report `outofstock` at 0) in `build_cached_response()`, i.e. after the server cache. Edge/browser caching (`s-maxage=300`) can still show other shoppers the pre-hold count for up to 5 minutes; the hold endpoint is the source of truth.
 - Released when the cart is emptied, when holds expire (expired rows are deleted on each hold request), or on `woocommerce_reduce_order_stock` for the order carrying that `_belims_cart_id`.
+
+### Order stock restore (2.11.1)
+
+WooCommerce returns stock when a stock-reduced order is cancelled, fails or goes back to pending. The plugin adds the same for **Refunded** (`woocommerce_order_status_refunded` → `wc_maybe_increase_stock_levels`, in `class-orders-endpoint.php`). Only what the order actually took is returned, so items already restocked through a manual refund aren't counted twice. Partial refunds that leave the order Processing/Completed still need WooCommerce's "Restock refunded items" tick.
 
 ### Product response cache (2.10.9)
 

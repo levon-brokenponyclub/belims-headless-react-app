@@ -1,6 +1,6 @@
 # Global Site Settings — User Guide
 
-**Plugin version:** 2.11.0 · **For:** Belims Hardware store administrators
+**Plugin version:** 2.11.1 · **For:** Belims Hardware store administrators
 
 > Technical overview for developers: [README.md](README.md) · Project docs: [root README](../../../README.md)
 
@@ -127,6 +127,8 @@ When a customer adds a product to their cart, those units are held for **30 minu
 - Holds end on their own after 30 minutes, when the customer empties their cart, or when their order's stock is reduced (payment received).
 - Nothing changes in WooCommerce stock until an order is paid — holds are kept separately and only affect what the storefront shows and allows.
 - Products that don't track stock are never held.
+
+**Cancelled and refunded orders:** changing a paid order to **Cancelled** or **Refunded** puts its stock back automatically. For a partial refund (order stays Processing/Completed), tick **Restock refunded items** in the refund box.
 
 ## WooCommerce
 
