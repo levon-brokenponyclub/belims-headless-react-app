@@ -192,6 +192,13 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Quick view redesign (shadcnblocks product-quick-view4)
+
+### frontend/components/QuickView.tsx, ProductCard.tsx; StockBar.tsx deleted
+- Two-column dialog (~880px; bottom sheet with the image on top on mobile): full-bleed image carousel with round prev/next arrows and an image counter (thumbnail strip removed); details with brand, title, 2-line plain-text summary (HTML stripped — it showed raw `<p><strong>…` before), price with struck regular price on deals, product-page style stock line ("In stock — only N left"), quantity stepper + red Add to cart + square wishlist toggle in one row, "View product details" link. 2px border, 6px radius, no shadow or blur; Escape closes.
+- "Buy now" removed (ProductCard's quick-view buy-now handler and unused `useNavigate` gone; its `onBuyNow` prop is kept, unused, so the eight callers still compile). `StockBar` had no other users and is deleted.
+- Verified: `npm run build`; type-check unchanged (11 older errors); quick view on `localhost:4173` at 1440px and 375px (no overflow, no raw HTML).
+
 ## 2026-11-01 — Refunded orders restore stock, Global Site Settings 2.11.1
 
 ### wp-content/plugins/global-site-settings — deployed to staging (backup `~/backups/xnmtexmyyf-gss-2.11.0-20261101-062353.tgz`) and production (backup `~/backups/uhkkwupuum-gss-2.11.0-20261101-062428.tgz`) 2026-11-01

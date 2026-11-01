@@ -1,7 +1,7 @@
 // ProductCard.tsx
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useLiveStock } from "../utils/liveStock";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Bell,
   CheckCircle,
@@ -24,6 +24,7 @@ interface ProductCardProps {
   product: Product;
   addToCart: (product: Product) => void;
   onNotify?: (product: Product) => Promise<void> | void;
+  /** No longer used by the card (quick view dropped Buy now); kept so existing callers compile. */
   onBuyNow?: (product: Product) => void;
   onCompare?: (product: Product) => void;
   isAuthenticated?: boolean;
@@ -117,13 +118,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   product: productProp,
   addToCart,
   onNotify,
-  onBuyNow,
   className = "",
   customizations,
 }) => {
   // Stock reflects cart holds made since this product was fetched.
   const product = useLiveStock(productProp);
-  const navigate = useNavigate();
 
   const [notifyStatus, setNotifyStatus] = useState<
     "idle" | "pending" | "sent" | "error"
@@ -391,19 +390,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     closeQuickView();
   };
 
-  const handleQuickViewBuyNow = (quantity: number) => {
-    if (!isProductPurchasable(product)) return;
-    for (let count = 0; count < quantity; count += 1) {
-      addWithPriceMode(isTradeSpecial ? "trade" : "retail");
-    }
-    closeQuickView();
-    if (onBuyNow) {
-      onBuyNow(product);
-    } else {
-      navigate("/checkout");
-    }
-  };
-
   useEffect(() => {
     if (!shouldRenderQuickView) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -582,7 +568,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         closeQuickView={closeQuickView}
         displayPrice={displayPrice}
         onAddToCart={handleQuickViewAddToCart}
-        onBuyNow={handleQuickViewBuyNow}
+        isWishlisted={isWishlisted}
+        onToggleWishlist={handleToggleWishlist}
       />
     </>
   );
