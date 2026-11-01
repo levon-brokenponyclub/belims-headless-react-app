@@ -208,7 +208,7 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ## 2026-11-01 — Cart stock holds (30 minutes), Global Site Settings 2.11.0
 
-### wp-content/plugins/global-site-settings (2.11.0) — deployed to staging 2026-11-01 (backup `~/backups/xnmtexmyyf-gss-2.10.15-20261101-053311.tgz`); production pending
+### wp-content/plugins/global-site-settings (2.11.0) — deployed to staging 2026-11-01 (backup `~/backups/xnmtexmyyf-gss-2.10.15-20261101-053311.tgz`) and production 2026-11-01 (backup `~/backups/uhkkwupuum-gss-2.10.15-20261101-055345.tgz`; no drift, checksums match, `php -l` clean, active 2.11.0; smoke test on product 296: stock 2 → hold 1 → 1 → released → 2)
 - New `includes/class-cart-holds.php`: table `{prefix}belims_cart_holds`; `POST /belims/v1/cart/hold` `{ cart_id, items }` replaces a cart's holds for 30 minutes (serialised with `GET_LOCK`, never more than stock minus other carts' holds; products without stock tracking aren't limited; empty items releases).
 - `class-products-endpoint.php`: every product response subtracts active holds from `stock` (after the server cache; `outofstock` at 0).
 - `class-orders-endpoint.php`: optional `cart_id` saved as `_belims_cart_id`; holds released on `woocommerce_reduce_order_stock`.
