@@ -1,5 +1,6 @@
 // ProductCard.tsx
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useLiveStock } from "../utils/liveStock";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -113,13 +114,15 @@ const getTimeLeft = (target: Date) => {
 };
 
 export const ProductCard: React.FC<ProductCardProps> = ({
-  product,
+  product: productProp,
   addToCart,
   onNotify,
   onBuyNow,
   className = "",
   customizations,
 }) => {
+  // Stock reflects cart holds made since this product was fetched.
+  const product = useLiveStock(productProp);
   const navigate = useNavigate();
 
   const [notifyStatus, setNotifyStatus] = useState<

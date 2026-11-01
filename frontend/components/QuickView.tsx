@@ -1,4 +1,5 @@
 import React from "react";
+import { useLiveStock } from "../utils/liveStock";
 import ReactDOM from "react-dom";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Loader2, Minus, Plus, X } from "lucide-react";
@@ -21,7 +22,7 @@ interface QuickViewProps {
 }
 
 export const QuickView: React.FC<QuickViewProps> = ({
-  product,
+  product: productProp,
   quickViewId,
   shouldRender,
   isQuickViewOpening,
@@ -31,6 +32,8 @@ export const QuickView: React.FC<QuickViewProps> = ({
   onAddToCart,
   onBuyNow,
 }) => {
+  // Stock reflects cart holds made since this product was fetched.
+  const product = useLiveStock(productProp);
   const [quickViewQty, setQuickViewQty] = React.useState(1);
   const [isAddToCartLoading, setIsAddToCartLoading] = React.useState(false);
   const [isBuyNowLoading, setIsBuyNowLoading] = React.useState(false);

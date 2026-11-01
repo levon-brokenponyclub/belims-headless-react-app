@@ -54,6 +54,8 @@ import { AuthModal } from "./components/AuthModal";
 import { ToastStack } from "./components/Toast";
 import { pushToast, ToastOptions, ToastType } from "./utils/toast";
 import { NAVIGATE_EVENT } from "./utils/navigation";
+import { readHoldExpiry, syncCartHolds } from "./services/cartHoldService";
+import { cartQuantityLimit, setLiveStock } from "./utils/liveStock";
 import { CookieConsent } from "./components/CookieConsent";
 import { Skeleton, SkeletonLine, SkeletonImage } from "./components/Skeleton";
 import HeroBanner from "./components/HeroBanner";
@@ -1071,6 +1073,14 @@ export default function App() {
       return;
     }
 
+    // Never more than is in stock (after other carts' holds).
+    const inCart = cartItems.find((item) => item.id === product.id);
+    const limit = cartQuantityLimit({ ...product, quantity: inCart?.quantity ?? 0 });
+    if ((inCart?.quantity ?? 0) + 1 > limit) {
+      pushToast(limit > 0 ? `Only ${limit} available` : "Out of stock", "error", { detail: product.name });
+      return;
+    }
+
     setCartItems((prev) => {
       const exists = prev.find((item) => item.id === product.id);
       if (exists) {
@@ -1096,6 +1106,14 @@ export default function App() {
   };
 
   const updateQuantity = (id: string, delta: number) => {
+    const item = cartItems.find((cartItem) => cartItem.id === id);
+    if (item && delta > 0) {
+      const limit = cartQuantityLimit(item);
+      if (item.quantity + delta > limit) {
+        pushToast(`Only ${limit} available`, "error", { detail: item.name });
+        return;
+      }
+    }
     setCartItems((prev) =>
       prev.map((item) =>
         item.id === id
@@ -1115,6 +1133,51 @@ export default function App() {
       window.localStorage.removeItem(cartStorageKey);
     }
   }, []);
+
+  // 30-minute stock holds: every cart change replaces this cart's holds on the CMS.
+  const [cartHoldExpiresAt, setCartHoldExpiresAt] = useState<number | null>(() => readHoldExpiry());
+  const holdCartItems = useCallback(async (items: CartItem[]) => {
+    try {
+      const result = await syncCartHolds(
+        items.map((item) => ({ product_id: Number(item.id), quantity: item.quantity })),
+      );
+      setCartHoldExpiresAt(result.expiresAt);
+
+      // Couldn't hold everything: cap the cart to what's really available.
+      const short = result.items.filter((hold) => hold.held < hold.requested);
+      if (short.length) {
+        setCartItems((prev) =>
+          prev.flatMap((item) => {
+            const hold = short.find((h) => h.product_id === Number(item.id));
+            if (!hold) return [item];
+            return hold.held > 0 ? [{ ...item, quantity: hold.held }] : [];
+          }),
+        );
+        short.forEach((hold) => {
+          const name = items.find((item) => Number(item.id) === hold.product_id)?.name;
+          pushToast(hold.held > 0 ? `Only ${hold.held} available` : "No longer available", "error", {
+            detail: name,
+          });
+        });
+      }
+
+      // Stock labels everywhere follow what's left after holds (including items just removed).
+      setLiveStock(result.items);
+    } catch (error) {
+      console.warn("Cart hold failed", error);
+    }
+  }, []);
+
+  // Skip the restored cart on load: its existing hold (or expiry) stands until the cart changes.
+  const cartHoldReadyRef = useRef(false);
+  useEffect(() => {
+    if (!cartHoldReadyRef.current) {
+      cartHoldReadyRef.current = true;
+      return;
+    }
+    const timer = window.setTimeout(() => holdCartItems(cartItems), 400);
+    return () => window.clearTimeout(timer);
+  }, [cartItems, holdCartItems]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1169,6 +1232,8 @@ export default function App() {
         isLoadingHomeProducts={isLoadingHomeProducts}
         isLoadingProducts={isLoadingProducts}
         cartItems={cartItems}
+        cartHoldExpiresAt={cartHoldExpiresAt}
+        onRehold={() => holdCartItems(cartItems)}
         isCartOpen={isCartOpen}
         setIsCartOpen={setIsCartOpen}
         isLocatorOpen={isLocatorOpen}
@@ -1476,6 +1541,8 @@ function MainApp(props) {
               element={
                 <CartPage
                   cartItems={props.cartItems}
+                  holdExpiresAt={props.cartHoldExpiresAt}
+                  onRehold={props.onRehold}
                   updateQuantity={props.updateQuantity}
                   removeItem={props.removeItem}
                   couponDetails={props.cartCoupon}
@@ -1562,6 +1629,8 @@ function MainApp(props) {
       {!isCheckoutRoute && !SHOW_COMING_SOON && (
         <CartDrawer
           isOpen={props.isCartOpen}
+          holdExpiresAt={props.cartHoldExpiresAt}
+          onRehold={props.onRehold}
           onClose={() => props.setIsCartOpen(false)}
           items={props.cartItems}
           updateQuantity={props.updateQuantity}

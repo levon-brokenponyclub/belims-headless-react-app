@@ -3,7 +3,7 @@
  * Plugin Name: Global Site Settings
  * Plugin URI: https://belims.co.za
  * Description: Unified plugin for Belims site settings, ACF field groups, REST API endpoints, and third-party integrations (WooCommerce, FTG, BobGo, AI).
- * Version: 2.10.15
+ * Version: 2.11.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Text Domain: global-site-settings
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('GLOBAL_SITE_SETTINGS_VERSION', '2.10.15');
+define('GLOBAL_SITE_SETTINGS_VERSION', '2.11.0');
 // Stand-in shown in the FTG edit form instead of the stored password; posting it keeps the stored one.
 define('BELIMS_FTG_PASSWORD_MASK', '••••••••••••');
 define('GLOBAL_SITE_SETTINGS_DEPLOY_TIMESTAMP', '2026-10-01 19:29:07');
@@ -226,6 +226,7 @@ function global_site_settings_init() {
         'includes/class-orders-endpoint.php',
         'includes/class-user-endpoint.php', // User registration & management
         'includes/class-coupon-endpoint.php', // Coupon validation
+        'includes/class-cart-holds.php', // 30-minute cart stock holds
         'includes/class-firebase-phone-auth.php',  // Firebase Phone Authentication
         'includes/class-firebase-google-auth.php', // Firebase Google Authentication
         'includes/class-user-admin-page.php', // User management admin UI
@@ -849,6 +850,7 @@ function global_site_settings_register_endpoints() {
         'Belims_Orders_Endpoint',
         'User_Endpoint', // User registration & management
         'Belims_Coupon_Endpoint', // Coupon validation
+        'Belims_Cart_Holds', // POST /cart/hold
         'Belims_Firebase_Phone_Auth',  // Firebase Phone Authentication
         'Belims_Firebase_Google_Auth', // Firebase Google Authentication
         'Belims_FTG_Sync_Endpoint',

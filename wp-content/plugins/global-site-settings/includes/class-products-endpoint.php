@@ -594,6 +594,10 @@ class Belims_Products_Endpoint {
     }
 
     private function build_cached_response($request, $payload, $extra_headers = array(), $cache_status = '') {
+        // Cart holds change by the minute, so they're applied on top of the cached payload.
+        if (class_exists('Belims_Cart_Holds')) {
+            $payload = Belims_Cart_Holds::apply_to_payload($payload);
+        }
         $etag = '"' . md5(wp_json_encode($payload)) . '"';
         $if_none_match = trim((string) $request->get_header('if-none-match'));
 

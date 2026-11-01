@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.10.15  
+**Version:** 2.11.0  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -172,7 +172,8 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/ecommerce-policies` | Public | Policies, `store_locations`, `expert_contact` (`class-ecommerce-settings.php`; `Cache-Control: public, s-maxage=300` since 2.8.1) |
 | `GET` | `/coupons?code=` | Public | Validate a coupon |
 | `GET` | `/ai/config` | Public | AI feature config |
-| `POST` | `/orders` | Public (send the JWT when signed in so the order is linked to the customer) | Create WooCommerce order from headless checkout; saves an allowed `frontend_origin` as `_belims_frontend_origin`; province name → WooCommerce ZA state code (`KwaZulu-Natal` → `KZN`, 2.10.12) |
+| `POST` | `/orders` | Public (send the JWT when signed in so the order is linked to the customer) | Create WooCommerce order from headless checkout; saves an allowed `frontend_origin` as `_belims_frontend_origin`; province name → WooCommerce ZA state code (`KwaZulu-Natal` → `KZN`, 2.10.12); an optional `cart_id` is saved as `_belims_cart_id` so the cart's stock holds are released when WooCommerce reduces stock (2.11.0) |
+| `POST` | `/cart/hold` | Public | Replace a cart's 30-minute stock holds: `{ cart_id, items: [{ product_id, quantity }] }` → `{ expires_at, items: [{ product_id, requested, held, available }] }`. Never holds more than stock minus other carts' holds; an empty `items` releases the cart (2.11.0, `includes/class-cart-holds.php`) |
 | `GET` | `/orders` | Logged in | Customer order history (statuses incl. Bob Go's `shipped` / `partially-shipped` since 2.10.12; `province` returned as the name); each order has `tracking: [{courier, tracking_number, tracking_url, status, estimated_delivery}]` from Bob Go's `_bobgo_shipments` meta (2.10.11, also on `/orders/:id`) |
 | `GET` | `/orders/:id?key=` | Order key, owning customer or shop manager | Single order details (404 otherwise) — `Belims_Orders_Endpoint::can_access_order()` |
 | `POST` | `/shipping/calculate` | Public | BobGo shipping rates for an address |
@@ -190,6 +191,13 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/ftg/brands` · `/ftg/instances` · `/ftg/products/:token` · `/ftg/product/:sku` · `/ftg/sync/status` · `/ftg/display-on-web-count` | Admin | FTG catalogue reads |
 | `GET` | `/ftg/brand-count` | Public | Count products for a brand |
 | `POST` | `/ftg/sync` · `/ftg/sync/product` · `/ftg/cleanup-attributes` | Admin | FTG sync operations |
+
+### Cart stock holds (2.11.0, `includes/class-cart-holds.php`)
+
+- Table `{prefix}belims_cart_holds` (`cart_id`, `product_id`, `quantity`, `expires_at` UTC), created on `init` when `belims_cart_holds_db_version` is behind.
+- The storefront sends the whole cart on every change (signed in or guest; random cart ID stored in the browser), which replaces the cart's holds and restarts the 30 minutes. `GET_LOCK('belims_cart_holds')` serialises carts so two shoppers can't both hold the last unit. Products that don't manage stock are never limited.
+- Product responses subtract active holds from `stock` (and report `outofstock` at 0) in `build_cached_response()`, i.e. after the server cache. Edge/browser caching (`s-maxage=300`) can still show other shoppers the pre-hold count for up to 5 minutes; the hold endpoint is the source of truth.
+- Released when the cart is emptied, when holds expire (expired rows are deleted on each hold request), or on `woocommerce_reduce_order_stock` for the order carrying that `_belims_cart_id`.
 
 ### Product response cache (2.10.9)
 

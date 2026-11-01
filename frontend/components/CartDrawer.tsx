@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { cartQuantityLimit, useLiveStockVersion } from "../utils/liveStock";
 import {
   ArrowRight,
   Check,
@@ -15,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { buyButtonClass } from "./ui/classes";
+import { CartHoldNotice } from "./CartHoldNotice";
 import { CartItem } from "../types";
 import { FREE_SHIPPING_THRESHOLD } from "../constants";
 import { formatCurrency } from "../utils/price";
@@ -32,6 +34,9 @@ interface CartDrawerProps {
   isAuthenticated?: boolean;
   onRequestAuth?: () => void;
   onCheckout?: () => void;
+  /** Stock hold expiry (ms) for the timer; see CartHoldNotice. */
+  holdExpiresAt?: number | null;
+  onRehold?: () => void;
   onViewCart?: () => void;
   onApplyCoupon?: (coupon: { code: string; discount_type: string; amount: string }) => void;
   couponDetails?: { code: string; discount_type: string; amount: string } | null;
@@ -50,12 +55,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   isAuthenticated,
   onRequestAuth,
   onCheckout,
+  holdExpiresAt = null,
+  onRehold,
   onViewCart,
   onApplyCoupon,
   couponDetails,
   onSaveOrderNote,
   onEstimateShipping,
 }) => {
+  useLiveStockVersion(); // keeps the + buttons' stock limit current
   const [shouldRender, setShouldRender] = useState(false);
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
 
@@ -246,6 +254,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </p>
             </div>
           ) : (
+            <>
+            <CartHoldNotice expiresAt={holdExpiresAt} onRehold={() => onRehold?.()} className="mx-6 mt-4" />
             <ul role="list" className="divide-y divide-border">
               {items.map((item) => {
                 const compareAt =
@@ -305,7 +315,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                             <button
                               type="button"
                               onClick={() => updateQuantity(item.id, 1)}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-r-lg text-text-secondary transition-colors hover:bg-surface-muted"
+                            disabled={item.quantity >= cartQuantityLimit(item)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-r-lg text-text-secondary transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                               aria-label="Increase quantity"
                             >
                               <Plus className="h-3 w-3" />
@@ -329,6 +340,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 );
               })}
             </ul>
+            </>
           )}
         </div>
 

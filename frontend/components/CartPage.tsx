@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { cartQuantityLimit, useLiveStockVersion } from "../utils/liveStock";
 import { useNavigate } from "react-router-dom";
 import { Heart, Minus, Plus, Trash2 } from "lucide-react";
 import { CartItem } from "../types";
@@ -8,6 +9,7 @@ import { validateCoupon } from "../services/wooCommerceService";
 import { isInWishlist, toggleWishlist } from "../services/wishlistService";
 import { buyButtonClass, outlineButtonClass, pageTitleClass, primaryButtonClass } from "./ui/classes";
 import { CouponField, SummaryHeading, SummaryTotals, TrustTiles, summaryCardClass } from "./OrderSummaryParts";
+import { CartHoldNotice } from "./CartHoldNotice";
 
 interface CartPageProps {
   cartItems: CartItem[];
@@ -17,6 +19,9 @@ interface CartPageProps {
   onApplyCoupon?: (coupon: { code: string; discount_type: string; amount: string }) => void;
   isAuthenticated?: boolean;
   onRequestAuth?: () => void;
+  /** Stock hold expiry (ms) for the timer; see CartHoldNotice. */
+  holdExpiresAt?: number | null;
+  onRehold?: () => void;
 }
 
 export function CartPage({
@@ -27,7 +32,10 @@ export function CartPage({
   onApplyCoupon,
   isAuthenticated,
   onRequestAuth,
+  holdExpiresAt = null,
+  onRehold,
 }: CartPageProps) {
+  useLiveStockVersion(); // keeps the + buttons' stock limit current
   const navigate = useNavigate();
 
   const [wishlisted, setWishlisted] = useState<Record<string, boolean>>(() => {
@@ -116,6 +124,7 @@ export function CartPage({
     <section className="py-10 bg-surface-muted min-h-[80vh]">
       <div className="container mx-auto px-4">
         <h1 className={`${pageTitleClass} mb-8`}>Cart</h1>
+        <CartHoldNotice expiresAt={holdExpiresAt} onRehold={() => onRehold?.()} className="mb-6" />
 
         <div className="flex flex-col xl:flex-row gap-6">
           {/* ─── Cart Table ───────────────────────────────────────────────── */}
@@ -199,7 +208,8 @@ export function CartPage({
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, 1)}
-                            className="flex h-9 w-9 items-center justify-center text-text-secondary hover:bg-surface-muted transition-colors"
+                            disabled={item.quantity >= cartQuantityLimit(item)}
+                            className="flex h-9 w-9 items-center justify-center text-text-secondary hover:bg-surface-muted transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                             aria-label="Increase quantity"
                           >
                             <Plus size={14} />
@@ -247,7 +257,8 @@ export function CartPage({
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, 1)}
-                            className="flex h-8 w-8 items-center justify-center text-text-secondary hover:bg-surface-muted"
+                            disabled={item.quantity >= cartQuantityLimit(item)}
+                            className="flex h-8 w-8 items-center justify-center text-text-secondary hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <Plus size={12} />
                           </button>

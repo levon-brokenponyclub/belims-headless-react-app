@@ -257,6 +257,11 @@ class Belims_Orders_Endpoint {
                 $order->update_meta_data('_belims_frontend_origin', rtrim($frontend_origin, '/'));
             }
 
+            // Link the order to the cart's stock holds; they're released when stock is reduced.
+            if (class_exists('Belims_Cart_Holds') && !empty($params['cart_id'])) {
+                Belims_Cart_Holds::attach_to_order($order, (string) $params['cart_id']);
+            }
+
             // Add order note
             $order->add_order_note('Order created via Belims Headless API');
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useLiveStock } from "../utils/liveStock";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronRight,
@@ -90,7 +91,7 @@ const classifyRate = (
 };
 
 export const SingleProduct: React.FC<SingleProductProps> = ({
-  product,
+  product: productProp,
   allProducts = [],
   addToCart,
   onBuyNow,
@@ -101,6 +102,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   isTradeApproved = false,
   currentUser,
 }) => {
+  // Stock reflects cart holds made since this product was fetched.
+  const product = useLiveStock(productProp);
   const navigate = useNavigate();
   const getDefaultStore = (stores: Store[]) =>
     stores.find((store) => store.name?.toLowerCase().includes("umzinto")) ||
@@ -426,7 +429,8 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
         }
       })
       .catch((err) => console.error("Failed to fetch policies:", err));
-  }, [product]);
+    // Keyed on the fetched product, not live stock, so a cart change doesn't refetch policies.
+  }, [productProp]);
 
   useEffect(() => {
     refreshStoredAddress();

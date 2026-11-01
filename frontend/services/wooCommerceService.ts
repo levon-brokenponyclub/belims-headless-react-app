@@ -1,4 +1,5 @@
 import { Product, WooCommerceCategory } from "../types";
+import { getCartId } from "../utils/cartId";
 import { enrichProductWithDeals } from "./dealService";
 import { getAuthHeaders } from "./authService";
 
@@ -405,7 +406,8 @@ export const createOrder = async (orderData: any) => {
           // Signed-in customers: the CMS links the order to their account
           ...(withAuth ? getAuthHeaders() : {}),
         },
-        body: JSON.stringify(orderData),
+        // cart_id lets the CMS release this cart's stock holds once the order's stock is reduced
+        body: JSON.stringify({ ...orderData, cart_id: getCartId() }),
       });
     const hasAuth = Object.keys(getAuthHeaders()).length > 0;
     let response = await send(hasAuth);

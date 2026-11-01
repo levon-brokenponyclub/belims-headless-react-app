@@ -192,6 +192,36 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Stock labels follow cart holds everywhere
+
+### Cart quantity can't exceed stock (frontend/App.tsx, utils/liveStock.ts, CartDrawer.tsx, CartPage.tsx)
+- `cartQuantityLimit()` = quantity in cart + stock still free after holds (or the item's stock count before any hold; unlimited when stock isn't tracked). Add to cart and the + buttons stop there with an "Only N available" toast; + is disabled at the limit in the drawer and cart page. Verified on `localhost:4173`: four adds of a 2-in-stock product leave 2 in the cart and show "Only 2 available".
+
+### frontend/utils/liveStock.ts (new), App.tsx, ProductCard.tsx, QuickView.tsx, SingleProduct.tsx
+- "Only N left" didn't change when adding or removing: the hold result only updated the main product list, while home rails, the product page and quick view use their own fetched copies. Now every hold response feeds a shared stock override (`setLiveStock`) and those components read stock through `useLiveStock`. The product page's policies fetch stays keyed on the fetched product so stock changes don't refetch it.
+
+### wp-content/plugins/global-site-settings/includes/class-cart-holds.php — deployed to staging 2026-11-01 (backup `~/backups/xnmtexmyyf-gss-2.11.0-20261101-054713.tgz`); smoke test: hold 1 of product 296 → available 1, empty cart → `{ product_id: 296, requested: 0, held: 0, available: 2 }`
+- `POST /cart/hold` also returns `available` for products the cart just released (`requested: 0, held: 0`), so removing an item frees its stock in the labels straight away.
+
+### Local testing note
+- `localhost:4173` (`vite preview`) proxies `/api` to `VITE_CMS_URL`, which defaults to the production CMS — still on 2.10.15, so hold calls 404 there and nothing changes. Test holds on https://belims.vercel.app (staging CMS) or the `frontend-staging-cms` dev server (port 3000).
+
+## 2026-11-01 — Cart stock holds (30 minutes), Global Site Settings 2.11.0
+
+### wp-content/plugins/global-site-settings (2.11.0) — deployed to staging 2026-11-01 (backup `~/backups/xnmtexmyyf-gss-2.10.15-20261101-053311.tgz`); production pending
+- New `includes/class-cart-holds.php`: table `{prefix}belims_cart_holds`; `POST /belims/v1/cart/hold` `{ cart_id, items }` replaces a cart's holds for 30 minutes (serialised with `GET_LOCK`, never more than stock minus other carts' holds; products without stock tracking aren't limited; empty items releases).
+- `class-products-endpoint.php`: every product response subtracts active holds from `stock` (after the server cache; `outofstock` at 0).
+- `class-orders-endpoint.php`: optional `cart_id` saved as `_belims_cart_id`; holds released on `woocommerce_reduce_order_stock`.
+- README / USERGUIDE documented; version 2.11.0.
+- Staging smoke test (product 296, stock 2): cart A held 1 → stock 1; cart B asked for 2 → held 1, stock 0 `outofstock`; both released → stock 2. Server files match local checksums; `php -l` clean; plugin active at 2.11.0.
+
+### frontend: utils/cartId.ts, services/cartHoldService.ts, components/CartHoldNotice.tsx (new), App.tsx, CartDrawer.tsx, CartPage.tsx, services/wooCommerceService.ts
+- Random per-browser cart ID (guests too). Every cart change (add, quantity, remove, clear) syncs holds after 400ms and restarts the 30 minutes; a restored cart on page load keeps its existing hold or expiry.
+- If less can be held than requested, the cart is capped to what's available with an "Only N available" / "No longer available" toast; the shopper's product stock updates to what's left after their hold.
+- Cart drawer and cart page show "Items held for mm:ss"; after 30 minutes items stay in the cart with "No longer held — Items in your cart may sell out" and **Hold again**.
+- Orders send `cart_id`.
+- Verified: `npm run build`; `php -l` on all changed plugin files; hold notice states (counting / expired) on `localhost:4173` via a simulated expiry. The endpoint itself is untested until the plugin is deployed (local WordPress isn't running); until then the storefront's hold calls fail quietly and nothing changes for shoppers.
+
 ## 2026-11-01 — Product page: switch or edit saved addresses from Delivery options
 
 ### frontend/hooks/useSavedAddresses.ts (new), FulfilmentChooser.tsx, SingleProduct.tsx, Header.tsx

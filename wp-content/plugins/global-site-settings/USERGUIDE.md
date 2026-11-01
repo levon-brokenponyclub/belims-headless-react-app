@@ -1,6 +1,6 @@
 # Global Site Settings — User Guide
 
-**Plugin version:** 2.10.15 · **For:** Belims Hardware store administrators
+**Plugin version:** 2.11.0 · **For:** Belims Hardware store administrators
 
 > Technical overview for developers: [README.md](README.md) · Project docs: [root README](../../../README.md)
 
@@ -119,6 +119,14 @@ If the storefront can't reach the CMS during a rebuild it keeps a default hero a
 ## CORS & Security
 
 **Allowed Storefronts** lists every site allowed to use the CMS — the live store, the preview site and local development work at the same time, so there's nothing to switch. When a customer pays with PayFast they're returned to the storefront they ordered on. The **default frontend URL** is only used for orders with no saved storefront; your developer changes it at launch.
+
+## Cart stock holds
+
+When a customer adds a product to their cart, those units are held for **30 minutes** so nobody else can buy them. Every change to the cart restarts the 30 minutes. Other customers see the stock count minus held units (it can take up to 5 minutes to update for them).
+
+- Holds end on their own after 30 minutes, when the customer empties their cart, or when their order's stock is reduced (payment received).
+- Nothing changes in WooCommerce stock until an order is paid — holds are kept separately and only affect what the storefront shows and allows.
+- Products that don't track stock are never held.
 
 ## WooCommerce
 
