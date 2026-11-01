@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-import { Store as StoreIcon, Truck, X } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ChevronLeft, Store as StoreIcon, Truck, X } from "lucide-react";
 import { ShippingAddress, Store } from "../types";
 import { FulfillmentTab } from "./FulfillmentTabs";
 import { formatCurrency } from "../utils/price";
+import { applyDeliveryAddress, editSavedAddressPath, isSameAddress, SavedAddress } from "../hooks/useSavedAddresses";
 import {
   formatDeliveryEtaText,
   getDeliveryOptionMarkers,
@@ -40,6 +42,8 @@ interface FulfilmentChooserProps {
   onSchedulePickup: () => void;
   /** Bumped after an address is saved — opens the rates drawer once rates arrive. */
   focusDeliveryPanelSignal: number;
+  /** Signed-in customer's saved addresses; "Change address" lets them switch or edit these. */
+  savedAddresses?: SavedAddress[];
 }
 
 export // One outlined action button for both methods (Delivery: Change · Pickup: Schedule pickup) so it sits in the same place.
@@ -62,6 +66,7 @@ export const FulfilmentChooser: React.FC<FulfilmentChooserProps> = ({
   onViewPickupDetails,
   onSchedulePickup,
   focusDeliveryPanelSignal,
+  savedAddresses = [],
 }) => {
   const options = useMemo(
     () => deliveryRates.map((rate, index) => ({ id: `rate-${index}`, ...rate })),
@@ -73,12 +78,19 @@ export const FulfilmentChooser: React.FC<FulfilmentChooserProps> = ({
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [pendingId, setPendingId] = useState(selectedDeliveryOptionId);
+  const [drawerView, setDrawerView] = useState<"rates" | "addresses">("rates");
+  const [pendingAddressId, setPendingAddressId] = useState("");
+  const showAddresses = () => {
+    setPendingAddressId(savedAddresses.find((saved) => isSameAddress(deliveryAddress, saved.address))?.id || "");
+    setDrawerView("addresses");
+  };
   const changeButtonRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const awaitingRatesRef = useRef(false);
 
   const openDrawer = () => {
     setPendingId(selectedDeliveryOptionId || cheapestOptionId || "");
+    setDrawerView("rates");
     setIsDrawerOpen(true);
   };
   const closeDrawer = () => {
@@ -290,11 +302,23 @@ export const FulfilmentChooser: React.FC<FulfilmentChooserProps> = ({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between bg-belims-blue px-5 py-4 text-white">
-                <div>
-                  <h2 id="rates-title" className="font-heading font-condensed text-h5 font-bold uppercase">
-                    Delivery options
-                  </h2>
-                  {place && <p className="text-caption text-white/80">{place}</p>}
+                <div className="flex items-start gap-2">
+                  {drawerView === "addresses" && (
+                    <button
+                      type="button"
+                      onClick={() => setDrawerView("rates")}
+                      className="-ml-2 grid h-9 w-9 shrink-0 place-items-center rounded-md hover:bg-white/10"
+                      aria-label="Back to delivery options"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                  )}
+                  <div>
+                    <h2 id="rates-title" className="font-heading font-condensed text-h5 font-bold uppercase">
+                      {drawerView === "addresses" ? "Change address" : "Delivery options"}
+                    </h2>
+                    {place && <p className="text-caption text-white/80">{place}</p>}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -305,6 +329,86 @@ export const FulfilmentChooser: React.FC<FulfilmentChooserProps> = ({
                   <X size={20} />
                 </button>
               </div>
+              {drawerView === "addresses" ? (
+                <>
+                  <div className="flex-1 space-y-3 overflow-y-auto p-5">
+                    <p className="text-base text-text-secondary">Deliver to one of your saved addresses{savedAddresses.length < 2 ? ", or add a new one" : ""}.</p>
+                    <div className="space-y-2" role="radiogroup" aria-label="Saved addresses">
+                      {savedAddresses.map((saved) => {
+                        const checked = pendingAddressId === saved.id;
+                        const inUse = isSameAddress(deliveryAddress, saved.address);
+                        return (
+                          <label
+                            key={saved.id}
+                            className={`flex cursor-pointer items-start gap-3 rounded-md border-2 p-4 ${
+                              checked ? "border-belims-blue" : "border-border hover:border-border-strong"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="pdp-saved-address"
+                              value={saved.id}
+                              checked={checked}
+                              onChange={() => setPendingAddressId(saved.id)}
+                              className="mt-1 h-4 w-4 accent-primary"
+                            />
+                            <span className="min-w-0 flex-1 text-base">
+                              <strong className="flex flex-wrap items-center gap-2 text-text">
+                                {saved.source}
+                                {inUse && (
+                                  <span className="rounded-badge bg-surface-muted px-1.5 py-0.5 text-caption font-bold uppercase text-text-secondary">
+                                    Current
+                                  </span>
+                                )}
+                              </strong>
+                              <span className="block text-caption text-text-tertiary">{saved.line}</span>
+                            </span>
+                            <Link
+                              to={editSavedAddressPath(saved.type)}
+                              onClick={closeDrawer}
+                              className="shrink-0 text-caption font-bold text-belims-blue underline underline-offset-4 hover:text-primary"
+                              aria-label={`Edit ${saved.source.toLowerCase()} address`}
+                            >
+                              Edit
+                            </Link>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {savedAddresses.length < 2 && (
+                      <Link
+                        to="/delivery-details/add-address"
+                        onClick={closeDrawer}
+                        className="inline-flex h-12 w-full items-center justify-center rounded-md border-2 border-border bg-white px-4 text-base font-bold text-text transition-colors hover:border-text"
+                      >
+                        Add new address
+                      </Link>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-4 border-t border-border p-4">
+                    <button
+                      type="button"
+                      onClick={() => setDrawerView("rates")}
+                      className="text-caption font-semibold text-belims-blue underline underline-offset-4"
+                    >
+                      Back to delivery options
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!pendingAddressId}
+                      onClick={() => {
+                        const picked = savedAddresses.find((saved) => saved.id === pendingAddressId);
+                        if (picked && !isSameAddress(deliveryAddress, picked.address)) applyDeliveryAddress(picked.address);
+                        setDrawerView("rates");
+                      }}
+                      className="h-12 rounded-md bg-primary px-8 font-heading font-condensed text-button font-bold uppercase text-white transition-colors hover:bg-belims-blue disabled:opacity-50"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
               <div className="flex-1 space-y-2 overflow-y-auto p-5" role="radiogroup" aria-labelledby="rates-title">
                 {options.map((option) => {
                   const tag =
@@ -348,6 +452,10 @@ export const FulfilmentChooser: React.FC<FulfilmentChooserProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    if (savedAddresses.length > 0) {
+                      showAddresses();
+                      return;
+                    }
                     setIsDrawerOpen(false);
                     onSetDeliveryLocation();
                   }}
@@ -368,6 +476,8 @@ export const FulfilmentChooser: React.FC<FulfilmentChooserProps> = ({
                   Done
                 </button>
               </div>
+                </>
+              )}
             </div>
           </div>,
           document.body,

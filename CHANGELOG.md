@@ -192,6 +192,43 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ---
 
+## 2026-11-01 — Product page: switch or edit saved addresses from Delivery options
+
+### frontend/hooks/useSavedAddresses.ts (new), FulfilmentChooser.tsx, SingleProduct.tsx, Header.tsx
+- Signed in, "Change address" in the product page's Delivery options drawer opens a "Change address" step (back arrow returns to the rates): the account's Billing and Shipping addresses as radio cards matching the delivery option cards (the one in use tagged "Current", **Edit** → `/delivery-details/add-address?context=account&type=billing|shipping&mode=edit`), a footer with "Back to delivery options" and **Confirm** (switches the delivery address; rates reload), and **Add new address** (→ `/delivery-details/add-address`) only when fewer than two addresses are saved. Signed out, it still opens the delivery location panel.
+- `useSavedAddresses`, `applyDeliveryAddress`, `editSavedAddressPath` and `isSameAddress` are shared; the header's delivery popover now uses the same hook instead of its own copy.
+- Verified: `npm run build`; type-check shows only the 11 older errors. Signed-in flow not seen locally.
+
+## 2026-11-01 — Drawer menus, sign-in toast action, type-check fix
+
+### frontend/components/AuthPage.tsx
+- "Signed in successfully" toasts (email, Google, Facebook, one-time code) have a **Go to dashboard** action → `/account/dashboard`. `showToast` prop now typed with the toast options (the extra `detail` argument was already being passed but failed type-checking).
+
+### frontend/components/Header.tsx
+- Signed-in account drawer: "Payment Methods" removed (that tab no longer exists); order matches the account page — Dashboard, Orders, Addresses, Account details, Wishlist.
+
+### frontend/components/WelcomeDrawer.tsx
+- Contact support cards are a row (icon · title + description · chevron) as whole-card buttons, and the section sits at the bottom of the drawer. Sentence case ("Contact support", "Live chat", "Email support").
+
+### frontend/components/Archive.tsx
+- Removed the `variant` prop that `ProductCard` stopped accepting in the card unification; list view now renders the standard card in one column.
+
+### Type-checking note
+- The 12 syntax errors in `backups/`, `app/api/` and `src/features/` stopped `tsc` before it checked types, so earlier "no new errors" checks were not real. With those folders excluded, the remaining 11 type errors are pre-existing (Product `stock_status`/`rating`/`reviews`, `CustomerDetails.addressLabel`, wishlist id string/number, `CartPage` `toggleWishlist` arity, `geminiService`).
+- Verified: `npm run build`; signed-out drawer on `localhost:4173` at 1440px.
+
+## 2026-11-01 — Wishlist count in the account drawer
+
+### frontend/components/Header.tsx
+- The signed-in account drawer's Wishlist row shows the saved-item count, same badge as the account page menu (blue, white number, hidden when 0; live via `useWishlist`).
+- Verified: `npm run build`.
+
+## 2026-11-01 — "View wishlist" on the added-to-wishlist toast
+
+### frontend/services/wishlistService.ts, utils/navigation.ts (new), App.tsx
+- "Added to wishlist" toast has a **View wishlist** action → `/account/wishlist`. New `requestNavigation(path)` (`belims:navigate` event, handled in `App`) lets services and toast actions change route without a router hook.
+- Verified: `npm run build`.
+
 ## 2026-11-01 — Account wishlist: 4 columns, Remove with confirm
 
 ### frontend/components/account/WishlistView.tsx, ui/ConfirmDialog.tsx (new)

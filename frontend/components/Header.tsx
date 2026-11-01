@@ -15,7 +15,6 @@ import {
   Scale,
   LogOut,
   AlertCircle,
-  CreditCard,
   Tag,
 } from "lucide-react";
 import {
@@ -37,6 +36,8 @@ import { DeliveryDetailsPopover, SavedAddressOption } from "./DeliveryDetailsPop
 
 const DELIVERY_POPOVER_DISMISSED_KEY = "belims_delivery_popover_dismissed";
 import { MegaMenu } from "./MegaMenu";
+import { useWishlist } from "../hooks/useWishlist";
+import { editSavedAddressPath, useSavedAddresses } from "../hooks/useSavedAddresses";
 import { MobileNav } from "./MobileNav";
 import { SearchResults, SearchBrand } from "./SearchResults";
 import { fetchProductFilters } from "../services/wooCommerceService";
@@ -110,6 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isServicesPanelOpen, setIsServicesPanelOpen] = useState(false);
+  const wishlistCount = useWishlist().length;
   const [isOtherServicesOpen, setIsOtherServicesOpen] = useState(false);
   const otherServicesRef = useRef<HTMLDivElement>(null);
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
@@ -402,63 +404,17 @@ export const Header: React.FC<HeaderProps> = ({
     deliveryAddress || legacyDeliveryLabel || userProfileLabel,
   );
 
-  const savedAddressOptions = useMemo<SavedAddressOption[]>(() => {
-    if (!currentUser) return [];
-    const rows: Array<{
-      source: "Billing" | "Shipping";
-      raw: {
-        address_1?: string;
-        city?: string;
-        state?: string;
-        postcode?: string;
-        country?: string;
-      } | null | undefined;
-    }> = [
-      { source: "Billing", raw: currentUser.billing },
-      { source: "Shipping", raw: currentUser.shipping },
-    ];
-    const out: SavedAddressOption[] = [];
-    const seen = new Set<string>();
-    for (const { source, raw } of rows) {
-      const line1 = raw?.address_1?.trim() || "";
-      if (!line1) continue;
-      const city = raw?.city?.trim() || "";
-      const dedupeKey = `${line1.toLowerCase()}|${city.toLowerCase()}|${(raw?.postcode || "").trim().toLowerCase()}`;
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-      const line = city ? `${line1}, ${city}` : line1;
-      out.push({
-        id: `${source.toLowerCase()}-${dedupeKey}`,
-        source,
-        type: source === "Billing" ? "billing" : "shipping",
-        line,
-      });
-    }
-    return out;
-  }, [currentUser]);
+  const savedAddressOptions = useSavedAddresses(currentUser);
 
   const handleEditSavedAddress = (type: SavedAddressOption["type"]) => {
     closeDeliveryPopover();
-    navigate(`/delivery-details/add-address?context=account&type=${type}&mode=edit`);
+    navigate(editSavedAddressPath(type));
   };
 
   const handleSelectSavedAddress = (id: string) => {
     const picked = savedAddressOptions.find((a) => a.id === id);
     if (!picked) return;
-    const raw =
-      picked.source === "Billing"
-        ? currentUser?.billing
-        : currentUser?.shipping;
-    if (!raw?.address_1) return;
-    const address: ShippingAddress = {
-      street: raw.address_1,
-      city: raw.city || "",
-      province: raw.state || "",
-      postalCode: raw.postcode || "",
-      country: "ZA",
-      label: raw.city ? `${raw.address_1}, ${raw.city}` : raw.address_1,
-    };
-    handleAddressSelect(address);
+    handleAddressSelect(picked.address);
     closeDeliveryPopover();
   };
 
@@ -1337,9 +1293,8 @@ export const Header: React.FC<HeaderProps> = ({
                 { label: "Dashboard", to: "/account/dashboard", icon: <LayoutGrid size={20} /> },
                 { label: "Orders", to: "/account/orders", icon: <ShoppingBasket size={20} /> },
                 { label: "Addresses", to: "/account/addresses", icon: <MapPin size={20} /> },
+                { label: "Account details", to: "/account/details", icon: <User size={20} /> },
                 { label: "Wishlist", to: "/account/wishlist", icon: <Heart size={20} /> },
-                { label: "Payment Methods", to: "/account/payment", icon: <CreditCard size={20} /> },
-                { label: "Account Details", to: "/account/details", icon: <User size={20} /> },
               ].map(({ label, to, icon }) => (
                 <Link
                   key={to}
@@ -1349,6 +1304,12 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <span className="text-belims-blue">{icon}</span>
                   <span className="flex-1 text-base font-semibold text-text">{label}</span>
+                  {to === "/account/wishlist" && wishlistCount > 0 && (
+                    <span className="grid h-5 min-w-5 place-items-center rounded-sm bg-belims-blue px-1 text-xs font-bold text-white">
+                      <span className="sr-only">{wishlistCount} saved</span>
+                      <span aria-hidden="true">{wishlistCount}</span>
+                    </span>
+                  )}
                   <span className="text-text-tertiary"><ChevronRight size={18} /></span>
                 </Link>
               ))}

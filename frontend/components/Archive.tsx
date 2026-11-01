@@ -867,7 +867,6 @@ export const Archive: React.FC<ArchiveProps> = ({
                     onBuyNow={onBuyNow}
                     onCompare={onCompare}
                     className="h-full w-full"
-                    variant={viewMode === "list" ? "flat-horizontal" : "default"}
                     isAuthenticated={isAuthenticated}
                     isTradeApproved={isTradeApproved}
                     customizations={PRODUCT_CARD_PRESETS.archiveCard}

@@ -27,6 +27,11 @@ const ChevronRight = () => (
   </svg>
 );
 
+const CONTACT_OPTIONS = [
+  { title: "Live chat", description: "Get instant help from our support team", ariaLabel: "Start live chat", iconPath: "M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" },
+  { title: "Email support", description: "Send us a detailed message", ariaLabel: "Email support", iconPath: "M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" },
+];
+
 const navLinks = [
   {
     label: "Sign In / Sign Up",
@@ -115,6 +120,7 @@ export const WelcomeDrawer: React.FC<WelcomeDrawerProps> = ({
       titleClassName="font-heading font-condensed text-h4 font-extrabold uppercase text-white"
       closeButtonClassName="text-white hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white"
     >
+      <div className="flex min-h-full flex-col">
       {/* Nav links */}
       <div className="divide-y divide-border border-b border-border">
         {navLinks.map((link) => (
@@ -135,50 +141,35 @@ export const WelcomeDrawer: React.FC<WelcomeDrawerProps> = ({
         ))}
       </div>
 
-      {/* Contact Support */}
-      <div className="border-t-4 border-belims-blue p-6">
+      {/* Contact Support — pinned to the bottom of the drawer */}
+      <div className="mt-auto border-t-4 border-belims-blue p-6">
         <h3 className="mb-4 font-heading font-condensed text-h5 font-extrabold uppercase text-text">
-          Contact Support
+          Contact support
         </h3>
         <div className="flex flex-col gap-3">
-          <div className="relative flex flex-col gap-2 rounded-md border border-border bg-white p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-surface-muted text-belims-blue">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337Z" />
-              </svg>
-            </div>
-            <h4 className="text-base font-bold text-text">Live Chat</h4>
-            <p className="text-sm text-text-secondary">
-              Get instant help from our support team
-            </p>
+          {CONTACT_OPTIONS.map(({ title, description, iconPath, ariaLabel }) => (
             <button
+              key={title}
               type="button"
-              className="absolute right-4 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-white hover:text-text"
-              aria-label="Start live chat"
+              aria-label={ariaLabel}
+              className="flex w-full items-center gap-4 rounded-md border-2 border-border bg-white p-4 text-left transition-colors hover:border-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-belims-blue"
             >
-              <ChevronRight />
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-muted text-belims-blue">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d={iconPath} />
+                </svg>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-bold text-text">{title}</span>
+                <span className="block text-sm text-text-secondary">{description}</span>
+              </span>
+              <span className="text-text-tertiary">
+                <ChevronRight />
+              </span>
             </button>
-          </div>
-
-          <div className="relative flex flex-col gap-2 rounded-md border border-border bg-white p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-surface-muted text-belims-blue">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-              </svg>
-            </div>
-            <h4 className="text-base font-bold text-text">Email Support</h4>
-            <p className="text-sm text-text-secondary">
-              Send us a detailed message
-            </p>
-            <button
-              type="button"
-              className="absolute right-4 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-white hover:text-text"
-              aria-label="Email support"
-            >
-              <ChevronRight />
-            </button>
-          </div>
+          ))}
         </div>
+      </div>
       </div>
     </Drawer>
     </>

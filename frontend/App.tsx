@@ -53,6 +53,7 @@ import { CartPage } from "./components/CartPage";
 import { AuthModal } from "./components/AuthModal";
 import { ToastStack } from "./components/Toast";
 import { pushToast, ToastOptions, ToastType } from "./utils/toast";
+import { NAVIGATE_EVENT } from "./utils/navigation";
 import { CookieConsent } from "./components/CookieConsent";
 import { Skeleton, SkeletonLine, SkeletonImage } from "./components/Skeleton";
 import HeroBanner from "./components/HeroBanner";
@@ -1247,6 +1248,13 @@ function MainApp(props) {
     setIsAuthModalOpen(true);
   };
   const openAuthForCheckout = () => openAuth({ redirectTo: "/checkout" });
+
+  // Services and toast actions can change route via requestNavigation().
+  useEffect(() => {
+    const onNavigate = (e: Event) => navigate((e as CustomEvent<string>).detail);
+    window.addEventListener(NAVIGATE_EVENT, onNavigate);
+    return () => window.removeEventListener(NAVIGATE_EVENT, onNavigate);
+  }, [navigate]);
 
   // Anything can ask for the sign-in modal via requestSignIn() (wishlist, account page).
   useEffect(() => {

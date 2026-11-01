@@ -50,6 +50,7 @@ import { FulfillmentTab } from "./FulfillmentTabs";
 import { ProductAccordions } from "./ProductAccordions";
 import { TradePricingAvailable } from "./TradePricingAvailable";
 import { Spinner } from "./Spinner";
+import { useSavedAddresses } from "../hooks/useSavedAddresses";
 import { SectionHeading, ViewAllLink } from "./SectionHeading";
 interface SingleProductProps {
   product: Product;
@@ -114,6 +115,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
   const [mainImage, setMainImage] = useState(product.image);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(() => isInWishlist(product.id));
+  const savedAddresses = useSavedAddresses(currentUser);
 
   // Qty
   const [qty, setQty] = useState(1);
@@ -1871,6 +1873,7 @@ export const SingleProduct: React.FC<SingleProductProps> = ({
                   }}
                   onViewPickupDetails={handleOpenPickupDetails}
                   onSchedulePickup={() => setIsSchedulePickupOpen(true)}
+                  savedAddresses={savedAddresses}
                   focusDeliveryPanelSignal={focusDeliveryPanelSignal}
                 />
 

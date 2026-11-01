@@ -1,5 +1,6 @@
 import { pushToast } from "../utils/toast";
 import { getAuthToken, requestSignIn } from "./authService";
+import { requestNavigation } from "../utils/navigation";
 
 const STORAGE_KEY = "belims_wishlist";
 
@@ -42,7 +43,12 @@ export const addToWishlist = (item: WishlistItem, options: { silent?: boolean } 
   if (!list.some((i) => i.id === item.id)) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...list, item]));
     window.dispatchEvent(new Event("belims:wishlist-updated"));
-    if (!options.silent) pushToast("Added to wishlist", "success", { detail: item.name });
+    if (!options.silent) {
+      pushToast("Added to wishlist", "success", {
+        detail: item.name,
+        action: { label: "View wishlist", onClick: () => requestNavigation("/account/wishlist") },
+      });
+    }
   }
 };
 

@@ -6,6 +6,8 @@ import { loginUser, registerUser, loginWithFirebasePhone, requestPasswordReset, 
 import { sendPhoneOTP, getFirebaseIdToken, clearRecaptcha, isFirebaseConfigured, signInWithGoogle, signInWithFacebook } from "../services/firebaseService";
 import { loginWithFirebaseGoogle } from "../services/authService";
 import { Spinner } from "./Spinner";
+import { ToastOptions, ToastType } from "../utils/toast";
+import { requestNavigation } from "../utils/navigation";
 import {
   errorClass,
   Field,
@@ -23,7 +25,7 @@ import {
 interface AuthPageProps {
   mode: "login" | "register";
   onSuccess: (user: UserData) => void;
-  showToast: (message: string, type: "success" | "error") => void;
+  showToast: (message: string, type: ToastType, options?: ToastOptions) => void;
   layout?: "page" | "modal";
   onSwitchMode?: () => void;
   onClose?: () => void;
@@ -51,6 +53,8 @@ function parsePhoneIdentifier(val: string): { dialCode: string; local: string } 
   const digits = raw.replace(/^\+?/, "");
   return { dialCode: "+27", local: digits.startsWith("0") ? digits.slice(1) : digits };
 }
+
+const dashboardAction = { label: "Go to dashboard", onClick: () => requestNavigation("/account/dashboard") };
 
 const SIGNUP_ADDRESS_PATH = "/delivery-details/add-address?context=signup";
 
@@ -126,7 +130,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
       const { idToken, email, displayName } = await signInWithGoogle();
       const result = await loginWithFirebaseGoogle(idToken, email, displayName);
       onSuccess(result.user);
-      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome back") });
+      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome back"), action: dashboardAction });
       postSuccess();
     } catch (err: any) {
       const msg = err?.message || "Google sign-in failed. Please try again.";
@@ -144,7 +148,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
       const { idToken, email, displayName } = await signInWithFacebook();
       const result = await loginWithFirebaseGoogle(idToken, email, displayName);
       onSuccess(result.user);
-      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome back") });
+      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome back"), action: dashboardAction });
       postSuccess();
     } catch (err: any) {
       const msg = err?.message || "Facebook sign-in failed. Please try again.";
@@ -224,7 +228,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
     try {
       const result = await loginUser({ email, password });
       onSuccess(result.user);
-      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome back") });
+      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome back"), action: dashboardAction });
       postSuccess();
     } catch (err: any) {
       const errorMsg = err?.message || "Something went wrong. Please try again.";
@@ -278,7 +282,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode, onSuccess, showToast, 
       if (!idToken) throw new Error("Could not retrieve authentication token.");
       const result = await loginWithFirebasePhone(idToken, confirmedPhone.trim());
       onSuccess(result.user);
-      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome") });
+      showToast("Signed in successfully", "success", { detail: welcomeDetail(result.user, "Welcome"), action: dashboardAction });
       postSuccess();
     } catch (err: any) {
       setPhoneError(err?.message || "Invalid code. Please try again.");
