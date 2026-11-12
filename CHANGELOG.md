@@ -13,6 +13,30 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 5. Bump the plugin version (`global-site-settings.php` header + `GLOBAL_SITE_SETTINGS_VERSION`) for every plugin change and name the version in the title.
 6. Release flow is in [README → Deployment](README.md#deployment-vercel): commit to `main` → verify on https://belims.vercel.app → `git push origin main:vercel`.
 
+## 2026-11-12 — Post-launch: GSS 2.11.2 on production, www default storefront, robots.txt
+
+Why: finish the launch checklist items that affect real orders and search indexing.
+
+### Global Site Settings 2.11.2 — production CMS (`uhkkwupuum`)
+- Before the upload, the server copies were identical to git at 2.11.1 (`27d14e9d`), so there was no drift.
+- Backed up the 4 files to `~/backups/uhkkwupuum-gss-2.11.1-20261112-134038.tgz`.
+- Uploaded `global-site-settings.php`, `includes/class-orders-endpoint.php`, `README.md` and `USERGUIDE.md` from `5f5a5fce` with a targeted `tar` over SSH.
+- Coupons now apply to the WooCommerce order, and an order totalling R0 completes without PayFast.
+
+### CMS options (production)
+- `headless_frontend_url` changed from `https://belims.vercel.app` to `https://www.belims.co.za`, set via WP-CLI `update_field`. The old value is saved in `~/backups/uhkkwupuum-headless_frontend_url-20261112-134038.txt`.
+- `belims_homepage_deploy_target` was already `both` and a Production deploy hook was saved, so nothing changed there.
+
+### frontend/public/robots.txt (new), frontend/vercel.json
+- `robots.txt` allows everything except account, cart, checkout and other private routes, plus `/api/`. It has no `Sitemap:` line, because there is no sitemap yet.
+- `X-Robots-Tag: noindex` is sent on `belims.vercel.app` only, so the preview isn't indexed as a duplicate of www.
+
+### Verified
+- On the server: `php -l` passed on both PHP files, `wp plugin get` reports 2.11.2, and the CMS products endpoint returns 200.
+- CORS: `Origin: https://www.belims.co.za` and `Origin: https://belims.vercel.app` are both echoed back by `access-control-allow-origin`.
+- `npm run build` passes and `dist/robots.txt` is present.
+- I didn't place a test order on production. The coupon and R0 paths were tested on staging (#5604, #5605).
+
 ## 2026-11-12 — Launch: Coming Soon off on www.belims.co.za
 
 Why: open the storefront to the public, so the Text AI Agent's Knowledge crawler can read www.belims.co.za instead of the Coming Soon page.
@@ -32,7 +56,7 @@ Why: open the storefront to the public, so the Text AI Agent's Knowledge crawler
 - `/api/google-reviews` returned JSON 5/5 times. `/product/combination-spanner-20-383` returned 200.
 
 ### Open launch items
-- GSS 2.11.2 is not yet on the production CMS. The checkout change is backward compatible: until it's deployed, coupons aren't applied to the Woo order and every order goes through PayFast, the same as before the release.
+- GSS 2.11.2 deployed to the production CMS later the same day (see the entry above).
 - Still unchecked on [ROADMAP → Launch checklist](docs/ROADMAP.md#launch-checklist-wwwbelimscoza):
   - Imunify 10/10
   - homepage *Saving rebuilds* switched to Production
@@ -40,7 +64,7 @@ Why: open the storefront to the public, so the Text AI Agent's Knowledge crawler
   - preview privacy
   - Cloudflare review
   - placeholder images and brand logos
-- `https://www.belims.co.za/robots.txt` returns the SPA's `index.html` (there's no robots.txt file). Add one.
+- robots.txt added later the same day (see the entry above).
 
 ## 2026-11-12 — Text product catalog export for the AI Agent
 
@@ -266,7 +290,7 @@ Why: `/shop` still used the older rounded card design after the archive layout p
 
 ## 2026-11-01 — Coupons apply to the real order, Global Site Settings 2.11.2
 
-### wp-content/plugins/global-site-settings/includes/class-orders-endpoint.php — deployed to staging 2026-11-01 (backup `~/backups/xnmtexmyyf-gss-2.11.1-20261101-085152.tgz`); production pending
+### wp-content/plugins/global-site-settings/includes/class-orders-endpoint.php — deployed to staging 2026-11-01 (backup `~/backups/xnmtexmyyf-gss-2.11.1-20261101-085152.tgz`) and production 2026-11-12 (backup `~/backups/uhkkwupuum-gss-2.11.1-20261112-134038.tgz`)
 - Bug: checkout sent `coupon_lines` but `create_order` never applied them, so PayFast charged the undiscounted total (R174 instead of R0 with a 100% coupon). Coupons are now applied with WooCommerce's `apply_coupon()` (its own rules: expiry, usage limits, minimum spend, allowed emails); a rejected coupon deletes the order and returns 400 with WooCommerce's message.
 - Orders that total R0 after coupons are completed straight away (`payment_complete()` — stock reduced, cart holds released, coupon usage counted; note "Paid in full with coupon") and the response says `paid: true`.
 
