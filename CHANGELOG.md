@@ -13,6 +13,24 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 5. Bump the plugin version (`global-site-settings.php` header + `GLOBAL_SITE_SETTINGS_VERSION`) for every plugin change and name the version in the title.
 6. Release flow is in [README → Deployment](README.md#deployment-vercel): commit to `main` → verify on https://belims.vercel.app → `git push origin main:vercel`.
 
+## 2026-11-12 — LiveChat AI chatbot (TextWidget) for testing
+
+Why: trial LiveChat's AI sales assistant on preview without shipping it to production.
+
+### frontend/App.tsx, frontend/package.json
+- Added `@livechat/widget-react@^1.4.1` and mounted `<TextWidget>` (organization `1ed582d5-…`) in `MainApp`, gated by the new `VITE_LIVECHAT_ENABLED=true` flag.
+- Not rendered on checkout/login/register or in Coming Soon mode.
+- Hidden (`visibility="hidden"`) while the cookie banner, auth modal, cart drawer, search, store locator, compare, price-match, onboarding or paint assistant is open. `onReady` re-applies the hide, because LiveChat drops a `hide` sent before it finishes booting.
+
+### frontend/.env.example, docs/ARCHITECTURE.md, docs/FEATURES.md
+- Documented `VITE_LIVECHAT_ENABLED` (local + Vercel **Preview** only; never Production) and the LiveChat feature row.
+
+### Verified
+- `npm run build` succeeds (existing large-bundle warning only).
+- Local dev (port 3002): widget loads with no new console errors; hides behind the cookie banner and shows again once it is dismissed, on desktop and at 375px.
+- Open: the launcher sits bottom-right over the cookie-settings button (desktop) and the mobile bottom nav's Cart/Account. Launcher position/offset is set in the LiveChat dashboard.
+- Not yet on preview: needs a push to `main` and `VITE_LIVECHAT_ENABLED=true` in Vercel Preview.
+
 ## 2026-10-31 — Account dashboard audit and concepts
 
 Why: establish an evidence-backed redesign direction for the Account Dashboard before changing its production implementation.

@@ -11,6 +11,7 @@
   "dependencies": {
     "@aaronfagan/ccicons": "github:aaronfagan/svg-credit-card-payment-icons",
     "@google/genai": "^1.30.0",
+    "@livechat/widget-react": "^1.4.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "firebase": "^12.19.0",

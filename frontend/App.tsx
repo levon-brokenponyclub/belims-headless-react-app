@@ -57,6 +57,7 @@ import { NAVIGATE_EVENT } from "./utils/navigation";
 import { readHoldExpiry, syncCartHolds } from "./services/cartHoldService";
 import { cartQuantityLimit, setLiveStock } from "./utils/liveStock";
 import { CookieConsent } from "./components/CookieConsent";
+import { TextWidget } from "@livechat/widget-react";
 import { Skeleton, SkeletonLine, SkeletonImage } from "./components/Skeleton";
 import HeroBanner from "./components/HeroBanner";
 import { CountdownTimer } from "./components/CountdownTimer";
@@ -67,6 +68,9 @@ import { ComingSoon } from "./components/ComingSoon";
 
 const SHOW_COMING_SOON =
   import.meta.env.VITE_COMING_SOON === "true";
+const LIVECHAT_ENABLED =
+  import.meta.env.VITE_LIVECHAT_ENABLED === "true";
+const LIVECHAT_ORGANIZATION_ID = "1ed582d5-02c3-4259-bb49-c0097a0b8066";
 import { AUTH_REQUEST_EVENT, AuthRequest, getCurrentUser, UserData, logoutUser } from "./services/authService";
 import { saveStoredAddress } from "./services/shippingAddress";
 
@@ -1305,6 +1309,23 @@ function MainApp(props) {
   const [isRouteTransitioning, setIsRouteTransitioning] = useState(false);
   const [isCookieConsentOpen, setIsCookieConsentOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // LiveChat launcher hides while any overlay or the cookie banner is open.
+  const isOverlayOpen =
+    isAuthModalOpen ||
+    isCookieConsentOpen ||
+    props.isCartOpen ||
+    props.isSearchModalOpen ||
+    props.isLocatorOpen ||
+    props.isCompareOpen ||
+    !!props.priceMatchProduct ||
+    props.isOnboardingOpen ||
+    props.isPaintOpen;
+  // A "hide" sent before LiveChat finishes booting is dropped, so re-apply it on ready.
+  const isOverlayOpenRef = useRef(isOverlayOpen);
+  isOverlayOpenRef.current = isOverlayOpen;
+  const handleLiveChatReady = useCallback(() => {
+    if (isOverlayOpenRef.current) window.LiveChatWidget?.call("hide");
+  }, []);
   const [authRequest, setAuthRequest] = useState<AuthRequest>({});
   const isCheckoutRoute = ["/checkout", "/login", "/register"].includes(displayLocation.pathname);
 
@@ -1758,6 +1779,14 @@ function MainApp(props) {
             onSearch={() => props.setIsSearchModalOpen(true)}
             onCart={() => props.setIsCartOpen(true)}
           />
+
+          {LIVECHAT_ENABLED && (
+            <TextWidget
+              organizationId={LIVECHAT_ORGANIZATION_ID}
+              visibility={isOverlayOpen ? "hidden" : "minimized"}
+              onReady={handleLiveChatReady}
+            />
+          )}
         </>
       )}
     </div>

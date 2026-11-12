@@ -87,6 +87,7 @@ Defined in [`App.tsx`](../frontend/App.tsx):
 | --- | --- | --- |
 | `VITE_COMING_SOON` | Show `ComingSoon` on `/` | Vercel **Production only** |
 | `VITE_CF_IMAGE_TRANSFORMS` | Enable Cloudflare image URLs | Production + Preview |
+| `VITE_LIVECHAT_ENABLED` | Mount the LiveChat AI chatbot (`TextWidget`) when `true` | `.env.local` + Vercel **Preview only** — never Production |
 | `VITE_FIREBASE_*` (6) | Firebase client config | All environments |
 | `VITE_GOOGLE_MAPS_API_KEY` | Address autocomplete / geolocation | Vercel + `.env.local` |
 | `VITE_CMS_URL` | Override CMS origin for the Vite proxy/build plugin (default `https://cms.belims.co.za`) | Optional, local |
