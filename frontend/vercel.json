@@ -45,7 +45,7 @@
       ]
     },
     {
-      "source": "/:path*",
+      "source": "/(.*)",
       "has": [{ "type": "host", "value": "belims.vercel.app" }],
       "headers": [
         {
