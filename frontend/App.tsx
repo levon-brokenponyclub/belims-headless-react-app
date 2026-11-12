@@ -42,6 +42,7 @@ import { DealsSection } from "./components/DealsSection";
 import { CategoryGrid } from "./components/CategoryGrid";
 import { ShopByDepartment } from "./components/ShopByDepartment";
 import { useHomeCategories } from "./hooks/useHomeCategories";
+import { useWindowWidth } from "./hooks/useWindowWidth";
 import { TrackOrderPage } from "./components/TrackOrderPage";
 import { FaqPage } from "./components/FaqPage";
 import { BrandStrip } from "./components/BrandStrip";
@@ -1320,6 +1321,8 @@ function MainApp(props) {
     !!props.priceMatchProduct ||
     props.isOnboardingOpen ||
     props.isPaintOpen;
+  // Desktop only (Tailwind lg): below it, LiveChat's frame covers MobileBottomNav and blocks taps.
+  const isLiveChatViewport = useWindowWidth() >= 1024;
   // A "hide" sent before LiveChat finishes booting is dropped, so re-apply it on ready.
   const isOverlayOpenRef = useRef(isOverlayOpen);
   isOverlayOpenRef.current = isOverlayOpen;
@@ -1780,7 +1783,7 @@ function MainApp(props) {
             onCart={() => props.setIsCartOpen(true)}
           />
 
-          {LIVECHAT_ENABLED && (
+          {LIVECHAT_ENABLED && isLiveChatViewport && (
             <TextWidget
               organizationId={LIVECHAT_ORGANIZATION_ID}
               visibility={isOverlayOpen ? "hidden" : "minimized"}

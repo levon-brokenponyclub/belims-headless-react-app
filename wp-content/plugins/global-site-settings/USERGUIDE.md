@@ -1,6 +1,6 @@
 # Global Site Settings — User Guide
 
-**Plugin version:** 2.11.2 · **For:** Belims Hardware store administrators
+**Plugin version:** 2.12.0 · **For:** Belims Hardware store administrators
 
 > Technical overview for developers: [README.md](README.md) · Project docs: [root README](../../../README.md)
 
@@ -129,6 +129,10 @@ When a customer adds a product to their cart, those units are held for **30 minu
 - Products that don't track stock are never held.
 
 **Cancelled and refunded orders:** changing a paid order to **Cancelled** or **Refunded** puts its stock back automatically. For a partial refund (order stays Processing/Completed), tick **Restock refunded items** in the refund box.
+
+## Product feed (AI chat assistant)
+
+The website's AI chat assistant recommends products from a product feed the CMS publishes automatically at `https://cms.belims.co.za/wp-json/belims/v1/feeds/products.xml`. It lists every product that's in stock, priced and categorised, with links to the live store. You don't need to do anything: price, stock and product changes appear in the feed straight away, and the chat assistant picks them up within an hour. Products without an image aren't included.
 
 ## WooCommerce
 

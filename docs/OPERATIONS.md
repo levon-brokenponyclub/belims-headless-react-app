@@ -90,13 +90,13 @@ npm run dev                  # http://localhost:3000 (strictPort — the CMS COR
 
 ## LiveChat / Text AI Agent product catalog
 
-The AI Agent's **Recommend products** skill (Text dashboard → AI Agents → Skills → *Any store via API*) reads a catalog that we upload. It does not crawl the storefront.
+The AI Agent's **Recommend products** skill (Text dashboard → AI Agents → Skills → *Product feed (XML)*) reads a Google Shopping feed that the CMS publishes. Text syncs it hourly.
 
-- Script: [`frontend/scripts/text-catalog-export.mjs`](../frontend/scripts/text-catalog-export.mjs). Source is the public Woo Store API on the CMS. Out-of-stock, zero-price, uncategorised and image-less products are skipped.
-- Dry run, from `frontend/`: `node scripts/text-catalog-export.mjs` → `scripts/out/products.json` (gitignored).
-- Upload: `TEXT_ACCOUNT_ID=… TEXT_PAT=… node scripts/text-catalog-export.mjs --upload`. The PAT needs the `accounts--my:ro` scope. Keep it in the SSH Vault, never in the repo.
-- Product links default to `https://belims.vercel.app`. At launch, pass `--base-url https://www.belims.co.za`.
-- **Not automatic:** prices and stock are as of the last run. Re-run after catalog changes; Text skips products that haven't changed.
+- **Feed URL (production):** `https://cms.belims.co.za/wp-json/belims/v1/feeds/products.xml`. It comes from GSS 2.12.0; see the [plugin README](../wp-content/plugins/global-site-settings/README.md#product-feed-2120-includesclass-product-feedphp).
+- It contains every visible, sellable product (in stock, priced, categorised, with an image). Links point to `get_frontend_url()`, so production links go to www and staging links go to preview.
+- **Refresh is automatic.** The cache is cleared on any product, stock, price, category or brand change, so the next hourly sync picks it up.
+- **If Text reports fetch errors,** check whether Imunify is challenging `/wp-json/`. That's the same open issue as with Vercel; see [Cloudways / CMS](#cloudways--cms).
+- **Fallback:** [`frontend/scripts/text-catalog-export.mjs`](../frontend/scripts/text-catalog-export.mjs) uploads JSON through Text's API. Uploads above about 500 KB fail at Text's edge with a 503, so use batches. Retire the script once the feed is confirmed in Text.
 
 ## Performance baseline (2026-10-01)
 

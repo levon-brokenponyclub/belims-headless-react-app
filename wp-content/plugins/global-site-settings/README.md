@@ -1,6 +1,6 @@
 # Global Site Settings Plugin
 
-**Version:** 2.11.2  
+**Version:** 2.12.0  
 **WordPress:** 5.8+  
 **PHP:** 7.4+
 
@@ -171,6 +171,7 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 | `GET` | `/homepage` | Public | Homepage sections (baked into the storefront at build time) |
 | `GET` | `/ecommerce-policies` | Public | Policies, `store_locations`, `expert_contact` (`class-ecommerce-settings.php`; `Cache-Control: public, s-maxage=300` since 2.8.1) |
 | `GET` | `/coupons?code=` | Public | Validate a coupon |
+| `GET` | `/feeds/products.xml` | Public | Google Shopping product feed (RSS 2.0, `g:` namespace) of every sellable product, linking to `get_frontend_url()` — used by the Text AI Agent *Recommend products* skill (2.12.0) |
 | `GET` | `/ai/config` | Public | AI feature config |
 | `POST` | `/orders` | Public (send the JWT when signed in so the order is linked to the customer) | Create WooCommerce order from headless checkout; saves an allowed `frontend_origin` as `_belims_frontend_origin`; province name → WooCommerce ZA state code (`KwaZulu-Natal` → `KZN`, 2.10.12); an optional `cart_id` is saved as `_belims_cart_id` so the cart's stock holds are released when WooCommerce reduces stock (2.11.0); `coupon_lines: [{ code }]` are applied with WooCommerce's `apply_coupon()` (an invalid coupon deletes the order and returns 400 with WooCommerce's reason), and an order totalling R0 is completed straight away (`payment_complete()`, response `paid: true`) since PayFast can't take R0 (2.11.2) |
 | `POST` | `/cart/hold` | Public | Replace a cart's 30-minute stock holds: `{ cart_id, items: [{ product_id, quantity }] }` → `{ expires_at, items: [{ product_id, requested, held, available }] }`. Never holds more than stock minus other carts' holds; an empty `items` releases the cart (2.11.0, `includes/class-cart-holds.php`) |
@@ -202,6 +203,12 @@ All endpoints are under `/wp-json/belims/v1/`. In production, the Vercel fronten
 ### Order stock restore (2.11.1)
 
 WooCommerce returns stock when a stock-reduced order is cancelled, fails or goes back to pending. The plugin adds the same for **Refunded** (`woocommerce_order_status_refunded` → `wc_maybe_increase_stock_levels`, in `class-orders-endpoint.php`). Only what the order actually took is returned, so items already restocked through a manual refund aren't counted twice. Partial refunds that leave the order Processing/Completed still need WooCommerce's "Restock refunded items" tick.
+
+### Product feed (2.12.0, `includes/class-product-feed.php`)
+
+`GET /wp-json/belims/v1/feeds/products.xml` returns every product that passes `Belims_Products_Endpoint::is_sellable()` (in stock, priced, categorised) and is visible, as Google Shopping XML: `g:id`, `title`, `description` (tags stripped, max 5,000 chars), `link` (`{get_frontend_url()}/product/{slug}-{id}`), `g:image_link` + up to 9 `g:additional_image_link`, `g:price` (regular, e.g. `205.00 ZAR`), `g:sale_price` when on sale, `g:availability` `in_stock`, `g:condition` `new`, `g:identifier_exists` `no`, `g:brand` (`product_brand`), `g:mpn` (SKU), `g:product_type` (category path). Products without an image are skipped.
+
+The XML is cached in a transient keyed on the product cache version (`belims_products_cache_version`) and the frontend URL, so any product, stock, price, category or brand change rebuilds it on the next request. Responses carry `Cache-Control: public, max-age=900`. The Text AI Agent (Skills → Recommend products → *Product feed (XML)*) fetches it hourly.
 
 ### Product response cache (2.10.9)
 

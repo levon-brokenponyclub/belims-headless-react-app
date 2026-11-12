@@ -13,6 +13,49 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 5. Bump the plugin version (`global-site-settings.php` header + `GLOBAL_SITE_SETTINGS_VERSION`) for every plugin change and name the version in the title.
 6. Release flow is in [README → Deployment](README.md#deployment-vercel): commit to `main` → verify on https://belims.vercel.app → `git push origin main:vercel`.
 
+## 2026-11-12 — LiveChat AI chatbot live on www (desktop only)
+
+Why: put the Text AI Agent, with the Recommend products feed (GSS 2.12.0), in front of real visitors. On mobile its frame blocks taps on the bottom nav, so it is desktop only for now.
+
+### frontend/App.tsx
+- `<TextWidget>` now also requires `useWindowWidth() >= 1024` (Tailwind `lg`, the width at which `MobileBottomNav` is hidden). It doesn't load at all on smaller screens.
+
+### Vercel (outside the repo)
+- `VITE_LIVECHAT_ENABLED=true` added for **Production**, then released with `git push origin main:vercel`.
+
+### docs/ARCHITECTURE.md, docs/FEATURES.md, frontend/.env.example
+- The flag is now documented for Preview + Production and as desktop only. FEATURES records the greeting-card behaviour below.
+
+### Verified
+- `npm run build` passes.
+- Dev server at 375px: LiveChat doesn't load.
+- Dev server at 1280px: the widget sits bottom-left, is hidden while the cookie banner is open (2 of 2 reloads), shows once the banner is dismissed, and doesn't cover the cookie button.
+- **Accepted known issue:** while LiveChat's greeting card ("Welcome back") is showing, its frame covers x 16–436 for the full page height, so the logo and *Shop by department* can't be clicked until the visitor closes the card. Fix: turn off the automatic greeting in Text.
+- Seen once and not reproduced: the widget showed while the cookie banner was open, probably after the window was resized across 1024px.
+
+## 2026-11-12 — GSS 2.12.0: Google Shopping product feed for the Text AI Agent
+
+Why: the AI Agent's **Recommend products** skill accepts a Google Shopping feed URL and syncs it hourly. A feed hosted on the CMS keeps prices and stock current without manual uploads, and avoids the ~500 KB limit Text's upload API hits in practice.
+
+### Global Site Settings 2.12.0
+- New `includes/class-product-feed.php`, which serves `GET /wp-json/belims/v1/feeds/products.xml`. It lists every product that is visible and passes `is_sellable()`, as RSS 2.0 XML with `g:` fields:
+  - id, title, and the description with HTML removed
+  - a storefront link, `{get_frontend_url()}/product/{slug}-{id}` (www on production, preview on staging)
+  - up to 10 images
+  - regular price and sale price, in ZAR
+  - availability, condition, `identifier_exists=no`, brand, MPN (the SKU) and the category path
+- Raw XML is sent through `rest_pre_serve_request`. The output is cached in a transient keyed on the product cache version and the storefront URL, so any product change rebuilds it.
+- Version bumped to 2.12.0. Plugin README and USERGUIDE updated.
+
+### Verified
+- `php -l` passes on both changed PHP files.
+- Staging dry run: I piped the class into `wp eval-file -`, so no files were written and nothing was cached. The XML is well formed: 1,380 items out of 1,383 published products (3 have no image), no required field is missing, and it built in 3.6 s at 1.3 MB.
+- **Deployed to staging and production on 2026-11-12.** On both servers, the 3 existing files matched git (2.11.2) before the upload. Backups: `~/backups/xnmtexmyyf-gss-2.11.2-20261112-135935.tgz` (staging) and `~/backups/uhkkwupuum-gss-2.11.2-20261112-135935.tgz` (production). Both servers pass `php -l` and report 2.12.0, and their files match local md5.
+- Staging feed: 200 `application/xml`, 1,380 items, every link on `belims.vercel.app`.
+- Production feed (`https://cms.belims.co.za/wp-json/belims/v1/feeds/products.xml`): 200 `application/xml`, 1.29 MB, 1,380 items, every link on `www.belims.co.za`. A cold fetch takes about 8.6 s and a cached one about 3.8 s.
+- Sample check: `www.belims.co.za/product/angle-grinder-83` opens "Angle Grinder" at R1,999.00, which matches the feed.
+- Still to do: paste the feed URL into Text (Skills → Recommend products → *Product feed (XML)*), switch *Skill active* on and save.
+
 ## 2026-11-12 — Post-launch: GSS 2.11.2 on production, www default storefront, robots.txt
 
 Why: finish the launch checklist items that affect real orders and search indexing.
