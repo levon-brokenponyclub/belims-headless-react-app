@@ -85,7 +85,7 @@ Defined in [`App.tsx`](../frontend/App.tsx):
 
 | Variable | Used for | Where set |
 | --- | --- | --- |
-| `VITE_COMING_SOON` | Show `ComingSoon` on `/` | Vercel **Production only** |
+| `VITE_COMING_SOON` | Show `ComingSoon` on `/` when `true` | Vercel **Production only** — `false` since launch (2026-11-12) |
 | `VITE_CF_IMAGE_TRANSFORMS` | Enable Cloudflare image URLs | Production + Preview |
 | `VITE_LIVECHAT_ENABLED` | Mount the LiveChat AI chatbot (`TextWidget`) when `true` | `.env.local` + Vercel **Preview only** — never Production |
 | `VITE_FIREBASE_*` (6) | Firebase client config | All environments |

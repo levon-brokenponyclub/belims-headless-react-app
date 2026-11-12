@@ -4,7 +4,7 @@ Headless storefront for Belims Hardware: a React + TypeScript + Vite frontend on
 
 | | URL | Branch |
 | --- | --- | --- |
-| Production (Coming Soon until launch) | https://www.belims.co.za | `vercel` |
+| Production (live since 2026-11-12) | https://www.belims.co.za | `vercel` |
 | Preview (development) | https://belims.vercel.app | `main` |
 | CMS | https://cms.belims.co.za/wp-admin | — |
 
@@ -54,7 +54,7 @@ Vercel project `belims` (team `levon-brokenponycs-projects`), root directory `fr
 | Branch | Vercel environment | URL | Purpose |
 | --- | --- | --- | --- |
 | `main` | Preview | https://belims.vercel.app (public) | Development & verification |
-| `vercel` | Production | https://www.belims.co.za | Live site (Coming Soon until launch) |
+| `vercel` | Production | https://www.belims.co.za | Live site |
 
 ### Workflow
 
@@ -69,7 +69,7 @@ git push origin main:vercel
 ### Rules
 
 - **Release through Git only.** `VITE_*` variables are inlined at build time, so a build carries the environment it was built for. Do not use Vercel's *Promote* or *Redeploy* to move a build between Preview and Production — that is how a Production build (with `VITE_COMING_SOON=true`) leaked onto `belims.vercel.app`.
-- `VITE_COMING_SOON` is set for **Production only**. Remove it (and redeploy) at launch — see the [launch checklist](docs/ROADMAP.md#launch-checklist-wwwbelimscoza).
+- `VITE_COMING_SOON` is `false` on Production since launch (2026-11-12). Set it to `true` and release to bring Coming Soon back — see the [launch checklist](docs/ROADMAP.md#launch-checklist-wwwbelimscoza).
 - Pushing a commit that Vercel has already built (e.g. after a fast-forward) does not trigger a new build. Use `vercel deploy` or the Vercel API (`POST /v13/deployments` with `gitSource.ref`) to force one.
 
 ### CMS-triggered builds

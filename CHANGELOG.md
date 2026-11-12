@@ -13,6 +13,60 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 5. Bump the plugin version (`global-site-settings.php` header + `GLOBAL_SITE_SETTINGS_VERSION`) for every plugin change and name the version in the title.
 6. Release flow is in [README → Deployment](README.md#deployment-vercel): commit to `main` → verify on https://belims.vercel.app → `git push origin main:vercel`.
 
+## 2026-11-12 — Launch: Coming Soon off on www.belims.co.za
+
+Why: open the storefront to the public, so the Text AI Agent's Knowledge crawler can read www.belims.co.za instead of the Coming Soon page.
+
+### Vercel (outside the repo)
+- Set `VITE_COMING_SOON` on Production to `false` instead of deleting it. The tooling can't delete env vars, and the code only checks for `=== "true"`.
+- Released with `git push origin main:vercel` (`e10c3584..8fe81989`, fast-forward), deploy `dpl_7kRzChrAQsDicQTr3mNScxcJiH7m`.
+- The release also shipped five commits waiting on `main`:
+  - GSS 2.11.1 refund stock restore
+  - quick view redesign
+  - All deals tab
+  - checkout coupon/R0 handling
+  - LiveChat (off in Production — its flag is Preview-only)
+
+### Verified
+- www serves the new bundle (`index-CJLhE7SC.js`). Home renders with the header and 45 product links, no Coming Soon and no console errors.
+- `/api/google-reviews` returned JSON 5/5 times. `/product/combination-spanner-20-383` returned 200.
+
+### Open launch items
+- GSS 2.11.2 is not yet on the production CMS. The checkout change is backward compatible: until it's deployed, coupons aren't applied to the Woo order and every order goes through PayFast, the same as before the release.
+- Still unchecked on [ROADMAP → Launch checklist](docs/ROADMAP.md#launch-checklist-wwwbelimscoza):
+  - Imunify 10/10
+  - homepage *Saving rebuilds* switched to Production
+  - `headless_frontend_url` set to www
+  - preview privacy
+  - Cloudflare review
+  - placeholder images and brand logos
+- `https://www.belims.co.za/robots.txt` returns the SPA's `index.html` (there's no robots.txt file). Add one.
+
+## 2026-11-12 — Text product catalog export for the AI Agent
+
+Why: the LiveChat/Text AI Agent's **Recommend products** skill needs the catalog, and its Knowledge crawler can't read www.belims.co.za while that site shows Coming Soon.
+
+### frontend/scripts/text-catalog-export.mjs (new)
+- A Node script with no dependencies. It pages through the public WooCommerce Store API (`/wp-json/wc/store/v1/products`) and maps each product to Text Product Directory JSON:
+  - title and description (HTML removed)
+  - product URL on `--base-url` (default belims.vercel.app)
+  - ZAR price and categories
+  - images
+  - brand, SKU and Woo attributes
+  - one variant per product
+- Skips products that are out of stock, have a zero price, or have no category or image.
+- `--upload` posts the file to `api.text.com/product-directory/v1/catalogs/imports` with `TEXT_ACCOUNT_ID` / `TEXT_PAT` from the shell, then polls the job status. The token is never stored in the repo.
+- Output goes to `frontend/scripts/out/`, which is gitignored.
+
+### .gitignore, docs/OPERATIONS.md, docs/FEATURES.md
+- Ignored `frontend/scripts/out/`. Documented how to run and refresh the catalog, and added it to the LiveChat feature row.
+
+### Verified
+- Dry run: 1,383 products fetched, 1,380 exported (3 skipped for having no image). Every exported product has all fields Text requires, and IDs are unique. File size is 1.6 MB.
+- The sample product link `https://belims.vercel.app/product/combination-spanner-20-383` opens the right product page at the matching price (R205.00).
+- The upload has not been run yet. It needs your Text account ID and PAT.
+- Still open from the LiveChat entry: on mobile, the widget's frame blocks taps on the bottom nav. The launcher has been moved bottom-left in the dashboard, which clears the desktop cookie button.
+
 ## 2026-11-12 — LiveChat AI chatbot (TextWidget) for testing
 
 Why: trial LiveChat's AI sales assistant on preview without shipping it to production.

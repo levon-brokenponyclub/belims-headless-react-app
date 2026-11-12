@@ -14,7 +14,7 @@ Hosting, deploys, caching and infrastructure quirks. Start at the root [README](
 | Source | branch `main` | branch `vercel` | Cloudways app `uhkkwupuum` ("Belims WP CMS"), server #1482444 `209.38.84.64` |
 | Host | Vercel project `belims` (team `levon-brokenponycs-projects`, root `frontend`) | same | Cloudways Flexible (Imunify360) |
 | Edge | Vercel only | Cloudflare (zone `belims.co.za`, Free plan) → Vercel | Cloudflare → Cloudways |
-| Access | Public (Vercel Authentication **off**) | Public; shows Coming Soon until launch | WP admin |
+| Access | Public (Vercel Authentication **off**) | Public; live since 2026-11-12 | WP admin |
 
 Production (`www.belims.co.za`) reads the production CMS; the preview (`belims.vercel.app`) reads the **staging CMS** since 2026-10-05 (host-based rewrite below).
 
@@ -87,6 +87,16 @@ npm run dev                  # http://localhost:3000 (strictPort — the CMS COR
 - `/api/*` is proxied to `VITE_CMS_URL` (default `https://cms.belims.co.za`) `/wp-json/*`; `/api/google-reviews` is mocked locally.
 - `npm run build` → `frontend/dist`; `npx vite preview` to serve it.
 - Type-check edited files with `npx tsc --noEmit -p .` (ignore pre-existing errors in `frontend/backups/`).
+
+## LiveChat / Text AI Agent product catalog
+
+The AI Agent's **Recommend products** skill (Text dashboard → AI Agents → Skills → *Any store via API*) reads a catalog that we upload. It does not crawl the storefront.
+
+- Script: [`frontend/scripts/text-catalog-export.mjs`](../frontend/scripts/text-catalog-export.mjs). Source is the public Woo Store API on the CMS. Out-of-stock, zero-price, uncategorised and image-less products are skipped.
+- Dry run, from `frontend/`: `node scripts/text-catalog-export.mjs` → `scripts/out/products.json` (gitignored).
+- Upload: `TEXT_ACCOUNT_ID=… TEXT_PAT=… node scripts/text-catalog-export.mjs --upload`. The PAT needs the `accounts--my:ro` scope. Keep it in the SSH Vault, never in the repo.
+- Product links default to `https://belims.vercel.app`. At launch, pass `--base-url https://www.belims.co.za`.
+- **Not automatic:** prices and stock are as of the last run. Re-run after catalog changes; Text skips products that haven't changed.
 
 ## Performance baseline (2026-10-01)
 

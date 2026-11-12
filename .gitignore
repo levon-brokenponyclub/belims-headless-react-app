@@ -112,3 +112,6 @@ lerna-debug.log*
 # --------------------
 *.mp4
 *.mp4.part
+
+# Text AI Agent catalog export output
+/frontend/scripts/out/
