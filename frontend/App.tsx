@@ -65,10 +65,7 @@ import { CountdownTimer } from "./components/CountdownTimer";
 import CollageGrid from "./components/CollageGrid";
 import ProjectInspiration from "./components/ProjectInspiration";
 import { PopularCategories } from "./components/PopularCategories";
-import { ComingSoon } from "./components/ComingSoon";
 
-const SHOW_COMING_SOON =
-  import.meta.env.VITE_COMING_SOON === "true";
 const LIVECHAT_ENABLED =
   import.meta.env.VITE_LIVECHAT_ENABLED === "true";
 const LIVECHAT_ORGANIZATION_ID = "1ed582d5-02c3-4259-bb49-c0097a0b8066";
@@ -1427,7 +1424,7 @@ function MainApp(props) {
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans">
       <ScrollToTop />
-      {!isCheckoutRoute && !SHOW_COMING_SOON && (
+      {!isCheckoutRoute && (
         <Header
           selectedStore={props.selectedStore}
           setSelectedStore={props.setSelectedStore}
@@ -1457,16 +1454,12 @@ function MainApp(props) {
             <Route
               path="/"
               element={
-                SHOW_COMING_SOON ? (
-                  <ComingSoon />
-                ) : (
-                  <HomePage
-                    {...props}
-                    handleProductClick={handleProductClick}
-                    isAuthenticated={isAuthenticated}
-                    isTradeApproved={isTradeApproved}
-                  />
-                )
+                <HomePage
+                  {...props}
+                  handleProductClick={handleProductClick}
+                  isAuthenticated={isAuthenticated}
+                  isTradeApproved={isTradeApproved}
+                />
               }
             />
             <Route
@@ -1632,7 +1625,7 @@ function MainApp(props) {
         </div>
       </main>
 
-      {!isCheckoutRoute && !SHOW_COMING_SOON && (
+      {!isCheckoutRoute && (
         <Footer />
       )}
 
@@ -1650,7 +1643,7 @@ function MainApp(props) {
         showToast={props.showToast}
       />
 
-      {!isCheckoutRoute && !SHOW_COMING_SOON && (
+      {!isCheckoutRoute && (
         <CartDrawer
           isOpen={props.isCartOpen}
           holdExpiresAt={props.cartHoldExpiresAt}
@@ -1689,7 +1682,7 @@ function MainApp(props) {
         />
       )}
 
-      {!isCheckoutRoute && !SHOW_COMING_SOON && props.isSearchModalOpen && (
+      {!isCheckoutRoute && props.isSearchModalOpen && (
         <SearchModal
           isOpen={props.isSearchModalOpen}
           onClose={() => props.setIsSearchModalOpen(false)}
@@ -1698,7 +1691,7 @@ function MainApp(props) {
         />
       )}
 
-      {!SHOW_COMING_SOON && props.isLocatorOpen && (
+      {props.isLocatorOpen && (
         <StoreLocator
           currentStore={props.selectedStore}
           stores={props.storeLocations}
@@ -1715,7 +1708,7 @@ function MainApp(props) {
         />
       )}
 
-      {!isCheckoutRoute && !SHOW_COMING_SOON && props.isCompareOpen && (
+      {!isCheckoutRoute && props.isCompareOpen && (
         <ComparisonModal
           products={props.comparisonList}
           onClose={() => props.setIsCompareOpen(false)}
@@ -1724,14 +1717,14 @@ function MainApp(props) {
         />
       )}
 
-      {!isCheckoutRoute && !SHOW_COMING_SOON && props.priceMatchProduct && (
+      {!isCheckoutRoute && props.priceMatchProduct && (
         <PriceMatchModal
           product={props.priceMatchProduct}
           onClose={() => props.setPriceMatchProduct(null)}
         />
       )}
 
-      {!isCheckoutRoute && !SHOW_COMING_SOON && props.isOnboardingOpen && (
+      {!isCheckoutRoute && props.isOnboardingOpen && (
         <OnboardingWizard
           products={props.products}
           onClose={() => {
@@ -1747,7 +1740,7 @@ function MainApp(props) {
         />
       )}
 
-      {!isCheckoutRoute && !SHOW_COMING_SOON && props.isPaintOpen && (
+      {!isCheckoutRoute && props.isPaintOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden relative max-h-[90vh] overflow-y-auto">
             <button
@@ -1768,7 +1761,7 @@ function MainApp(props) {
 
       <ToastStack />
 
-      {!isCheckoutRoute && !SHOW_COMING_SOON && (
+      {!isCheckoutRoute && (
         <>
           <CookieConsent
             isOpen={isCookieConsentOpen}

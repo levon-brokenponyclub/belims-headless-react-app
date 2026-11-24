@@ -90,7 +90,7 @@ npm run dev                  # http://localhost:3000 (strictPort — the CMS COR
 
 ## LiveChat / Text AI Agent product catalog
 
-The AI Agent's **Recommend products** skill (Text dashboard → AI Agents → Skills → *Product feed (XML)*) reads a Google Shopping feed that the CMS publishes. Text syncs it hourly.
+The AI Agent's **Recommend products** skill (Text dashboard → AI Agents → Skills → *Product feed (XML)*) reads a Google Shopping feed that the CMS publishes. Text syncs it hourly. **Paused 2026-11-24** while Coming Soon is on — the skill is off in the Text dashboard; switch it back on when Coming Soon is lifted.
 
 - **Feed URL (production):** `https://cms.belims.co.za/wp-json/belims/v1/feeds/products.xml`. It comes from GSS 2.12.0; see the [plugin README](../wp-content/plugins/global-site-settings/README.md#product-feed-2120-includesclass-product-feedphp).
 - It contains every visible, sellable product (in stock, priced, categorised, with an image). Links point to `get_frontend_url()`, so production links go to www and staging links go to preview.

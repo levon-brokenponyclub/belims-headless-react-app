@@ -22,7 +22,7 @@ export const ComingSoon = () => {
               Get in touch
             </a>
             <a
-              href="tel:+27123456789"
+              href="tel:+27399742082"
               className="inline-flex items-center justify-center px-8 py-3 border border-white/30 text-white font-semibold rounded hover:bg-white/10 transition-colors"
             >
               Call us

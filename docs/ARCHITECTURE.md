@@ -50,7 +50,7 @@ Defined in [`App.tsx`](../frontend/App.tsx):
 
 | Path | Page |
 | --- | --- |
-| `/` | Home (`HomePage` → HeroBanner, CategoryGrid, ShopByCategory, DealsSection (+ CategoryFeature), CollageGrid, ShopByDepartment, PopularCategories, BrandStrip) — or `ComingSoon` when `VITE_COMING_SOON=true`. Category-driven sections share one `useHomeCategories` fetch. |
+| `/` | Home (`HomePage` → HeroBanner, CategoryGrid, ShopByCategory, DealsSection (+ CategoryFeature), CollageGrid, ShopByDepartment, PopularCategories, BrandStrip) — while `VITE_COMING_SOON=true`, `index.tsx` renders `ComingSoon` on every route instead of `App`. Category-driven sections share one `useHomeCategories` fetch. |
 | `/shop`, `/shop/:categorySlug` | `Archive` (filters, sort, chips, mobile filter drawer) |
 | `/brands/:brandSlug` | `Archive` filtered to one brand (`product_brand` slug, e.g. `/brands/bostik`); title = brand name. `/shop?brand=` still works |
 | `/product/*` | `SingleProduct` (URL = category path + `{slug}-{id}`, see `utils/product.ts`) |
@@ -85,7 +85,7 @@ Defined in [`App.tsx`](../frontend/App.tsx):
 
 | Variable | Used for | Where set |
 | --- | --- | --- |
-| `VITE_COMING_SOON` | Show `ComingSoon` on `/` when `true` | Vercel **Production only** — `false` since launch (2026-11-12) |
+| `VITE_COMING_SOON` | Show `ComingSoon` on every route (instead of `App`) when `true` | Vercel **Production only** — `true` since 2026-11-24 (was `false` 2026-11-12 → 2026-11-24) |
 | `VITE_CF_IMAGE_TRANSFORMS` | Enable Cloudflare image URLs | Production + Preview |
 | `VITE_LIVECHAT_ENABLED` | Mount the LiveChat AI chatbot (`TextWidget`) when `true` | `.env.local` + Vercel Preview + Production (Production since 2026-11-12) |
 | `VITE_FIREBASE_*` (6) | Firebase client config | All environments |

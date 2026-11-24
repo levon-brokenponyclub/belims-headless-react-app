@@ -69,7 +69,7 @@ git push origin main:vercel
 ### Rules
 
 - **Release through Git only.** `VITE_*` variables are inlined at build time, so a build carries the environment it was built for. Do not use Vercel's *Promote* or *Redeploy* to move a build between Preview and Production — that is how a Production build (with `VITE_COMING_SOON=true`) leaked onto `belims.vercel.app`.
-- `VITE_COMING_SOON` is `false` on Production since launch (2026-11-12). Set it to `true` and release to bring Coming Soon back — see the [launch checklist](docs/ROADMAP.md#launch-checklist-wwwbelimscoza).
+- `VITE_COMING_SOON` is `true` on Production since 2026-11-24 (Coming Soon on every route; it was `false` 2026-11-12 → 2026-11-24). Set it to `false` and release to turn Coming Soon off — see the [launch checklist](docs/ROADMAP.md#launch-checklist-wwwbelimscoza).
 - Pushing a commit that Vercel has already built (e.g. after a fast-forward) does not trigger a new build. Use `vercel deploy` or the Vercel API (`POST /v13/deployments` with `gitSource.ref`) to force one.
 
 ### CMS-triggered builds

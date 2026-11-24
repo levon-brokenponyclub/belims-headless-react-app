@@ -13,6 +13,24 @@ All notable changes to the Belims headless storefront (`frontend/`), the CMS plu
 5. Bump the plugin version (`global-site-settings.php` header + `GLOBAL_SITE_SETTINGS_VERSION`) for every plugin change and name the version in the title.
 6. Release flow is in [README → Deployment](README.md#deployment-vercel): commit to `main` → verify on https://belims.vercel.app → `git push origin main:vercel`.
 
+## 2026-11-24 — Coming Soon back on www.belims.co.za
+
+Why: requested — show the Coming Soon page on production again.
+
+### Vercel (project `belims`, Production)
+- `VITE_COMING_SOON` set to `true` (env id `xrlvW4Xgz03J3IYU`, comment updated).
+- Production rebuilt from Git, branch `vercel` @ `43d45f8b` (no code change) — deploy `dpl_9PTRFpq5ewyuoszMQ1ErAWfgCoej`. No Promote/Redeploy used.
+
+### frontend/index.tsx, frontend/App.tsx
+- Coming Soon now covers **every route**: `index.tsx` renders `ComingSoon` instead of `App` when `VITE_COMING_SOON=true`, so product, checkout, account and other pages no longer load by direct URL, and no CMS requests, LiveChat or cookie banner run. Removed the 12 per-element `SHOW_COMING_SOON` checks and the `/` route switch from `App.tsx`.
+- Verified: `npm run build` with the flag off (full shop) and on (bundle holds only `ComingSoon`; router, LiveChat and shop code tree-shaken out).
+
+### frontend/components/ComingSoon.tsx
+- "Call us" now dials the real number, 039 974 2082 (`tel:+27399742082`), replacing the placeholder.
+
+### Text dashboard (LiveChat AI Agent)
+- Recommend products skill (product feed `cms.belims.co.za/wp-json/belims/v1/feeds/products.xml`) paused while Coming Soon is on.
+
 ## 2026-11-12 — LiveChat AI chatbot live on www (desktop only)
 
 Why: put the Text AI Agent, with the Recommend products feed (GSS 2.12.0), in front of real visitors. On mobile its frame blocks taps on the bottom nav, so it is desktop only for now.

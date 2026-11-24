@@ -16,7 +16,8 @@ _Last reviewed: 2026-10-01_
 ## Launch checklist (`www.belims.co.za`)
 
 - [ ] Imunify issue resolved; `/api/*` returns JSON for 10/10 cache-busted requests.
-- [x] `VITE_COMING_SOON` set to `false` on Vercel Production and released (2026-11-12, deploy `dpl_7kRzChrAQsDicQTr3mNScxcJiH7m`). Set back to `true` and release to restore Coming Soon.
+- [x] `VITE_COMING_SOON` set to `false` on Vercel Production and released (2026-11-12, deploy `dpl_7kRzChrAQsDicQTr3mNScxcJiH7m`). Set back to `true` and released 2026-11-24 (deploy `dpl_9PTRFpq5ewyuoszMQ1ErAWfgCoej`) — Coming Soon is on again.
+- [ ] When lifting Coming Soon: set `VITE_COMING_SOON=false`, release, and switch the Text AI Agent *Recommend products* skill back on ([OPERATIONS](OPERATIONS.md#livechat--text-ai-agent-product-catalog)).
 - [x] Site Settings → Homepage → *Saving rebuilds*: **Both** (already set, Production hook saved — checked 2026-11-12).
 - [x] CMS default frontend URL (ACF option `headless_frontend_url`) set to `https://www.belims.co.za` (2026-11-12; old value in `~/backups/uhkkwupuum-headless_frontend_url-20261112-134038.txt`).
 - [ ] Release `main:vercel` together with or after GSS 2.9.0 — the current production bundle's checkout predates the order-key requirement and fails until released.
